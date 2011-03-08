@@ -1,0 +1,38 @@
+/*
+ * $Id$
+ *
+ * Copyright (c) 2010, Juniper Networks, Inc.
+ * All rights reserved.
+ * See ../Copyright for the status of this software
+ *
+ * juiseconfig.h -- compile time constants for libjuise
+ * NOTE: This file is generated from juiseconfig.h.in.
+ */
+
+#ifndef LIBJUISE_JUISECONFIG_H
+#define LIBJUISE_JUISECONFIG_H
+
+/**
+ * The version string
+ */
+#define LIBJUISE_VERSION		"@PACKAGE_VERSION@"
+
+/**
+ * The version number
+ */
+#define LIBJUISE_VERSION_NUMBER	@LIBJUISE_VERSION_NUMBER@
+
+/**
+ * The version number as a string
+ */
+#define LIBJUISE_VERSION_STRING	"@LIBJUISE_VERSION_NUMBER@"
+
+/**
+ * The version number extra info as a string
+ */
+#define LIBJUISE_VERSION_EXTRA	"@LIBJUISE_VERSION_EXTRA@"
+
+#define PATH_SSH	"@PATH_SSH@"
+#define PATH_GZIP	"@PATH_GZIP@"
+
+#endif /* LIBJUISE_JUISECONFIG_H */

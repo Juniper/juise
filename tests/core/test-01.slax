@@ -1,0 +1,20 @@
+version 1.1;
+
+ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
+
+match / {
+    <out> {
+	trace "testing....";
+	expr jcs:trace("trace: ", "one-", "two-", "three");
+	expr jcs:output("output: ", "one-", "two-", "three");
+	expr jcs:progress("progress: ", "one-", "two-", "three");
+	message "hello, world";
+
+	var $x = jcs:hostname("www.juniper.net");
+	<hostname> { copy-of $x; }
+
+        var $y = jcs:parse-ip("96.6.23.148/28");
+        <parse-ip> { copy-of $y; }
+
+    }
+}
