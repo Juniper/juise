@@ -17,6 +17,7 @@
 
 #include <syslog.h>			/* caller will need this stuff */
 #include <stdarg.h>
+#include <libjuise/env/env.h>
 
 #ifdef HOSTPROG
 # ifndef LOG_CONFLICT
@@ -75,7 +76,7 @@ typedef void (*logging_log_func_t) (int severity, const char *tag,
  *     Format string (printf-like)
  */
 void
-logging	(int severity, const char *format, ...) __printflike(2, 3);
+logging	(int severity, const char *format, ...) PRINTFLIKE(2, 3);
 
 /**
  * @brief
@@ -114,7 +115,7 @@ vlogging (int severity, const char *format, va_list ap);
  */
 void
 logging_event (int severity, const char *tag, const char **entry,
-	       const char *format, ...) __printflike(4, 5);
+	       const char *format, ...) PRINTFLIKE(4, 5);
 
 /**
  * @brief
@@ -139,7 +140,7 @@ logging_event (int severity, const char *tag, const char **entry,
 void
 logging_event_ls (int severity, const char *tag, const char *lsname,
 		  const char **entry,
-		  const char *format, ...)__printflike(5, 6);
+		  const char *format, ...) PRINTFLIKE(5, 6);
 
 /**
  * @brief

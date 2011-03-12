@@ -71,6 +71,7 @@ parse_number (const char *unparsed, int *number, int max);
 int
 parse_integer (const char *unparsed, int *number);
 
+#if XXX_UNUSED
 /**
  * @brief
  * Gets a quad from the unparsed buffer.  
@@ -87,6 +88,7 @@ parse_integer (const char *unparsed, int *number);
  */
 int
 parse_quad (const char *unparsed, quad_t *number);
+#endif
 
 #ifdef __cplusplus
     }

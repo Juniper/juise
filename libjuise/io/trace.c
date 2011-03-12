@@ -455,8 +455,10 @@ trace_msg (trace_file_t *traceptr, char *trace_buffer, u_int trace_it, int *msg_
     int  trace_msg_len;
     int  trace_msg_start;
     int  fmt_len;
+#ifdef HAVE_STATFS
     struct statfs fs_stat;
     int64_t fs_bytes_avail;
+#endif
 
     trace_msg_len = 0;
     trace_buf_remaining = TRACE_BUFSIZE - TRACE_POSTAMBLE_SIZE;	/* save room */
@@ -508,6 +510,7 @@ trace_msg (trace_file_t *traceptr, char *trace_buffer, u_int trace_it, int *msg_
             return return_buffer;
     }
 
+#ifdef HAVE_STATFS
     /* 
      * If FS containing the trace file was marked full, check if there is 
      * free space sufficient to store trace message now
@@ -524,6 +527,7 @@ trace_msg (trace_file_t *traceptr, char *trace_buffer, u_int trace_it, int *msg_
             traceptr->trace_file_fs_full = false;
         }
     }
+#endif	/* HAVE_STATFS */
 
     /* Log only if the line matches the regex */
     if (traceptr && traceptr->trace_match != REGEX_NONE) {

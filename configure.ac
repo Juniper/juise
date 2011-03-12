@@ -10,7 +10,7 @@
 #
 
 AC_PREREQ(2.2)
-AC_INIT([libslax], [0.0.1], [phil@juniper.net])
+AC_INIT([juise], [0.0.1], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT([])
 AC_DISABLE_SHARED
@@ -56,6 +56,8 @@ AC_CHECK_FUNCS([gettimeofday ctime])
 AC_CHECK_FUNCS([getpass])
 AC_CHECK_FUNCS([sysctlbyname])
 AC_CHECK_FUNCS([flock])
+AC_CHECK_FUNCS([statfs])
+AC_CHECK_FUNCS([strnstr])
 
 AC_CHECK_HEADERS([sys/time.h])
 AC_CHECK_HEADERS([ctype.h errno.h stdio.h stdlib.h])
@@ -64,6 +66,12 @@ AC_CHECK_HEADERS([sys/sysctl.h])
 
 AC_CHECK_LIB([xml2], [xmlNewParserCtxt])
 AC_CHECK_LIB([xslt], [xsltInit])
+AC_CHECK_LIB([readline], [readline])
+
+AC_CHECK_MEMBER([struct passwd.pw_class],
+    [HAVE_PWD_CLASS=yes ;
+        AC_DEFINE([HAVE_PWD_CLASS], [1], [Have struct pwd.pw_class])],
+    [HAS_PWD_CLASS=no], [[#include <pwd.h>]])
 
 dnl
 dnl Some packages need to be checked against version numbers so we
@@ -75,28 +83,35 @@ AC_DEFUN([VERSION_TO_NUMBER],
 AC_MSG_CHECKING([whether to build with debugging])
 AC_ARG_ENABLE([debug],
     [  --enable-debug    Turn on debugging],
-    [JUISE_DEBUG=yes; AC_DEFINE([JUISE_DEBUG], [1], [Enable debugging])],
+    [JUISE_DEBUG=$enable_debug],
     [JUISE_DEBUG=no])
 AC_MSG_RESULT([$JUISE_DEBUG])
-AM_CONDITIONAL([JUISE_DEBUG], [test "$JUISE_DEBUG" != "no"])
+AM_CONDITIONAL([JUISE_DEBUG], [test "$JUISE_DEBUG" = "yes"])
+if test "JUISE_DEBUG" = "yes" ; then
+    AC_DEFINE([JUISE_DEBUG], [1], [Enable debugging])
+fi
 
 AC_MSG_CHECKING([whether to build with readline])
 AC_ARG_ENABLE([readline],
     [  --enable-readline    Enable support for GNU readline],
-    [HAVE_READLINE=yes; AC_DEFINE([HAVE_READLINE], [1], [Support readline])],
-    [HAVE_READLINE=no])
+    [HAVE_READLINE=$enable_readline],
+    [HAVE_READLINE=$ac_cv_lib_readline_readline])
 AC_MSG_RESULT([$HAVE_READLINE])
-AM_CONDITIONAL([HAVE_READLINE], [test "$HAVE_READLINE" != "no"])
+AM_CONDITIONAL([HAVE_READLINE], [test "$HAVE_READLINE" = "yes"])
+if test "$HAVE_READLINE" = "yes" ; then
+    AC_DEFINE([HAVE_READLINE], [1], [Enable support for GNU readline])
+fi
 
-AC_MSG_CHECKING([whether to build with printflike])
+AC_MSG_CHECKING([whether to build with __printflike])
 AC_ARG_ENABLE([printflike],
     [  --enable-printflike    Enable use of GCC __printflike attribute],
-    [HAVE_PRINTFLIKE=yes;
-           AC_DEFINE([HAVE_PRINTFLIKE], [1], [Support printflike])],
+    [HAVE_PRINTFLIKE=$enable_printflike],
     [HAVE_PRINTFLIKE=no])
 AC_MSG_RESULT([$HAVE_PRINTFLIKE])
-AM_CONDITIONAL([HAVE_PRINTFLIKE], [test "$HAVE_PRINTFLIKE" != ""])
-
+AM_CONDITIONAL([HAVE_PRINTFLIKE], [test "$HAVE_PRINTFLIKE" = "yes"])
+if test "$HAVE_PRINTFLIKE" = "yes" ; then
+    AC_DEFINE([HAVE_PRINTFLIKE], [1], [Enable use of GCC __printflike])
+fi
 
 # Allow the reuse of the libxslt tests, if they have the source code
 AC_ARG_WITH(libxslt_tests, [  --with-libxslt-tests[=DIR]    Include the libxslt tests])

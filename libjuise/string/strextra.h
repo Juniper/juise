@@ -18,6 +18,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <libjuise/common/aux_types.h>
+#include <libjuise/env/env.h>
 
 /*
  * Use C linkage when using a C++ compiler
@@ -41,18 +42,20 @@ extern "C" {
  * @return 
  *     A pointer to the resultant string.
  */
-char *strdupf (const char *fmt, ...) __printflike(1, 2);
+char *strdupf (const char *fmt, ...) PRINTFLIKE(1, 2);
 
 /**
  * @brief
- * Appends a string to a base string, freeing the appended string, if requested.
+ * Appends a string to a base string, freeing the appended string,
+ * if requested.
  *
- * @a If @a free_args is non-zero, @a appendstr is freed. Otherwise, it's not.
- * If the memory space pointed by @a basestr is sufficient for both @a
- * basestr and @a appendstr, no new memory allocated and @a basestr is returned.
- * Otherwise, a new memory is allocaged. If that is successful, the address
- * of new memory is returned and @a baseptr is freed. Otherwise, NULL is
- * returned and @a baseptr is not freed.
+ * @a If @a free_args is non-zero, @a appendstr is freed. Otherwise,
+ * it's not.  If the memory space pointed by @a basestr is sufficient
+ * for both @a basestr and @a appendstr, no new memory allocated and
+ * @a basestr is returned.  Otherwise, a new memory is allocaged. If
+ * that is successful, the address of new memory is returned and @a
+ * baseptr is freed. Otherwise, NULL is returned and @a baseptr is not
+ * freed.
  *
  * @param[in] basestr
  *     Base string to append to, it has to point to allocated memory
@@ -187,7 +190,8 @@ char *strsep_escaped (register char **stringp,
  * @return 
  *     The number of characters written to the output buffer.
  */
-size_t snprintf_safe (char *out, size_t outsize, const char *fmt, ...) __printflike(3, 4);
+size_t snprintf_safe (char *out, size_t outsize, const char *fmt, ...)
+    PRINTFLIKE(3, 4);
 
 /**
  * @brief
@@ -208,7 +212,8 @@ size_t snprintf_safe (char *out, size_t outsize, const char *fmt, ...) __printfl
  *     A pointer to the output buffer on success,
  *     @c NULL on error (@c errno will be set accordingly.)
  */
-char *snstrprintable (char *outbuf, size_t outlen, const char *buf, size_t len);
+char *snstrprintable (char *outbuf, size_t outlen,
+		      const char *buf, size_t len);
 
 /**
  * @brief
@@ -231,8 +236,8 @@ strprintable (const char *buf, size_t len)
 
 /**
  * @brief
- * Given a string and a substring, finds the next character after the substring
- * in the string.
+ * Given a string and a substring, finds the next character
+ * after the substring in the string.
  *
  * Example:
  * 	<tt>stroffset("the fox ran", "fox ") =\> "ran"</tt>
@@ -380,7 +385,7 @@ static inline char *
 strnextws (char *input)
 {
     if (input) {
-	while (*input && !isspace(*input)) {
+	while (*input && !isspace((int) *input)) {
 	    input++;
 	}
     }
@@ -407,7 +412,7 @@ str_char_count (const char *str, int ch)
 static inline char *
 strtrimws (char *input)
 {
-    while (isspace(*input))
+    while (isspace((int) *input))
 	input += 1;
     return input;
 }
@@ -418,7 +423,7 @@ strtrimws (char *input)
 static inline char *
 strtrimwsc (char *input, unsigned *count)
 {
-    while (isspace(*input)) {
+    while (isspace((int) *input)) {
 	if (*input == '\n') *count += 1;
 	input += 1;
     }
@@ -431,7 +436,7 @@ strtrimwsc (char *input, unsigned *count)
 static inline char *
 strtrimtailws (char *input, char *start)
 {
-    while (start < input && isspace(*input))
+    while (start < input && isspace((int) *input))
 	input -= 1;
     return input;
 }
@@ -465,6 +470,34 @@ string_encode32 (u_int8_t *src, size_t src_size, char *dst, size_t dst_size);
 size_t
 string_decode32 (u_int8_t *src, size_t src_size, u_int8_t *dst,
 		 size_t dst_size);
+
+#ifndef HAVE_STRNSTR
+static inline char *
+strnstr (char *s1,  const char *s2, size_t n)
+{
+    char first = *s2++;
+    size_t s2len;
+    char *cp, *np;
+
+    if (first == '\0')	      /* Empty string means immediate match */
+	return s1;
+
+    s2len = strlen(s2); /* Does not count first */
+    for (cp = s1; *cp; cp = np + 1) {
+	np = strchr(cp, first);
+	if (np == NULL)
+	    return NULL;
+	if (s2len == 0)		/* s2 is only one character long */
+	    return np;
+	if (n - (np - s1) < s2len)
+	    return NULL;
+	if (strncmp(np + 1, s2, s2len) == 0)
+	    return np;
+    }
+
+    return NULL;
+}
+#endif /* HAVE_STRNSTR */
 
 #ifdef __cplusplus
     }

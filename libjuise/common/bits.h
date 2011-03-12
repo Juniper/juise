@@ -87,15 +87,15 @@ typedef enum {
 #define BIT32(bitnum) BITT(u_int32_t, bitnum)
 #define BIT64(bitnum) BITT(u_int64_t, bitnum)
 
-extern const char * bit_value_encode __P((const bits *, flag_t));
-extern flag_t bit_value_decode __P((const bits *, const char *));
-extern const char * bits_encode __P((const bits *, flag_t));
-extern char *bits_decode __P((const bits *, const char *, flag_t *));
+extern const char * bit_value_encode (const bits *, flag_t);
+extern flag_t bit_value_decode (const bits *, const char *);
+extern const char * bits_encode (const bits *, flag_t);
+extern char *bits_decode (const bits *, const char *, flag_t *);
 
-extern const char * bit64_value_encode __P((const bits64_t *, const flag64_t));
-extern flag64_t bit64_value_decode __P((const bits64_t *, const char *));
-extern const char * bits64_encode __P((const bits64_t *, flag64_t));
-extern char *bits64_decode __P((const bits64_t *, const char *, flag64_t *));
+extern const char * bit64_value_encode (const bits64_t *, const flag64_t);
+extern flag64_t bit64_value_decode (const bits64_t *, const char *);
+extern const char * bits64_encode (const bits64_t *, flag64_t);
+extern char *bits64_decode (const bits64_t *, const char *, flag64_t *);
 
 
 #ifdef __cplusplus

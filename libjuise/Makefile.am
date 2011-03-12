@@ -21,18 +21,27 @@ noinst_HEADERS = \
     common/allocadup.h \
     common/aux_types.h \
     common/bits.h \
+    data/parse.h \
     data/parse_ip.h \
     data/patricia.h \
-    env/jnx_paths.h \
+    env/env.h \
+    env/env_paths.h \
     io/dbgpr.h \
     io/fbuf.h \
     io/filecopy.h \
+    io/jsio.h \
     io/logging.h \
     io/pid_lock.h \
+    io/rotate_log.h \
+    io/trace.h \
+    io/trace_priv.h \
     string/strextra.h \
     time/time_const.h \
     time/timestr.h \
     xml/client.h \
+    xml/extensions.h \
+    xml/juisenames.h \
+    xml/libxml.h \
     xml/xmllib.h \
     xml/xmllib_pub.h \
     xml/xmlrpc.h \

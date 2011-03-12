@@ -27,7 +27,8 @@
  */
 
 #include <stdio.h>
-#include <libjuise/env/jnx_paths.h>
+
+#include <libjuise/env/env_paths.h>
 
 __BEGIN_DECLS
 

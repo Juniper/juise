@@ -7,19 +7,10 @@
 #ifndef __JNX_TRACE_H__
 #define __JNX_TRACE_H__
 
-#ifndef __JUNOS_MP_SDK__
-
-/**
- * @file trace.h
- * @brief 
- * Tracing facility APIs
- */
-
-#endif /* !__JUNOS_MP_SDK__ */
-
 #include <sys/errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <libjuise/env/env.h>
 #include <libjuise/io/logging.h>
 
 /*
@@ -216,7 +207,7 @@ tracev_event (trace_file_t *tp, u_int32_t type, const char *tag,
  */
 void
 trace (trace_file_t *tp, u_int32_t type, const char *fmt, ...) 
-		 __printflike(3, 4);
+		 PRINTFLIKE(3, 4);
 
 /**
  * @brief
@@ -235,7 +226,7 @@ trace (trace_file_t *tp, u_int32_t type, const char *fmt, ...)
  */
 void
 trace_event (trace_file_t *tp, u_int32_t type, const char *tag,
-	     const char **entry, const char *fmt, ...) __printflike(5, 6);
+	     const char **entry, const char *fmt, ...) PRINTFLIKE(5, 6);
 
 /**
  * @brief

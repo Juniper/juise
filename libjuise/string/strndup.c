@@ -9,6 +9,8 @@
 
 #include <sys/types.h>
 #include <string.h>
+
+#include "config.h"
 #include <libjuise/string/strextra.h>
 
 /*

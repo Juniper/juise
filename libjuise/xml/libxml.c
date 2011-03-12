@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <signal.h>
 #include <string.h>
+#include <paths.h>
 
 #include <libxml/xpathInternals.h>
 #include <libxml/parser.h>
@@ -23,8 +24,8 @@
 #include <libxslt/extensions.h>
 #include <libslax/slax.h>
 
-#include <paths.h>
-#include <libjuise/env/jnx_paths.h>
+#include "config.h"
+#include <libjuise/env/env_paths.h>
 #include <libjuise/common/allocadup.h>
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
@@ -262,7 +263,7 @@ static boolean
 string_is_whitespace (char *str)
 {
     for ( ; *str; str++)
-	if (!isspace(*str))
+	if (!isspace((int) *str))
 	    return FALSE;
     return TRUE;
 }

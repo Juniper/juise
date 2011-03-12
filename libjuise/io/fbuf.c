@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <stdarg.h>
 
+#include "config.h"
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/common/bits.h>
@@ -52,14 +53,17 @@ fbuf_realloc (fbuf_t *fbp, size_t add)
 	return TRUE;
 
     newp = malloc(size + 1);
-    if (newp == NULL) return TRUE;
+    if (newp == NULL)
+	return TRUE;
 
     /*
      * Switch to the new buffer; copy over any old data, add a
      * trailing NULL, and toss the old buffer.
      */
-    if (fbp->fb_left) memcpy(newp, fbp->fb_ptr, fbp->fb_left);
-    if (fbp->fb_buf) free(fbp->fb_buf);
+    if (fbp->fb_left)
+	memcpy(newp, fbp->fb_ptr, fbp->fb_left);
+    if (fbp->fb_buf)
+	free(fbp->fb_buf);
     newp[ size ] = 0;		/* Guarantee null termination */
 
     fbp->fb_buf = fbp->fb_ptr = newp; /* Update fb fields */
@@ -78,7 +82,8 @@ fbuf_fdopen (int fd, int flags)
     fbuf_t *fbp;
 
     fbp = calloc(1, sizeof(*fbp));
-    if (fbp == NULL) return NULL;
+    if (fbp == NULL)
+	return NULL;
 
     fbp->fb_fd = fd;
     fbp->fb_flags = flags;
@@ -97,7 +102,8 @@ fbuf_open (const char *path)
     fbuf_t *fbp;
 
     fd = open(path, O_RDONLY);
-    if (fd < 0) return NULL;
+    if (fd < 0)
+	return NULL;
 
     fbp = fbuf_fdopen(fd, 0);
     if (fbp == NULL) {
@@ -253,11 +259,13 @@ fbuf_pipe_popen (fbuf_stderr_fn error_fn, const char *cmd0, ...)
     }
     va_end(vap);
 
-    if (error_fn) close(errdes[1]);
+    if (error_fn)
+	close(errdes[1]);
     fbp = fbuf_fdopen(des_left, 0);
     if (fbp == NULL) {
 	close(des_left);
-	if (error_fn) close(errdes[0]);
+	if (error_fn)
+	    close(errdes[0]);
 	return NULL;
     }
 
@@ -283,7 +291,8 @@ fbuf_popen (const char *cmd, ...)
     va_list vap;
     char **argv;
 
-    if (pipe(pdes) < 0) return NULL;
+    if (pipe(pdes) < 0)
+	return NULL;
 
     pid = fork();
     switch (pid) {
@@ -338,7 +347,9 @@ fbuf_popen2 (fbuf_stderr_fn error_fn, const char *cmd, ...)
     if (error_fn == NULL)
 	return NULL;
 
-    if (pipe(pdes) < 0) return NULL;
+    if (pipe(pdes) < 0)
+	return NULL;
+
     if (pipe(&pdes[2]) < 0) {
 	close(pdes[0]);
 	close(pdes[1]);
@@ -359,12 +370,12 @@ fbuf_popen2 (fbuf_stderr_fn error_fn, const char *cmd, ...)
 	close(pdes[0]);
 	close(pdes[2]);
 	if (pdes[1] != STDOUT_FILENO) {
-	    (void)dup2(pdes[1], STDOUT_FILENO);
-	    (void)close(pdes[1]);
+	    (void) dup2(pdes[1], STDOUT_FILENO);
+	    (void) close(pdes[1]);
 	}
 	if (pdes[3] != STDERR_FILENO) {
-	    (void)dup2(pdes[3], STDERR_FILENO);
-	    (void)close(pdes[3]);
+	    (void) dup2(pdes[3], STDERR_FILENO);
+	    (void) close(pdes[3]);
 	}
 
 	va_start(vap, cmd);
@@ -378,6 +389,7 @@ fbuf_popen2 (fbuf_stderr_fn error_fn, const char *cmd, ...)
     /* Parent */
     close(pdes[1]);
     close(pdes[3]);
+
     fbp = fbuf_fdopen(pdes[0], 0);
     if (fbp == NULL) {
 	close(pdes[0]);
@@ -432,7 +444,8 @@ fbuf_record (fbuf_t *fbp, char *new, size_t new_size)
 	    break;
 	}
 	(*fbp->fb_record)(fbp, cp, np - cp);
-	if (np < ep) np += 1;
+	if (np < ep)
+	    np += 1;
     }
 }
 
@@ -557,7 +570,8 @@ fbuf_get_input (fbuf_t *fbp, char **workp, int tries, boolean look_ahead)
 		    return 0;
 
 		case -1:
-		    if (errno == EINTR) continue;
+		    if (errno == EINTR)
+			continue;
 		    save = errno;
 		    trace(NULL, TRACE_ALL,
 			   "Unable to select input stream "
@@ -567,7 +581,8 @@ fbuf_get_input (fbuf_t *fbp, char **workp, int tries, boolean look_ahead)
 
 		default:
 		    if (fbp->fb_stderr && FD_ISSET(fbp->fb_stderr, &readfds)) {
-			if (fbp->fb_error) fbp->fb_error(fbp->fb_stderr);
+			if (fbp->fb_error)
+			    fbp->fb_error(fbp->fb_stderr);
 			else {
 			    /* read and discard, what else can we do */
 			    char buf[BUFSIZ];
@@ -585,8 +600,8 @@ fbuf_get_input (fbuf_t *fbp, char **workp, int tries, boolean look_ahead)
 	     * as otherwise callers of the fbuf family of functions can
 	     * run into border-cases not processing the response properly
 	     */
-	    if (ioctl(fbp->fb_fd, FIONREAD, &readable) >= 0 &&
-		readable > ep - cp) {
+	    if (ioctl(fbp->fb_fd, FIONREAD, &readable) >= 0
+		&& readable > ep - cp) {
 		/* more space is required */
 
 		if (fbuf_realloc(fbp, readable - (ep - cp))) {
@@ -601,8 +616,10 @@ fbuf_get_input (fbuf_t *fbp, char **workp, int tries, boolean look_ahead)
 	    rc = read(fbp->fb_fd, cp, ep - cp);
 	    if (rc > 0) {
 		cp[ rc ] = 0; /* Guarantee null termination */
-		if (fbp->fb_record) fbuf_record(fbp, cp, rc);
-		if (fbp->fb_trace) (*fbp->fb_trace)(fbp, cp, rc);
+		if (fbp->fb_record)
+		    fbuf_record(fbp, cp, rc);
+		if (fbp->fb_trace)
+		    (*fbp->fb_trace)(fbp, cp, rc);
 		fbp->fb_left += rc;
 		*workp = cp;
 		return rc;
@@ -759,7 +776,8 @@ fbuf_gets_ex (fbuf_t *fbp, const int tries)
 	    cp = fbp->fb_ptr;
 	    fbp->fb_ptr = np;
 	    fbp->fb_left -= np - cp;
-	    if (fbp->fb_flags & FBF_LINECNT) fbp->fb_left += 1;
+	    if (fbp->fb_flags & FBF_LINECNT)
+		fbp->fb_left += 1;
 	    return cp;
 	} 
 
@@ -810,7 +828,7 @@ split_tag (char *input_tag,
 {
     char *s = input_tag;
     
-    while (isalnum(*s) || *s == '_' || *s == '-')
+    while (isalnum((int) *s) || *s == '_' || *s == '-')
 	s++;
 
     if (*s == ':') {
@@ -883,16 +901,24 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 		    fbp->fb_flags |= FBF_EOF;
 		}
 
-		if (typep) *typep = XML_TYPE_EOF;
-		if (namespacep) *namespacep = NULL;
-		if (restp) *restp = NULL;
+		if (typep)
+		    *typep = XML_TYPE_EOF;
+		if (namespacep)
+		    *namespacep = NULL;
+		if (restp)
+		    *restp = NULL;
 		return NULL;
+
 	    } else if (left < 0 && errno == EWOULDBLOCK) {
 		static char empty = 0;
 		
-		if (typep) *typep = XML_TYPE_NOOP;
-		if (namespacep) *namespacep = NULL;
-		if (restp) *restp = NULL;
+		if (typep)
+		    *typep = XML_TYPE_NOOP;
+		if (namespacep)
+		    *namespacep = NULL;
+		if (restp)
+		    *restp = NULL;
+
 		return &empty;
 	    }
 
@@ -904,7 +930,8 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 		    left -= 1;
 		}
 		fbp->fb_flags &= ~FBF_CHOMPCR;
-		if (left == 0) continue;
+		if (left == 0)
+		    continue;
 	    }
 	
 	    if (fbp->fb_flags & FBF_CHOMPLF) {
@@ -913,13 +940,15 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 		    fbp->fb_left -= 1;
 		    cp += 1;
 		    left -= 1;
-		    if (fbp->fb_flags & FBF_LINECNT) fbp->fb_line += 1;
+		    if (fbp->fb_flags & FBF_LINECNT)
+			fbp->fb_line += 1;
 		}
 		fbp->fb_flags &= ~FBF_CHOMPLF;
-		if (left == 0) continue;
+		if (left == 0)
+		    continue;
 	    }
 
-	    if (iscntrl(*fbp->fb_ptr) && !isspace(*fbp->fb_ptr)) {
+	    if (iscntrl((int) *fbp->fb_ptr) && !isspace((int) *fbp->fb_ptr)) {
 		/*
 		 * Control chars are not valid in XML.
 		 * Treat \004 as EOF
@@ -929,9 +958,13 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 		    trace(NULL, TRACE_ALL,
 			   "Invalid XML data '\\%#o'", *fbp->fb_ptr);
 		fbp->fb_flags |= FBF_EOF;
-		if (typep) *typep = XML_TYPE_EOF;
-		if (namespacep) *namespacep = NULL;
-		if (restp) *restp = NULL;
+		if (typep)
+		    *typep = XML_TYPE_EOF;
+		if (namespacep)
+		    *namespacep = NULL;
+		if (restp)
+		    *restp = NULL;
+
 		return NULL;
 	    }
 	}
@@ -977,7 +1010,8 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 		np += 2; /* let np point to '>' */
 	} else
 	    np = memchr(cp, endchar, left);
-	if (np) break;
+	if (np)
+	    break;
 
 	/*
 	 * If we're looking for data and aren't after the complete string,
@@ -985,7 +1019,8 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 	 */
 	if (!(flags & FXF_COMPLETE) && !in_xml_open && endchar == '<') {
 	    np = memchr(cp, '\n', left);
-	    if (np) break;
+	    if (np)
+		break;
 	}
 
 	/* Move along; no match means we need more input */
@@ -1003,7 +1038,8 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
      */
     if (endchar == '<' && !(flags & FXF_COMPLETE) && *np == '<') {
 	char *zp = memchr(cp, '\n', left);
-	if (zp && zp < np) np = zp;
+	if (zp && zp < np)
+	    np = zp;
     }
 
     if (endchar == '>' && (flags & FXF_PRESERVE) && *cp == '\n')
@@ -1014,14 +1050,16 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
      * If the endchar is a '<', we need to make it the end of string
      * and remember what we were looking at for next time.
      */
-    if (*np == '<') fbp->fb_flags |= FBF_XMLOPEN;
+    if (*np == '<')
+	fbp->fb_flags |= FBF_XMLOPEN;
 
     if (fbp->fb_flags & FBF_LINECNT) {
 	char *lp, *mp;
 
 	for (mp = cp; mp <= np; mp = lp + 1) {
 	    lp = memchr(mp, '\n', np - mp + 1);
-	    if (lp == NULL) break;
+	    if (lp == NULL)
+		break;
 	    fbp->fb_line += 1;
 	}
     }
@@ -1032,22 +1070,27 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
     /* Update the fbuf struct with the current point */
     fbp->fb_ptr = np;
     fbp->fb_left -= np - cp;
-    if (fbp->fb_left < 0) fbp->fb_left = 0;
+    if (fbp->fb_left < 0)
+	fbp->fb_left = 0;
 
     if (fbp->fb_flags & FBF_LINECNT) {
 	char *zp;
 
 	for (zp = cp; zp < np; fbp->fb_left += 1) {
 	    zp = memchr(zp, '\n', np - zp);
-	    if (zp == NULL) break;
+	    if (zp == NULL)
+		break;
 	}
     }
 
     /* Make a better guess at what we are and what we're looking for */
-    if (in_xml_open) sp = strtrimws(cp);
-    else sp = strtrimwsc(cp, &fbp->fb_start);
+    if (in_xml_open)
+	sp = strtrimws(cp);
+    else
+	sp = strtrimwsc(cp, &fbp->fb_start);
 
-    if (in_xml_open) cp = sp;
+    if (in_xml_open)
+	cp = sp;
     else if ((flags & FXF_PRESERVE) && cp == np)
 	/*nothing*/;
     else if (*sp == '<') {
@@ -1072,8 +1115,10 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 	    cp = strtrimws(cp + 1);
 	    if ((flags & FXF_LEAVE_NS) == 0)
 		split_tag(cp, &ns, &cp);
-	    if (namespacep) *namespacep = ns;
+	    if (namespacep)
+		*namespacep = ns;
 	    type = XML_TYPE_CLOSE;
+
 	} else if (*cp == '!') { /* Comment */
 	    type = XML_TYPE_ERROR;
 
@@ -1082,8 +1127,11 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 		if (cp <= np - 3) {
 		    if (np[ -3 ] == '-' && np[ -2 ] == '-') {
 			np = strtrimtailws(np - 4, cp);
-			if (isspace(np[ 1 ])) np[ 1 ] = 0;
-			else *++np = 0;
+			if (isspace((int) np[ 1 ]))
+			    np[ 1 ] = 0;
+			else
+			    *++np = 0;
+
 			type = XML_TYPE_COMMENT;
 		    }
 		}
@@ -1101,7 +1149,8 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 		np = strtrimtailws(np - 2, cp);
 		if ((flags & FXF_LEAVE_NS) == 0)
 		    split_tag(cp, &ns, &cp);
-		if (namespacep) *namespacep = ns;
+		if (namespacep)
+		    *namespacep = ns;
 		if (*np == '/') {
 		    *np = 0;
 		    type = XML_TYPE_EMPTY;
@@ -1110,7 +1159,7 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 			if (strncmp(cp, abort_token,
 				    sizeof(abort_token) - 1) == 0
 			    && (cp[ sizeof(abort_token) - 1 ] == 0
-				|| isspace(cp[ sizeof(abort_token) - 1 ]))) {
+				|| isspace((int) cp[sizeof(abort_token) - 1]))) {
 			    type = XML_TYPE_ABORT;
 			}
 		    }
@@ -1132,23 +1181,28 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
 	/*
 	 * Sanity hack: ignore one newline following the '>'
 	 */
-	if (fbp->fb_left == 0) fbp->fb_flags |= FBF_CHOMPCR;
+	if (fbp->fb_left == 0)
+	    fbp->fb_flags |= FBF_CHOMPCR;
 	else if (*fbp->fb_ptr == '\r') {
 	    fbp->fb_ptr += 1;
 	    fbp->fb_left -= 1;
 	}
 	
-	if (fbp->fb_left == 0) fbp->fb_flags |= FBF_CHOMPLF;
+	if (fbp->fb_left == 0)
+	    fbp->fb_flags |= FBF_CHOMPLF;
 	else if (*fbp->fb_ptr == '\n') {
 	    fbp->fb_ptr += 1;
 	    fbp->fb_left -= 1;
-	    if (fbp->fb_flags & FBF_LINECNT) fbp->fb_line += 1;
+	    if (fbp->fb_flags & FBF_LINECNT)
+		fbp->fb_line += 1;
 	}
 
     } else {		/* Data */
 	type = XML_TYPE_DATA;
-	if (namespacep) *namespacep = NULL;
-	if (restp) *restp = NULL;
+	if (namespacep)
+	    *namespacep = NULL;
+	if (restp)
+	    *restp = NULL;
 
 	sp = strtrimws(cp);
 	if (*sp == 0 && fbp->fb_flags & FBF_EOF) {
@@ -1163,7 +1217,8 @@ fbuf_get_xml_namespace (fbuf_t *fbp, int *typep, char **namespacep,
     }
 
  end:
-    if (typep) *typep = type;	/* Pass the type back to the caller */
+    if (typep)
+	*typep = type;	/* Pass the type back to the caller */
     return cp;
 }
 
@@ -1189,7 +1244,8 @@ void
 fbuf_pclose (fbuf_t *fbp, int *status)
 {
     if (fbp) {
-	if (fbp->fb_trace) (*fbp->fb_trace)(fbp, NULL, 0);
+	if (fbp->fb_trace)
+	    (*fbp->fb_trace)(fbp, NULL, 0);
 	if (fbp->fb_flags & FBF_CLOSE)
 	    close(fbp->fb_fd);
 
@@ -1208,7 +1264,8 @@ fbuf_pclose (fbuf_t *fbp, int *status)
 		close(fbp->fb_stderr);
 	}
 	
-	if (fbp->fb_rec) free(fbp->fb_rec);
+	if (fbp->fb_rec)
+	    free(fbp->fb_rec);
 	free(fbp->fb_buf);
 	free(fbp);
     }
@@ -1221,7 +1278,8 @@ fbuf_has_unread_input(fbuf_t *fbp)
     fd_set who;
     int rc;
 
-    if (fbp->fb_flags & FBF_EOF) return FALSE;
+    if (fbp->fb_flags & FBF_EOF)
+	return FALSE;
 
     FD_ZERO(&who);
     FD_SET(fbp->fb_fd, &who);
@@ -1251,10 +1309,12 @@ fbuf_is_leading (fbuf_t *fbp, const char *leading)
     if (fbp->fb_left == 0)
 	fbp->fb_left = fbuf_get_input(fbp, &fbp->fb_ptr, 0, FALSE);
 
-    if (fbp->fb_left == 0) return FALSE;
+    if (fbp->fb_left == 0)
+	return FALSE;
 
     len = strlen(leading);
-    if (len > fbp->fb_left) return FALSE;
+    if (len > fbp->fb_left)
+	return FALSE;
 
     return (strncmp(leading, fbp->fb_ptr, len) == 0);
 }
@@ -1274,16 +1334,18 @@ fbuf_has_abort (const char *cp, const char *ep)
     /* Traverse the entire string */
     for ( ; cp < ep; cp++) {
 	/* Only look at tags */
-	if (*cp != '<') continue;
+	if (*cp != '<')
+	    continue;
 
 	cp += 1;		/* Move over the '<' */
 
 	/* Not enough data? Return indeterminate results */
-	if (ep - cp < asize + 1) return 0;
+	if (ep - cp < asize + 1)
+	    return 0;
 
 	/* Does it match the abort tag? Return seen-abort */
 	if (memcmp(cp, abort_tag, asize) == 0) {
-	    if (cp[ asize ] == '/' || isspace(cp[ asize ]))
+	    if (cp[ asize ] == '/' || isspace((int) cp[ asize ]))
 		return 1;
 	}
 
@@ -1338,9 +1400,11 @@ fbuf_trace_tagged_callback (FBUF_TRACE_ARGS)
 
     for (cp = buf, ep = buf + buflen; cp < ep; cp = np) {
 	np = index(cp, '\n');
-	if (np == NULL) np = ep;
+	if (np == NULL)
+	    np = ep;
 	fprintf(fttp->ftt_fp, "%s: %.*s\n", fttp->ftt_tag, (int)(np - cp), cp);
-	if (np < ep && *np == '\n') np += 1;
+	if (np < ep && *np == '\n')
+	    np += 1;
     }
 
     fflush(fttp->ftt_fp);
@@ -1352,7 +1416,8 @@ fbuf_trace_tagged (fbuf_t *fbp, FILE *fp, const char *tag)
     fbuf_trace_tagged_t *fttp;
 
     fttp = calloc(sizeof(*fttp), 1);
-    if (fttp == NULL) return TRUE;
+    if (fttp == NULL)
+	return TRUE;
 
     fttp->ftt_fp = fp;
     fttp->ftt_tag = tag;
@@ -1415,7 +1480,8 @@ main (int argc, char **argv)
     if (trace_tag)
 	fbuf_trace_tagged(fbp, stderr, trace_tag);
 
-    if (line) fbuf_reset_linecnt(fbp);
+    if (line)
+	fbuf_reset_linecnt(fbp);
 
     while (!fbuf_eof(fbp)) {
 	if (xml_style) {

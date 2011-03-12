@@ -1,15 +1,15 @@
 /*
- * $Id: jnx_paths.h 403470 2010-10-07 18:05:21Z builder $
+ * $Id$
  *
- * Copyright (c) 1998-2008, Juniper Networks, Inc.
+ * Copyright (c) 1998-2011, Juniper Networks, Inc.
  * All rights reserved.
  */
 
-#ifndef SHARED_JNX_PATHS_H
-#define SHARED_JNX_PATHS_H
+#ifndef SHARED_ENV_PATHS_H
+#define SHARED_ENV_PATHS_H
 
 /**
-*  @file jnx_paths.h 
+*  @file end_paths.h 
 *  @brief Shared path definitions.
 * 
 */
@@ -42,4 +42,4 @@
 
 #define PATH_VAR_LOG_EXT	"/var/log/ext/"
 
-#endif /* SHARED_JNX_PATHS_H */
+#endif /* SHARED_ENV_PATHS_H */

@@ -202,7 +202,11 @@ juise_build_input_doc (void)
 	if (pwd) {
 	    char nbuf[10];
 	    juise_add_node(nodep, ELT_USER, pwd->pw_name);
+
+#ifdef HAVE_PWD_CLASS
 	    juise_add_node(nodep, ELT_CLASS_NAME, pwd->pw_class);
+#endif
+
 	    snprintf(nbuf, sizeof(nbuf), "%d", pwd->pw_uid);
 	    juise_add_node(nodep, ELT_UID, nbuf);
 	}

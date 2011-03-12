@@ -26,6 +26,7 @@
 #include <libxml/xmlsave.h>
 #include <libxslt/extensions.h>
 
+#include "config.h"
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/common/allocadup.h>
@@ -35,7 +36,7 @@
 #include <libjuise/io/logging.h>
 #include <libjuise/io/pid_lock.h>
 #include <libjuise/io/fbuf.h>
-#include <libjuise/env/jnx_paths.h>
+#include <libjuise/env/env_paths.h>
 #include <libjuise/xml/xmlrpc.h>
 #include <libjuise/xml/client.h>
 #include <libjuise/xml/xmlutil.h>
@@ -555,7 +556,7 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 
 	    rc = read(serr, buf, sizeof(buf) - 1);
 	    if (rc > 0) {
-		buf[sizeof(buf)] = '\0';
+		buf[sizeof(buf) - 1] = '\0';
 		trace(trace_file, TRACE_ALL,
 		      "error from rpc session: %s", buf);
 	    }

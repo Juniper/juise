@@ -17,6 +17,8 @@
 #include <arpa/inet.h>
 #include <limits.h>
 
+#include "config.h"
+
 #include <libjuise/io/logging.h>
 #include <libjuise/data/parse_ip.h>
 #include <libjuise/string/strextra.h>
@@ -41,7 +43,7 @@ only_ipv4_chars (const char *str)
 	return TRUE;
 
     for (cp = str; *cp; cp++)
-	if (!(isdigit(*cp) || (*cp == '.')))
+	if (!(isdigit((int) *cp) || (*cp == '.')))
 	    return FALSE;
     return TRUE;
 }

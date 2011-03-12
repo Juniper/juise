@@ -17,7 +17,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-
+#include <libjuise/env/env.h>
 #include <libjuise/io/logging.h>
 
 #if defined(HOSTPROG) && !defined(va_copy)
@@ -71,9 +71,9 @@ writehook (void *cookie, const char *buf, int len)
 static inline const char *
 strerror_ri (int errnum, char *strerrbuf, size_t buflen)
 {
-        if (strerror_r(errnum, strerrbuf, buflen) == EINVAL)
-                strerror_r(EINVAL, strerrbuf, buflen);
-        return strerrbuf;
+    if (strerror_r(errnum, strerrbuf, buflen) == EINVAL)
+	strerror_r(EINVAL, strerrbuf, buflen);
+    return strerrbuf;
 }
 
 static void
@@ -82,7 +82,7 @@ vlogging_stdout (const char *fmt, va_list ap)
 	struct bufcookie fmt_cookie;
 	char fmt_cpy[BUFSIZ], ch, errstr[STRERROR_BUFSIZ];
 	FILE *fmt_fp;
-	int   saved_errno = errno;
+	int saved_errno = errno;
 
 	/* Check to see if we can skip expanding the %m */
 	if (strstr(fmt, "%m")) {
@@ -141,7 +141,9 @@ void
 vlogging_event (int severity, const char *tag, const char *lsname,
 		const char **entry, const char *format, va_list ap)
 {
+#ifdef HAVE_VOLATILE
 	volatile int saved_errno __unused = errno;
+#endif
 	int pri = LOG_PRI(severity);
 	va_list newap;
 	logging_log_func_t log_func = logging_log_func;

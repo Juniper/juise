@@ -18,8 +18,10 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/signal.h>
 
-#include <libjuise/env/jnx_paths.h>
+#include <libjuise/env/env.h>
+#include <libjuise/env/env_paths.h>
 #include <libjuise/io/logging.h>
 #include <libjuise/io/trace.h>
 #include <libjuise/io/rotate_log.h>

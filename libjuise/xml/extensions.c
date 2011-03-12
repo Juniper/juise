@@ -19,9 +19,7 @@
 #include <regex.h>
 #include <pwd.h>
 #include <sys/wait.h>
-#include <bitstring.h>
 #include <string.h>
-#include <sys/sysctl.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -37,6 +35,7 @@
 #include <libexslt/exslt.h>
 #include <libslax/slax.h>
 
+#include "config.h"
 #include <libjuise/time/time_const.h>
 #include <libjuise/io/pid_lock.h>
 #include <libjuise/io/trace.h>
@@ -48,6 +47,13 @@
 #include <libjuise/xml/libxml.h>
 #include <libjuise/io/jsio.h>
 #include <libjuise/xml/extensions.h>
+
+#ifdef O_EXLOCK
+#define OPEN_FLAGS (O_CREAT | O_RDWR | O_EXLOCK)
+#else
+#define OPEN_FLAGS (O_CREAT | O_RDWR)
+#endif
+#define OPEN_PERMS (S_IRWXU | S_IRWXG | S_IRWXO)
 
 extern char *source_daemon_name;
 
@@ -432,7 +438,7 @@ remove_control_chars (char *input)
 	 * characters should not get removed from input string. 
 	 */
 	if (input[i] != '\n' && input[i] != '\r'&& input[i] != '\t') {
-	    if (iscntrl(input[i])) {
+	    if (iscntrl((int) input[i])) {
 		count++;
 		input[i] = '\0';
 	    }
@@ -1151,7 +1157,7 @@ ext_hostname (xmlXPathParserContext *ctxt, int nargs)
     }
 
     if (hp && hp->h_name)
-	outstr = xmlStrdup((xmlChar *) hp->h_name);
+	outstr = xmlStrdup((const xmlChar *) hp->h_name);
     else
 	outstr = xmlStrdup((const xmlChar *) "");
 
@@ -1714,8 +1720,7 @@ ext_dampen (xmlXPathParserContext *ctxt, int nargs)
      * it
      */
     snprintf(new_filename, sizeof(new_filename), "%s+", filename);
-    fd = open(new_filename, O_CREAT | O_RDWR | O_EXLOCK, S_IRWXU |
-	      S_IRWXG | S_IRWXO);
+    fd = open(new_filename, OPEN_FLAGS, OPEN_PERMS);
     if (fd == -1) {
 	LX_ERR("File open failed for file: %s\n", new_filename);
 	return;
