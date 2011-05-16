@@ -18,6 +18,9 @@ LIBS = \
     -lexslt \
     ${LIBXML_LIBS}
 
+noinst_HEADERS = \
+    juise.h
+
 if JUISE_DEBUG
 AM_CFLAGS += -g -DJUISE_DEBUG
 endif

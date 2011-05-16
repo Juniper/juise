@@ -1744,7 +1744,8 @@ ext_dampen (xmlXPathParserContext *ctxt, int nargs)
 	    if (diff.tv_sec < (freq * 60) ||
 		(diff.tv_sec == (freq * 60) && diff.tv_usec == 0)) {
 		memset(buf, '\0', sizeof(buf));
-		snprintf(buf, sizeof(buf), "%lu-%lu\n", rec_tv.tv_sec,
+		snprintf(buf, sizeof(buf), "%lu-%lu\n",
+			 (unsigned long) rec_tv.tv_sec,
 			 (unsigned long) rec_tv.tv_usec);
 		if (fputs(buf, new_fp)) {
 		    LX_ERR("Write operation is failed\n");
@@ -1759,7 +1760,7 @@ ext_dampen (xmlXPathParserContext *ctxt, int nargs)
     if (no_of_recs < max) {
 	memset(buf, '\0', sizeof(buf));
 	snprintf(buf, sizeof(buf), "%lu-%lu\n",
-		 tv.tv_sec, (unsigned long) tv.tv_usec);
+		 (unsigned long) tv.tv_sec, (unsigned long) tv.tv_usec);
 	if (fputs(buf, new_fp)) {
 	    LX_ERR("Write operation is failed\n");
 	    return;
