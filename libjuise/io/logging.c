@@ -71,8 +71,9 @@ writehook (void *cookie, const char *buf, int len)
 static inline const char *
 strerror_ri (int errnum, char *strerrbuf, size_t buflen)
 {
-    if (strerror_r(errnum, strerrbuf, buflen) == EINVAL)
+    if (strerror_r(errnum, strerrbuf, buflen) != 0)
 	strerror_r(EINVAL, strerrbuf, buflen);
+
     return strerrbuf;
 }
 
