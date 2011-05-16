@@ -22,13 +22,15 @@ if JUISE_DEBUG
 AM_CFLAGS += -g -DJUISE_DEBUG
 endif
 
+AM_CFLAGS += -DJUISE_DIR=\"${JUISE_DIR}\"
+
 if HAVE_READLINE
 LIBS += -lreadline
 endif
 
 bin_PROGRAMS = juise
 
-juise_SOURCES = juise.c
+juise_SOURCES = juise.c server.c
 juise_LDADD = ../libjuise/libjuise.la
 juise_LDFLAGS = -static
 

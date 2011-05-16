@@ -33,7 +33,7 @@
 #include <libjuise/io/dbgpr.h>
 #include <libjuise/io/logging.h>
 #include <libjuise/xml/libxml.h>
-#include <libjuise/io/jsio.h>
+#include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 
 #define CONTEXT_STACK_MAX 64

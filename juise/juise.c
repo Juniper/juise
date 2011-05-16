@@ -13,9 +13,11 @@
 #include <sys/time.h>
 #include <time.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/param.h>
 #include <pwd.h>
+#include <sys/socket.h>
 
 #include <libxml/tree.h>
 #include <libxml/dict.h>
@@ -37,23 +39,27 @@
 #include <libjuise/time/timestr.h>
 #include <libjuise/xml/libxml.h>
 #include <libjuise/io/trace.h>
-#include <libjuise/io/jsio.h>
+#include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 #include <libjuise/xml/juisenames.h>
 #include <libjuise/juiseconfig.h>
+
+#include "juise.h"
 
 #define MAX_PARAMETERS 64
 #define MAX_PATHS 64
 
 static const char *params[MAX_PARAMETERS + 1];
 static int nbparams;
-static int use_debugger;
-static int indent;
+static int junoscript;
+static char *server_input;
 
+int use_debugger;
 trace_file_t *trace_file;
+int indent;
 
 static void
-juise_trace (void *vfp, xmlNodePtr nodep, const char *fmt, ...)
+juise_trace (void *vfp, lx_node_t *nodep, const char *fmt, ...)
 {
     trace_file_t *tp = vfp;
     FILE *fp = tp ? trace_fileptr(tp) : stderr;
@@ -131,10 +137,10 @@ is_filename_std (const char *filename)
     return (filename == NULL || (filename[0] == '-' && filename[1] == '\0'));
 }
 
-static xmlNodePtr
-juise_add_node (xmlNodePtr parent, const char *tag, const char *content)
+static lx_node_t *
+juise_add_node (lx_node_t *parent, const char *tag, const char *content)
 {
-    xmlNodePtr nodep, childp;
+    lx_node_t *nodep, *childp;
     
     childp = xmlNewText((const xmlChar *) content);
     if (childp == NULL)
@@ -150,12 +156,12 @@ juise_add_node (xmlNodePtr parent, const char *tag, const char *content)
     return nodep;
 }
 
-static xmlDocPtr
+static lx_document_t *
 juise_build_input_doc (void)
 {
     xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
-    xmlDocPtr docp;
-    xmlNodePtr nodep, childp;
+    lx_document_t *docp;
+    lx_node_t *nodep, *childp;
     char *value;
     struct passwd *pwd;
     char hostname[MAXHOSTNAMELEN];
@@ -227,11 +233,11 @@ juise_build_input_doc (void)
 static int
 do_run_op (const char *scriptname, char **argv UNUSED)
 {
-    xmlDocPtr scriptdoc;
+    lx_document_t *scriptdoc;
     FILE *scriptfile;
-    xmlDocPtr indoc;
+    lx_document_t *indoc;
     xsltStylesheetPtr script;
-    xmlDocPtr res = NULL;
+    lx_document_t *res = NULL;
 
     if (scriptname == NULL)
 	errx(1, "missing script name");
@@ -278,33 +284,22 @@ do_run_op (const char *scriptname, char **argv UNUSED)
     return 0;
 }
 
-/*
- * An ugly attempt to seed the random number generator with the best
- * value possible.  Ugly, but localized ugliness.
- */
-static void
-init_randomizer (void)
+static int
+do_run_server_on_stdin (const char *scriptname UNUSED, char **argv UNUSED)
 {
-#if defined(HAVE_SRANDDEV)
-    sranddev();
+    run_server(0, 1, junoscript);
+    return 0;
+}
 
-#elif defined(HAVE_SRAND)
-#if defined(HAVE_GETTIMEOFDAY)
+static int
+do_run_server_on_input (const char *scriptname UNUSED, char **argv UNUSED)
+{
+    int fd = open(server_input, O_RDONLY);
+    if (fd < 0)
+	err(1, "could not open file '%s'", server_input);
 
-    struct timeval tv;
-    int seed;
-
-    gettimeofday(&tv, NULL);
-    seed = ((int) tv.tv_sec) + ((int) tv.tv_usec);
-    srand(seed);
-
-#else /* HAVE_GETTIMEOFDAY */
-    srand((int) time(NULL));
-
-#endif /* HAVE_GETTIMEOFDAY */
-#else /* HAVE_SRAND */
-    fprintf(stderr, "could not initialize random\n");
-#endif /* HAVE_SRAND */
+    run_server(fd, 1, junoscript);
+    return 0;
 }
 
 static void
@@ -362,6 +357,16 @@ main (int argc UNUSED, char **argv)
 
 	} else if (streq(cp, "--debug") || streq(cp, "-d")) {
 	    use_debugger = TRUE;
+
+	} else if (streq(cp, "--junoscript") || streq(cp, "-J")) {
+	    junoscript = TRUE;
+
+	} else if (streq(cp, "--run-server") || streq(cp, "-R")) {
+	    func = do_run_server_on_stdin;
+
+	} else if (streq(cp, "--run-input") || streq(cp, "-T")) {
+	    func = do_run_server_on_input;
+	    server_input = *++argv;
 
 	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
 	    logger = TRUE;
@@ -423,7 +428,7 @@ main (int argc UNUSED, char **argv)
      * numbers.
      */
     if (randomize)
-	init_randomizer();
+	slaxInitRandomizer();
 
     /*
      * Start the XML API

@@ -15,6 +15,10 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT([])
 AC_DISABLE_SHARED
 
+# Support silent build rules.  Requires at least automake-1.11.
+# Disable with "configure --disable-silent-rules" or "make V=1"
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
 #
 # libxslt 1.1.26 has a fix for AVT terminating with close braces
 #
@@ -347,9 +351,18 @@ case $host_os in
 	;;
 esac
 
+JUISEDIR=""
+
+AC_ARG_WITH(juise-dir,
+        [  --with-juise-dir=[DIR]           Specify location of juise files],
+        [JUISE_DIR=$withval],
+        [JUISE_DIR=$prefix/share/juise]
+)
+
 JUISE_SRCDIR='${srcdir}'
 JUISE_LIBDIR='${libdir}'
 JUISE_INCLUDEDIR='${includedir}'
+AC_SUBST(JUISE_DIR)
 AC_SUBST(JUISE_SRCDIR)
 AC_SUBST(JUISE_LIBDIR)
 AC_SUBST(JUISE_INCLUDEDIR)
@@ -365,7 +378,6 @@ AC_MSG_RESULT(Using configure dir $ac_abs_confdir)
 
 if test -d $ac_abs_confdir/.svn ; then
   extra=`svn info $ac_abs_confdir | grep Revision | sed 's+Revision: ++'`
-  echo extra=$extra
   if test "$extra" != ""
   then
       LIBJUISE_VERSION_EXTRA="-SVN$extra"

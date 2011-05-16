@@ -29,7 +29,6 @@ noinst_HEADERS = \
     io/dbgpr.h \
     io/fbuf.h \
     io/filecopy.h \
-    io/jsio.h \
     io/logging.h \
     io/pid_lock.h \
     io/rotate_log.h \
@@ -40,6 +39,7 @@ noinst_HEADERS = \
     time/timestr.h \
     xml/client.h \
     xml/extensions.h \
+    xml/jsio.h \
     xml/juisenames.h \
     xml/libxml.h \
     xml/xmllib.h \
@@ -59,6 +59,6 @@ libjuise_la_SOURCES = \
     io/trace.c \
     io/logging.c \
     io/rotate_log.c \
-    io/jsio.c \
     xml/extensions.c \
+    xml/jsio.c \
     xml/libxml.c

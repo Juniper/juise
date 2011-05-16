@@ -45,7 +45,7 @@
 #include <libjuise/xml/xmlrpc.h>
 #include <libjuise/xml/client.h>
 #include <libjuise/xml/libxml.h>
-#include <libjuise/io/jsio.h>
+#include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 
 #ifdef O_EXLOCK
@@ -537,7 +537,7 @@ ext_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username,
     const char *value, *key;
     int i;
 
-    *stype = JUNOSCRIPT;    /* Default session */
+    *stype = ST_JUNOSCRIPT;    /* Default session */
 
     for (i = 0; i < nodeset->nodeNr; i++) {
 	nop = nodeset->nodeTab[i];
@@ -571,11 +571,11 @@ ext_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username,
 	    
 	    if (streq(key,  "method")) {
 		if (value && streq(value, "netconf")) {
-		    *stype = NETCONF;
+		    *stype = ST_NETCONF;
 		} else if (value && streq(value, "junos-netconf")) {
-		    *stype = JUNOS_NETCONF;
+		    *stype = ST_JUNOS_NETCONF;
 		} else if (value && streq(value, "junoscript")) {
-		    *stype = JUNOSCRIPT;
+		    *stype = ST_JUNOSCRIPT;
 		}
 		continue;
 	    }
@@ -594,7 +594,7 @@ ext_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
     const char *value, *key;
     int i;
 
-    *stype = JUNOSCRIPT;    /* Default session */
+    *stype = ST_JUNOSCRIPT;    /* Default session */
 
     for (i = 0; i < nodeset->nodeNr; i++) {
 	nop = nodeset->nodeTab[i];
@@ -613,11 +613,11 @@ ext_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
 		*server = xmlStrdup((const xmlChar *) value);
 	    } else if (streq(key, "method")) {
 		if (value && streq(value, "netconf")) {
-		    *stype = NETCONF;
+		    *stype = ST_NETCONF;
 		} else if (value && streq(value, "junos-netconf")) {
-		    *stype = JUNOS_NETCONF;
+		    *stype = ST_JUNOS_NETCONF;
 		} else if (value && streq(value, "junoscript")) {
-		    *stype = JUNOSCRIPT;
+		    *stype = ST_JUNOSCRIPT;
 		}
 	    }
 	}
@@ -667,7 +667,7 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
     js_session_t *session_info = NULL;
     xmlNode *nodep, *serverp, *methodp;
     xmlXPathObject *xop = NULL;
-    session_type_t stype = JUNOSCRIPT; /* Default session */
+    session_type_t stype = ST_JUNOSCRIPT; /* Default session */
     uint port = DEFAULT_NETCONF_PORT;
 
     if (nargs > 3) {
@@ -699,14 +699,14 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
     }
 
     switch (stype) {
-	case JUNOSCRIPT:
+	case ST_JUNOSCRIPT:
 	    session_info = js_session_open((const char *) server,
 					   (const char *) username,
 					   (const char *) passphrase, 0);
 	    sname = "junoscript";
 	    break;
 
-	case NETCONF:
+	case ST_NETCONF:
 	    session_info = js_session_open_netconf((const char *) server,
 						   (const char *) username, 
 						   (const char *) passphrase,
@@ -714,7 +714,7 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
 	    sname = "netconf";
 	    break;
 
-	case JUNOS_NETCONF:
+	case ST_JUNOS_NETCONF:
 	    session_info = js_session_open_netconf((const char *) server,
 						   (const char *) username, 
 						   (const char *) passphrase,
@@ -796,7 +796,7 @@ ext_close (xmlXPathParserContext *ctxt, int nargs)
 {
     xmlXPathObject *xop = NULL;
     xmlChar *server = NULL;
-    session_type_t stype = JUNOSCRIPT; /* Default session */
+    session_type_t stype = ST_JUNOSCRIPT; /* Default session */
 
     if (nargs != 1) {
 	xmlXPathSetArityError(ctxt);
@@ -840,7 +840,7 @@ ext_execute (xmlXPathParserContext *ctxt, int nargs)
     xsltTransformContextPtr tctxt;
     xmlXPathObjectPtr ret;
     xmlChar *server = NULL;
-    session_type_t stype = JUNOSCRIPT; /* Default session */
+    session_type_t stype = ST_JUNOSCRIPT; /* Default session */
 
     if (nargs != 2) {
 	xmlXPathSetArityError(ctxt);
@@ -969,7 +969,7 @@ ext_gethello (xmlXPathParserContext *ctxt, int nargs)
     xmlDocPtr container;
     xmlXPathObject *xop = NULL, *ret;
     xmlChar *server = NULL;
-    session_type_t stype = JUNOSCRIPT; /* Default session */
+    session_type_t stype = ST_JUNOSCRIPT; /* Default session */
     lx_node_t *hellop, *newhellop;
 
     if (nargs != 1) {

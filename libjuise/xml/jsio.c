@@ -41,12 +41,12 @@
 #include <libjuise/xml/client.h>
 #include <libjuise/xml/xmlutil.h>
 #include <libjuise/xml/libxml.h>
-#include <libjuise/io/jsio.h>
+#include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 #include <libjuise/juiseconfig.h>
 
 static const char xml_parser_reset[] = XML_PARSER_RESET;
-const int xml_parser_reset_len = sizeof(xml_parser_reset);
+const int xml_parser_reset_len = sizeof(xml_parser_reset) - 1;
 
 static const char xml_trailer[] = "</" XMLRPC_APINAME ">\n";
 const int xml_trailer_len = sizeof(xml_trailer);
@@ -69,6 +69,8 @@ static char *js_default_server;
 static char *js_options;
 
 static char js_netconf_ns_attr[] = "xmlns=\"" XNM_NETCONF_NS "\"";
+
+static int js_max = 345;
 
 void
 jsio_init (void)
@@ -105,6 +107,179 @@ js_buffer_trace (const char *title, char *buf, int bufsiz)
 	cp += width + 1;
 	len -= width + 1;
     }
+}
+
+static int
+js_buffer_read_data (js_session_t *jsp, char *bp, int blen)
+{
+    int rc;
+
+    if (js_max && blen > js_max)
+	blen = js_max;
+
+    if (jsp->js_rbuf) {
+	int rlen = jsp->js_rlen - jsp->js_off;
+
+	rc = MIN(rlen, blen);
+	memcpy(bp, jsp->js_rbuf + jsp->js_roff, rc);
+	if (rc <= rlen) {
+	    /* Done with js_rbuf */
+	    free(jsp->js_rbuf);
+	    jsp->js_rbuf = NULL;
+	    jsp->js_rlen = jsp->js_roff = 0;
+	} else {
+	    jsp->js_roff += blen;
+	}
+
+    } else {
+	rc = read(jsp->js_stdin, bp, blen);
+    }
+
+    return rc;
+}
+
+static int
+js_buffer_find_reset_dangling (js_session_t *jsp, char *bp, int blen)
+{
+    /*
+     * Now we need to see if the data has a trailing xml_parser_reset
+     * string.  If so, we emit the closing tag and return end-of-file.
+     */
+    int len = xml_parser_reset_len - jsp->js_len;
+    const char *cp = xml_parser_reset + jsp->js_len;
+
+    /*
+     * So we _might_ have seen the start of a reset string, but ran
+     * out of room.  See what we've got now, and decide if we're
+     * really seeing reset or not.
+     */
+    if (blen >= len && memcmp(bp, cp, len) == 0) {
+	/* Looking at reset */
+	jsp->js_state = JSS_TRAILER;
+	jsp->js_len = 0;
+	
+	/* If there's extra left in the buffer, save it for later */
+	if (blen > len && !(blen == len + 1 && bp[len] == '\n')) {
+	    int left = blen - len;
+	    jsp->js_rbuf = malloc(left);
+	    if (jsp->js_rbuf == NULL)
+		return -1;
+
+	    memcpy(jsp->js_rbuf, bp + len, left);
+	    jsp->js_roff = 0;
+	    jsp->js_rlen = left;
+	}
+
+	return TRUE;
+    }
+
+    /*
+     * Okay, bad news.  We got suckered into thinking we saw the
+     * beginning of the reset string, but we didn't.  So shift the
+     * data and reinsert the sucker bits.  Note that we left room for
+     * this by setting blen to bufsiz - the length of the reset
+     * string.
+     */
+    len = jsp->js_len;
+    memmove(bp + len, bp, blen);
+    memcpy(bp, xml_parser_reset, len);
+    jsp->js_len = 0;
+
+    return FALSE;
+}
+
+/*
+ * Now we need to see if the data has a trailing xml_parser_reset
+ * string.  If so, we emit the closing tag and return end-of-file.
+ */
+static int
+js_buffer_find_reset (js_session_t *jsp, char *bp, int blen)
+{
+    /* If there was a dangling reset string, look for the rest */
+    if (jsp->js_len && js_buffer_find_reset_dangling(jsp, bp, blen))
+	return 0;
+
+    int reset_len = xml_parser_reset_len;
+    const char *reset_value = xml_parser_reset;
+
+    char *cp;
+    char *ep = bp + blen;
+    int rc = blen;
+
+    /* Look for the reset string */
+    for (cp = bp; cp < ep; cp++) {
+	if (*cp != *reset_value)
+	    continue;
+
+	int left = ep - cp;
+	trace(trace_file, TRACE_ALL, "find_reset: left %d: %p:%p (%d)",
+	      left, bp, cp, reset_len);
+
+	
+	if (reset_len <= left) {
+	    /* We've got enough data to find the entire reset token */
+	    if (memcmp(cp + 1, reset_value + 1, reset_len - 1) != 0)
+		continue;
+	    /* fallthru */
+
+	} else {
+	    /*
+	     * There's not enough data in the input buffer to do a
+	     * full compare, so we compare what we've got.  If it's
+	     * a match, we have to save record the length of the
+	     * dangling piece.
+	     */
+	    if (memcmp(cp + 1, reset_value + 1, left - 1) != 0)
+		continue;
+
+	    /*
+	     * At this point, the end of our input buffer has
+	     * the start of a reset string and we won't be
+	     * able to determine if this is a really a reset
+	     * until we do the next read.  So we record what
+	     * we've got and fake a return.
+	     */
+	    if (jsp->js_rbuf) {
+		jsp->js_roff -= left;
+		cp -= left;
+		return cp - bp;
+
+	    } else {
+		jsp->js_len = left;
+		return cp - bp;
+	    }
+	}
+
+	/*
+	 * We've seen a reset string.  Trim it, save anything
+	 * after it and return the rest.
+	 */
+	rc = cp - bp;
+	cp += reset_len;
+	left -= reset_len;
+
+#if 0
+	while (left > 1 && isspace((int) cp[0])) {
+	    left -= 1;
+	    cp += 1;
+	}
+#endif
+
+	if (left > 0) {
+	    jsp->js_rbuf = malloc(left);
+	    if (jsp->js_rbuf == NULL)
+		return -1;
+
+	    jsp->js_rlen = left;
+	    jsp->js_roff = 0;
+	    memcpy(jsp->js_rbuf, cp, left);
+	}
+
+	jsp->js_state = JSS_TRAILER;
+	return rc;
+    }
+
+    return rc;
 }
 
 /*
@@ -148,6 +323,7 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	    jsp->js_len += rc;
 	}
 
+	rc += bp - buf;
 	js_buffer_trace("emit trailer", buf, rc);
 	return rc;
     }
@@ -183,14 +359,20 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	jsp->js_len = 0;
     }
 
-    rc = read(jsp->js_stdinout, bp, blen);
+    rc = js_buffer_read_data(jsp, bp, blen);
     if (rc < 0)
 	xmlGenericError(NULL, "rpc read: %s", strerror(errno));
     if (rc <= 0) {
+    dead:
+	jsp->js_state = JSS_TRAILER;
+	goto emit_trailer;
+
+#if 0
 	jsp->js_state = JSS_DEAD;
 	jsp->js_len = 0;
 	js_buffer_trace("read fails", buf, rc);
 	return rc;
+#endif
     }
 
     /*
@@ -218,67 +400,14 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	}
     }
 
-    /*
-     * Now we need to see if the data has a trailing xml_parser_reset
-     * string.  If so, we emit the closing tag and return end-of-file.
-     */
-    len = xml_parser_reset_len - jsp->js_len;
-    cp = xml_parser_reset + jsp->js_len;
-    int elen = MIN(rc, len);
-    char *ep = bp + rc - elen;
+    rc = js_buffer_find_reset(jsp, bp, rc);
+    if (rc < 0)
+	goto dead;
 
-    if (jsp->js_len) {
-	/*
-	 * So we _might_ have seen the start of a reset string, but
-	 * ran out of room.  See what we've got now, and decide if
-	 * we're really seeing reset or not.
-	 */
-	if (rc >= len || memcmp(ep, cp, len) == 0) {
-	    /* Looking at reset */
-	    jsp->js_state = JSS_TRAILER;
-	    jsp->js_len = 0;
-	    goto emit_trailer;
-	}
-
-	/*
-	 * Okay, bad news.  We got suckered into thinking
-	 * we saw the beginning of the reset string, but
-	 * we didn't.  So shift the data and reinsert the
-	 * sucker bits.  Note that we left room for this
-	 * by setting blen to bufsiz - the length of the
-	 * reset string.
-	 */
-	memmove(bp + len, bp, rc);
-	memcpy(bp, cp, len);
-	rc += len;
-	jsp->js_len = 0;
-    }
-
-    cp = xml_parser_reset + jsp->js_len;
-    len = xml_parser_reset_len - 1;
-    ep = bp + rc;
-
-    char *dp = ep - 1;
-    while (*dp == '\n')
-	dp -= 1;
-    while (*dp == '\r')
-	dp -= 1;
-    ep = dp + 1;
-    for (i = 0; i < len && dp > bp; i++, dp--)
-	if (*dp != ']' && *dp != '>')
-	    break;
-    if (i > 0) {
-	if (jsp->js_len == 0)
-	    if (*dp == '>' || *dp == '\n')
-		dp += 1;
-	i = ep - dp;
-	if (memcmp(dp, cp, i) == 0) {
-	    if (i == len)
-		jsp->js_state = JSS_TRAILER;
-	    else
-		jsp->js_len = i;
-	    rc -= i;
-	}
+    if (jsp->js_state == JSS_TRAILER) {
+	bp += rc;
+	blen -= rc;
+	goto emit_trailer;
     }
 
     rc += bp - buf;
@@ -518,7 +647,7 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 {
     struct timeval tmo = { secs, usecs };
     fd_set rfds, xfds;
-    int sin = jsp->js_stdinout, serr = jsp->js_stderr, smax, rc;
+    int sin = jsp->js_stdin, serr = jsp->js_stderr, smax, rc;
     int askpassfd = jsp->js_askpassfd;
 
     do {
@@ -681,7 +810,7 @@ js_session_create (const char *host_name, char **argv, int passfds[2],
 
     } else if (pid < 0) {
 	trace(trace_file, TRACE_ALL,
-	      "could not run commit script xml-mode: %s",
+	      "could not run script xml-mode: %s",
 		 errno ? strerror(errno) : "fork failed");
 	close(sv[0]);
 	close(ev[0]);
@@ -713,11 +842,10 @@ js_session_create (const char *host_name, char **argv, int passfds[2],
     if (askpassfds[0] != -1)
 	close(askpassfds[0]);
 
-    fp = fdopen(sv[1], "r+");
+    fp = fdopen(sv[1], "w");
     if (fp == NULL) {
 	trace(trace_file, TRACE_ALL,
-	      "commit script: xml-mode: fdopen failed: %s",
-		 strerror(errno));
+	      "jsio: fdopen failed: %s", strerror(errno));
 	goto fail2;
     }
 
@@ -729,10 +857,11 @@ js_session_create (const char *host_name, char **argv, int passfds[2],
 
     bzero(jsp, sizeof(*jsp));
     jsp->js_pid = pid;
-    jsp->js_stdinout = sv[1];
+    jsp->js_stdin = sv[1];
+    jsp->js_stdout = sv[1];
     jsp->js_stderr = ev[1];
     jsp->js_askpassfd = askpassfds[1];
-    jsp->js_fp = fp;
+    jsp->js_fpout = fp;
     jsp->js_msgid = 0;
     jsp->js_hello = NULL;
     jsp->js_isjunos = FALSE;
@@ -761,7 +890,7 @@ js_session_create (const char *host_name, char **argv, int passfds[2],
  * Pass the credentials to sever and read the credentials back from server and
  * store for later use.
  */
-static int
+int
 js_session_init (js_session_t *jsp)
 {
     static const char *cred1 = "<?xml ";
@@ -771,9 +900,9 @@ js_session_init (js_session_t *jsp)
     /*
      * Start by sending our side of the credentials
      */
-    fprintf(jsp->js_fp, "<?xml version=\"1.0\"?>\n<"
+    fprintf(jsp->js_fpout, "<?xml version=\"1.0\"?>\n<"
 	    XMLRPC_APINAME " version=\"" XMLRPC_VERSION "\">\n");
-    fflush(jsp->js_fp);
+    fflush(jsp->js_fpout);
 
     /*
      * Read their credentials and store them away for later use
@@ -892,7 +1021,7 @@ js_session_find (const char *host_name, session_type_t stype)
 /*
  * Kill the child process associated with this session.
  */
-static void
+void
 js_session_terminate (js_session_t *jsp)
 {
     pid_t pid = jsp->js_pid;
@@ -941,14 +1070,15 @@ js_session_terminate (js_session_t *jsp)
 	}
     }
 
-    if (jsp->js_askpassfd >=0 )
+    if (jsp->js_askpassfd >= 0)
 	close(jsp->js_askpassfd);
 
     fbuf_close(jsp->js_fbuf);
 
-    close(jsp->js_stdinout);
+    close(jsp->js_stdin);
+    close(jsp->js_stdout);
     close(jsp->js_stderr);
-    fclose(jsp->js_fp);
+    fclose(jsp->js_fpout);
 
     if (jsp->js_hello)
 	xmlFreeNode(jsp->js_hello);
@@ -968,10 +1098,10 @@ js_initialize (void)
     if (done_init)
 	return;
 
-    patricia_root_init(&js_session_root, FALSE, PAT_MAXKEY, SESSION_NAME_DELTA);
-	
+    patricia_root_init(&js_session_root, FALSE,
+		       PAT_MAXKEY, SESSION_NAME_DELTA);
+
     done_init = TRUE;
-   
 }
 
 /*
@@ -980,18 +1110,18 @@ js_initialize (void)
 static int
 js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 {
-    FILE *fp = jsp->js_fp;
+    FILE *fp = jsp->js_fpout;
 
     trace(trace_file, CS_TRC_RPC, "rpc name: %s", rpc_name);
 
     switch (jsp->js_key.jss_type) {
-	case JUNOSCRIPT:
+	case ST_JUNOSCRIPT:
 	    fprintf(fp, "<xnm:rpc xmlns=\"\"><%s/></xnm:rpc>\n" 
 		    /**/ XML_PARSER_RESET /**/ "\n", rpc_name);
 	    break;
 	    
-	case NETCONF:
-	case JUNOS_NETCONF:
+	case ST_NETCONF:
+	case ST_JUNOS_NETCONF:
 	    /*
 	     * Pure Hack:
 	     *
@@ -1022,12 +1152,12 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 static int
 js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 {
-    FILE *fp = jsp->js_fp;
+    FILE *fp = jsp->js_fpout;
 
     lx_output_t *handle = lx_output_open_fd(fileno(fp));
     if (handle == NULL) {
 	trace(trace_file, TRACE_ALL,
-	      "commit script: xml-mode: open fd failed");
+	      "jsio: open fd failed");
 	return -1;
     }
 
@@ -1037,12 +1167,12 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
     int is_rpc = streq(XMLRPC_REQUEST, (const char *) rpc_node->name);
     if (!is_rpc) {
 	switch (jsp->js_key.jss_type) {
-    	    case JUNOSCRIPT:
+    	    case ST_JUNOSCRIPT:
 		fprintf(fp, "<xnm:rpc xmlns=\"\">\n");
 		break;
 	       	
-	    case NETCONF:
-	    case JUNOS_NETCONF:
+	    case ST_NETCONF:
+	    case ST_JUNOS_NETCONF:
 		fprintf(fp, "%s\n", xmldec);
 		fprintf(fp, "<rpc %s message-id=\"%d\">\n", 
 			jsp->js_isjunos ? "" : js_netconf_ns_attr,
@@ -1062,12 +1192,12 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 
     if (!is_rpc) {
 	switch (jsp->js_key.jss_type) {
-    	    case JUNOSCRIPT:
+    	    case ST_JUNOSCRIPT:
 		fprintf(fp, "</xnm:rpc>\n");
 		break;
 	    
-	    case NETCONF:
-	    case JUNOS_NETCONF:
+	    case ST_NETCONF:
+	    case ST_JUNOS_NETCONF:
 		fprintf(fp, "</rpc>\n");
 		break;
 	}
@@ -1082,34 +1212,41 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 /*
  * Read RPC reply
  */
+static lx_document_t *
+js_rpc_get_document (js_session_t *jsp)
+{
+    lx_document_t *docp = NULL;
+    xmlParserCtxt *read_ctxt = xmlNewParserCtxt();
+
+    if (read_ctxt == NULL) {
+	trace(trace_file, TRACE_ALL,
+	      "jsio: could not make parser context");
+    } else {
+	docp = js_document_read(read_ctxt, jsp, "xnm:rpc results", NULL, 0);
+	if (docp == NULL) {
+	    trace(trace_file, TRACE_ALL,
+		  "jsio: could not read content (null document)");
+	}
+
+	js_buffer_close(jsp);
+	xmlFreeParserCtxt(read_ctxt);
+    }
+
+    return docp;
+}
+
 static lx_nodeset_t *
 js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
 {
-    xsltTransformContextPtr tctxt;
-    xmlDocPtr container;
-    lx_document_t *docp = NULL;
+    lx_document_t *docp = js_rpc_get_document(jsp);
 
-    xmlParserCtxt *read_ctxt = xmlNewParserCtxt();
-    if (read_ctxt == NULL) {
-	trace(trace_file, TRACE_ALL,
-	      "commit script: xml-mode: could not make parser context");
+    if (docp == NULL)
 	goto fail;
-    }
-
-    docp = js_document_read(read_ctxt, jsp, "xnm:rpc results", NULL, 0);
-    if (docp == NULL) {
-	trace(trace_file, TRACE_ALL,
-	      "commit script: xml-mode: could not read content");
-	goto fail;
-    }
-
-    js_buffer_close(jsp);
-    xmlFreeParserCtxt(read_ctxt);
 
     lx_node_t *nop = lx_document_root(docp);
     if (nop == NULL) {
 	trace(trace_file, TRACE_ALL,
-	      "commit script: xml-mode: could not find document root");
+	      "jsio: could not find document root");
 	goto fail;
     }
 
@@ -1118,7 +1255,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
 
     if (!streq(lx_node_name(nop), XMLRPC_APINAME)) {
 	trace(trace_file, TRACE_ALL,
-	      "commit script: xml-mode: could not find api tag");
+	      "jsio: could not find api tag");
 	goto fail;
     }
 
@@ -1126,8 +1263,8 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
      * Create a Result Value Tree container, and register it with RVT garbage 
      * collector. 
      */
-    tctxt = xsltXPathGetTransformContext(ctxt);
-    container = xsltCreateRVT(tctxt);
+    xsltTransformContextPtr tctxt = xsltXPathGetTransformContext(ctxt);
+    xmlDocPtr container = xsltCreateRVT(tctxt);
     xsltRegisterLocalRVT(tctxt, container);
 
     for (nop = lx_node_children(nop); nop; nop = lx_node_next(nop)) {
@@ -1137,7 +1274,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
 
 	    if (setp == NULL) {
 		trace(trace_file, TRACE_ALL,
-		      "commit scripts: xml-mode: could not allocate set");
+		      "jsio: could not allocate set");
 		goto fail;
 	    }
 
@@ -1169,7 +1306,39 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
     if (docp)
 	lx_document_free(docp);
 
-    xmlFreeParserCtxt(read_ctxt);
+    return NULL;
+
+}
+
+lx_document_t *
+js_rpc_get_request (js_session_t *jsp)
+{
+    return js_rpc_get_document(jsp);
+}
+
+const char *
+js_rpc_get_name (lx_document_t *rpc)
+{
+    lx_node_t *root = lx_document_root(rpc);
+    if (root && root->children) {
+	lx_node_t *cop = root->children;
+
+	for ( ; cop; cop = cop->next) {
+	    if (cop->type != XML_ELEMENT_NODE)
+		continue;
+	    if (!streq(XMLRPC_REQUEST, (const char *) cop->name))
+		return NULL;
+
+	    for (cop = cop->children; cop; cop = cop->next) {
+		if (cop->type != XML_ELEMENT_NODE)
+		    continue;
+		return (const char *) cop->name;
+	    }
+
+	    return NULL;
+	}
+    }
+
     return NULL;
 }
 
@@ -1223,7 +1392,7 @@ js_session_open (const char *host_name, const char *username,
      * Check whether the junoscript session already exists for the given 
      * hostname, if so then return that.
      */
-    if ((jsp = js_session_find(host_name, JUNOSCRIPT)))
+    if ((jsp = js_session_find(host_name, ST_JUNOSCRIPT)))
 	return jsp;
 
     /*
@@ -1381,7 +1550,7 @@ js_session_open (const char *host_name, const char *username,
     INSIST(argc < max_argc);
 
     jsp = js_session_create(host_name, argv, passfds, askpassfds, flags, 
-			    JUNOSCRIPT);
+			    ST_JUNOSCRIPT);
 
     if (jsp && js_session_init(jsp)) {
 	js_session_terminate(jsp);
@@ -1440,6 +1609,19 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
     return reply;
 }
     
+void
+js_rpc_free (lx_document_t *rpc)
+{
+    lx_document_free(rpc);
+}
+
+void
+js_session_close1 (js_session_t *jsp)
+{
+    patricia_delete(&js_session_root, &jsp->js_node);
+    js_session_terminate(jsp);
+}
+
 /*
  * Close the given host's given session
  */
@@ -1458,8 +1640,7 @@ js_session_close (const char *host_name, session_type_t stype)
 	return;
     }
 
-    patricia_delete(&js_session_root, &jsp->js_node);
-    js_session_terminate(jsp);
+    js_session_close1(jsp);
 }
 
 /*
@@ -1468,17 +1649,19 @@ js_session_close (const char *host_name, session_type_t stype)
 static void
 js_send_netconf_hello (js_session_t *jsp)
 {
-    fprintf(jsp->js_fp, "<?xml version=\"1.0\"?>");
-    fprintf(jsp->js_fp, 
+    FILE *fp = jsp->js_fpout;
+
+    fprintf(fp, "<?xml version=\"1.0\"?>\n");
+    fprintf(fp, 
 	    "<hello xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">");
-    fprintf(jsp->js_fp, "<capabilities>");
-    fprintf(jsp->js_fp, "<capability>");
-    fprintf(jsp->js_fp, "urn:ietf:params:netconf:base:1.0");
-    fprintf(jsp->js_fp, "</capability>");
-    fprintf(jsp->js_fp, "</capabilities>");
-    fprintf(jsp->js_fp, "</hello>");
-    fprintf(jsp->js_fp, XML_PARSER_RESET);
-    fflush(jsp->js_fp);
+    fprintf(fp, "<capabilities>");
+    fprintf(fp, "<capability>");
+    fprintf(fp, "urn:ietf:params:netconf:base:1.0");
+    fprintf(fp, "</capability>");
+    fprintf(fp, "</capabilities>");
+    fprintf(fp, "</hello>");
+    fprintf(fp, XML_PARSER_RESET "\n");
+    fflush(fp);
 }
 
 /*
@@ -1492,7 +1675,7 @@ js_read_netconf_hello (js_session_t *jsp)
     lx_document_t *docp = NULL;
     lx_nodeset_t *junos_cap;
 
-    if (js_initial_read(jsp, JS_READ_TIMEOUT, 0))
+    if (jsp->js_stderr > 0 && js_initial_read(jsp, JS_READ_TIMEOUT, 0))
 	return NULL;
 
     /*
@@ -1513,7 +1696,7 @@ js_read_netconf_hello (js_session_t *jsp)
     read_ctxt = xmlNewParserCtxt();
     if (read_ctxt == NULL) {
 	trace(trace_file, TRACE_ALL,
-	      "commit script: xml-mode: could not make parser context");
+	      "jsio: could not make parser context");
 	return NULL;
     }
 
@@ -1558,7 +1741,7 @@ js_read_netconf_hello (js_session_t *jsp)
  * Initialize Netconf session.
  * Send and read the hello packet from netconf server
  */
-static int
+int
 js_session_init_netconf (js_session_t *jsp)
 {
     lx_node_t *hello;
@@ -1602,9 +1785,9 @@ js_session_open_netconf (const char *host_name, const char *username,
 	host_name = js_default_server;
 
     if (flags & JSF_JUNOS_NETCONF)
-	stype = JUNOS_NETCONF;
+	stype = ST_JUNOS_NETCONF;
     else 
-	stype = NETCONF;
+	stype = ST_NETCONF;
 
     /*
      * Check whether the netconf session already exists for the given hostname,
@@ -1672,7 +1855,7 @@ js_session_open_netconf (const char *host_name, const char *username,
 
     argv[argc++] = ALLOCADUP(host_name);
 
-    if (stype == NETCONF) {
+    if (stype == ST_NETCONF) {
 	port_str = strdupf("-p%u", port);
 	argv[argc++] = port_str;
 	argv[argc++] = ALLOCADUP("-s");
@@ -1706,6 +1889,61 @@ js_session_open_netconf (const char *host_name, const char *username,
     return jsp;
 }
 
+js_session_t *
+js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
+{
+    static const char server_name[] = "#server";
+    js_session_t *jsp;
+    FILE *fp;
+
+    js_initialize();
+
+    fp = fdopen(fdout, "w");
+    if (fp == NULL)
+	return NULL;
+
+    jsp = malloc(sizeof(*jsp) + sizeof(server_name));
+    if (jsp == NULL) {
+	fclose(fp);
+	return NULL;
+    }
+
+    bzero(jsp, sizeof(*jsp));
+    jsp->js_pid = -1;
+    jsp->js_stdin = fdin;
+    jsp->js_stdout = fdout;
+    jsp->js_stderr = -1;
+    jsp->js_askpassfd = -1;
+    jsp->js_fpout = fp;
+    jsp->js_msgid = 0;
+    jsp->js_hello = NULL;
+    jsp->js_isjunos = FALSE;
+
+    jsp->js_key.jss_type = stype;
+    memcpy(jsp->js_key.jss_name, server_name, sizeof(server_name));
+    patricia_node_init_length(&jsp->js_node,
+			      sizeof(js_skey_t) + sizeof(server_name));
+
+    jsp->js_fbuf = fbuf_fdopen(fdin, 0);
+
+    if (flags & JSF_FBUF_TRACE)
+	fbuf_trace_tagged(jsp->js_fbuf, stdout, "jsp-read");
+
+    if (stype == ST_NETCONF) {
+	if (js_session_init_netconf(jsp)) {
+	    js_session_terminate(jsp);
+	    return NULL;
+	}
+    } else {
+	if (js_session_init(jsp)) {
+	    js_session_terminate(jsp);
+	    return NULL;
+	}
+    }
+
+    return jsp;
+}
+
 /*
  * Return the hello packet of the given session
  */
@@ -1717,7 +1955,7 @@ js_gethello (const char *host_name, session_type_t stype)
     /*
      * No hello packet for Junoscript session
      */
-    if (stype == JUNOSCRIPT)
+    if (stype == ST_JUNOSCRIPT)
 	return NULL;
 
     if (host_name == NULL || *host_name == '\0')

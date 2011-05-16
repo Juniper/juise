@@ -17,9 +17,9 @@
  * We support both junoscript and netconf sessions
  */
 typedef enum session_type_s {
-    JUNOSCRIPT,
-    NETCONF,
-    JUNOS_NETCONF,
+    ST_JUNOSCRIPT,
+    ST_NETCONF,
+    ST_JUNOS_NETCONF,
 } session_type_t;
 
 #define DEFAULT_NETCONF_PORT    830
@@ -36,18 +36,23 @@ typedef struct js_session_s {
     patnode js_node;		/* Node inside parent patricia tree */
     struct js_session_s *js_next; /* Next in linked list */
     int js_pid;			/* Child pid */
-    int js_stdinout;		/* Child's stdin and stdout (socket) */
+    int js_stdin;		/* Child's stdin (socket) */
+    int js_stdout;		/* Child's stdout (socket) */
     int js_stderr;		/* Child's stderr (socket) */
     int js_askpassfd;		/* -oAskPassFd to communicate with ssh */
-    FILE *js_fp;		/* File pointer for writing to child */
-    fbuf_t *js_fbuf;		/* Input buffer for stdout */
+    FILE *js_fpout;		/* File pointer for writing to child */
+    fbuf_t *js_fbuf;		/* Input buffer for stdin */
     char *js_creds;		/* Header of xml doc/JUNOScript credentials */
     unsigned js_state;		/* State of the reader */
     unsigned js_len;		/* How many bytes (of various things)? */
     xmlNodePtr js_hello;	/* hello packet recvd from netconf server */
     unsigned js_msgid;		/* netconf message id */
     js_boolean_t js_isjunos;	/* True when the device is junos */
-    js_skey_t js_key;		/* js_session key */
+    int js_off;			/* Token offset (reset, leader, or trailer) */
+    char *js_rbuf;		/* Read buffer */
+    int js_roff;		/* Read buffer offset */
+    int js_rlen;		/* Read buffer length */
+    js_skey_t js_key;		/* js_session key (MUST BE LAST) */
 } js_session_t;
 
 #define SESSION_NAME_DELTA	\
@@ -83,6 +88,7 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
  * Close the given host's given session.
  */
 void js_session_close (const char *remote_name, session_type_t stype);
+void js_session_close1 (js_session_t *jsp);
 
 /*
  * Opens Netconf session
@@ -185,5 +191,29 @@ jsio_init (void);
 
 void
 jsio_cleanup (void);
+
+js_session_t *
+js_session_open_server (int fdin, int fdout, session_type_t stype, int flags);
+
+int
+js_session_init (js_session_t *jsp);
+
+int
+js_session_init_netconf (js_session_t *jsp);
+
+lx_document_t *
+js_rpc_get_request (js_session_t *jsp);
+
+const char *
+js_rpc_get_name (lx_document_t *rpc);
+
+void
+js_rpc_free (lx_document_t *rpc);
+
+/*
+ * Kill the child process associated with this session.
+ */
+void
+js_session_terminate (js_session_t *jsp);
 
 #endif /* _JSIO_H_ */

@@ -205,6 +205,9 @@ lx_output_children (lx_output_t *handle, lx_node_t *nodep);
 int lx_extension_register (const char *ns, const char *name,
 			   xmlXPathFunction func);
 
+/* ---------------------------------------------------------------------- */
+/* Functions that we wish were in libxml2/libxslt but are not. */
+
 /*
  * The stock xmlStrchr() returns a "const" pointer, which isn't good.
  */
