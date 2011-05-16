@@ -184,6 +184,9 @@ void
 jsio_set_default_server (const char *server);
 
 void
+jsio_set_default_user (const char *user);
+
+void
 jsio_set_ssh_options (const char *opts);
 
 void

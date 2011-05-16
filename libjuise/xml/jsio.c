@@ -66,6 +66,7 @@ static const char fake_creds[] = "<?xml version=\"1.0\"?>\n<"
 static patroot js_session_root;
 int input_fd = -1;		/* XXX Must go!! */
 static char *js_default_server;
+static char *js_default_user;
 static char *js_options;
 
 static char js_netconf_ns_attr[] = "xmlns=\"" XNM_NETCONF_NS "\"";
@@ -1351,11 +1352,18 @@ jsio_set_default_server (const char *server)
     if (js_default_server)
 	free(js_default_server);
 
-    if (server)
-	js_default_server = strdup(server);
-    else
-	js_default_server = NULL;
+    js_default_server = server ? strdup(server) : NULL;
 }
+
+void
+jsio_set_default_user (const char *user)
+{
+    if (js_default_user)
+	free(js_default_user);
+
+    js_default_user = user ? strdup(user) : NULL;
+}
+
 
 void
 jsio_set_ssh_options (const char *opts)
@@ -1387,6 +1395,9 @@ js_session_open (const char *host_name, const char *username,
 
     if (host_name == NULL || *host_name == '\0')
 	host_name = js_default_server;
+
+    if (username == NULL || *username == '\0')
+	username = js_default_user;
 
     /*
      * Check whether the junoscript session already exists for the given 
@@ -1423,12 +1434,13 @@ js_session_open (const char *host_name, const char *username,
 	if (username) {
 	    argv[argc++] = ALLOCADUP("-l");
 	    argv[argc++] = ALLOCADUP(username);
-	} else { 
+	} else {
 	    /*
-	     * When username is not passed, ssh takes it from getlogin().
-	     * Not always login name will be the name of the user executing the
-	     * script. So, instead of relying on that get the username from 
-	     * auth info and pass it to ssh.
+	     * When username is not passed, ssh takes it from
+	     * getlogin().  Not always login name will be the name of
+	     * the user executing the script. So, instead of relying
+	     * on that get the username from auth info and pass it to
+	     * ssh.
 	     */
 	    const char *logname = getlogin();
 

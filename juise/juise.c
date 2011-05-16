@@ -329,12 +329,13 @@ int
 main (int argc UNUSED, char **argv)
 {
     char *cp;
-    const char *name = NULL, *trace_file_name = NULL;
+    const char *script = NULL, *trace_file_name = NULL;
     int (*func)(const char *, char **) = NULL;
     FILE *trace_fp = NULL;
     int randomize = 1;
     int logger = FALSE;
     char *server = NULL;
+    char *user = NULL;
     int ssh_agent_forwarding = FALSE;
 
     for (argv++; *argv; argv++) {
@@ -377,6 +378,12 @@ main (int argc UNUSED, char **argv)
 	} else if (streq(cp, "--server") || streq(cp, "-s")) {
 	    server = *++argv;
 
+	} else if (streq(cp, "--user") || streq(cp, "-u")) {
+	    user = *++argv;
+
+	} else if (streq(cp, "--script") || streq(cp, "-S")) {
+	    script = *++argv;
+
 	} else if (streq(cp, "--agent") || streq(cp, "-A")) {
 	    ssh_agent_forwarding = TRUE;
 
@@ -405,11 +412,15 @@ main (int argc UNUSED, char **argv)
     for ( ; *argv; argv++) {
 	cp = *argv;
 
-	if (*cp == '@') {
+	if (server == NULL && *cp == '@') {
 	    server = cp + 1;
 
-	} else if (name == NULL) {
-	    name = cp;
+	} else if (server == NULL && (server = strchr(cp, '@')) != NULL) {
+	    user = cp;
+	    *server++ = '\0';
+
+	} else if (script == NULL) {
+	    script = cp;
 
 	} else {
 	    char *pname = *++argv;
@@ -464,10 +475,13 @@ main (int argc UNUSED, char **argv)
     if (server)
 	jsio_set_default_server(server);
 
+    if (user)
+	jsio_set_default_user(user);
+
     if (ssh_agent_forwarding)
 	jsio_set_ssh_options("-A");
 
-    func(name, argv);
+    func(script, argv);
 
     if (trace_fp && trace_fp != stderr)
 	fclose(trace_fp);
