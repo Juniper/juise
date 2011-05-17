@@ -464,6 +464,20 @@ fbuf_record_data (fbuf_t *fbp, fbuf_trace_t func)
     }
 }
 
+static inline int
+fbuf_get_bytes_outstanding (fbuf_t *fbp)
+{
+#ifdef FIONREAD
+    int readable;
+    if (ioctl(fbp->fb_fd, FIONREAD, &readable) < 0)
+	return -1;
+    return readable;
+
+#else /* FIONREAD */
+    return 1024;		/* XXX Pathetic fake */
+#endif /* FIONREAD */
+}
+
 static size_t
 fbuf_get_input (fbuf_t *fbp, char **workp, int tries, boolean look_ahead)
 {
@@ -600,8 +614,8 @@ fbuf_get_input (fbuf_t *fbp, char **workp, int tries, boolean look_ahead)
 	     * as otherwise callers of the fbuf family of functions can
 	     * run into border-cases not processing the response properly
 	     */
-	    if (ioctl(fbp->fb_fd, FIONREAD, &readable) >= 0
-		&& readable > ep - cp) {
+	    readable = fbuf_get_bytes_outstanding(fbp);
+	    if (readable >= 0 && readable > ep - cp) {
 		/* more space is required */
 
 		if (fbuf_realloc(fbp, readable - (ep - cp))) {

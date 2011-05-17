@@ -213,7 +213,7 @@ juise_build_input_doc (void)
 	    juise_add_node(nodep, ELT_CLASS_NAME, pwd->pw_class);
 #endif
 
-	    snprintf(nbuf, sizeof(nbuf), "%d", pwd->pw_uid);
+	    snprintf(nbuf, sizeof(nbuf), "%d", (int) pwd->pw_uid);
 	    juise_add_node(nodep, ELT_UID, nbuf);
 	}
 
