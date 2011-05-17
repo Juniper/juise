@@ -20,3 +20,12 @@ errors:
 
 docs:
 	@(cd doc ; ${MAKE} docs)
+
+USER_INFO := $(shell if [ -f .upload ]; then cat .upload; fi )
+
+UPLOAD = python ~/bin/googlecode_upload.py -p juise ${USER_INFO}
+upload: dist
+	@echo "Uploading juise-${PACKAGE_VERSION}.tar.gz ... "
+	@${UPLOAD} -s 'Release ${PACKAGE_VERSION}' \
+		-l Type-Source,OpSys-All,Featured \
+		juise-${PACKAGE_VERSION}.tar.gz
