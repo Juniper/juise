@@ -13,7 +13,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/param.h>
+#include <sys/uio.h>
 #include <string.h>
 #include <signal.h>
 #include <paths.h>
@@ -45,6 +47,8 @@
 #include <libjuise/xml/extensions.h>
 #include <libjuise/juiseconfig.h>
 
+#include <libslax/slax.h>
+
 static const char xml_parser_reset[] = XML_PARSER_RESET;
 const int xml_parser_reset_len = sizeof(xml_parser_reset) - 1;
 
@@ -64,23 +68,53 @@ static const char fake_creds[] = "<?xml version=\"1.0\"?>\n<"
  * node test case.
  */
 static patroot js_session_root;
-int input_fd = -1;		/* XXX Must go!! */
 static char *js_default_server;
 static char *js_default_user;
 static char *js_options;
-
+static unsigned jsio_flags;
 static char js_netconf_ns_attr[] = "xmlns=\"" XNM_NETCONF_NS "\"";
+static int js_max = 345;	/* Max read buffer size */
+static char jsio_askpass_socket_path[BUFSIZ];
+static int jsio_askpass_socket;
 
-static int js_max = 345;
-
-void
-jsio_init (void)
+static void
+jsio_askpass_make_socket (void)
 {
+    struct passwd *pwent = getpwuid(getuid());
+    snprintf(jsio_askpass_socket_path, sizeof(jsio_askpass_socket_path),
+	     "%s/.ssh/juise.askpass.%d", pwent ? pwent->pw_dir : ".",
+	     (int) getpid());
+
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock < 0)
+	return;
+
+    struct sockaddr_un addr;
+    memset(&addr, '\0', sizeof(addr));
+    addr.sun_len = sizeof(addr);
+    addr.sun_family = AF_UNIX;
+    memcpy(addr.sun_path, jsio_askpass_socket_path, sizeof(addr.sun_path));
+
+    if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
+	return;
+
+    if (listen(sock, 1) < 0)
+	return;
+
+    setenv("SSH_ASKPASS", "juise-askpass", 1);
+    setenv("SSH_ASKPASS_SOCKET", jsio_askpass_socket_path, 1);
+    setenv("DISPLAY", "ThisMustBeSetForSshAskPassToWork", 1);
+
+    jsio_askpass_socket = sock;
 }
 
-void
-jsio_cleanup (void)
+static void
+jsio_askpass_clean_socket (void)
 {
+    if (jsio_askpass_socket_path[0])
+	unlink(jsio_askpass_socket_path);
+    close(jsio_askpass_socket_path[0]);
+    close(jsio_askpass_socket_path[1]);
 }
 
 /*
@@ -512,130 +546,60 @@ js_document_read (xmlParserCtxtPtr ctxt, js_session_t *jsp,
     return docp;
 }
 
+static int
+js_ssh_askpass_accept (js_session_t *jsp)
+{
+    int sock = accept(jsio_askpass_socket, NULL, 0);
+    jsp->js_askpassfd = sock;
+    return sock;
+}
+
 /*
  * Read the prompt from ssh and send it to cli using jcs:input() infra, read 
  * the response back from cli and send it to ssh
  */
 static void
-js_ssh_askpass (int fd)
+js_ssh_askpass (js_session_t *jsp, int fd)
 {
-    char *buf, *tag, *value, *len_str, *prompt = NULL, *ret_str;
-    int fd_dup;
+    static char newline_str[] = "\n";
     unsigned int len = 0;
-    FILE *fp = NULL;
-    js_boolean_t echo_off = TRUE;
+    js_boolean_t secret = TRUE;
+    char buf[BUFSIZ], *ep, *bp, *msg;
+    struct iovec iov[2];
 
-    fd_dup = dup(fd);
-
-    if (fd_dup >= 0) {
-	fp = fdopen(fd_dup, "r+");
-
-	if (!fp) {
-	    close(fd_dup);
-	}
-    } 
-
-    if (!fp) {
-	close(fd_dup);
-	trace(trace_file, TRACE_ALL,
-	      "Communication with ssh for askpass failed");
+    len = read(fd, buf, sizeof(buf));
+    if (len <= 0)
 	return;
-    }
 
-    /*
-     * Read the length of the TLVs
-     */
-    if (fscanf(fp, "%u", &len) <= 0) {
-	fclose(fp);
+    bp = strchr(buf, ' ');
+    if (bp == NULL)
 	return;
-    }
 
-    if (!len) {
-	fclose(fp);
-	return;
-    }
+    *bp++ = '\0';
+    secret = streq(buf, "secret");
 
-    /*
-     * Read the TLVs
-     */
-    buf = alloca(len + 1);
-    if (fread(buf, len, 1, fp) <= 0) {
-	fclose(fp);
-	return;
-    }
+    ep = buf + len - 1;
+    if (*ep == '\n')
+	ep -= 1;
+    *ep-- = '\0';
 
-    /*
-     * TLVs from ssh are separated by space ("tag length value") split them.
-     */
-    buf[len] = '\0';
-    while (buf) {
-
-	if (!(tag = strsep(&buf, " ")))
-	    break;
-
-	if (!(len_str = strsep(&buf, " ")))
-	    break;
-
-	len = atoi(len_str);
-
-	if (!buf || strlen(buf) < (len + 1))
-	    break;
-
-	value = buf;
-	buf += len;
-	*buf = '\0';
-	++buf;
-	
-	if (streq(tag, "echo")) {
-	    if (streq(value, "off")) {
-		echo_off = TRUE;
-	    } else if (streq(value, "on")) {
-		echo_off = FALSE;
-	    } else {
-		trace(trace_file, TRACE_ALL,
-		      "Invalid 'echo' field for askpass from ssh");
-		fclose(fp);
-		return;
-	    }
-	} else if (streq(tag, "prompt")) {
-	    prompt = ALLOCADUP(value);
-	} else {
-	    trace(trace_file, TRACE_ALL,
-		  "Invalid field '%s' for askpass from ssh", tag);
-	    fclose(fp);
-	    return;
-	}
-    }
-
-    if (!prompt) {
-	trace(trace_file, TRACE_ALL,
-	      "Invalid 'prompt' field for askpass from ssh");
-	fclose(fp);
-	return;
-    }
-
-#ifdef XXX_UNUSED
-    /*
-     * Send the prompt to cli and get the response back
-     */
-    if (echo_off) {
-	ret_str = ext_input_common(prompt, CSI_SECRET_INPUT);
+    if (secret && jsp->js_passphrase) {
+	msg = jsp->js_passphrase; /* Use the recorded passphrase */
     } else {
-	ret_str = ext_input_common(prompt, CSI_NORMAL_INPUT);
-    }
-#else
-    ret_str = NULL;
-#endif /* XXX_UNUSED */
-
-    /*
-     * Write the response back to ssh
-     */
-    if (ret_str) {
-	fprintf(fp, "%s\n", ret_str);
-	free(ret_str);
+	msg = slaxInput(bp, secret ? SIF_SECRET : 0);
     }
 
-    fclose(fp);
+    iov[0].iov_base = msg ?: buf; /* Use buf as null message (zero length) */
+    iov[0].iov_len = msg ? strlen(msg) : 0;
+    iov[1].iov_base = newline_str;
+    iov[1].iov_len = 1;
+
+    writev(fd, iov, 2);
+    close(fd);
+    jsp->js_askpassfd = -1;
+
+    if (msg && msg != jsp->js_passphrase)
+	free(msg);
 }
 
 /*
@@ -649,7 +613,7 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
     struct timeval tmo = { secs, usecs };
     fd_set rfds, xfds;
     int sin = jsp->js_stdin, serr = jsp->js_stderr, smax, rc;
-    int askpassfd = jsp->js_askpassfd;
+    int askpassfd = jsp->js_askpassfd ?: jsio_askpass_socket;
 
     do {
 	smax = MAX(sin, serr);
@@ -693,7 +657,12 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 	}
 
 	if (askpassfd >= 0 && FD_ISSET(askpassfd, &rfds)) {
-	    js_ssh_askpass(askpassfd);
+	    if (askpassfd == jsio_askpass_socket) {
+		askpassfd = js_ssh_askpass_accept(jsp);
+	    } else {
+		js_ssh_askpass(jsp, askpassfd);
+		askpassfd = jsio_askpass_socket;
+	    }
 	}
 
     } while (!FD_ISSET(sin, &rfds));
@@ -737,8 +706,8 @@ js_dup (int target, int existing)
  * Create a session object and connect it as appropriate
  */
 static js_session_t *
-js_session_create (const char *host_name, char **argv, int passfds[2], 
-		   int askpassfds[2], int flags, session_type_t stype)
+js_session_create (const char *host_name, char **argv,
+		   int flags, session_type_t stype)
 {
     int sv[2], ev[2];
     int pid = 0, i;
@@ -769,9 +738,7 @@ js_session_create (const char *host_name, char **argv, int passfds[2],
 	js_dup(2, ev[0]);
 
         for (i = 3; i < 64; ++i) {
-	    /* Close all open files, except ours */
-	    if ((i != passfds[0]) && (i != askpassfds[0]))
-		close(i);
+	    close(i);
 	}
 
 #if 0
@@ -784,27 +751,16 @@ js_session_create (const char *host_name, char **argv, int passfds[2],
 	setenv("LD_LIBRARY_PATH", path_juniper_usr_lib(), TRUE);
 #endif
 
-#ifdef XXX_UNUSED
 	/*
-	 * We need to regain root privs to run the cli, since
-	 * we're currently 'nobody', which can't run the cli.
+	 * We need to disassociate ourselves with the controlling TTY
+	 * to prevent ssh from prompting for data on that TTY.  This
+	 * involves a double fork() with a setsid() call.
 	 */
-	if (flags & JSF_AS_ROOT)
-	    priv_restore();
-
-	/*
-	 * Change the real/effective-userid to the user executing the script
-	 */
-	if (flags & JSF_AS_USER) {
-	    char user[MAXLOGNAME]; 
-
-	    user[0] = '\0';
-	    ext_extract_authinfo("user", user, sizeof(user));
-
-	    if (user[0])
-		privileges_become_realuser(user);
-	}
-#endif /* XXX_UNUSED */
+	if (fork() != 0)
+	    exit(0);
+	setsid();
+	if (fork() != 0)
+	    exit(0);
 
         execv(argv[0], argv);
         _exit(1);
@@ -816,32 +772,11 @@ js_session_create (const char *host_name, char **argv, int passfds[2],
 	close(sv[0]);
 	close(ev[0]);
 
-	if (passfds[0] != -1)
-	    close(passfds[0]);
-
-	if (passfds[1] != -1)
-	    close(passfds[1]);
-
-	if (askpassfds[0] != -1)
-	    close(askpassfds[0]);
-
-	if (askpassfds[1] != -1)
-	    close(askpassfds[1]);
-
 	goto fail2;
     }
 
     close(sv[0]);
     close(ev[0]);
-
-    if (passfds[0] != -1)
-	close(passfds[0]);
-
-    if (passfds[1] != -1)
-	close(passfds[1]);
-
-    if (askpassfds[0] != -1)
-	close(askpassfds[0]);
 
     fp = fdopen(sv[1], "w");
     if (fp == NULL) {
@@ -861,7 +796,6 @@ js_session_create (const char *host_name, char **argv, int passfds[2],
     jsp->js_stdin = sv[1];
     jsp->js_stdout = sv[1];
     jsp->js_stderr = ev[1];
-    jsp->js_askpassfd = askpassfds[1];
     jsp->js_fpout = fp;
     jsp->js_msgid = 0;
     jsp->js_hello = NULL;
@@ -1381,20 +1315,25 @@ jsio_set_ssh_options (const char *opts)
  * Opens a JUNOScript session for the give host_name, username, passphrase
  */
 js_session_t *
-js_session_open (const char *host_name, const char *username, 
-		 const char *passphrase, int flags)
+js_session_open (const char *host_name, const char *username,
+		 const char *passphrase, int flags,
+		 uint port, session_type_t stype)
 {
     js_session_t *jsp;
     int max_argc = 15, argc = 0;
     char *argv[max_argc];
-    char buf[BUFSIZ];
-    int passfds[2] = { -1, -1};
-    int askpassfds[2] = { -1, -1};
+    char *port_str = NULL;
 
     js_initialize();
 
-    if (host_name == NULL || *host_name == '\0')
+    if (flags & JSF_JUNOS_NETCONF)
+	stype = ST_JUNOS_NETCONF;
+
+    if (host_name == NULL || *host_name == '\0') {
 	host_name = js_default_server;
+	if (host_name == NULL || *host_name == '\0')
+	    return NULL;
+    }
 
     if (username == NULL || *username == '\0')
 	username = js_default_user;
@@ -1403,177 +1342,83 @@ js_session_open (const char *host_name, const char *username,
      * Check whether the junoscript session already exists for the given 
      * hostname, if so then return that.
      */
-    if ((jsp = js_session_find(host_name, ST_JUNOSCRIPT)))
+    if ((jsp = js_session_find(host_name, stype)))
 	return jsp;
 
+    argv[argc++] = ALLOCADUP(PATH_SSH);
+    argv[argc++] = ALLOCADUP("-aqTx");
+
     /*
-     * Build the argument list.  If we're making a remote session, we
-     * run ssh (currently the only remote protocol supported) to
-     * the remote site and start a cli in xml-mode.  If host_name is
-     * NULL, we run it locally.
+     * If username is passed use that username
      */
-    if (host_name) {
-	/*
-	 * ssh reads identity file from ~real-user/.ssh directory, so 
-	 * change the real-userid to the user executing the script.
-	 */
-	flags |= JSF_AS_USER; /* Run as user */
-
-	/*
-	 * First change effective user-id to ROOT so that we can change to 
-	 * normal user
-	 */
-	flags |= JSF_AS_ROOT;
-
-	argv[argc++] = ALLOCADUP(PATH_SSH);
-	argv[argc++] = ALLOCADUP("-aqTx");
-
-	/*
-	 * If username is passed use that username
-	 */
-	if (username) {
-	    argv[argc++] = ALLOCADUP("-l");
-	    argv[argc++] = ALLOCADUP(username);
-	} else {
-	    /*
-	     * When username is not passed, ssh takes it from
-	     * getlogin().  Not always login name will be the name of
-	     * the user executing the script. So, instead of relying
-	     * on that get the username from auth info and pass it to
-	     * ssh.
-	     */
-	    const char *logname = getlogin();
-
-	    if (logname) {
-	       	argv[argc++] = ALLOCADUP("-l");
-		argv[argc++] = ALLOCADUP(logname);
-	    }
-	}
-
-	if (passphrase) {
-	    if (pipe(passfds) < 0) {
-	       	return NULL;
-	    }
-	    snprintf(buf, sizeof(buf), "-oPasswordFd=%d", passfds[0]);
-	    argv[argc++] = ALLOCADUP(buf);
-
-	    write(passfds[1], passphrase, strlen(passphrase) + 1);
-	} else {
-	    /*
-	     * Ask for passphrase if it is not passed by user.
-	     */
-	    if (input_fd != -1) {
-		if (socketpair(AF_UNIX, SOCK_STREAM, 0, askpassfds) < 0) {
-		    return NULL;
-		}
-		snprintf(buf, sizeof(buf), "-oAskPassFd=%d", askpassfds[0]);
-		argv[argc++] = ALLOCADUP(buf);
-	    }
-	}
-
-	argv[argc++] = ALLOCADUP(host_name);
-	argv[argc++] = ALLOCADUP("xml-mode");
-	argv[argc++] = ALLOCADUP("need-trailer");
-
-#ifdef XXX_UNUSED
-    } else if (auth_info || pid_get_process(PATH_MGD_PIDFILE) < 0) {
-	char line[BUFSIZ];
-	FILE *fp;
-
-	/*
-	 * If we do have authentication info, we run mgd directly,
-	 * so we can pass the authentication info straight mgd.
-	 * Also run mgd directly if it is not running as daemon yet.
-	 * Check if cscript is started from eventd. In this case
-	 * eventd will be the parent process, so use PATH_MGD to
-	 * execute rpc.
-	 */
-	snprintf(path, sizeof(path), "/proc/%d/cmdline", getppid());
-	fp = fopen(path, "r");
-	fgets(line, sizeof(line), fp);
-	fclose(fp);
-
-	if (strstr(line, "eventd")) {
-	    snprintf(path, sizeof(path), "%s", PATH_MGD);
-	} else {
-	    snprintf(path, sizeof(path), "/proc/%d/file", getppid());
-
-	    if (access(path, X_OK) < 0) {
-		if (prefix && (prefix[0] == '/') && (prefix[1] != 0)) {
-		    snprintf(path, sizeof(path), "%s/%s", prefix, PATH_MGD);
-		} else {
-		    snprintf(path, sizeof(path), "%s", PATH_MGD);
-		}
-	    }
-	}
-
-	argv[argc++] = path;
-	argv[argc++] = ALLOCADUP("-AT");
-	argv[argc++] = ALLOCADUP("-E");
-
-	if (!auth_info) {
-	    struct passwd *pwent;
-	    char auth_buf[BUFSIZ];
-	    const char *user_name;
-
-	    pwent = getpwuid(getuid());
-	    if (pwent)
-		user_name = pwent->pw_name;
-	    else
-		user_name = NULL;
-
-	    if (!user_name)
-		user_name = "nobody";
-
-	    straddquoted(auth_buf, sizeof(auth_buf), "user", user_name);
-
-	    argv[argc++] = ALLOCADUP(auth_buf);
-	} else {
-	    argv[argc++] = ALLOCADUP(auth_info);
-	}
-
-	/*
-	 * Allow a prefix to support bsd-mode
-	 */
-	if (prefix && prefix[0] == '/' && prefix[1] != 0) {
-	    argv[argc++] = ALLOCADUP("-p");
-	    argv[argc++] = ALLOCADUP(prefix);
-	}
-	flags |= JSF_AS_ROOT; /* Run as root */
+    if (username) {
+	argv[argc++] = ALLOCADUP("-l");
+	argv[argc++] = ALLOCADUP(username);
     } else {
-	argv[argc++] = ALLOCADUP(path_jun1iper_cli());
-
 	/*
-	 * Allow a prefix to support bsd-mode
+	 * When username is not passed, ssh takes it from
+	 * getlogin().  Not always login name will be the name of
+	 * the user executing the script. So, instead of relying
+	 * on that get the username from auth info and pass it to
+	 * ssh.
 	 */
-	if (prefix && prefix[0] == '/' && prefix[1] != 0) {
-	    argv[argc++] = ALLOCADUP("-p");
-	    argv[argc++] = ALLOCADUP(prefix);
+	const char *logname = getlogin();
+
+	if (logname) {
+	    argv[argc++] = ALLOCADUP("-l");
+	    argv[argc++] = ALLOCADUP(logname);
 	}
+    }
+
+    argv[argc++] = ALLOCADUP(host_name);
+
+    if (stype == ST_NETCONF) {
+	port_str = strdupf("-p%u", port);
+	argv[argc++] = port_str;
+	argv[argc++] = ALLOCADUP("-s");
+	argv[argc++] = ALLOCADUP("netconf");
+    } else if (stype == ST_JUNOS_NETCONF) {
+	argv[argc++] = ALLOCADUP("xml-mode");
+	argv[argc++] = ALLOCADUP("netconf");
+	argv[argc++] = ALLOCADUP("need-trailer");
+    } else {
 	argv[argc++] = ALLOCADUP("xml-mode");
 	argv[argc++] = ALLOCADUP("need-trailer");
-
-	flags |= JSF_AS_ROOT; /* Run as root */
-#endif /* XXX_UNUSED */
     }
 
     argv[argc] = NULL;		/* Terminate the argument list */
 
     INSIST(argc < max_argc);
 
-    jsp = js_session_create(host_name, argv, passfds, askpassfds, flags, 
-			    ST_JUNOSCRIPT);
+    jsp = js_session_create(host_name, argv, flags, stype);
 
-    if (jsp && js_session_init(jsp)) {
-	js_session_terminate(jsp);
+    if (jsp == NULL)
 	return NULL;
+
+    jsp->js_passphrase = strdup(passphrase);
+
+    if (stype == ST_JUNOSCRIPT) {
+	if (js_session_init(jsp)) {
+	    js_session_terminate(jsp);
+	    return NULL;
+	}
+    } else {
+	if (js_session_init_netconf(jsp)) {
+	    js_session_terminate(jsp);
+	    return NULL;
+	}
     }
+
+    if (port_str)
+	free(port_str);
 
     /*
      * Add the session details to patricia tree
      */
-    if (!js_session_add(jsp))
+    if (!js_session_add(jsp)) {
+	js_session_terminate(jsp);
 	return NULL;
+    }
 
     return jsp;
 }
@@ -1594,7 +1439,7 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
 
     jsp = js_session_find(host_name, stype);
     if (!jsp) { 
-	LX_ERR("Session for server \"%s\" does not exist", 
+	LX_ERR("Session for server \"%s\" does not exist\n",
 	       host_name ?: "local");
 	return NULL;
     }
@@ -1647,7 +1492,7 @@ js_session_close (const char *host_name, session_type_t stype)
 
     jsp = js_session_find(host_name, stype);
     if (!jsp) { 
-	LX_ERR("Session for server \"%s\" does not exist", 
+	LX_ERR("Session for server \"%s\" does not exist\n",
 	       host_name ?: "local");
 	return;
     }
@@ -1775,132 +1620,6 @@ js_session_init_netconf (js_session_t *jsp)
     return FALSE;
 }
 
-/*
- * Opens a netconf session
- */
-js_session_t *
-js_session_open_netconf (const char *host_name, const char *username, 
-			 const char *passphrase, uint port, int flags)
-{
-    char buf[BUFSIZ];
-    int max_argc = 15, argc = 0;
-    char *argv[max_argc];
-    char *port_str = NULL;
-    js_session_t *jsp;
-    int passfds[2] = { -1, -1 };
-    int askpassfds[2] = { -1, -1 };
-    session_type_t stype;
-
-    js_initialize();
-
-    if (host_name == NULL || *host_name == '\0')
-	host_name = js_default_server;
-
-    if (flags & JSF_JUNOS_NETCONF)
-	stype = ST_JUNOS_NETCONF;
-    else 
-	stype = ST_NETCONF;
-
-    /*
-     * Check whether the netconf session already exists for the given hostname,
-     * if so then return that.
-     */
-    if ((jsp = js_session_find(host_name, stype)))
-	return jsp;
-
-    /*
-     * ssh reads identity file from ~real-user/.ssh directory, so 
-     * change the real-userid to the user executing the script.
-     */
-    flags |= JSF_AS_USER; /* Run as user */
-
-    /*
-     * First change effective user-id to ROOT so that we can change to 
-     * normal user
-     */
-    flags |= JSF_AS_ROOT;
-
-    argv[argc++] = ALLOCADUP(PATH_SSH);
-    argv[argc++] = ALLOCADUP("-aqTx");
-
-    /*
-     * If username is passed use that username
-     */
-    if (username) {
-	argv[argc++] = ALLOCADUP("-l");
-	argv[argc++] = ALLOCADUP(username);
-    } else { 
-	/*
-	 * When username is not passed, ssh takes it from getlogin().
-	 * Not always login name will be the name of the user executing the
-	 * script. So, instead of relying on that get the username from 
-	 * auth info and pass it to ssh.
-	 */
-	const char *logname = getlogin();
-
-	if (logname) {
-	    argv[argc++] = ALLOCADUP("-l");
-	    argv[argc++] = ALLOCADUP(logname);
-	}
-    }
-
-    if (passphrase) {
-	if (pipe(passfds) < 0) {
-	    return NULL;
-	}
-	snprintf(buf, sizeof(buf), "-oPasswordFd=%d", passfds[0]);
-	argv[argc++] = ALLOCADUP(buf);
-
-	write(passfds[1], passphrase, strlen(passphrase) + 1);
-    } else {
-	/*
-	 * Ask for passphrase if it is not passed by user.
-	 */
-	if (input_fd != -1) {
-	    if (socketpair(AF_UNIX, SOCK_STREAM, 0, askpassfds) < 0) {
-		return NULL;
-	    }
-	    snprintf(buf, sizeof(buf), "-oAskPassFd=%d", askpassfds[0]);
-	    argv[argc++] = ALLOCADUP(buf);
-	}
-    }
-
-    argv[argc++] = ALLOCADUP(host_name);
-
-    if (stype == ST_NETCONF) {
-	port_str = strdupf("-p%u", port);
-	argv[argc++] = port_str;
-	argv[argc++] = ALLOCADUP("-s");
-	argv[argc++] = ALLOCADUP("netconf");
-    } else {
-	argv[argc++] = ALLOCADUP("xml-mode");
-	argv[argc++] = ALLOCADUP("netconf");
-	argv[argc++] = ALLOCADUP("need-trailer");
-    }
-
-    argv[argc] = NULL;		/* Terminate the argument list */
-
-    INSIST(argc < max_argc);
-
-    jsp = js_session_create(host_name, argv, passfds, askpassfds, flags, stype);
-
-    if (jsp && js_session_init_netconf(jsp)) {
-	js_session_terminate(jsp);
-	return NULL;
-    }
-
-    /*
-     * Add the session details to patricia tree
-     */
-    if (!js_session_add(jsp))
-	return NULL;
-
-
-    if (port_str)
-	free(port_str);
-    return jsp;
-}
-
 js_session_t *
 js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
 {
@@ -1980,4 +1699,17 @@ js_gethello (const char *host_name, session_type_t stype)
 
     return jsp->js_hello;
 
+}
+
+void
+jsio_init (unsigned flags UNUSED)
+{
+    jsio_flags = flags;
+    jsio_askpass_make_socket();
+}
+
+void
+jsio_cleanup (void)
+{
+    jsio_askpass_clean_socket();
 }

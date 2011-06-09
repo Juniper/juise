@@ -702,24 +702,24 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
 	case ST_JUNOSCRIPT:
 	    session_info = js_session_open((const char *) server,
 					   (const char *) username,
-					   (const char *) passphrase, 0);
+					   (const char *) passphrase,
+					   0, 0, stype);
 	    sname = "junoscript";
 	    break;
 
 	case ST_NETCONF:
-	    session_info = js_session_open_netconf((const char *) server,
-						   (const char *) username, 
-						   (const char *) passphrase,
-						   port, 0);
+	    session_info = js_session_open((const char *) server,
+					   (const char *) username, 
+					   (const char *) passphrase,
+					   0, port, stype);
 	    sname = "netconf";
 	    break;
 
 	case ST_JUNOS_NETCONF:
-	    session_info = js_session_open_netconf((const char *) server,
-						   (const char *) username, 
-						   (const char *) passphrase,
-						   port,
-						   JSF_JUNOS_NETCONF);
+	    session_info = js_session_open((const char *) server,
+					   (const char *) username, 
+					   (const char *) passphrase,
+					   0, 0, stype);
 	    sname = "junos-netconf";
 	    break;
 
@@ -1392,238 +1392,6 @@ ext_parse_ip (xmlXPathParserContext *ctxt, int nargs)
     return;
 }
 
-char *
-ext_input_common (char *prompt UNUSED, csi_type_t input_type UNUSED)
-{
-#ifdef XXX_UNUSED
-    int nbytes;
-    cs_input_t *cs_input, *cs_output;
-    u_int16_t tlv_type, tlv_len = 0;
-    int total_tlv_len = 0;
-    size_t cs_input_size, cs_output_size;
-    char *tlv_list_start;
-    u_int8_t *tlv_value;
-    char *response = NULL;
-
-    /*
-     * Checking if the descriptor on which we need to communicate is
-     * initialized.
-     */
-    if (input_fd == -1) {
-	return NULL;
-    }
-
-    /*
-     * emitting the 'more-no-more' tag in case of op scripts execution so
-     * that it will not intervene in the display while displaying a large
-     * menu by using the 'jcs:input' function.
-     */
-    if (streq(source_daemon_name, "op-script")) {
-	XML_OPEN(NULL, ODCI_PIPE);
-	XML_EMPTY(NULL, ODCI_MORE_NO_MORE);
-	XML_CLOSE(NULL, ODCI_PIPE);
-    }
-
-    /*
-     * Truncate the prompt string if it's size is more than 1024 bytes.
-     * In this case first 1024 characters of the original prompt string
-     * will be displayed to user.
-     */
-    if (strlen(prompt) > BUFSIZ)
-	prompt[BUFSIZ] = '\0';
-
-    /*
-     * Write the prompt string on the descriptor. mgd will read this
-     * and display to the user to take the input.
-     *
-     * Prompt will be sent in TLV format.
-     *
-     * Calculate the total TLV length.
-     *
-     */
-    total_tlv_len = TLV_BLOCK_SIZE(strlen(prompt) + 1);
-
-    cs_input_size = sizeof(*cs_input) + total_tlv_len;
-
-    cs_input = alloca(cs_input_size);
-
-    if (!cs_input) {
-	return NULL;
-    }
-
-    cs_input->csi_length = cs_input_size;
-    cs_input->csi_type = input_type;
-    cs_input->csi_tlv_length = total_tlv_len;
-    tlv_list_start = (char *)&cs_input->csi_tlv_list;
-
-    /*
-     * Send the prompt in TLV format 
-     */
-    TLV_PUT_BLOCK(CSI_TLV_PROMPT, strlen(prompt) + 1, prompt, tlv_list_start, 
-		  tlv_len);
-
-    nbytes = 0;
-    nbytes = send(input_fd, cs_input, cs_input_size, 0);
-
-    if (!nbytes || nbytes == -1) {
-	LX_ERR("write operation is failed\n");
-        return NULL;
-    }
-
-    for (;;) {
-	/*
-	 * Read the user input on descriptor (this is the input which
-	 * user would have passed against the prompt)
-	 */
-	nbytes = recv(input_fd, &cs_output_size, sizeof(cs_output_size),
-		      MSG_PEEK);
-
-	if (nbytes < 0 && errno == EINTR) {
-	    continue;
-	}
-
-	if (nbytes <= 0) { /* Error condition */
-	    LX_ERR("read operation is failed\n");
-	    return NULL;
-	}
-
-	cs_output = alloca(cs_output_size);
-	if (!cs_output) {
-	    LX_ERR("Memory allocation is failed\n");
-	    return NULL;
-	}
-
-	/*
-	 * Read the cs_output structure
-	 */
-	nbytes = recv(input_fd, cs_output, cs_output_size, 0);
-
-	if (nbytes < 0 && errno == EINTR) {
-	    continue;
-	}
-
-	if (nbytes <= 0) { /* Error condition */
-	    LX_ERR("read operation is failed\n");
-	    return NULL;
-	}
-
-	/*
-	 * Extract the response from TLV format
-	 */
-	tlv_list_start = (void *)cs_output->csi_tlv_list;
-	total_tlv_len = 0;
-	while (total_tlv_len + sizeof(tlv_t) < cs_output->csi_tlv_length) {
-	    TLV_GET_BLOCK(tlv_type, tlv_len, tlv_value, tlv_list_start,
-			  total_tlv_len);
-
-	    if ((tlv_len < sizeof(tlv_t)) ||
-		(total_tlv_len > cs_output->csi_tlv_length)) {
-		break;
-	    }
-
-	    tlv_len -= sizeof(tlv_t);
-	    switch (tlv_type) {
-		case CSI_TLV_OUTPUT:
-		    response = alloca(tlv_len);
-
-		    if (!response) {
-			LX_ERR("read operation is failed\n");
-			return NULL;
-		    }
-		    strlcpy(response, tlv_value, tlv_len);
-		    break;
-	    }
-	}
-	break;
-    }
-
-    remove_control_chars(response);
-    xmlChar *ret = xmlStrdup(response);
-    return ret;
-#endif /* XXX_UNUSED */
-
-    return NULL;
-}
-
-/*
- * Usage: 
- *     var $rc = jcs:input("prompt");
- *     
- * Input function displays the string passed as the argument to it
- * (prompt), expects the input from user and wait for it. It
- * returns the input passed by the user to the script as the return
- * value of this function.
- */
-static void
-ext_input (xmlXPathParserContext *ctxt, int nargs)
-{
-    char *prompt;
-    xmlChar *pstr;
-    char *ret_str;
-
-    if (nargs != 1) {
-	xmlXPathSetArityError(ctxt);
-	return;
-    }
-
-    pstr = xmlXPathPopString(ctxt);
-    prompt = (char *) pstr;
-
-    /*
-     * Checking if the prompt string passed by the user should not be
-     * NULL or a blank string.
-     */
-    if (prompt == NULL || streq(prompt, "")) {
-	xmlXPathSetArityError(ctxt);
-	return;
-    }
-
-    ret_str = ext_input_common(prompt, CSI_NORMAL_INPUT);
-
-    if (ret_str == NULL) {
-	valuePush(ctxt, xmlXPathNewNodeSet(NULL));
-    } else {
-	xmlXPathReturnString(ctxt, (xmlChar *) ret_str);
-    }
-
-    xmlFree(pstr);
-
-}
-
-static void
-ext_getsecret (xmlXPathParserContext *ctxt, int nargs)
-{
-    char *prompt;
-    xmlChar *pstr;
-    char *ret_str;
-
-    if (nargs != 1) {
-	xmlXPathSetArityError(ctxt);
-	return;
-    }
-
-    pstr = xmlXPathPopString(ctxt);
-    prompt = (char *) pstr;
-
-    /*
-     * Checking if the prompt string passed by the user should not be
-     * NULL or a blank string.
-     */
-    if (prompt == NULL || streq(prompt, "")) {
-	xmlXPathSetArityError(ctxt);
-	return;
-    }
-
-    ret_str = ext_input_common(prompt, CSI_SECRET_INPUT);
-
-    if (ret_str == NULL) {
-	valuePush(ctxt, xmlXPathNewNodeSet(NULL));
-    } else {
-	xmlXPathReturnString(ctxt, (xmlChar *) ret_str);
-    }
-    xmlFree(pstr);
-}
-
 /*
  * This function calculates the diffrence between times 'new' and 'old'
  * by subtracting 'old' from 'new' and put the result in 'diff'.
@@ -1799,10 +1567,7 @@ ext_register_all (void)
     (void) lx_extension_register(JCS_FULL_NS, "execute", ext_execute);
     (void) lx_extension_register(JCS_FULL_NS, "get-hello", ext_gethello);
     (void) lx_extension_register(JCS_FULL_NS, "get-protocol", ext_getprotocol);
-    (void) lx_extension_register(JCS_FULL_NS, "getsecret", ext_getsecret);
-    (void) lx_extension_register(JCS_FULL_NS, "get-secret", ext_getsecret);
     (void) lx_extension_register(JCS_FULL_NS, "hostname", ext_hostname);
-    (void) lx_extension_register(JCS_FULL_NS, "get-input", ext_input);
     (void) lx_extension_register(JCS_FULL_NS, "invoke", ext_invoke);
     (void) lx_extension_register(JCS_FULL_NS, "open", ext_open);
     (void) lx_extension_register(JCS_FULL_NS, "output", ext_output);

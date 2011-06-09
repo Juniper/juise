@@ -4,7 +4,7 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libjuise juise
+SUBDIRS = libjuise juise juise-askpass
 bin_SCRIPTS=juise-config
 dist_doc_DATA = Copyright README INSTALL
 

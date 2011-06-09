@@ -126,9 +126,11 @@ juise_make_param (const char *pname, const char *pvalue)
     tvalue[plen + 1] = quote;
     tvalue[plen + 2] = '\0';
 
-    int pnum = nbparams++;
-    params[pnum++] = pname;
-    params[pnum] = tvalue;
+    if (nbparams + 2 >= MAX_PARAMETERS)
+	errx(1, "too many parameters");
+
+    params[nbparams++] = pname;
+    params[nbparams++] = tvalue;
 }
 
 static inline int
@@ -455,7 +457,7 @@ main (int argc UNUSED, char **argv)
     exsltRegisterAll();
     ext_register_all();
 
-    jsio_init();
+    jsio_init(0);
 
     if (trace_file_name) {
 	if (is_filename_std(trace_file_name)) {

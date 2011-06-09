@@ -52,6 +52,9 @@ typedef struct js_session_s {
     char *js_rbuf;		/* Read buffer */
     int js_roff;		/* Read buffer offset */
     int js_rlen;		/* Read buffer length */
+    char *js_passphrase;	/* Passphrase */
+
+    /* NOTICE: js_key _MUST_ _BE_ _LAST_ */
     js_skey_t js_key;		/* js_session key (MUST BE LAST) */
 } js_session_t;
 
@@ -73,7 +76,8 @@ typedef struct js_session_s {
  */
 js_session_t *
 js_session_open (const char *host_name, const char *username, 
-		 const char *passphrase, int flags);
+		 const char *passphrase, int flags,
+		 uint port, session_type_t stype);
 
 
 /*
@@ -89,13 +93,6 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
  */
 void js_session_close (const char *remote_name, session_type_t stype);
 void js_session_close1 (js_session_t *jsp);
-
-/*
- * Opens Netconf session
- */
-js_session_t *
-js_session_open_netconf (const char *host_name, const char *username, 
-			 const char *passphrase, uint port, int flags);
 
 /*
  * Return the hello packet of the given session
@@ -190,7 +187,7 @@ void
 jsio_set_ssh_options (const char *opts);
 
 void
-jsio_init (void);
+jsio_init (unsigned flags);
 
 void
 jsio_cleanup (void);

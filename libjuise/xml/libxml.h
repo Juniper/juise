@@ -40,7 +40,7 @@ typedef int lx_cookie_t;
 /*
  * Simple error call
  */
-#define LX_ERR(msg...)     xsltGenericError(xsltGenericErrorContext, msg)
+#define LX_ERR(_msg...) xsltGenericError(xsltGenericErrorContext, _msg)
 
 /*
  * Perform any initialization required by the xml parser

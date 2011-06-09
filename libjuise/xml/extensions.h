@@ -7,8 +7,6 @@
  * Extension functions for commit scripts
  */
 
-extern int input_fd;
-
 /*
  * Register our extension functions.  We try to hide all the
  * details of the libxslt interactions here.
