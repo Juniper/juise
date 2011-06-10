@@ -17,9 +17,11 @@
  * We support both junoscript and netconf sessions
  */
 typedef enum session_type_s {
+    ST_DEFAULT = 0,
     ST_JUNOSCRIPT,
     ST_NETCONF,
     ST_JUNOS_NETCONF,
+    ST_MAX,
 } session_type_t;
 
 #define DEFAULT_NETCONF_PORT    830
@@ -215,5 +217,8 @@ js_rpc_free (lx_document_t *rpc);
  */
 void
 js_session_terminate (js_session_t *jsp);
+
+const char *jsio_session_type_name(session_type_t stype);
+session_type_t jsio_session_type(const char *name);
 
 #endif /* _JSIO_H_ */

@@ -232,3 +232,13 @@ xmlStrdup2 (const char *str)
 {
     return (char *) xmlStrdup((const xmlChar *) str);
 }
+
+/*
+ * Free a chunk of memory
+ */
+static inline void
+xmlFreeAndEasy (void *ptr)
+{
+    if (ptr)
+        xmlFree(ptr);
+}

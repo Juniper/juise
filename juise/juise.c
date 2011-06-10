@@ -425,7 +425,7 @@ main (int argc UNUSED, char **argv)
 	    script = cp;
 
 	} else {
-	    char *pname = *++argv;
+	    char *pname = cp;
 	    char *pvalue = *++argv;
 
 	    juise_make_param(pname, pvalue);

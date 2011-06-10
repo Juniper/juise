@@ -70,12 +70,47 @@ static const char fake_creds[] = "<?xml version=\"1.0\"?>\n<"
 static patroot js_session_root;
 static char *js_default_server;
 static char *js_default_user;
+static session_type_t js_default_stype = ST_JUNOSCRIPT;
+
 static char *js_options;
 static unsigned jsio_flags;
 static char js_netconf_ns_attr[] = "xmlns=\"" XNM_NETCONF_NS "\"";
 static int js_max = 345;	/* Max read buffer size */
 static char jsio_askpass_socket_path[BUFSIZ];
 static int jsio_askpass_socket;
+
+const char *
+jsio_session_type_name (session_type_t stype)
+{
+    if (stype == ST_DEFAULT)
+	stype = js_default_stype;
+
+    if (stype == ST_JUNOSCRIPT)
+	return "junoscript";
+
+    if (stype == ST_NETCONF)
+	return "netconf";
+
+    if (stype == ST_JUNOS_NETCONF)
+	return "junos-netconf";
+
+    return NULL;
+}
+
+session_type_t
+jsio_session_type (const char *name)
+{
+    if (streq(name, "junoscript"))
+	return ST_JUNOSCRIPT;
+
+    if (streq(name, "netconf"))
+	return ST_NETCONF;
+
+    if (streq(name, "junos-netconf"))
+	return ST_JUNOS_NETCONF;
+
+    return ST_MAX;
+}
 
 static void
 jsio_askpass_make_socket (void)
@@ -801,6 +836,9 @@ js_session_create (const char *host_name, char **argv,
     jsp->js_hello = NULL;
     jsp->js_isjunos = FALSE;
 
+    if (stype == ST_DEFAULT)
+	stype = js_default_stype;
+
     jsp->js_key.jss_type = stype;
     memcpy(jsp->js_key.jss_name, name, namelen);
     patricia_node_init_length(&jsp->js_node, sizeof(js_skey_t) + namelen);
@@ -941,6 +979,9 @@ js_session_find (const char *host_name, session_type_t stype)
 	return NULL;
     }
 
+    if (stype == ST_DEFAULT)
+	stype = js_default_stype;
+
     key->jss_type = stype;
     memcpy(&key->jss_name, name, len);
 
@@ -1050,30 +1091,34 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
     trace(trace_file, CS_TRC_RPC, "rpc name: %s", rpc_name);
 
     switch (jsp->js_key.jss_type) {
-	case ST_JUNOSCRIPT:
-	    fprintf(fp, "<xnm:rpc xmlns=\"\"><%s/></xnm:rpc>\n" 
-		    /**/ XML_PARSER_RESET /**/ "\n", rpc_name);
-	    break;
+    case ST_JUNOSCRIPT:
+	fprintf(fp, "<xnm:rpc xmlns=\"\"><%s/></xnm:rpc>\n" 
+		/**/ XML_PARSER_RESET /**/ "\n", rpc_name);
+	break;
 	    
-	case ST_NETCONF:
-	case ST_JUNOS_NETCONF:
-	    /*
-	     * Pure Hack:
-	     *
-	     * According to Netconf standard rpc request should have xmlns. But
-	     * Junos has a bug. When the rpc is called with xmlns, the return
-	     * rpc-reply returned by Junos has two xmlns and parsing fails. 
-	     * This is fixed now.
-	     *
-	     * But for us to work with the older Junos version which has this
-	     * bug, we should not be emitting the xmlns to Junos devices.
-	     */
-	    fprintf(fp, "%s\n", xmldec);
-	    fprintf(fp, "<rpc %s message-id=\"%d\"><%s/></rpc>\n" 
-		     /**/ XML_PARSER_RESET /**/ "\n",
-		     jsp->js_isjunos ? "" : js_netconf_ns_attr,
-		     ++jsp->js_msgid, rpc_name);
-	    break;
+    case ST_NETCONF:
+    case ST_JUNOS_NETCONF:
+	/*
+	 * Pure Hack:
+	 *
+	 * According to Netconf standard rpc request should have xmlns. But
+	 * Junos has a bug. When the rpc is called with xmlns, the return
+	 * rpc-reply returned by Junos has two xmlns and parsing fails. 
+	 * This is fixed now.
+	 *
+	 * But for us to work with the older Junos version which has this
+	 * bug, we should not be emitting the xmlns to Junos devices.
+	 */
+	fprintf(fp, "%s\n", xmldec);
+	fprintf(fp, "<rpc %s message-id=\"%d\"><%s/></rpc>\n" 
+		/**/ XML_PARSER_RESET /**/ "\n",
+		jsp->js_isjunos ? "" : js_netconf_ns_attr,
+		++jsp->js_msgid, rpc_name);
+	break;
+
+    case ST_DEFAULT:		/* Avoid compiler errors */
+    case ST_MAX:
+	break;
     }
 
     fflush(fp);
@@ -1102,9 +1147,9 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
     int is_rpc = streq(XMLRPC_REQUEST, (const char *) rpc_node->name);
     if (!is_rpc) {
 	switch (jsp->js_key.jss_type) {
-    	    case ST_JUNOSCRIPT:
-		fprintf(fp, "<xnm:rpc xmlns=\"\">\n");
-		break;
+	case ST_JUNOSCRIPT:
+	    fprintf(fp, "<xnm:rpc xmlns=\"\">\n");
+	    break;
 	       	
 	    case ST_NETCONF:
 	    case ST_JUNOS_NETCONF:
@@ -1113,6 +1158,10 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 			jsp->js_isjunos ? "" : js_netconf_ns_attr,
 			++jsp->js_msgid); 
 		break;
+
+	case ST_DEFAULT:		/* Avoid compiler errors */
+	case ST_MAX:
+	    break;
 	}
     }
 
@@ -1127,16 +1176,21 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 
     if (!is_rpc) {
 	switch (jsp->js_key.jss_type) {
-    	    case ST_JUNOSCRIPT:
-		fprintf(fp, "</xnm:rpc>\n");
-		break;
+	case ST_JUNOSCRIPT:
+	    fprintf(fp, "</xnm:rpc>\n");
+	    break;
 	    
-	    case ST_NETCONF:
-	    case ST_JUNOS_NETCONF:
-		fprintf(fp, "</rpc>\n");
-		break;
+	case ST_NETCONF:
+	case ST_JUNOS_NETCONF:
+	    fprintf(fp, "</rpc>\n");
+	    break;
+
+	case ST_DEFAULT:		/* Avoid compiler errors */
+	case ST_MAX:
+	    break;
 	}
     }
+
     fputs(xml_parser_reset, fp);
     fflush(fp);
 
@@ -1326,6 +1380,9 @@ js_session_open (const char *host_name, const char *username,
 
     js_initialize();
 
+    if (stype == ST_DEFAULT)
+	stype = js_default_stype;
+
     if (flags & JSF_JUNOS_NETCONF)
 	stype = ST_JUNOS_NETCONF;
 
@@ -1395,7 +1452,8 @@ js_session_open (const char *host_name, const char *username,
     if (jsp == NULL)
 	return NULL;
 
-    jsp->js_passphrase = strdup(passphrase);
+    if (passphrase)
+	jsp->js_passphrase = strdup(passphrase);
 
     if (stype == ST_JUNOSCRIPT) {
 	if (js_session_init(jsp)) {
@@ -1436,6 +1494,9 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
 
     if (host_name == NULL || *host_name == '\0')
 	host_name = js_default_server;
+
+    if (stype == ST_DEFAULT)
+	stype = js_default_stype;
 
     jsp = js_session_find(host_name, stype);
     if (!jsp) { 
@@ -1489,6 +1550,9 @@ js_session_close (const char *host_name, session_type_t stype)
 
     if (host_name == NULL || *host_name == '\0')
 	host_name = js_default_server;
+
+    if (stype == ST_DEFAULT)
+	stype = js_default_stype;
 
     jsp = js_session_find(host_name, stype);
     if (!jsp) { 
@@ -1650,6 +1714,9 @@ js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
     jsp->js_hello = NULL;
     jsp->js_isjunos = FALSE;
 
+    if (stype == ST_DEFAULT)
+	stype = js_default_stype;
+
     jsp->js_key.jss_type = stype;
     memcpy(jsp->js_key.jss_name, server_name, sizeof(server_name));
     patricia_node_init_length(&jsp->js_node,
@@ -1682,6 +1749,9 @@ lx_node_t *
 js_gethello (const char *host_name, session_type_t stype)
 {
     js_session_t *jsp;
+
+    if (stype == ST_DEFAULT)
+	stype = js_default_stype;
 
     /*
      * No hello packet for Junoscript session

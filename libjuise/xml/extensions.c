@@ -237,7 +237,30 @@ static lx_nodeset_t *
 ext_rpc (xmlXPathParserContext *ctxt UNUSED, lx_node_t *rpc_node UNUSED, 
 	 const xmlChar *rpc_name UNUSED)
 {
-    return NULL;
+    js_session_t *jsp;
+    lx_nodeset_t *results = NULL;
+
+    jsp = js_session_open(NULL, NULL, NULL, 0, 0, 0);
+    if (jsp == NULL)
+	return NULL;
+
+    /*
+     * Invoked with a simple string argument?  Handle it.
+     */
+    if (rpc_name)
+	results = js_session_execute(ctxt, NULL, NULL, rpc_name, ST_DEFAULT);
+
+    /*
+     * Extract the RPC, which is well hidden in fancy libxml2
+     * data structures.  Error checking and structure walking
+     * code here is hopefully flexible enough to handle it.
+     */
+    if (rpc_node)
+	results = js_session_execute(ctxt, NULL, rpc_node, NULL, ST_DEFAULT);
+
+    js_session_close(NULL, 0);
+
+    return results;
 }
 
 /*
@@ -537,7 +560,7 @@ ext_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username,
     const char *value, *key;
     int i;
 
-    *stype = ST_JUNOSCRIPT;    /* Default session */
+    *stype = ST_DEFAULT;    /* Default session */
 
     for (i = 0; i < nodeset->nodeNr; i++) {
 	nop = nodeset->nodeTab[i];
@@ -570,13 +593,7 @@ ext_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username,
 	    } 
 	    
 	    if (streq(key,  "method")) {
-		if (value && streq(value, "netconf")) {
-		    *stype = ST_NETCONF;
-		} else if (value && streq(value, "junos-netconf")) {
-		    *stype = ST_JUNOS_NETCONF;
-		} else if (value && streq(value, "junoscript")) {
-		    *stype = ST_JUNOSCRIPT;
-		}
+		*stype = jsio_session_type(value);
 		continue;
 	    }
 	}
@@ -594,7 +611,7 @@ ext_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
     const char *value, *key;
     int i;
 
-    *stype = ST_JUNOSCRIPT;    /* Default session */
+    *stype = ST_DEFAULT;    /* Default session */
 
     for (i = 0; i < nodeset->nodeNr; i++) {
 	nop = nodeset->nodeTab[i];
@@ -663,22 +680,16 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
     xmlChar *server = NULL;
     xmlChar *passphrase = NULL;
     xmlChar *username = NULL;
-    const char *sname = "";
-    js_session_t *session_info = NULL;
+    js_session_t *jsp = NULL;
     xmlNode *nodep, *serverp, *methodp;
     xmlXPathObject *xop = NULL;
-    session_type_t stype = ST_JUNOSCRIPT; /* Default session */
+    session_type_t stype = ST_DEFAULT; /* Default session */
+    const char *sname = "junoscript";
     uint port = DEFAULT_NETCONF_PORT;
 
-    if (nargs > 3) {
-	xmlXPathSetArityError(ctxt);
-	return;
-    }
+    if (nargs == 1) {
+	server =  xmlXPathPopString(ctxt);
 
-    if (nargs == 3) {
-	passphrase = xmlXPathPopString(ctxt);
-	username = xmlXPathPopString(ctxt);
-	server = xmlXPathPopString(ctxt);
     } else if (nargs == 2) {
 	xop = valuePop(ctxt);
 	server = xmlXPathPopString(ctxt);
@@ -694,49 +705,27 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
 	ext_extract_second_arg(xop->nodesetval, &username, &passphrase, 
 			       &stype, &port);
 	xmlXPathFreeObject(xop);
-    } else if (nargs == 1) {
-	server =  xmlXPathPopString(ctxt);
+
+    } else if (nargs == 3) {
+	passphrase = xmlXPathPopString(ctxt);
+	username = xmlXPathPopString(ctxt);
+	server = xmlXPathPopString(ctxt);
+
+    } else {
+	/* Error: too many args */
+	xmlXPathSetArityError(ctxt);
+	return;
     }
 
-    switch (stype) {
-	case ST_JUNOSCRIPT:
-	    session_info = js_session_open((const char *) server,
-					   (const char *) username,
-					   (const char *) passphrase,
-					   0, 0, stype);
-	    sname = "junoscript";
-	    break;
-
-	case ST_NETCONF:
-	    session_info = js_session_open((const char *) server,
-					   (const char *) username, 
-					   (const char *) passphrase,
-					   0, port, stype);
-	    sname = "netconf";
-	    break;
-
-	case ST_JUNOS_NETCONF:
-	    session_info = js_session_open((const char *) server,
-					   (const char *) username, 
-					   (const char *) passphrase,
-					   0, 0, stype);
-	    sname = "junos-netconf";
-	    break;
-
-	default:
-	    LX_ERR("Invalid session\n");
-    }
-
-    if (!session_info) {
+    jsp = js_session_open((const char *) server, (const char *) username,
+			  (const char *) passphrase, 0, 0, stype);
+    if (jsp == NULL) {
 	trace(trace_file, TRACE_ALL,
 	      "Error in creating the session with \"%s\" server",
 	      (char *) server ?: "local");
 
-	if (passphrase)
-    	    xmlFree(passphrase);
-
-	if (username)
-	    xmlFree(username);
+	xmlFreeAndEasy(passphrase);
+	xmlFreeAndEasy(username);
 
 	valuePush(ctxt, xmlXPathNewNodeSet(NULL));
 	return;
@@ -754,20 +743,16 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
 				 server, xmlStrlen(server));
     xmlAddChild(nodep, serverp);
 
+    sname = jsio_session_type_name(stype);
     methodp = ext_make_text_node(NULL, (const xmlChar *) "method",
 				 (const xmlChar *) sname, strlen(sname));
 
     xmlAddSibling(serverp, methodp);
     xmlAddChild(nodep, methodp);
-    
-    if (passphrase)
-	xmlFree(passphrase);
 
-    if (username)
-	xmlFree(username);
-
-    if (server) 
-	xmlFree(server);
+    xmlFreeAndEasy(passphrase);
+    xmlFreeAndEasy(username);
+    xmlFreeAndEasy(server);
 
     /*
      * Create a Result Value Tree container, and register it with RVT garbage 
@@ -796,7 +781,7 @@ ext_close (xmlXPathParserContext *ctxt, int nargs)
 {
     xmlXPathObject *xop = NULL;
     xmlChar *server = NULL;
-    session_type_t stype = ST_JUNOSCRIPT; /* Default session */
+    session_type_t stype = ST_DEFAULT; /* Default session */
 
     if (nargs != 1) {
 	xmlXPathSetArityError(ctxt);
@@ -840,7 +825,7 @@ ext_execute (xmlXPathParserContext *ctxt, int nargs)
     xsltTransformContextPtr tctxt;
     xmlXPathObjectPtr ret;
     xmlChar *server = NULL;
-    session_type_t stype = ST_JUNOSCRIPT; /* Default session */
+    session_type_t stype = ST_DEFAULT; /* Default session */
 
     if (nargs != 2) {
 	xmlXPathSetArityError(ctxt);
@@ -948,7 +933,6 @@ ext_execute (xmlXPathParserContext *ctxt, int nargs)
 
     LX_ERR("xnm:invoke: invalid argument\n");
     return;
-
 }
 
 /*
@@ -969,7 +953,7 @@ ext_gethello (xmlXPathParserContext *ctxt, int nargs)
     xmlDocPtr container;
     xmlXPathObject *xop = NULL, *ret;
     xmlChar *server = NULL;
-    session_type_t stype = ST_JUNOSCRIPT; /* Default session */
+    session_type_t stype = ST_DEFAULT; /* Default session */
     lx_node_t *hellop, *newhellop;
 
     if (nargs != 1) {
