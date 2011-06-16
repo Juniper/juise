@@ -156,9 +156,12 @@ run_server (int fdin, int fdout, int use_junoscript UNUSED)
 	if (name == NULL)
 	    break;
 
-	write(fdout, rpc_reply_open, sizeof(rpc_reply_open) - 1);
+	if (write(fdout, rpc_reply_open, sizeof(rpc_reply_open) - 1) < 0)
+	    trace(trace_file, TRACE_ALL, "error writing reply: %m");
+
 	srv_run_script(jsp, name, rpc);
-	write(fdout, rpc_reply_close, sizeof(rpc_reply_close) - 1);
+	if (write(fdout, rpc_reply_close, sizeof(rpc_reply_close) - 1) < 0)
+	    trace(trace_file, TRACE_ALL, "error writing reply: %m");
 
 	js_rpc_free(rpc);
     }

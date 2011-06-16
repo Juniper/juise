@@ -252,9 +252,9 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = -I${top_srcdir} -I${top_srcdir}/libjuise ${LIBXML_CFLAGS} \
-	${LIBXSLT_CFLAGS} ${LIBSLAX_CFLAGS} ${WARNINGS} \
-	$(am__append_1) -DJUISE_DIR=\"${JUISE_DIR}\"
+AM_CFLAGS = -I${top_srcdir} -I${top_srcdir}/libjuise ${LIBSLAX_CFLAGS} \
+	${LIBXSLT_CFLAGS} ${LIBXML_CFLAGS} ${WARNINGS} $(am__append_1) \
+	-DJUISE_DIR=\"${JUISE_DIR}\"
 juise_askpass_SOURCES = juise-askpass.c
 juise_askpass_LDADD = ../libjuise/libjuise.la
 juise_askpass_LDFLAGS = -static

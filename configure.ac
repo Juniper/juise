@@ -65,8 +65,9 @@ AC_CHECK_FUNCS([strnstr])
 
 AC_CHECK_HEADERS([sys/time.h])
 AC_CHECK_HEADERS([ctype.h errno.h stdio.h stdlib.h])
-AC_CHECK_HEADERS([string.h sys/param.h unistd.h ])
+AC_CHECK_HEADERS([string.h sys/param.h unistd.h])
 AC_CHECK_HEADERS([sys/sysctl.h])
+AC_CHECK_HEADERS([stdint.h sys/statfs.h])
 
 AC_CHECK_LIB([xml2], [xmlNewParserCtxt])
 AC_CHECK_LIB([xslt], [xsltInit])
@@ -76,6 +77,11 @@ AC_CHECK_MEMBER([struct passwd.pw_class],
     [HAVE_PWD_CLASS=yes ;
         AC_DEFINE([HAVE_PWD_CLASS], [1], [Have struct pwd.pw_class])],
     [HAS_PWD_CLASS=no], [[#include <pwd.h>]])
+
+AC_CHECK_MEMBER([struct sockaddr_un.sun_len],
+    [HAVE_SUN_LEN=yes ;
+        AC_DEFINE([HAVE_SUN_LEN], [1], [Have struct sockaddr_un.sun_len])],
+    [HAS_SUN_LEN=no], [[#include <sys/un.h>]])
 
 dnl
 dnl Some packages need to be checked against version numbers so we

@@ -126,8 +126,11 @@ jsio_askpass_make_socket (void)
 
     struct sockaddr_un addr;
     memset(&addr, '\0', sizeof(addr));
-    addr.sun_len = sizeof(addr);
     addr.sun_family = AF_UNIX;
+#ifdef HAVE_SUN_LEN
+    addr.sun_len = sizeof(addr);
+#endif /* HAVE_SUN_LEN */
+
     memcpy(addr.sun_path, jsio_askpass_socket_path, sizeof(addr.sun_path));
 
     if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
@@ -629,7 +632,10 @@ js_ssh_askpass (js_session_t *jsp, int fd)
     iov[1].iov_base = newline_str;
     iov[1].iov_len = 1;
 
-    writev(fd, iov, 2);
+    if (writev(fd, iov, 2) < 0)
+	trace(trace_file, TRACE_ALL, "error writing to askpass: %s",
+		  strerror(errno));
+
     close(fd);
     jsp->js_askpassfd = -1;
 

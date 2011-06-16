@@ -8,8 +8,9 @@ juiseincdir = ${includedir}/libjuise
 
 AM_CFLAGS = \
     -I${top_srcdir} \
-    ${LIBXML_CFLAG} \
+    ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
+    ${LIBXML_CFLAG} \
     ${WARNINGS} 
 
 lib_LTLIBRARIES = libjuise.la

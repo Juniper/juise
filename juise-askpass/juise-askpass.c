@@ -62,7 +62,7 @@ print_version (void)
 }
 
 int
-main (int argc __unused, char **argv)
+main (int argc UNUSED, char **argv)
 {
     char *msg = argv[1] ?: default_msg;
     char buf[BUFSIZ];
@@ -108,8 +108,11 @@ main (int argc __unused, char **argv)
 
     struct sockaddr_un addr;
     memset(&addr, '\0', sizeof(addr));
-    addr.sun_len = sizeof(addr);
     addr.sun_family = AF_UNIX;
+#ifdef HAVE_SUN_LEN
+    addr.sun_len = sizeof(addr);
+#endif /* HAVE_SUN_LEN */
+
     memcpy(addr.sun_path, path, sizeof(addr.sun_path));
 
     if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -126,13 +129,13 @@ main (int argc __unused, char **argv)
     iov[2].iov_len = 1;
 
     if (writev(sock, iov, 3) < 0) {
-	trace(trace_file, TRACE_ALL, "askpass: write failed: %s",
-	      strerror(errno));
+	trace(trace_file, TRACE_ALL, "askpass: write failed: %m");
 	return -1;
     }
 
     len = read(sock, buf, sizeof(buf));
-    write(1, buf, len);
+    if (write(1, buf, len) < 0)
+	trace(trace_file, TRACE_ALL, "askpass: write failed: %m");
     close(sock);
 
     if (len > 0)

@@ -499,6 +499,29 @@ strnstr (char *s1,  const char *s2, size_t n)
 }
 #endif /* HAVE_STRNSTR */
 
+#ifndef HAVE_STRLCPY
+static inline size_t
+strlcpy (char *dst, const char *src, size_t left)
+{
+    const char *save = src;
+
+    if (left == 0)
+	return strlen(src);
+
+    while (--left != 0)
+	if ((*dst++ = *src++) == '\0')
+	    break;
+
+    if (left == 0) {
+	*dst = '\0';
+	while (*src++)
+	    continue;
+    }
+
+    return src - save - 1;
+}
+#endif /* HAVE_STRLCPY */
+
 #ifdef __cplusplus
     }
 }

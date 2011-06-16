@@ -33,37 +33,6 @@ static int logging_mode  = LOGGING_STDERR;
 static logging_log_func_t logging_log_func;
 
 /*
- * Format of the magic cookie passed through the stdio hook
- */
-struct bufcookie {
-	char	*base;	/* start of buffer */
-	int	left;
-};
-
-/*
- * stdio write hook for writing to a static string buffer
- * XXX: Maybe one day, dynamically allocate it so that the line length
- *      is `unlimited'.
- */
-static int
-writehook (void *cookie, const char *buf, int len)
-{
-	struct bufcookie *h;	/* private `handle' */
-
-	h = (struct bufcookie *)cookie;
-	if (len > h->left) {
-		/* clip in case of wraparound */
-		len = h->left;
-	}
-	if (len > 0) {
-		(void)memcpy(h->base, buf, len); /* `write' it. */
-		h->base += len;
-		h->left -= len;
-	}
-	return 0;
-}
-
-/*
  * This inline function strerror_ri() is to fix the return type of 
  * strerror_r() from int to const char *, it also takes care of EINVAL 
  * return value.
@@ -80,45 +49,31 @@ strerror_ri (int errnum, char *strerrbuf, size_t buflen)
 static void
 vlogging_stdout (const char *fmt, va_list ap)
 {
-	struct bufcookie fmt_cookie;
-	char fmt_cpy[BUFSIZ], ch, errstr[STRERROR_BUFSIZ];
-	FILE *fmt_fp;
-	int saved_errno = errno;
+    int saved_errno = errno;
+    char fmt_cpy[BUFSIZ], errstr[STRERROR_BUFSIZ];
+    char *mp;
+    const char *ep;
+    int elen, alen;
 
-	/* Check to see if we can skip expanding the %m */
-	if (strstr(fmt, "%m")) {
+    /* Check to see if we can skip expanding the %m */
+    mp = strstr(fmt, "%m");
+    if (mp) {
+	ep = strerror_ri(saved_errno, errstr, sizeof(errstr));
+	elen = strlen(ep);
+	if (strlen(fmt) + elen < sizeof(fmt_cpy)) {
+	    alen = mp - fmt;
+	    mp += 2;
 
-		/* Create the second stdio hook */
-		fmt_cookie.base = fmt_cpy;
-		fmt_cookie.left = sizeof(fmt_cpy) - 1;
-		fmt_fp = fwopen(&fmt_cookie, writehook);
-		if (fmt_fp == NULL) {
-			(void)vfprintf(stderr, fmt, ap);
-			errno = saved_errno;
-			return;
-		}
-
-		/* Substitute error message for %m. */
-		for ( ; (ch = *fmt); ++fmt)
-			if (ch == '%' && fmt[1] == 'm') {
-				++fmt;
-				fputs(strerror_ri(saved_errno, errstr, sizeof(errstr)), fmt_fp);	   
-			} else
-				fputc(ch, fmt_fp);
-
-		/* Null terminate if room */
-		fputc(0, fmt_fp);
-		fclose(fmt_fp);
-
-		/* Guarantee null termination */
-		fmt_cpy[sizeof(fmt_cpy) - 1] = '\0';
-
-		fmt = fmt_cpy;
+	    memcpy(fmt_cpy, fmt, alen);
+	    memcpy(fmt_cpy + alen, ep, elen);
+	    memcpy(fmt_cpy + alen + elen, mp, strlen(mp) + 1);
+	    fmt = fmt_cpy;
 	}
+    }
 
-	(void)vfprintf(stderr, fmt, ap);
-	(void)fputc('\n', stderr);
-	errno = saved_errno;
+    (void)vfprintf(stderr, fmt, ap);
+    (void)fputc('\n', stderr);
+    errno = saved_errno;
 }
 
 /*
@@ -131,7 +86,7 @@ vlogging_stdout (const char *fmt, va_list ap)
 void
 vlogging (int severity, const char *format, va_list ap)
 {
-	vlogging_event(severity, NULL, NULL, NULL, format, ap);
+    vlogging_event(severity, NULL, NULL, NULL, format, ap);
 }
 
 /*
@@ -143,37 +98,37 @@ vlogging_event (int severity, const char *tag, const char *lsname,
 		const char **entry, const char *format, va_list ap)
 {
 #ifdef HAVE_VOLATILE
-	volatile int saved_errno __unused = errno;
+    volatile int saved_errno __unused = errno;
 #endif
-	int pri = LOG_PRI(severity);
-	va_list newap;
-	logging_log_func_t log_func = logging_log_func;
+    int pri = LOG_PRI(severity);
+    va_list newap;
+    logging_log_func_t log_func = logging_log_func;
 	
-	switch (pri) {
-	case LOG_DEBUG:
-		if (logging_level < LOG_DEBUG) 
-			return;
-	case LOG_INFO:
-		if (logging_level < LOG_INFO) 
-			return;
-	default:
-		break;
-	}
+    switch (pri) {
+    case LOG_DEBUG:
+	if (logging_level < LOG_DEBUG) 
+	    return;
+    case LOG_INFO:
+	if (logging_level < LOG_INFO) 
+	    return;
+    default:
+	break;
+    }
 
-	if (logging_mode & LOGGING_SYSLOG) {
-	    va_copy(newap, ap);
-	    if (tag && log_func)
-		log_func(severity, tag, lsname, entry, format, newap);
-	    else
-		vsyslog(severity, format, newap);
-            va_end(newap);
-	}
+    if (logging_mode & LOGGING_SYSLOG) {
+	va_copy(newap, ap);
+	if (tag && log_func)
+	    log_func(severity, tag, lsname, entry, format, newap);
+	else
+	    vsyslog(severity, format, newap);
+	va_end(newap);
+    }
 
-	if (logging_mode & LOGGING_STDERR)
-	    vlogging_stdout(format, ap);
+    if (logging_mode & LOGGING_STDERR)
+	vlogging_stdout(format, ap);
 
-	if (pri == LOG_EMERG)
-		abort();
+    if (pri == LOG_EMERG)
+	abort();
 }
 
 /*
@@ -186,11 +141,11 @@ vlogging_event (int severity, const char *tag, const char *lsname,
 void
 logging (int severity, const char *format, ...) 
 {
-	va_list ap;
+    va_list ap;
 
-	va_start(ap, format);
-	vlogging(severity, format, ap);
-	va_end(ap);
+    va_start(ap, format);
+    vlogging(severity, format, ap);
+    va_end(ap);
 }
 
 /*
@@ -201,11 +156,11 @@ void
 logging_event (int severity, const char *tag, const char **entry, 
 	       const char *format, ...) 
 {
-	va_list ap;
+    va_list ap;
 
-	va_start(ap, format);
-	vlogging_event(severity, tag, NULL, entry, format, ap);
-	va_end(ap);
+    va_start(ap, format);
+    vlogging_event(severity, tag, NULL, entry, format, ap);
+    va_end(ap);
 }
 
 /*
@@ -216,11 +171,11 @@ void
 logging_event_ls (int severity, const char *tag, const char *lsname,
 		  const char **entry, const char *format, ...) 
 {
-	va_list ap;
+    va_list ap;
 
-	va_start(ap, format);
-	vlogging_event(severity, tag, lsname, entry, format, ap);
-	va_end(ap);
+    va_start(ap, format);
+    vlogging_event(severity, tag, lsname, entry, format, ap);
+    va_end(ap);
 }
 
 /*

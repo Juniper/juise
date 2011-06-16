@@ -3,14 +3,8 @@
  *
  * trace.c - tracing facility
  *
- * July 1998, Dave Katz
- *
- * Stolen from dcd's tracing facility
- *
  * Copyright (c) 1998, 2001-2008, Juniper Networks, Inc.
  * All rights reserved.
- *
- * (Originally libjuniper/trace.c)
  */
 
 #include <sys/types.h>
@@ -23,6 +17,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/time.h>
 #include <stdarg.h>
 #include <string.h>
 #include <fcntl.h>
@@ -37,6 +32,11 @@
 
 #include <libjuise/io/rotate_log.h>
 #include <regex.h>
+
+#include "config.h"
+#ifdef HAVE_SYS_STATFS_H
+#include <sys/statfs.h>
+#endif /* HAVE_SYS_STATFS_H */
 
 #if defined(HOSTPROG) && !defined(va_copy)
 #define va_copy(dest, src) ((dest) = (src))

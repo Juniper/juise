@@ -465,7 +465,7 @@ fbuf_record_data (fbuf_t *fbp, fbuf_trace_t func)
 }
 
 static inline int
-fbuf_get_bytes_outstanding (fbuf_t *fbp)
+fbuf_get_bytes_outstanding (fbuf_t *fbp UNUSED)
 {
 #ifdef FIONREAD
     int readable;
@@ -600,7 +600,9 @@ fbuf_get_input (fbuf_t *fbp, char **workp, int tries, boolean look_ahead)
 			else {
 			    /* read and discard, what else can we do */
 			    char buf[BUFSIZ];
-			    (void) read(fbp->fb_stderr, buf, sizeof buf);
+			    int rc2 = read(fbp->fb_stderr, buf, sizeof buf);
+			    if (rc2 < 0)
+				break;
 			}
 		    }
 		    break;
