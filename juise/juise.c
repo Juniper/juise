@@ -435,6 +435,21 @@ main (int argc UNUSED, char **argv)
     if (func == NULL)
 	func = do_run_op; /* the default action */
 
+    if (trace_file_name) {
+	if (is_filename_std(trace_file_name)) {
+	    slaxTraceEnable(juise_trace, NULL);
+	    slaxLogEnableCallback(juise_log, NULL);
+	} else {
+	    trace_file = trace_file_open(NULL, trace_file_name,
+					 1000000, 10);
+	    if (trace_file == NULL || trace_fileptr(trace_file) == NULL)
+		errx(1, "could not open trace file: %s", trace_file_name);
+		
+	    slaxTraceEnable(juise_trace, trace_file);
+	    slaxLogEnableCallback(juise_log, trace_file);
+	}
+    }
+
     /*
      * Seed the random number generator.  This is optional to allow
      * test jigs to take advantage of the default stream of generated
@@ -458,21 +473,6 @@ main (int argc UNUSED, char **argv)
     ext_register_all();
 
     jsio_init(0);
-
-    if (trace_file_name) {
-	if (is_filename_std(trace_file_name)) {
-	    slaxTraceEnable(juise_trace, NULL);
-	    slaxLogEnableCallback(juise_log, NULL);
-	} else {
-	    trace_file = trace_file_open(NULL, trace_file_name,
-					 1000000, 10);
-	    if (trace_file == NULL || trace_fileptr(trace_file) == NULL)
-		errx(1, "could not open trace file: %s", trace_file_name);
-		
-	    slaxTraceEnable(juise_trace, trace_file);
-	    slaxLogEnableCallback(juise_log, trace_file);
-	}
-    }
 
     if (server)
 	jsio_set_default_server(server);

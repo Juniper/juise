@@ -112,10 +112,22 @@ jsio_session_type (const char *name)
     return ST_MAX;
 }
 
+static inline void
+jsio_trace(const char *fmt, ...)
+{
+    va_list vap;
+
+    va_start(vap, fmt);
+    tracev(trace_file, TRACE_ALL, fmt, vap);
+    va_end(vap);
+}
+
 static void
 jsio_askpass_make_socket (void)
 {
     struct passwd *pwent = getpwuid(getuid());
+    struct sockaddr_un addr;
+
     snprintf(jsio_askpass_socket_path, sizeof(jsio_askpass_socket_path),
 	     "%s/.ssh/juise.askpass.%d", pwent ? pwent->pw_dir : ".",
 	     (int) getpid());
@@ -124,7 +136,6 @@ jsio_askpass_make_socket (void)
     if (sock < 0)
 	return;
 
-    struct sockaddr_un addr;
     memset(&addr, '\0', sizeof(addr));
     addr.sun_family = AF_UNIX;
 #ifdef HAVE_SUN_LEN
@@ -144,25 +155,28 @@ jsio_askpass_make_socket (void)
     setenv("DISPLAY", "ThisMustBeSetForSshAskPassToWork", 1);
 
     jsio_askpass_socket = sock;
+
+    jsio_trace("jsio_askpass: socket %d, path %s",
+	       sock, jsio_askpass_socket_path);
 }
 
 static void
 jsio_askpass_clean_socket (void)
 {
+    jsio_trace("jsio_askpass: clean");
+
     if (jsio_askpass_socket_path[0])
 	unlink(jsio_askpass_socket_path);
-    close(jsio_askpass_socket_path[0]);
-    close(jsio_askpass_socket_path[1]);
+    close(jsio_askpass_socket);
 }
 
 /*
  * Write the buffer to trace file
  */
 static void
-js_buffer_trace (const char *title, char *buf, int bufsiz)
+jsio_buffer_trace (const char *title, char *buf, int bufsiz)
 {
-    trace(trace_file, TRACE_ALL, "buffer trace: %s: %p (%d/0x%x)",
-	  title, buf, bufsiz, bufsiz);
+    jsio_trace("buffer trace: %s: %p (%d/0x%x)", title, buf, bufsiz, bufsiz);
 
     char *cp = buf;
     int len = bufsiz;
@@ -171,8 +185,7 @@ js_buffer_trace (const char *title, char *buf, int bufsiz)
 	char *ep = memchr(cp, '\n', len);
 	int width = ep ? ep - cp : len;
 
-	trace(trace_file, TRACE_ALL, "buffer: {{{%*.*s}}}",
-	      width, width, cp);
+	jsio_trace("buffer: {{{%*.*s}}}", width, width, cp);
 
 	if (ep == NULL)
 	    break;
@@ -285,9 +298,7 @@ js_buffer_find_reset (js_session_t *jsp, char *bp, int blen)
 	    continue;
 
 	int left = ep - cp;
-	trace(trace_file, TRACE_ALL, "find_reset: left %d: %p:%p (%d)",
-	      left, bp, cp, reset_len);
-
+	jsio_trace("find_reset: left %d: %p:%p (%d)", left, bp, cp, reset_len);
 	
 	if (reset_len <= left) {
 	    /* We've got enough data to find the entire reset token */
@@ -372,7 +383,7 @@ js_buffer_read (void *context, char *buf, int bufsiz)
      * If we're in CLOSE or DEAD state, we should fail reads
      */
     if (jsp->js_state == JSS_CLOSE || jsp->js_state == JSS_DEAD) {
-	trace(trace_file, TRACE_ALL, "buffer read EOF (%d)", jsp->js_state);
+	jsio_trace("buffer read EOF (%d)", jsp->js_state);
 	return -1;
     }
 
@@ -397,7 +408,7 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	}
 
 	rc += bp - buf;
-	js_buffer_trace("emit trailer", buf, rc);
+	jsio_buffer_trace("emit trailer", buf, rc);
 	return rc;
     }
 
@@ -422,7 +433,7 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	    /* Not enough room?  Return what we can */
 	    jsp->js_len += len;
 	    jsp->js_state = JSS_HEADER;
-	    js_buffer_trace("short header", buf, rc);
+	    jsio_buffer_trace("short header", buf, rc);
 	    return rc;
 	}
 
@@ -443,7 +454,7 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 #if 0
 	jsp->js_state = JSS_DEAD;
 	jsp->js_len = 0;
-	js_buffer_trace("read fails", buf, rc);
+	jsio_buffer_trace("read fails", buf, rc);
 	return rc;
 #endif
     }
@@ -484,7 +495,7 @@ js_buffer_read (void *context, char *buf, int bufsiz)
     }
 
     rc += bp - buf;
-    js_buffer_trace("normal", buf, rc);
+    jsio_buffer_trace("normal", buf, rc);
     if (rc == 0)
 	goto emit_trailer;
 
@@ -500,7 +511,7 @@ js_buffer_close (void *context)
     js_session_t *jsp = context;
 
     if (jsp->js_state != JSS_CLOSE) {
-	trace(trace_file, TRACE_ALL, "session close but not in close state");
+	jsio_trace("session close called but not in close state");
     }
 
     jsp->js_state = JSS_INIT;
@@ -588,7 +599,10 @@ static int
 js_ssh_askpass_accept (js_session_t *jsp)
 {
     int sock = accept(jsio_askpass_socket, NULL, 0);
+
+    jsio_trace("jsio_askpass: accept %d", sock);
     jsp->js_askpassfd = sock;
+
     return sock;
 }
 
@@ -605,9 +619,15 @@ js_ssh_askpass (js_session_t *jsp, int fd)
     char buf[BUFSIZ], *ep, *bp, *msg;
     struct iovec iov[2];
 
+    jsio_trace("jsio_askpass: reading %d", fd);
+
     len = read(fd, buf, sizeof(buf));
-    if (len <= 0)
+    if (len <= 0) {
+	jsio_trace("jsio_askpass: bad read: %m");
 	return;
+    }
+
+    jsio_buffer_trace("jsio_askpass", buf, len);
 
     bp = strchr(buf, ' ');
     if (bp == NULL)
@@ -633,8 +653,7 @@ js_ssh_askpass (js_session_t *jsp, int fd)
     iov[1].iov_len = 1;
 
     if (writev(fd, iov, 2) < 0)
-	trace(trace_file, TRACE_ALL, "error writing to askpass: %s",
-		  strerror(errno));
+	jsio_trace("error writing to askpass: %m");
 
     close(fd);
     jsp->js_askpassfd = -1;
@@ -675,14 +694,13 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 	if (rc < 0) {
 	    if (errno == EINTR)
 		continue;
-	    trace(trace_file, TRACE_ALL, "error from rpc session: %s",
-		  strerror(errno));
+	    jsio_trace("error from rpc session: %m");
 	    return -1;
 	}
 	    
 	if (rc == 0) {
 	    if (secs)
-		trace(trace_file, TRACE_ALL, "timeout from rpc session");
+		jsio_trace("timeout from rpc session");
 	    return -1;
 	}
 
@@ -692,8 +710,7 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 	    rc = read(serr, buf, sizeof(buf) - 1);
 	    if (rc > 0) {
 		buf[sizeof(buf) - 1] = '\0';
-		trace(trace_file, TRACE_ALL,
-		      "error from rpc session: %s", buf);
+		jsio_trace("error from rpc session: %s", buf);
 	    }
 	}
 
@@ -726,7 +743,7 @@ js_gets_timed (js_session_t *jsp, time_t secs, long usecs)
 
     str = fbuf_gets(jsp->js_fbuf);
     if (str)
-	js_buffer_trace("gets", str, strlen(str));
+	jsio_buffer_trace("gets", str, strlen(str));
 
     return str;
 }
@@ -807,9 +824,7 @@ js_session_create (const char *host_name, char **argv,
         _exit(1);
 
     } else if (pid < 0) {
-	trace(trace_file, TRACE_ALL,
-	      "could not run script xml-mode: %s",
-		 errno ? strerror(errno) : "fork failed");
+	jsio_trace("could not run script xml-mode: %m");
 	close(sv[0]);
 	close(ev[0]);
 
@@ -821,8 +836,7 @@ js_session_create (const char *host_name, char **argv,
 
     fp = fdopen(sv[1], "w");
     if (fp == NULL) {
-	trace(trace_file, TRACE_ALL,
-	      "jsio: fdopen failed: %s", strerror(errno));
+	jsio_trace("jsio: fdopen failed: %m");
 	goto fail2;
     }
 
@@ -895,8 +909,7 @@ js_session_init (js_session_t *jsp)
     if (line1 == NULL || line2 == NULL || fbuf_eof(fbp)
 		|| strncmp(line1, cred1, strlen(cred1)) != 0
 		|| strncmp(line2, cred2, strlen(cred2)) != 0) {
-	trace(trace_file, TRACE_ALL,
-	      "error opening connection (reading credentials)");
+	jsio_trace("error opening connection (reading credentials)");
 	return TRUE;
     }
 
@@ -906,7 +919,7 @@ js_session_init (js_session_t *jsp)
     char *creds = malloc(len + 3);
 
     if (creds == NULL) {
-	trace(trace_file, TRACE_ALL, "malloc failed");
+	jsio_trace("malloc failed");
 	return TRUE;
     }
 
@@ -941,7 +954,7 @@ js_session_init (js_session_t *jsp)
 	if (cp[0] == '<' && cp[1] == '!' && cp[2] == '-' && cp[3] == '-') {
 	    /* ignore comments */
 	} else {
-	    trace(trace_file, TRACE_ALL, "ignoring noise: %s", cp);
+	    jsio_trace("ignoring noise: %s", cp);
 	}
     }
 
@@ -955,8 +968,7 @@ static js_boolean_t
 js_session_add (js_session_t *jsp)
 {
     if (!patricia_add(&js_session_root, &jsp->js_node)) {
-	trace(trace_file, TRACE_ALL,
-	      "could not add session node to root tree");
+	jsio_trace("could not add session node to root tree");
 	return FALSE;
     }
 
@@ -981,7 +993,7 @@ js_session_find (const char *host_name, session_type_t stype)
     keylen = len + sizeof(js_skey_t);
     key = alloca(keylen);
     if (!key) {
-	trace(trace_file, TRACE_ALL, "could not allocate memory");
+	jsio_trace("could not allocate memory");
 	return NULL;
     }
 
@@ -1042,11 +1054,10 @@ js_session_terminate (js_session_t *jsp)
 
 	if (!exited) {
 	    /* not able to kill the child process, trace it */
-	    trace(trace_file, CS_TRC_RPC, 
-		  "Not able to kill child process %d", pid);
+	    jsio_trace("not able to kill child process %d", pid);
 	} else {
 	    /* trace whether the process exited succesfully or not */
-	    trace(trace_file, CS_TRC_RPC, "CHLD process %d terminated %s", pid,
+	    jsio_trace("CHLD process %d terminated %s", pid,
 		  (WIFEXITED(status) && !WEXITSTATUS(status)) ? 
 		  "successfully" : "with failure");
 	}
@@ -1094,7 +1105,7 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 {
     FILE *fp = jsp->js_fpout;
 
-    trace(trace_file, CS_TRC_RPC, "rpc name: %s", rpc_name);
+    jsio_trace("rpc name: %s", rpc_name);
 
     switch (jsp->js_key.jss_type) {
     case ST_JUNOSCRIPT:
@@ -1142,8 +1153,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 
     lx_output_t *handle = lx_output_open_fd(fileno(fp));
     if (handle == NULL) {
-	trace(trace_file, TRACE_ALL,
-	      "jsio: open fd failed");
+	jsio_trace("jsio: open fd failed");
 	return -1;
     }
 
@@ -1214,13 +1224,11 @@ js_rpc_get_document (js_session_t *jsp)
     xmlParserCtxt *read_ctxt = xmlNewParserCtxt();
 
     if (read_ctxt == NULL) {
-	trace(trace_file, TRACE_ALL,
-	      "jsio: could not make parser context");
+	jsio_trace("jsio: could not make parser context");
     } else {
 	docp = js_document_read(read_ctxt, jsp, "xnm:rpc results", NULL, 0);
 	if (docp == NULL) {
-	    trace(trace_file, TRACE_ALL,
-		  "jsio: could not read content (null document)");
+	    jsio_trace("jsio: could not read content (null document)");
 	}
 
 	js_buffer_close(jsp);
@@ -1240,8 +1248,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
 
     lx_node_t *nop = lx_document_root(docp);
     if (nop == NULL) {
-	trace(trace_file, TRACE_ALL,
-	      "jsio: could not find document root");
+	jsio_trace("jsio: could not find document root");
 	goto fail;
     }
 
@@ -1249,8 +1256,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
 	lx_trace_node(nop, "results of rpc");
 
     if (!streq(lx_node_name(nop), XMLRPC_APINAME)) {
-	trace(trace_file, TRACE_ALL,
-	      "jsio: could not find api tag");
+	jsio_trace("jsio: could not find api tag");
 	goto fail;
     }
 
@@ -1268,8 +1274,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
 	    lx_nodeset_t *setp = xmlXPathNodeSetCreate(NULL);
 
 	    if (setp == NULL) {
-		trace(trace_file, TRACE_ALL,
-		      "jsio: could not allocate set");
+		jsio_trace("jsio: could not allocate set");
 		goto fail;
 	    }
 
@@ -1296,7 +1301,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
     }
 
  fail:
-    trace(trace_file, TRACE_ALL, "invalid reply to rpc");
+    jsio_trace("invalid reply to rpc");
 
     if (docp)
 	lx_document_free(docp);
@@ -1518,7 +1523,7 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
     }
 
     if (rc) {
-	trace(trace_file, TRACE_ALL, "could not send request");
+	jsio_trace("could not send request");
        	patricia_delete(&js_session_root, &jsp->js_node);
 	js_session_terminate(jsp);
 	return NULL;
@@ -1526,7 +1531,7 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
 
     lx_nodeset_t *reply = js_rpc_get_reply(ctxt, jsp);
     if (reply == NULL) {
-	trace(trace_file, TRACE_ALL, "could not get reply");
+	jsio_trace("could not get reply");
 	return NULL;
     }
 
@@ -1622,14 +1627,13 @@ js_read_netconf_hello (js_session_t *jsp)
 
     read_ctxt = xmlNewParserCtxt();
     if (read_ctxt == NULL) {
-	trace(trace_file, TRACE_ALL,
-	      "jsio: could not make parser context");
+	jsio_trace("jsio: could not make parser context");
 	return NULL;
     }
 
     docp = js_document_read(read_ctxt, jsp, "hello packet", NULL, 0);
     if (docp == NULL) {
-	trace(trace_file, TRACE_ALL, "netconf: could not read hello");
+	jsio_trace("netconf: could not read hello");
 	return NULL;
     }
 
@@ -1680,8 +1684,7 @@ js_session_init_netconf (js_session_t *jsp)
 
     hello = js_read_netconf_hello(jsp);
     if (!hello) {
-	trace(trace_file, TRACE_ALL,
-	      "did not receive hello packet from server");
+	jsio_trace("did not receive hello packet from server");
 	return TRUE;
     }
 

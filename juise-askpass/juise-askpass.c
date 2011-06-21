@@ -69,8 +69,10 @@ main (int argc UNUSED, char **argv)
     char *path = getenv("SSH_ASKPASS_SOCKET");
     int yesno = isyesno(msg);
     struct iovec iov[3];
-    int len;
+    int len, sock;
     char *cp;
+    struct sockaddr_un addr;
+    const char *tfn;
 
     for (argv++; *argv; argv++) {
 	cp = *argv;
@@ -86,7 +88,7 @@ main (int argc UNUSED, char **argv)
 	    break;
     }
 
-    const char *tfn = getenv("JUISE_ASKPASS_TRACE");
+    tfn = getenv("JUISE_ASKPASS_TRACE");
     if (tfn)
 	trace_file = trace_file_open(NULL, tfn, 1000000, 10);
 
@@ -99,21 +101,25 @@ main (int argc UNUSED, char **argv)
     if (path == NULL)
 	return -1;
 
-    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0) {
-	trace(trace_file, TRACE_ALL, "askpass: socket failed: %s",
-	      strerror(errno));
+	trace(trace_file, TRACE_ALL, "askpass: socket failed: %m");
 	return -1;
     }
 
-    struct sockaddr_un addr;
     memset(&addr, '\0', sizeof(addr));
     addr.sun_family = AF_UNIX;
 #ifdef HAVE_SUN_LEN
     addr.sun_len = sizeof(addr);
 #endif /* HAVE_SUN_LEN */
 
-    memcpy(addr.sun_path, path, sizeof(addr.sun_path));
+    len = strlen(path);
+    if (len > (int) sizeof(addr.sun_path)) {
+	trace(trace_file, TRACE_ALL, "askpass: path too long: %s", path);
+	return -1;
+    }
+
+    memcpy(addr.sun_path, path, len);
 
     if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 	trace(trace_file, TRACE_ALL, "askpass: connect failed: %s",
@@ -141,6 +147,8 @@ main (int argc UNUSED, char **argv)
     if (len > 0)
 	trace(trace_file, TRACE_ALL, "askpass: result: \"%*.*s\"",
 	      len, len, buf);
+
+    trace(trace_file, TRACE_ALL, "askpass: complete");
 
     return 0;
 }
