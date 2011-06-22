@@ -220,5 +220,6 @@ js_session_terminate (js_session_t *jsp);
 
 const char *jsio_session_type_name(session_type_t stype);
 session_type_t jsio_session_type(const char *name);
+session_type_t jsio_set_default_session_type (session_type_t stype);
 
 #endif /* _JSIO_H_ */

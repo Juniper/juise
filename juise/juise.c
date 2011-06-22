@@ -51,7 +51,6 @@
 
 static const char *params[MAX_PARAMETERS + 1];
 static int nbparams;
-static int junoscript;
 static char *server_input;
 
 int use_debugger;
@@ -289,7 +288,7 @@ do_run_op (const char *scriptname, char **argv UNUSED)
 static int
 do_run_server_on_stdin (const char *scriptname UNUSED, char **argv UNUSED)
 {
-    run_server(0, 1, junoscript);
+    run_server(0, 1, ST_DEFAULT);
     return 0;
 }
 
@@ -300,7 +299,7 @@ do_run_server_on_input (const char *scriptname UNUSED, char **argv UNUSED)
     if (fd < 0)
 	err(1, "could not open file '%s'", server_input);
 
-    run_server(fd, 1, junoscript);
+    run_server(fd, 1, ST_DEFAULT);
     return 0;
 }
 
@@ -339,6 +338,7 @@ main (int argc UNUSED, char **argv)
     char *server = NULL;
     char *user = NULL;
     int ssh_agent_forwarding = FALSE;
+    session_type_t stype;
 
     for (argv++; *argv; argv++) {
 	cp = *argv;
@@ -362,17 +362,26 @@ main (int argc UNUSED, char **argv)
 	    use_debugger = TRUE;
 
 	} else if (streq(cp, "--junoscript") || streq(cp, "-J")) {
-	    junoscript = TRUE;
+	    stype = ST_JUNOSCRIPT;
 
 	} else if (streq(cp, "--run-server") || streq(cp, "-R")) {
 	    func = do_run_server_on_stdin;
 
-	} else if (streq(cp, "--run-input") || streq(cp, "-T")) {
+	} else if (streq(cp, "--canned-input")) {
 	    func = do_run_server_on_input;
 	    server_input = *++argv;
 
 	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
 	    logger = TRUE;
+
+	} else if (streq(cp, "--type") || streq(cp, "-T")) {
+	    cp = *++argv;
+	    stype = jsio_session_type(cp);
+	    if (stype == ST_MAX) {
+		fprintf(stderr, "invalid type: %s\n", cp);
+		return -1;
+	    }
+	    jsio_set_default_session_type(stype);
 
 	} else if (streq(cp, "--indent") || streq(cp, "-g")) {
 	    indent = TRUE;

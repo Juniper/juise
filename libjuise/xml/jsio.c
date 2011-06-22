@@ -112,6 +112,14 @@ jsio_session_type (const char *name)
     return ST_MAX;
 }
 
+session_type_t
+jsio_set_default_session_type (session_type_t stype)
+{
+    session_type_t old = js_default_stype;
+    js_default_stype = stype;
+    return old;
+}
+
 static inline void
 jsio_trace(const char *fmt, ...)
 {
@@ -401,7 +409,8 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	rc = MIN(len, blen);
 	memcpy(bp, cp, rc);
 	if (rc == len) {
-	    jsp->js_state = JSS_CLOSE;
+	    if (jsp->js_state != JSS_DEAD)
+		jsp->js_state = JSS_CLOSE;
 	    jsp->js_len = 0;
 	} else {
 	    jsp->js_len += rc;
@@ -448,15 +457,9 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	xmlGenericError(NULL, "rpc read: %s", strerror(errno));
     if (rc <= 0) {
     dead:
-	jsp->js_state = JSS_TRAILER;
-	goto emit_trailer;
-
-#if 0
 	jsp->js_state = JSS_DEAD;
 	jsp->js_len = 0;
-	jsio_buffer_trace("read fails", buf, rc);
-	return rc;
-#endif
+	goto emit_trailer;
     }
 
     /*
@@ -510,6 +513,9 @@ js_buffer_close (void *context)
 {
     js_session_t *jsp = context;
 
+    if (jsp->js_state == JSS_DEAD)
+	return 0;
+
     if (jsp->js_state != JSS_CLOSE) {
 	jsio_trace("session close called but not in close state");
     }
@@ -552,7 +558,7 @@ js_document_read (xmlParserCtxtPtr ctxt, js_session_t *jsp,
     xmlParserInputPtr stream;
     xmlDoc *docp;
 
-    if (jsp == NULL || ctxt == NULL)
+    if (jsp == NULL || ctxt == NULL || jsp->js_state == JSS_DEAD)
         return NULL;
 
     xmlCtxtReset(ctxt);
@@ -683,7 +689,8 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 
 	FD_ZERO(&rfds);
 	FD_SET(sin, &rfds);
-	FD_SET(serr, &rfds);
+	if (serr >= 0)
+	    FD_SET(serr, &rfds);
 
 	if (askpassfd >= 0)
 	    FD_SET(askpassfd, &rfds);
@@ -704,7 +711,7 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 	    return -1;
 	}
 
-	if (FD_ISSET(serr, &rfds) || FD_ISSET(serr, &xfds)) {
+	if (serr >= 0 && (FD_ISSET(serr, &rfds) || FD_ISSET(serr, &xfds))) {
 	    char buf[BUFSIZ];
 
 	    rc = read(serr, buf, sizeof(buf) - 1);
@@ -1736,7 +1743,7 @@ js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
     if (flags & JSF_FBUF_TRACE)
 	fbuf_trace_tagged(jsp->js_fbuf, stdout, "jsp-read");
 
-    if (stype == ST_NETCONF) {
+    if (stype == ST_NETCONF || stype == ST_JUNOS_NETCONF) {
 	if (js_session_init_netconf(jsp)) {
 	    js_session_terminate(jsp);
 	    return NULL;

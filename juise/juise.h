@@ -14,6 +14,6 @@ extern int indent;
 extern int use_debugger;
 
 void
-run_server (int fdin, int fdout, int use_junoscript);
+run_server (int fdin, int fdout, session_type_t stype);
 
 #endif /* JUISE_H */

@@ -127,19 +127,19 @@ srv_run_script (js_session_t *jsp, const char *scriptname,
 	    xmlFreeDoc(res);
     }
 
-    xmlFreeDoc(indoc);
+    if (indoc != input)
+	xmlFreeDoc(indoc);
     xsltFreeStylesheet(script);
 
     return FALSE;
 }
 
 void
-run_server (int fdin, int fdout, int use_junoscript UNUSED)
+run_server (int fdin, int fdout, session_type_t stype)
 {
     static const char rpc_reply_open[] = "<rpc-reply>\n";
     static const char rpc_reply_close[] = "</rpc-reply>\n";
     js_session_t *jsp;
-    session_type_t stype = use_junoscript ? ST_JUNOSCRIPT : ST_NETCONF;
     lx_document_t *rpc;
     const char *name;
 				 
@@ -149,19 +149,21 @@ run_server (int fdin, int fdout, int use_junoscript UNUSED)
 
     for (;;) {
 	rpc = js_rpc_get_request(jsp);
-	if (rpc == NULL)
-	    break;
+	if (rpc == NULL) {
+	    if (jsp->js_state == JSS_DEAD || jsp->js_state == JSS_CLOSE)
+		break;
+	    continue;
+	}
 
 	name = js_rpc_get_name(rpc);
-	if (name == NULL)
-	    break;
+	if (name) {
+	    if (write(fdout, rpc_reply_open, sizeof(rpc_reply_open) - 1) < 0)
+		trace(trace_file, TRACE_ALL, "error writing reply: %m");
 
-	if (write(fdout, rpc_reply_open, sizeof(rpc_reply_open) - 1) < 0)
-	    trace(trace_file, TRACE_ALL, "error writing reply: %m");
-
-	srv_run_script(jsp, name, rpc);
-	if (write(fdout, rpc_reply_close, sizeof(rpc_reply_close) - 1) < 0)
-	    trace(trace_file, TRACE_ALL, "error writing reply: %m");
+	    srv_run_script(jsp, name, rpc);
+	    if (write(fdout, rpc_reply_close, sizeof(rpc_reply_close) - 1) < 0)
+		trace(trace_file, TRACE_ALL, "error writing reply: %m");
+	}
 
 	js_rpc_free(rpc);
     }
