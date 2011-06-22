@@ -138,7 +138,7 @@ void
 run_server (int fdin, int fdout, session_type_t stype)
 {
     static const char rpc_reply_open[] = "<rpc-reply>\n";
-    static const char rpc_reply_close[] = "</rpc-reply>\n";
+    static const char rpc_reply_close[] = "</rpc-reply>]]>]]>\n";
     js_session_t *jsp;
     lx_document_t *rpc;
     const char *name;
