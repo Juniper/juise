@@ -385,7 +385,7 @@ js_buffer_read (void *context, char *buf, int bufsiz)
     int rc, len = 0, blen = bufsiz - xml_parser_reset_len;
     const char *cp;
     char *bp = buf;
-    int i;
+    int leading_blanks = 0;
 
     /*
      * If we're in CLOSE or DEAD state, we should fail reads
@@ -416,7 +416,18 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	    jsp->js_len += rc;
 	}
 
-	rc += bp - buf;
+	bp += rc;
+
+	/* If we know there are leading blanks, remove them */ 
+	if (leading_blanks) {
+	    jsio_trace("trimming leading blanks: %p..%p %d %d",
+		       buf, bp, bp - buf, leading_blanks);
+	    len = bp - buf;
+	    memmove(buf, buf + leading_blanks, len - leading_blanks);
+	    bp -= leading_blanks;
+	}
+
+	rc = bp - buf;
 	jsio_buffer_trace("emit trailer", buf, rc);
 	return rc;
     }
@@ -471,19 +482,19 @@ js_buffer_read (void *context, char *buf, int bufsiz)
 	jsp->js_state = JSS_DISCARD;
 
     if (jsp->js_state == JSS_DISCARD) {
-	i = 0;
+	leading_blanks = 0;
 
 	/*
 	 * Replace the xml declaration with spaces
 	 */
-	while (bp[i] != '>' && i < rc) {
-	    bp[i] = ' ';
-	    i++;
-	}
+	while (bp[leading_blanks] != '>' && leading_blanks < rc)
+	    bp[leading_blanks++] = ' ';
 
-	if (bp[i] == '>') {
-	    bp[i] = ' '; 
+	if (bp[leading_blanks] == '>') {
+	    bp[leading_blanks++] = ' ';
 	    jsp->js_state = JSS_NORMAL;
+	    if (bp[leading_blanks] == '\n')
+		bp[leading_blanks++] = ' ';
 	}
     }
 

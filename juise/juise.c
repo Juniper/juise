@@ -335,7 +335,7 @@ main (int argc UNUSED, char **argv)
     FILE *trace_fp = NULL;
     int randomize = 1;
     int logger = FALSE;
-    char *server = NULL;
+    char *target = NULL;
     char *user = NULL;
     int ssh_agent_forwarding = FALSE;
     session_type_t stype;
@@ -374,11 +374,11 @@ main (int argc UNUSED, char **argv)
 	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
 	    logger = TRUE;
 
-	} else if (streq(cp, "--type") || streq(cp, "-T")) {
+	} else if (streq(cp, "--protocol") || streq(cp, "-P")) {
 	    cp = *++argv;
 	    stype = jsio_session_type(cp);
 	    if (stype == ST_MAX) {
-		fprintf(stderr, "invalid type: %s\n", cp);
+		fprintf(stderr, "invalid protocol: %s\n", cp);
 		return -1;
 	    }
 	    jsio_set_default_session_type(stype);
@@ -386,8 +386,8 @@ main (int argc UNUSED, char **argv)
 	} else if (streq(cp, "--indent") || streq(cp, "-g")) {
 	    indent = TRUE;
 
-	} else if (streq(cp, "--server") || streq(cp, "-s")) {
-	    server = *++argv;
+	} else if (streq(cp, "--target") || streq(cp, "-T")) {
+	    target = *++argv;
 
 	} else if (streq(cp, "--user") || streq(cp, "-u")) {
 	    user = *++argv;
@@ -416,19 +416,19 @@ main (int argc UNUSED, char **argv)
 
     /*
      * Handle the rest of argv:
-     * - @xxx -> --server xxx
+     * - @xxx -> --target xxx
      * - the first argument is the name of the script
      * - the rest of the arguments are <name> <value> parameters
      */
     for ( ; *argv; argv++) {
 	cp = *argv;
 
-	if (server == NULL && *cp == '@') {
-	    server = cp + 1;
+	if (target == NULL && *cp == '@') {
+	    target = cp + 1;
 
-	} else if (server == NULL && (server = strchr(cp, '@')) != NULL) {
+	} else if (target == NULL && (target = strchr(cp, '@')) != NULL) {
 	    user = cp;
-	    *server++ = '\0';
+	    *target++ = '\0';
 
 	} else if (script == NULL) {
 	    script = cp;
@@ -483,8 +483,8 @@ main (int argc UNUSED, char **argv)
 
     jsio_init(0);
 
-    if (server)
-	jsio_set_default_server(server);
+    if (target)
+	jsio_set_default_server(target);
 
     if (user)
 	jsio_set_default_user(user);
