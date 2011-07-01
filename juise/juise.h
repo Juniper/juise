@@ -16,4 +16,7 @@ extern int use_debugger;
 void
 run_server (int fdin, int fdout, session_type_t stype);
 
+void
+srv_set_juise_dir (const char *jdir);
+
 #endif /* JUISE_H */

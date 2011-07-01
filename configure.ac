@@ -24,7 +24,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 #
 LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
-LIBSLAX_REQUIRED_VERSION=0.5.0
+LIBSLAX_REQUIRED_VERSION=0.8.0
 
 AC_PROG_CC
 AC_PROG_INSTALL
@@ -365,10 +365,17 @@ AC_ARG_WITH(juise-dir,
         [JUISE_DIR=$prefix/share/juise]
 )
 
+AC_ARG_WITH(script-dir,
+        [  --with-script-dir=[DIR]           Specify location of juise scripts],
+        [JUISE_SCRIPT_DIR=$withval],
+        [JUISE_SCRIPT_DIR=$JUISE_DIR/scripts]
+)
+
 JUISE_SRCDIR='${srcdir}'
 JUISE_LIBDIR='${libdir}'
 JUISE_INCLUDEDIR='${includedir}'
 AC_SUBST(JUISE_DIR)
+AC_SUBST(JUISE_SCRIPT_DIR)
 AC_SUBST(JUISE_SRCDIR)
 AC_SUBST(JUISE_LIBDIR)
 AC_SUBST(JUISE_INCLUDEDIR)

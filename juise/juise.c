@@ -21,6 +21,7 @@
 
 #include <libxml/tree.h>
 #include <libxml/dict.h>
+#include <libxml/uri.h>
 #include <libxslt/transform.h>
 #include <libxml/HTMLparser.h>
 #include <libxml/xmlsave.h>
@@ -109,10 +110,14 @@ juise_make_param (const char *pname, const char *pvalue)
 {
     char *tvalue;
     char quote;
-    int plen;
+    int plen, i;
 
     if (pname == NULL || pvalue == NULL)
 	errx(1, "missing parameter value");
+
+    for (i = 0; i < nbparams; i += 2)
+	if (streq(pname, params[i]))
+	    return;
 
     plen = strlen(pvalue);
     tvalue = xmlMalloc(plen + 3);
@@ -158,11 +163,11 @@ juise_add_node (lx_node_t *parent, const char *tag, const char *content)
 }
 
 static lx_document_t *
-juise_build_input_doc (void)
+juise_build_input_doc (lx_node_t *newp)
 {
     xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
     lx_document_t *docp;
-    lx_node_t *nodep, *childp;
+    lx_node_t *input, *nodep, *childp;
     char *value;
     struct passwd *pwd;
     char hostname[MAXHOSTNAMELEN];
@@ -174,14 +179,17 @@ juise_build_input_doc (void)
 
     docp->standalone = 1;
 
-    nodep = xmlNewNode(NULL, (const xmlChar *) ELT_OP_SCRIPT_INPUT);
-    while (nodep) {
-	xmlDocSetRootElement(docp, nodep);
+    input = xmlNewNode(NULL, (const xmlChar *) ELT_OP_SCRIPT_INPUT);
+    while (input) {		/* Not _really_ a loop, but.... */
+	xmlDocSetRootElement(docp, input);
 
-	childp = xmlNewNode(NULL, (const xmlChar *) ELT_JUNOS_CONTEXT);
-	if (childp == NULL)
+	if (newp)
+	    xmlAddChild(input, newp);
+
+	nodep = xmlNewNode(NULL, (const xmlChar *) ELT_JUNOS_CONTEXT);
+	if (nodep == NULL)
 	    break;
-	nodep = childp;
+	xmlAddChild(input, nodep);
 
 	/* Hostname */
 	if (gethostname(hostname, sizeof(hostname)) == 0)
@@ -203,22 +211,22 @@ juise_build_input_doc (void)
 	childp = xmlNewNode(NULL, (const xmlChar *) ELT_USER_CONTEXT);
 	if (childp == NULL)
 	    break;
-	nodep = childp;
+	xmlAddChild(nodep, childp);
 
 	pwd = getpwuid(getuid());
 	if (pwd) {
 	    char nbuf[10];
-	    juise_add_node(nodep, ELT_USER, pwd->pw_name);
+	    juise_add_node(childp, ELT_USER, pwd->pw_name);
 
 #ifdef HAVE_PWD_CLASS
-	    juise_add_node(nodep, ELT_CLASS_NAME, pwd->pw_class);
+	    juise_add_node(childp, ELT_CLASS_NAME, pwd->pw_class);
 #endif
 
 	    snprintf(nbuf, sizeof(nbuf), "%d", (int) pwd->pw_uid);
-	    juise_add_node(nodep, ELT_UID, nbuf);
+	    juise_add_node(childp, ELT_UID, nbuf);
 	}
 
-	juise_add_node(nodep, ELT_OP_CONTEXT, "");
+	juise_add_node(childp, ELT_OP_CONTEXT, "");
 
 	break;			/* Not really a loop */
     }
@@ -232,7 +240,7 @@ juise_build_input_doc (void)
 }
 
 static int
-do_run_op (const char *scriptname, char **argv UNUSED)
+do_run_op_common (const char *scriptname, char **argv UNUSED, lx_node_t *nodep)
 {
     lx_document_t *scriptdoc;
     FILE *scriptfile;
@@ -258,7 +266,7 @@ do_run_op (const char *scriptname, char **argv UNUSED)
 	errx(1, "%d errors parsing script: '%s'",
 	     script ? script->errors : 1, scriptname);
 
-    indoc = juise_build_input_doc();
+    indoc = juise_build_input_doc(nodep);
     if (indoc == NULL)
 	errx(1, "unable to build input document");
 
@@ -286,6 +294,12 @@ do_run_op (const char *scriptname, char **argv UNUSED)
 }
 
 static int
+do_run_op (const char *scriptname, char **argv)
+{
+    return do_run_op_common(scriptname, argv, NULL);
+}
+
+static int
 do_run_server_on_stdin (const char *scriptname UNUSED, char **argv UNUSED)
 {
     run_server(0, 1, ST_DEFAULT);
@@ -300,6 +314,151 @@ do_run_server_on_input (const char *scriptname UNUSED, char **argv UNUSED)
 	err(1, "could not open file '%s'", server_input);
 
     run_server(fd, 1, ST_DEFAULT);
+    return 0;
+}
+
+static void
+parse_query_string (lx_node_t *nodep, char *str)
+{
+    char *cp, *ap, *ep;
+
+    trace(trace_file, TRACE_ALL, "querystring: %p, (%u) '%s'",
+	  nodep, (unsigned) strlen(str), str);
+
+    for (cp = str; cp; cp = ap) {
+	ep = strchr(cp, '=');
+	if (ep == NULL)
+	    break;
+	*ep++ = '\0';
+
+	ap = strchr(ep, '&');
+	if (ap != NULL)
+	    *ap++ = '\0';
+
+	/* At this point, cp is the name and ep is the value */
+	cp = xmlURIUnescapeString(cp, 0, NULL);
+	ep = xmlURIUnescapeString(ep, 0, NULL);
+	
+	if (cp && ep) {
+	    trace(trace_file, TRACE_ALL, "querystring: param: '%s' -> '%s'",
+		  cp, ep);
+	    if (strncmp(cp, "junos", 5) != 0)
+		juise_make_param(cp, ep);
+	    juise_add_node(nodep, cp, ep);
+	}
+	xmlFreeAndEasy(ep);	/* xmlURIUnescapeString allocated them */
+	xmlFreeAndEasy(cp);
+    }
+}
+
+static int
+do_run_as_cgi (const char *scriptname, char **argv)
+{
+    const char *cgi_params[] = {
+	"CONTENT_LENGTH",	"content-length",
+	"DOCUMENT_ROOT",	"document-root",
+	"GATEWAY_INTERFACE",	"gateway-interface",
+	"HTTPS",		"https",
+	"LD_LIBRARY_PATH",	"ld-library-path",
+	"LD_PRELOAD",		"ld-preload",
+	"PATH_INFO",		"path-info",
+	"QUERY_STRING",		"query-string",
+	"REDIRECT_STATUS",	"redirect-status",
+	"REMOTE_ADDR",		"remote-addr",
+	"REMOTE_PORT",		"remote-port",
+	"REMOTE_USER",		"remote-user",
+	"REQUEST_METHOD",	"request-method",
+	"REQUEST_URI",		"request-uri",
+	"SCRIPT_FILENAME",	"script-filename",
+	"SCRIPT_NAME",		"script-name",
+	"SERVER_ADDR",		"server-addr",
+	"SERVER_NAME",		"server-name",
+	"SERVER_PORT",		"server-port",
+	"SERVER_PROTOCOL",	"server-protocol",
+	"SERVER_SOFTWARE",	"server-software",
+	"SYSTEMROOT",		"systemroot",
+	NULL,			NULL,
+    };
+
+    int len = 0;
+    int i;
+    lx_node_t *nodep, *paramp;
+    char *cp, *bp;
+    char buf[BUFSIZ];
+    struct line_s {
+	struct line_s *li_next;
+	unsigned li_len;
+	char li_data[0];
+    } *lines, **lastp = &lines, *lp;
+
+    nodep = xmlNewNode(NULL, (const xmlChar *) ELT_CGI);
+    if (nodep == NULL)
+	errx(1, "op: out of memory");
+
+    /* Turn all the CGI environment variables into XSLT parameters */
+    for (i = 0; cgi_params[i]; i += 2) {
+	cp = getenv(cgi_params[i]);
+	if (cp) {
+	    juise_make_param(cgi_params[i], cp);
+	    juise_add_node(nodep, cgi_params[i + 1], cp);
+	    trace(trace_file, TRACE_ALL, "cgi: env: '%s' = '%s'",
+		  cgi_params[i], cp);
+	}
+    }
+
+    paramp = xmlNewNode(NULL, (const xmlChar *) ELT_PARAMETERS);
+    if (paramp == NULL)
+	errx(1, "op: out of memory");
+    xmlAddChild(nodep, paramp);
+
+    cp = getenv("QUERY_STRING");
+    if (cp)
+	parse_query_string(paramp, cp);
+
+    while (fgets(buf, sizeof(buf), stdin) != NULL) {
+	trace(trace_file, TRACE_ALL, "cgi: stdin: %s", buf);
+	i = strlen(buf);
+	len += i;
+	lp = malloc(i + sizeof(*lp));
+	if (lp == NULL)
+	    break;
+	lp->li_next = NULL;
+	lp->li_len = i;
+	memcpy(lp->li_data, buf, i);
+	*lastp = lp;
+	lastp = &lp->li_next;
+    }
+
+    if (len) {
+	bp = lines->li_next ? malloc(len) : lines->li_data;
+
+	if (bp) {
+	    cp = bp;
+	    for (lp = lines; lp; lp = lp->li_next) {
+		memcpy(cp, lp->li_data, lp->li_len);
+		cp += lp->li_len;
+	    }
+
+	    parse_query_string(paramp, bp);
+
+	    if (bp != lines->li_data)
+		free(bp);
+	}
+
+	for (lp = lines; lp; lp = lines) {
+	    lines = lp->li_next;
+	    free(lp);
+	}
+    }
+
+    indent = 1;
+
+    return do_run_op_common(scriptname, argv, nodep);
+}
+
+static int
+do_run_as_fastcgi (const char *scriptname UNUSED, char **argv UNUSED)
+{
     return 0;
 }
 
@@ -339,110 +498,143 @@ main (int argc UNUSED, char **argv)
     char *user = NULL;
     int ssh_agent_forwarding = FALSE;
     session_type_t stype;
+    int skip_args = FALSE;
+    int waiting = 0;
 
-    for (argv++; *argv; argv++) {
-	cp = *argv;
+    cp = *argv;
+    if (cp) {
+	static char strxmlmode[] = "xml-mode";
+	static char strcgi[] = ".cgi";
+	static char strfastcgi[] = ".fastcgi";
 
-	if (*cp != '-') {
-	    break;
+	char *ep = cp + strlen(cp) + 1;
 
-	} else if (streq(cp, "--version") || streq(cp, "-V")) {
-	    print_version();
-	    exit(0);
-
-	} else if (streq(cp, "--op") || streq(cp, "-O")) {
-	    if (func)
-		errx(1, "open one action allowed");
-	    func = do_run_op;
-
-	} else if (streq(cp, "--trace") || streq(cp, "-t")) {
-	    trace_file_name = *++argv;
-
-	} else if (streq(cp, "--debug") || streq(cp, "-d")) {
-	    use_debugger = TRUE;
-
-	} else if (streq(cp, "--junoscript") || streq(cp, "-J")) {
-	    stype = ST_JUNOSCRIPT;
-
-	} else if (streq(cp, "--run-server") || streq(cp, "-R")) {
+	if (streq(strxmlmode, ep - sizeof(strxmlmode))) {
 	    func = do_run_server_on_stdin;
+	    skip_args = TRUE;
+	    jsio_set_default_session_type(ST_JUNOS_NETCONF);
 
-	} else if (streq(cp, "--canned-input")) {
-	    func = do_run_server_on_input;
-	    server_input = *++argv;
+	} else if (streq(strcgi, ep - sizeof(strcgi)))
+	    func = do_run_as_cgi;
 
-	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
-	    logger = TRUE;
-
-	} else if (streq(cp, "--protocol") || streq(cp, "-P")) {
-	    cp = *++argv;
-	    stype = jsio_session_type(cp);
-	    if (stype == ST_MAX) {
-		fprintf(stderr, "invalid protocol: %s\n", cp);
-		return -1;
-	    }
-	    jsio_set_default_session_type(stype);
-
-	} else if (streq(cp, "--indent") || streq(cp, "-g")) {
-	    indent = TRUE;
-
-	} else if (streq(cp, "--target") || streq(cp, "-T")) {
-	    target = *++argv;
-
-	} else if (streq(cp, "--user") || streq(cp, "-u")) {
-	    user = *++argv;
-
-	} else if (streq(cp, "--script") || streq(cp, "-S")) {
-	    script = *++argv;
-
-	} else if (streq(cp, "--agent") || streq(cp, "-A")) {
-	    ssh_agent_forwarding = TRUE;
-
-	} else if (streq(cp, "--param") || streq(cp, "-a")) {
-	    char *pname = *++argv;
-	    char *pvalue = *++argv;
-
-	    juise_make_param(pname, pvalue);
-
-	} else if (streq(cp, "--no-randomize")) {
-	    randomize = 0;
-
-	} else {
-	    fprintf(stderr, "invalid option: %s\n", cp);
-	    print_help();
-	    return -1;
-	}
+	else if (streq(strfastcgi, ep - sizeof(strfastcgi)))
+	    func = do_run_as_fastcgi;
     }
 
-    /*
-     * Handle the rest of argv:
-     * - @xxx -> --target xxx
-     * - the first argument is the name of the script
-     * - the rest of the arguments are <name> <value> parameters
-     */
-    for ( ; *argv; argv++) {
-	cp = *argv;
+    if (!skip_args) {
+	for (argv++; *argv; argv++) {
+	    cp = *argv;
 
-	if (target == NULL && *cp == '@') {
-	    target = cp + 1;
+	    if (*cp != '-') {
+		break;
 
-	} else if (target == NULL && (target = strchr(cp, '@')) != NULL) {
-	    user = cp;
-	    *target++ = '\0';
+	    } else if (streq(cp, "--version") || streq(cp, "-V")) {
+		print_version();
+		exit(0);
 
-	} else if (script == NULL) {
-	    script = cp;
+	    } else if (streq(cp, "--op") || streq(cp, "-O")) {
+		if (func)
+		    errx(1, "open one action allowed");
+		func = do_run_op;
 
-	} else {
-	    char *pname = cp;
-	    char *pvalue = *++argv;
+	    } else if (streq(cp, "--trace") || streq(cp, "-t")) {
+		trace_file_name = *++argv;
 
-	    juise_make_param(pname, pvalue);
+	    } else if (streq(cp, "--debug") || streq(cp, "-d")) {
+		use_debugger = TRUE;
+
+	    } else if (streq(cp, "--directory") || streq(cp, "-D")) {
+		srv_set_juise_dir(*++argv);
+
+	    } else if (streq(cp, "--junoscript") || streq(cp, "-J")) {
+		stype = ST_JUNOSCRIPT;
+
+	    } else if (streq(cp, "--run-server") || streq(cp, "-R")) {
+		func = do_run_server_on_stdin;
+
+	    } else if (streq(cp, "--canned-input")) {
+		func = do_run_server_on_input;
+		server_input = *++argv;
+
+	    } else if (streq(cp, "--verbose") || streq(cp, "-v")) {
+		logger = TRUE;
+
+	    } else if (streq(cp, "--protocol") || streq(cp, "-P")) {
+		cp = *++argv;
+		stype = jsio_session_type(cp);
+		if (stype == ST_MAX) {
+		    fprintf(stderr, "invalid protocol: %s\n", cp);
+		    return -1;
+		}
+		jsio_set_default_session_type(stype);
+
+	    } else if (streq(cp, "--indent") || streq(cp, "-g")) {
+		indent = TRUE;
+
+	    } else if (streq(cp, "--target") || streq(cp, "-T")) {
+		target = *++argv;
+
+	    } else if (streq(cp, "--user") || streq(cp, "-u")) {
+		user = *++argv;
+
+	    } else if (streq(cp, "--script") || streq(cp, "-S")) {
+		script = *++argv;
+
+	    } else if (streq(cp, "--agent") || streq(cp, "-A")) {
+		ssh_agent_forwarding = TRUE;
+
+	    } else if (streq(cp, "--param") || streq(cp, "-a")) {
+		char *pname = *++argv;
+		char *pvalue = *++argv;
+
+		juise_make_param(pname, pvalue);
+
+	    } else if (streq(cp, "--no-randomize")) {
+		randomize = 0;
+
+	    } else if (streq(cp, "--wait")) {
+		waiting = atoi(*++argv);
+
+	    } else {
+		fprintf(stderr, "invalid option: %s\n", cp);
+		print_help();
+		return -1;
+	    }
+	}
+
+	/*
+	 * Handle the rest of argv:
+	 * - @xxx -> --target xxx
+	 * - the first argument is the name of the script
+	 * - the rest of the arguments are <name> <value> parameters
+	 */
+	for ( ; *argv; argv++) {
+	    cp = *argv;
+
+	    if (target == NULL && *cp == '@') {
+		target = cp + 1;
+
+	    } else if (target == NULL && (target = strchr(cp, '@')) != NULL) {
+		user = cp;
+		*target++ = '\0';
+
+	    } else if (script == NULL) {
+		script = cp;
+
+	    } else {
+		char *pname = cp;
+		char *pvalue = *++argv;
+
+		juise_make_param(pname, pvalue);
+	    }
 	}
     }
 
     if (func == NULL)
 	func = do_run_op; /* the default action */
+
+    if (trace_file_name == NULL)
+	trace_file_name = getenv("JUISE_TRACE_FILE") ?: "/tmp/trace.log";
 
     if (trace_file_name) {
 	if (is_filename_std(trace_file_name)) {
@@ -457,6 +649,17 @@ main (int argc UNUSED, char **argv)
 	    slaxTraceEnable(juise_trace, trace_file);
 	    slaxLogEnableCallback(juise_log, trace_file);
 	}
+    }
+
+    if (waiting == 0) {
+	cp = getenv("JUISE_WAIT");
+	if (cp)
+	    waiting = atoi(cp);
+    }
+
+    if (waiting) {
+	trace(trace_file, TRACE_ALL, "waiting %d seconds", waiting);
+	sleep(waiting);
     }
 
     /*

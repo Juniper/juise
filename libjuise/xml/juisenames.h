@@ -11,6 +11,7 @@
 #ifndef LIBJUISE_JUISENAME_H
 #define LIBJUISE_JUISENAME_H
 
+#define ELT_CGI			"cgi"
 #define ELT_CLASS_NAME		"class-name"
 #define ELT_HOST_NAME		"host-name"
 #define ELT_JUNOS_CONTEXT	"junos-context"
@@ -18,6 +19,7 @@
 #define ELT_LOCALTIME_ISO	"localtime-iso"
 #define ELT_OP_CONTEXT		"op-context"
 #define ELT_OP_SCRIPT_INPUT	"op-script-input"
+#define ELT_PARAMETERS		"parameters"
 #define ELT_PRODUCT		"product"
 #define ELT_SCRIPT_TYPE		"script-type"
 #define ELT_UID			"uid"

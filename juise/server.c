@@ -47,6 +47,16 @@
 
 static int script_count;
 
+static char *juise_dir;
+
+void
+srv_set_juise_dir (const char *jdir)
+{
+    if (juise_dir)
+	free(juise_dir);
+    juise_dir = strdup(jdir);
+}
+
 static lx_document_t *
 srv_build_input_doc (lx_document_t *input)
 {
@@ -59,10 +69,11 @@ open_script (const char *scriptname, char *full_name, int full_size)
     char const *extentions[] = { "slax", "xsl", "xslt", "sh", "pl", "", NULL };
     char const **cpp;
     FILE *fp;
+    const char *jdir = juise_dir ?: JUISE_SCRIPT_DIR;
 
     for (cpp = extentions; *cpp; cpp++) {
 	snprintf(full_name, full_size, "%s/%s%s%s",
-		 JUISE_DIR, scriptname, **cpp ? "." : "", *cpp);
+		 jdir, scriptname, **cpp ? "." : "", *cpp);
 	fp = fopen(full_name, "r+");
 	if (fp)
 	    return fp;
@@ -145,7 +156,7 @@ run_server (int fdin, int fdout, session_type_t stype)
 				 
     jsp = js_session_open_server(fdin, fdout, stype, 0);
     if (jsp == NULL)
-	err(1, "could not open server");
+	errx(1, "could not open server");
 
     for (;;) {
 	rpc = js_rpc_get_request(jsp);
