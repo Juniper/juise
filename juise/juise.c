@@ -116,8 +116,11 @@ juise_make_param (const char *pname, const char *pvalue)
 	errx(1, "missing parameter value");
 
     for (i = 0; i < nbparams; i += 2)
-	if (streq(pname, params[i]))
+	if (streq(pname, params[i])) {
+	    trace(trace_file, TRACE_ALL, "param: ignoring dup: '%s' (%s->%s)",
+		  pname, params[i], params[i + 1]);
 	    return;
+	}
 
     plen = strlen(pvalue);
     tvalue = xmlMalloc(plen + 3);
@@ -133,8 +136,10 @@ juise_make_param (const char *pname, const char *pvalue)
     if (nbparams + 2 >= MAX_PARAMETERS)
 	errx(1, "too many parameters");
 
-    params[nbparams++] = pname;
-    params[nbparams++] = tvalue;
+    params[nbparams++] = strdup(pname);
+    params[nbparams++] = strdup(tvalue);
+
+    trace(trace_file, TRACE_ALL, "param: '%s' -> '%s'", pname, tvalue);
 }
 
 static inline int
