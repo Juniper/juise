@@ -638,9 +638,6 @@ main (int argc UNUSED, char **argv)
     if (func == NULL)
 	func = do_run_op; /* the default action */
 
-    if (trace_file_name == NULL)
-	trace_file_name = getenv("JUISE_TRACE_FILE") ?: "/tmp/trace.log";
-
     if (trace_file_name) {
 	if (is_filename_std(trace_file_name)) {
 	    slaxTraceEnable(juise_trace, NULL);
@@ -656,12 +653,7 @@ main (int argc UNUSED, char **argv)
 	}
     }
 
-    if (waiting == 0) {
-	cp = getenv("JUISE_WAIT");
-	if (cp)
-	    waiting = atoi(cp);
-    }
-
+    /* Waiting allows 'gdb' to attach to a spawned process */
     if (waiting) {
 	trace(trace_file, TRACE_ALL, "waiting %d seconds", waiting);
 	sleep(waiting);
