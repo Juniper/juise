@@ -351,6 +351,65 @@ AC_SUBST(LIBSLAX_LIBS)
 # ---- end of noise
 #
 
+AC_MSG_CHECKING(for perl regular expressions support)
+AC_ARG_WITH(pcre, AC_HELP_STRING([--with-pcre],[Enable pcre support (default yes)]),
+    [WITH_PCRE=$withval],[WITH_PCRE=yes])
+AC_MSG_RESULT([$WITH_PCRE])
+
+if test "$WITH_PCRE" != "no"; then
+  AC_PATH_PROG(PCRECONFIG, pcre-config)
+
+  if test x"$PCRECONFIG" != x; then
+    PCRE_LIB=`$PCRECONFIG --libs`
+    PCRE_CFLAGS="$CPPFLAGS `$PCRECONFIG --cflags`"
+    AC_DEFINE([HAVE_LIBPCRE], [1], [libpcre])
+    AC_DEFINE([HAVE_PCRE_H], [1], [pcre.h])
+  fi
+fi
+
+AC_SUBST(PCRE_LIB)
+AC_SUBST(PCRE_CFLAGS)
+
+AC_ARG_WITH(lighttpd-src,
+        [  --with-lighttpd-src=[DIR]        Specify location of lighttpd src],
+        [LIGHTTPD_SRC=$withval],
+        [LIGHTTPD_SRC=]
+)
+
+AC_ARG_WITH(lighttpd-obj,
+        [  --with-lighttpd-obj=[DIR]        Specify location of lighttpd obj],
+        [LIGHTTPD_OBJ=$withval],
+        [LIGHTTPD_OBJ=$LIGHTTPD_SRC]
+)
+
+AC_ARG_WITH(lighttpd-mod,
+        [  --with-lighttpd-mod=[DIR]      Specify location of lighttpd mods],
+        [LIGHTTPD_MOD=$withval],
+        [LIGHTTPD_MOD=$prefix/lib]
+)
+
+AC_SUBST(LIGHTTPD_MOD)
+AC_SUBST(LIGHTTPD_SRC)
+AC_SUBST(LIGHTTPD_OBJ)
+
+AM_CONDITIONAL([HAVE_LIGHTTPD], [test "${LIGHTTPD_SRC}" != ""])
+if test "${HAVE_LIGHTTPD_TRUE}" = "" -a "${WITH_PCRE}" = "yes"; then
+    AC_DEFINE([HAVE_LIGHTTPD], [1], [Enable lighttpd])
+fi
+
+#
+# lighttpd does not ship a 'lighttpd-config' script, so we
+# can either hurt ourselves finding the current version or
+# just punt.  For now, we just pray for hangtime....
+#
+LIGHTTPD_REQUIRED_VERSION=1.4.28
+LIGHTTPD_VERSION=${LIGHTTPD_REQUIRED_VERSION}
+LIGHTTPD_VERSION_ID=`echo $LIGHTTPD_VERSION | $AWK -F '.' '{print "(" $1 " << 16 | " $2 " << 8 | " $3 ")"}'`
+AC_DEFINE_UNQUOTED([LIGHTTPD_VERSION_ID], [$LIGHTTPD_VERSION_ID], [lighttpd-version-id])
+
+AC_CHECK_TYPES(socklen_t,,,[#include <sys/types.h>
+#include <sys/socket.h>])
+
 case $host_os in
      darwin*)
         LIBTOOL=glibtool
@@ -411,5 +470,6 @@ AC_CONFIG_FILES([
   libjuise/Makefile
   juise/Makefile
   juise-askpass/Makefile
+  mod_juise/Makefile
 ])
 AC_OUTPUT

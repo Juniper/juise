@@ -5,6 +5,11 @@
 ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = libjuise juise juise-askpass
+
+if HAVE_LIGHTTPD
+SUBDIRS += mod_juise
+endif
+
 bin_SCRIPTS=juise-config
 dist_doc_DATA = Copyright README INSTALL
 
