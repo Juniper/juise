@@ -123,25 +123,6 @@ if test "$HAVE_PRINTFLIKE" = "yes" ; then
     AC_DEFINE([HAVE_PRINTFLIKE], [1], [Enable use of GCC __printflike])
 fi
 
-# Allow the reuse of the libxslt tests, if they have the source code
-AC_ARG_WITH(libxslt_tests, [  --with-libxslt-tests[=DIR]    Include the libxslt tests])
-if test "$with_libxslt_tests" != "" ; then
-   if test -d "$with_libxslt_tests" ; then
-     with_libxslt_tests=`cd $with_libxslt_tests; pwd`
-   else
-      AC_MSG_ERROR([bad value ${with_libxslt_tests} for --with-libxslt-tests])
-   fi
-
-#   if ! test -f $with_libxslt_tests/Makefile ; then
-#      AC_MSG_ERROR([Run 'configure' in ${with_libxslt_tests}]) 
-#   fi
-
-   WITH_LIBXSLT_TESTS=$with_libxslt_tests
-   AC_MSG_RESULT(Using libxslt test in $WITH_LIBXSLT_TESTS)
-fi
-AM_CONDITIONAL([USE_LIBXSLT_TESTS], [test "$WITH_LIBXSLT_TESTS" != ""])
-AC_SUBST(WITH_LIBXSLT_TESTS)
-
 #
 # ---- start of noise
 #
@@ -473,3 +454,32 @@ AC_CONFIG_FILES([
   mod_juise/Makefile
 ])
 AC_OUTPUT
+
+
+AC_MSG_NOTICE([summary of build options:
+
+  juise version:  ${VERSION} ${LIBJUISE_VERSION_EXTRA}
+  host type:        ${host}
+  install prefix:   ${prefix}
+  compiler:         ${CC}
+  compiler flags:   ${CFLAGS}
+  library types:    Shared=${enable_shared}, Static=${enable_static}
+  libxml version:   ${XMLVERS}
+  libxslt cflags:   ${LIBXSLT_CFLAGS}
+  libxml libs:      ${LIBXML_LIBS}
+  libxslt version:  ${XSLTVERS}
+  libxslt cflags:   ${LIBXSLT_CFLAGS}
+  libxslt libs:     ${LIBXSLT_LIBS}
+  libslax version:  ${SLAXVERS}
+  libslax cflags:   ${LIBSLAX_CFLAGS}
+  libslax libs:     ${LIBSLAX_LIBS}
+  libpcre cflags:   ${PCRE_CFLAGS}
+  libpcre libs:     ${PCRE_LIB}
+  lighttpd src:     ${LIGHTTPD_SRC}
+  lighttpd obj:     ${LIGHTTPD_OBJ}
+  lighttpd modules: ${LIGHTTPD_MOD}
+
+  debug:            ${SLAX_DEBUG:-no}
+  readline:         ${HAVE_READLINE:-no}
+  printf-like:      ${HAVE_PRINTFLIKE:-no}
+])
