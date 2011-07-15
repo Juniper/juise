@@ -464,6 +464,7 @@ AC_MSG_NOTICE([summary of build options:
   compiler:         ${CC}
   compiler flags:   ${CFLAGS}
   library types:    Shared=${enable_shared}, Static=${enable_static}
+
   libxml version:   ${XMLVERS}
   libxslt cflags:   ${LIBXSLT_CFLAGS}
   libxml libs:      ${LIBXML_LIBS}

@@ -1035,15 +1035,17 @@ juise_create_env (server *srv, connection *con,
 	     * child so it can access ssh-agent to get our ssh keys.
 	     */
 	    {
-		const char *ssh_vars[] = {
+		const char *vars[] = {
 		    "SSH_AGENT_PID",
 		    "SSH_AUTH_SOCK",
+		    "JUISE_TRACE_FILE",
+		    "JUISE_WAIT",
 		    NULL
 		};
-		const char **sp = ssh_vars;
+		const char **sp;
 		char *cp;
 
-		for ( ; *sp; sp++) {
+		for (sp = vars ; *sp; sp++) {
 		    cp = getenv(*sp);
 		    if (cp) {
 			juise_env_add(&env, *sp, strlen(*sp), cp, strlen(cp));
