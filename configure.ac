@@ -43,6 +43,8 @@ AC_PATH_PROG(SED, sed, /bin/sed)
 AC_PATH_PROG(PATH_SSH, ssh, /usr/bin/ssh)
 AC_PATH_PROG(PATH_GZIP, gzip, /usr/bin/gzip)
 
+AC_PROG_LN_S
+
 AC_STDC_HEADERS
 
 # Checks for typedefs, structures, and compiler characteristics.
