@@ -230,7 +230,7 @@ xmlAtoi (const xmlChar *nptr)
 static inline char *
 xmlStrdup2 (const char *str)
 {
-    return (char *) xmlStrdup((const xmlChar *) str);
+    return str ? (char *) xmlStrdup((const xmlChar *) str) : NULL;
 }
 
 /*
@@ -241,4 +241,16 @@ xmlFreeAndEasy (void *ptr)
 {
     if (ptr)
         xmlFree(ptr);
+}
+
+static inline xmlNodePtr
+xmlAddChildContent (xmlDocPtr docp, xmlNodePtr parent,
+		    const xmlChar *name, const xmlChar *value)
+{
+    xmlNodePtr nodep = xmlNewDocRawNode(docp, NULL, name, value);
+    if (nodep) {
+	xmlAddChild(parent, nodep);
+    }
+
+    return nodep;
 }

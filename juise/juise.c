@@ -46,6 +46,7 @@
 #include <libjuise/juiseconfig.h>
 
 #include "juise.h"
+#include "ext_curl.h"
 
 #define MAX_PARAMETERS 64
 #define MAX_PATHS 64
@@ -689,6 +690,7 @@ main (int argc UNUSED, char **argv)
 
     exsltRegisterAll();
     ext_register_all();
+    ext_curl_init();
 
     jsio_init(0);
 

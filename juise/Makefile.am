@@ -10,13 +10,15 @@ AM_CFLAGS = \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
     ${LIBXML_CFLAGS} \
+    ${LIBCURL_CFLAGS} \
     ${WARNINGS}
 
 LIBS = \
     ${LIBSLAX_LIBS} \
     ${LIBXSLT_LIBS} \
     -lexslt \
-    ${LIBXML_LIBS}
+    ${LIBXML_LIBS} \
+    ${LIBCURL_LIBS}
 
 noinst_HEADERS = \
     juise.h
@@ -35,7 +37,7 @@ endif
 
 bin_PROGRAMS = juise
 
-juise_SOURCES = juise.c server.c
+juise_SOURCES = juise.c server.c ext_curl.c
 juise_LDADD = ../libjuise/libjuise.la
 juise_LDFLAGS = -static
 
