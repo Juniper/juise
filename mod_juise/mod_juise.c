@@ -448,6 +448,10 @@ juise_demux_response (server *srv, handler_ctx *hctx)
 		char c = hctx->response_header->ptr[i];
 
 		switch (c) {
+		case '<':
+		    is_header_end = 1;
+		    break;
+
 		case ':':
 		    /*
 		     * We found a colon

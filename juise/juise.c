@@ -58,6 +58,7 @@ static char *server_input;
 int use_debugger;
 trace_file_t *trace_file;
 int indent;
+int dump_all;
 
 static void
 juise_trace (void *vfp, lx_node_t *nodep, const char *fmt, ...)
@@ -286,11 +287,12 @@ do_run_op_common (const char *scriptname, char **argv UNUSED, lx_node_t *nodep)
 				 indoc, params);
     } else {
 	res = xsltApplyStylesheet(script, indoc, params);
-
-	xsltSaveResultToFile(stdout, res, script);
-
-	if (res)
+	if (res) {
+	    xsltSaveResultToFile(stdout, res, script);
+	    if (dump_all)
+		xsltSaveResultToFile(stderr, res, script);
 	    xmlFreeDoc(res);
+	}
     }
 
     xmlFreeDoc(indoc);
@@ -492,8 +494,9 @@ print_help (void)
 }
 
 int
-main (int argc UNUSED, char **argv)
+main (int argc UNUSED, char **argv, char **envp)
 {
+    char **save_argv = argv;
     char *cp;
     const char *script = NULL, *trace_file_name = NULL;
     int (*func)(const char *, char **) = NULL;
@@ -520,11 +523,12 @@ main (int argc UNUSED, char **argv)
 	    skip_args = TRUE;
 	    jsio_set_default_session_type(ST_JUNOS_NETCONF);
 
-	} else if (streq(strcgi, ep - sizeof(strcgi)))
+	} else if (streq(strcgi, ep - sizeof(strcgi))) {
 	    func = do_run_as_cgi;
 
-	else if (streq(strfastcgi, ep - sizeof(strfastcgi)))
+	} else if (streq(strfastcgi, ep - sizeof(strfastcgi))) {
 	    func = do_run_as_fastcgi;
+	}
     }
 
     if (!skip_args) {
@@ -643,6 +647,8 @@ main (int argc UNUSED, char **argv)
 	trace_file_name = getenv("JUISE_TRACE_FILE");
 
     if (trace_file_name) {
+	dump_all = 1;
+
 	if (is_filename_std(trace_file_name)) {
 	    slaxTraceEnable(juise_trace, NULL);
 	    slaxLogEnableCallback(juise_log, NULL);
@@ -654,6 +660,15 @@ main (int argc UNUSED, char **argv)
 		
 	    slaxTraceEnable(juise_trace, trace_file);
 	    slaxLogEnableCallback(juise_log, trace_file);
+	}
+
+	if (dump_all) {
+	    int i;
+	    for (i = 0; save_argv[i]; i++)
+		trace(trace_file, TRACE_ALL, "argv: '%s'", save_argv[i]);
+
+	    for (i = 0; envp[i]; i++)
+		trace(trace_file, TRACE_ALL, "envp: '%s'", envp[i]);
 	}
     }
 

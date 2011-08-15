@@ -48,6 +48,8 @@ typedef struct curl_data_s {
     char cd_data[0];		/* Data follows this header */
 } curl_data_t;
 
+typedef TAILQ_HEAD(curl_data_chain_s, curl_data_s) curl_data_chain_t;
+
 /*
  * Defines the set of options we which to control the next request.
  * Options can be temporarily given on the curl:perform() call
@@ -59,10 +61,12 @@ typedef struct curl_opts_s {
     u_int8_t co_fail_on_error;	/* Fail explicitly if HTTP code >= 400 */
     char *co_username;		/* Value for CURLOPT_USERNAME */
     char *co_password;		/* Value for CURLOPT_PASSWORD */
-    char *co_postfields;	/* Value for CURLOPT_POSTFIELDS */
+    curl_data_chain_t co_headers; /* Headers for CURLOPT_HTTPHEADER */
+    curl_data_chain_t co_params; /* Parameters for GET or POST */
+    char *co_content_type;	 /* Content-Type header */
+    char *co_contents;		 /* Contents for a post */
+    char *co_format;		 /* Format of the response */
 } curl_opts_t;
-
-typedef TAILQ_HEAD(curl_data_chain_s, curl_data_s) curl_data_chain_t;
 
 /*
  * This is the main curl datastructure, a handle that is maintained
@@ -73,8 +77,8 @@ typedef TAILQ_HEAD(curl_data_chain_s, curl_data_s) curl_data_chain_t;
  */
 typedef struct curl_handle_s {
     TAILQ_ENTRY(curl_handle_s) ch_link; /* Next session */
-    curl_data_chain_t ch_reply_data;
     curl_data_chain_t ch_reply_headers;
+    curl_data_chain_t ch_reply_data;
     char ch_name[CURL_NAME_SIZE]; /* Unique ID for this handle */
     CURL *ch_handle;		/* libcurl "easy" handle */
     curl_opts_t ch_opts;	/* Options set for this handle */
@@ -100,6 +104,24 @@ ext_curl_chain_clean (curl_data_chain_t *chainp)
     }
 }
 
+static void
+ext_curl_chain_copy (curl_data_chain_t *top, curl_data_chain_t *fromp)
+{
+    curl_data_t *cdp, *newp;
+
+    TAILQ_FOREACH(cdp, fromp, cd_link) {
+	newp  = xmlMalloc(sizeof(*cdp) + cdp->cd_len + 1);
+	if (newp == NULL)
+	    break;
+
+	bzero(newp, sizeof(*newp));
+	newp->cd_len = cdp->cd_len;
+	memcpy(newp->cd_data, cdp->cd_data, cdp->cd_len + 1);
+
+	TAILQ_INSERT_TAIL(top, cdp, cd_link);
+    }
+}
+
 /*
  * Discard any transient data in the handle, particularly data
  * read from the peer.
@@ -122,7 +144,12 @@ ext_curl_options_release (curl_opts_t *opts)
     xmlFreeAndEasy(opts->co_method);
     xmlFreeAndEasy(opts->co_username);
     xmlFreeAndEasy(opts->co_password);
-    xmlFreeAndEasy(opts->co_postfields);
+    xmlFreeAndEasy(opts->co_content_type);
+    xmlFreeAndEasy(opts->co_contents);
+    xmlFreeAndEasy(opts->co_format);
+
+    ext_curl_chain_clean(&opts->co_headers);
+    ext_curl_chain_clean(&opts->co_params);
 
     bzero(opts, sizeof(*opts));
 }
@@ -144,7 +171,15 @@ ext_curl_options_copy (curl_opts_t *top, curl_opts_t *fromp)
     COPY_FIELD(co_fail_on_error);
     COPY_STRING(co_username);
     COPY_STRING(co_password);
-    COPY_STRING(co_postfields);
+    COPY_STRING(co_content_type);
+    COPY_STRING(co_contents);
+    COPY_STRING(co_format);
+
+    TAILQ_INIT(&top->co_headers);
+    ext_curl_chain_copy(&top->co_headers, &fromp->co_headers);
+
+    TAILQ_INIT(&top->co_params);
+    ext_curl_chain_copy(&top->co_params, &fromp->co_params);
 }
 
 /*
@@ -190,29 +225,110 @@ ext_curl_handle_find (const char *name)
  * Parse any options from an input XML node.
  */
 static void
-ext_curl_parse_node (curl_opts_t *cop, xmlNodePtr nodep)
+ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 {
     const char *key;
+    curl_data_t *cdp;
 
     key = lx_node_name(nodep);
     if (key == NULL)
 	return;
 
     if (streq(key, "url"))
-	CURL_SET_STRING(cop->co_url);
+	CURL_SET_STRING(opts->co_url);
     else if (streq(key, "method"))
-	CURL_SET_STRING(cop->co_method);
+	CURL_SET_STRING(opts->co_method);
     else if (streq(key, "username"))
-	CURL_SET_STRING(cop->co_username);
+	CURL_SET_STRING(opts->co_username);
     else if (streq(key, "password"))
-	CURL_SET_STRING(cop->co_password);
+	CURL_SET_STRING(opts->co_password);
+    else if (streq(key, "content-type"))
+	CURL_SET_STRING(opts->co_content_type);
+    else if (streq(key, "contents"))
+	CURL_SET_STRING(opts->co_contents);
+    else if (streq(key, "format"))
+	CURL_SET_STRING(opts->co_format);
     else if (streq(key, "upload"))
-	cop->co_upload = TRUE;
+	opts->co_upload = TRUE;
     else if (streq(key, "fail-on-error"))
-	cop->co_fail_on_error = TRUE;
-    else if (streq(key, "field")) {
-	
+	opts->co_fail_on_error = TRUE;
+
+    else if (streq(key, "header")) {
+	/* Header fields aren't quite so easy */
+	char *name = (char *) xmlGetProp(nodep, (const xmlChar *) "name");
+	const char *value = lx_node_value(nodep);
+
+	size_t bufsiz = BUFSIZ, len;
+	char *buf = alloca(bufsiz);
+
+	len = snprintf(buf, bufsiz, "%s: %s", name, value);
+	if (len >= bufsiz) {
+	    bufsiz = len + 1;
+	    buf = alloca(bufsiz);
+	    len = snprintf(buf, bufsiz, "%s: %s", name, value);
+	}
+
+	cdp = xmlMalloc(sizeof(*cdp) + len);
+	if (cdp) {
+	    cdp->cd_len = len;
+	    memcpy(cdp->cd_data, buf, len);
+	    TAILQ_INSERT_TAIL(&opts->co_headers, cdp, cd_link);
+	}
+
+	xmlFree(name);
+
     } else if (streq(key, "param")) {
+	static char must_escape[] = "-_.!~*'();/?:@&=+$,[] \t\n";
+	static char hexnum[] = "0123456789ABCDEF";
+
+	/* Parameters can be either POST or GET style */
+	char *name = (char *) xmlGetProp(nodep, (const xmlChar *) "name");
+	const char *value = lx_node_value(nodep);
+	const char *vp, *real_value;
+	char *cp;
+
+	size_t bufsiz = BUFSIZ, len;
+	char *buf = alloca(bufsiz);
+
+	int ecount = 0;
+	for (vp = value; *vp; vp++)
+	    if (strchr(must_escape, *vp) != 0)
+		ecount += 1;
+
+	real_value = value;
+	if (ecount) {
+	    cp = alloca(strlen(value) + ecount * 3 + 1);
+	    if (cp) {
+		real_value = cp;
+		for (vp = value; *vp; vp++) {
+		    if (strchr(must_escape, *vp) != 0) {
+			*cp++ = '%';
+			*cp++ = hexnum[(*vp >> 4) & 0xF];
+			*cp++ = hexnum[*vp & 0xF];
+		    } else {
+			*cp++ = *vp;
+		    }
+		}
+		*cp = '\0';
+	    }
+	}
+
+	len = snprintf(buf, bufsiz, "%s=%s", name, real_value);
+	if (len >= bufsiz) {
+	    bufsiz = len + 1;
+	    buf = alloca(bufsiz);
+	    len = snprintf(buf, bufsiz, "%s=%s", name, real_value);
+	}
+
+	cdp = xmlMalloc(sizeof(*cdp) + len);
+	if (cdp) {
+	    cdp->cd_len = len;
+	    memcpy(cdp->cd_data, buf, len);
+	    TAILQ_INSERT_TAIL(&opts->co_params, cdp, cd_link);
+	}
+
+	xmlFree(name);
+
     }
 }
 
@@ -289,6 +405,11 @@ ext_curl_read_data (char *buf UNUSED, size_t isize, size_t nitems, void *userp)
 }
 
 #define CURL_SET(_n, _v) curl_easy_setopt(curlp->ch_handle, _n, _v)
+#define CURL_COND(_n, _v) \
+    do { \
+	if (_v) \
+	    curl_easy_setopt(curlp->ch_handle, _n, _v);	\
+    } while (0)
 
 /*
  * Allocate a curl handle and populate it with reasonable values.  In
@@ -307,18 +428,11 @@ ext_curl_handle_alloc (void)
 	snprintf(curlp->ch_name, sizeof(curlp->ch_name), "%u", seed++);
 	TAILQ_INIT(&curlp->ch_reply_data);
 	TAILQ_INIT(&curlp->ch_reply_headers);
+	TAILQ_INIT(&curlp->ch_opts.co_headers);
+	TAILQ_INIT(&curlp->ch_opts.co_params);
 
 	/* Create and populate the real libcurl handle */
 	curlp->ch_handle = curl_easy_init();
-
-	CURL_SET(CURLOPT_ERRORBUFFER, curlp->ch_error); /* Get real errors */
-	CURL_SET(CURLOPT_NETRC, CURL_NETRC_OPTIONAL); /* Allow .netrc */
-
-	/* Register callbacks */
-	CURL_SET(CURLOPT_WRITEFUNCTION, ext_curl_write_data);
-	CURL_SET(CURLOPT_WRITEDATA, curlp);
-	CURL_SET(CURLOPT_HEADERFUNCTION, ext_curl_header_data);
-	CURL_SET(CURLOPT_WRITEHEADER, curlp);
 
 	/* Add it to the list of curl handles */
 	TAILQ_INSERT_TAIL(&ext_curl_sessions, curlp, ch_link);
@@ -327,6 +441,62 @@ ext_curl_handle_alloc (void)
     return curlp;
 }
 
+/*
+ * Turn a chain of cur_data_t into a libcurl-style slist.
+ */
+static struct curl_slist *
+ext_curl_build_slist (curl_data_chain_t *chainp, struct curl_slist *slist)
+{
+    curl_data_t *cdp;
+
+    TAILQ_FOREACH(cdp, chainp, cd_link) {
+	slist = curl_slist_append(slist, cdp->cd_data);
+    }
+
+    return slist;
+}
+
+static char *
+ext_curl_build_param_data (curl_data_chain_t **chains)
+{
+    curl_data_chain_t **chainp;
+    curl_data_t *cdp;
+    size_t len = 0;
+    char *buf, *cp;
+
+    for (chainp = chains; *chainp; chainp++) {
+	TAILQ_FOREACH(cdp, *chainp, cd_link) {
+	    len += cdp->cd_len + 1;
+	}
+    }
+
+    if (len == 0)
+	return NULL;
+
+    buf = xmlMalloc(len);
+    if (buf == 0)
+	return NULL;
+
+    for (cp = buf, chainp = chains; *chainp; chainp++) {
+	TAILQ_FOREACH(cdp, *chainp, cd_link) {
+	    if (cp != buf)
+		*cp++ = '&';
+	    memcpy(cp, cdp->cd_data, cdp->cd_len);
+	    cp += cdp->cd_len;
+	}
+    }
+    *cp = '\0';
+
+    return buf;
+}
+
+/*
+ * Open a persistent curl handle to allow persistent connections of the
+ * underlaying protocol.
+ *
+ * Usage:
+ *    var $handle = curl:open();
+ */
 static void
 ext_curl_open (xmlXPathParserContext *ctxt, int nargs)
 {
@@ -345,10 +515,10 @@ ext_curl_open (xmlXPathParserContext *ctxt, int nargs)
 }
 
 /*
+ *  Close a given handle.
+ *
  * Usage:
  *    expr curl:close($handle); 
- *
- *  Closes the given handle.
  */
 static void
 ext_curl_close (xmlXPathParserContext *ctxt, int nargs)
@@ -377,34 +547,67 @@ ext_curl_close (xmlXPathParserContext *ctxt, int nargs)
 }
 
 /*
- * Perform a libcurl transfer but setting up all the options
- * which we've been provided with, and then calling curl_easy_perform().
- * Since options are _very_ sticky to libcurl, we have to explicitly
- * set all values to the ones we've been asked for.
+ * Perform a libcurl transfer but setting up all the options which
+ * we've been provided with, and then calling curl_easy_perform().
+ * Since options are normally _very_ sticky to libcurl, we'd like to
+ * explicitly set all values to the ones we've been asked for.  But
+ * due to the nature of the curl_easy_setopt interface we are forced
+ * use curl_easy_reset instead.
  */
 static CURLcode
 ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 {
     CURLcode success;
-    long putv = 0, postv = 0, getv = 0;
+    long putv = 0, postv = 0, getv = 0, deletev = 0;
+    char *content_header = NULL;
+
+    curl_easy_reset(curlp->ch_handle);
 
     if (opts->co_url == NULL) {
 	LX_ERR("curl: missing URL\n");
 	return FALSE;
     }
 
-    curl_easy_setopt(curlp->ch_handle, CURLOPT_URL, opts->co_url);
+    /* Here are some relatively static options we have to set */
+    CURL_SET(CURLOPT_ERRORBUFFER, curlp->ch_error); /* Get real errors */
+    CURL_SET(CURLOPT_NETRC, CURL_NETRC_OPTIONAL); /* Allow .netrc */
+
+    /* Register callbacks */
+    CURL_SET(CURLOPT_WRITEFUNCTION, ext_curl_write_data);
+    CURL_SET(CURLOPT_WRITEDATA, curlp);
+    CURL_SET(CURLOPT_HEADERFUNCTION, ext_curl_header_data);
+    CURL_SET(CURLOPT_WRITEHEADER, curlp);
+
+    CURL_SET(CURLOPT_URL, opts->co_url);
 
     /* Upload file via FTP */
     if (opts->co_upload) {
-	curl_easy_setopt(curlp->ch_handle, CURLOPT_UPLOAD, 1L);
-	curl_easy_setopt(curlp->ch_handle, CURLOPT_READFUNCTION,
-			 ext_curl_read_data);
-	curl_easy_setopt(curlp->ch_handle, CURLOPT_READDATA, curlp);
+	CURL_SET(CURLOPT_UPLOAD, 1L);
+	CURL_SET(CURLOPT_READFUNCTION, ext_curl_read_data);
+	CURL_SET(CURLOPT_READDATA, curlp);
     }
-    
-    CURL_SET(CURLOPT_USERNAME, opts->co_username);
-    CURL_SET(CURLOPT_PASSWORD, opts->co_password);
+
+    CURL_COND(CURLOPT_USERNAME, opts->co_username);
+    CURL_COND(CURLOPT_PASSWORD, opts->co_password);
+
+    CURL_SET(CURLOPT_FAILONERROR, opts->co_fail_on_error ? 1L : 0L);
+
+    /* Build our headers */
+    struct curl_slist *headers;
+
+    /*
+     * libcurl turns on the use of "Expect: 100-continue" which
+     * is not widely supported; so we turn it off.
+     */
+    headers = curl_slist_append(NULL, "Expect:"); /* Turn off Expect */
+
+    /*
+     * Build a list of headers containing both the handles options
+     * and the ones passed into this function.
+     */
+    headers = ext_curl_build_slist(&curlp->ch_opts.co_headers, NULL);
+    headers = ext_curl_build_slist(&opts->co_headers, headers);
+    CURL_SET(CURLOPT_HTTPHEADER, headers);
 
     if (opts->co_method) {
 	if (streq(opts->co_method, "get"))
@@ -413,32 +616,140 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 	    putv = 1;
 	else if (streq(opts->co_method, "post"))
 	    postv = 1;
+	else if (streq(opts->co_method, "delete")) {
+	    deletev = 1;
+	    CURL_SET(CURLOPT_CUSTOMREQUEST, "DELETE");
+	}
     }
-    if (getv + postv + putv == 0)
+    if (getv + postv + putv + deletev == 0)
 	getv = 1;		/* Default method */
 
-    CURL_SET(CURLOPT_HTTPGET, getv);
-    CURL_SET(CURLOPT_PUT, putv);
-    CURL_SET(CURLOPT_POST, postv);
+    CURL_COND(CURLOPT_HTTPGET, getv);
+    CURL_COND(CURLOPT_PUT, putv);
+    CURL_COND(CURLOPT_POST, postv);
 
-    if (postv) {
-	CURL_SET(CURLOPT_POSTFIELDS, opts->co_postfields);
-	if (opts->co_postfields == NULL)
-	    CURL_SET(CURLOPT_POSTFIELDSIZE, 0L);
+    curl_data_chain_t *param_data_chains[] = {
+	&curlp->ch_opts.co_params,
+	&opts->co_params,
+	NULL
+    };
+
+    char *param_data = ext_curl_build_param_data(param_data_chains);
+    if (param_data) {
+	if (getv || deletev) {
+	    size_t ulen = strlen(opts->co_url), plen = strlen(param_data);
+	    size_t bufsiz = ulen + plen + 2; /* '?' and NUL */
+	    char *buf = alloca(bufsiz);
+
+	    memcpy(buf, opts->co_url, ulen);
+	    buf[ulen] = '?';
+	    memcpy(buf + ulen + 1, param_data, plen + 1);
+
+	    CURL_SET(CURLOPT_URL, buf);
+
+	} else if (postv) {
+	    CURL_SET(CURLOPT_POSTFIELDS, param_data);
+	    CURL_SET(CURLOPT_POSTFIELDSIZE, (long) strlen(param_data));
+	}
     }
 
-    if (opts->co_fail_on_error)
-	CURL_SET(CURLOPT_FAILONERROR, 1L); /* Fail if HTTP code >= 400 */
+    if (opts->co_content_type) {
+	static char content_header_field[] = "Content-Type: ";
+	size_t mlen = strlen(opts->co_content_type);
+	content_header = alloca(mlen + sizeof(content_header_field));
+
+	memcpy(content_header, content_header_field,
+	       sizeof(content_header_field));
+	memcpy(content_header + sizeof(content_header_field) - 1,
+	       opts->co_content_type, mlen + 1);
+
+	CURL_SET(CURLOPT_HTTPHEADER, content_header);
+    }
 
     success = curl_easy_perform(curlp->ch_handle);
+
+    /*
+     * Remove our data to avoid dangling references.  We do
+     * this for headers and post data.
+     */
+    if (headers) {		/* Free the header list */
+	CURL_SET(CURLOPT_HTTPHEADER, NULL);
+	curl_slist_free_all(headers);
+    }
+
+    if (param_data)
+	xmlFree(param_data);
+
+    /* Clear it on the way out, just to be absolutely certain */
+    curl_easy_reset(curlp->ch_handle);
 
     return success;
 }
 
+static void
+ext_curl_build_data_parsed (curl_handle_t *curlp UNUSED, curl_opts_t *opts,
+			    xmlDocPtr docp, xmlNodePtr parent,
+			    const char *raw_data)
+{
+    const char *cp, *ep, *sp;
+    char *nbuf = NULL, *vbuf = NULL;
+    ssize_t nbufsiz = 0, vbufsiz = 0;
+
+    xmlNodePtr nodep = xmlNewDocNode(docp, NULL,
+				     (const xmlChar *) "data", NULL);
+    if (nodep == NULL)
+	return;
+
+    xmlAddChild(parent, nodep);
+    xmlSetProp(nodep, (const xmlChar *) "format",
+	       (const xmlChar *) opts->co_format);
+
+    if (streq(opts->co_format, "name")) {
+	for (cp = raw_data; *cp; cp = ep + 1) {
+	    sp = strchr(cp, '=');
+	    if (sp == NULL)
+		break;
+	    ep = strchr(sp, '\n');
+	    if (ep == NULL)
+		ep = sp + strlen(sp); /* Point at trailing NUL */
+
+	    if (sp - cp >= nbufsiz) {
+		nbufsiz = sp - cp + 1;
+		nbufsiz += BUFSIZ - 1;
+		nbufsiz &= ~(BUFSIZ - 1);
+		nbuf = alloca(nbufsiz);
+	    }
+	    memcpy(nbuf, cp, sp - cp);
+	    nbuf[sp - cp] = '\0';
+
+	    sp += 1;
+	    if (ep - sp >= vbufsiz) {
+		vbufsiz = ep - sp + 1;
+		vbufsiz += BUFSIZ - 1;
+		vbufsiz &= ~(BUFSIZ - 1);
+		vbuf = alloca(vbufsiz);
+	    }
+	    memcpy(vbuf, sp, ep - sp);
+	    vbuf[ep - sp] = '\0';
+
+	    xmlNodePtr xp = xmlAddChildContent(docp, nodep,
+				   (const xmlChar *) "name",
+				   (const xmlChar *) vbuf);
+	    if (xp)
+		xmlSetProp(xp, (const xmlChar *) "name",
+			   (const xmlChar *) nbuf);
+
+	    if (*ep == '\0')
+		break;		/* Last one (end of data) */
+	}
+    }
+}
+
 /*
  * Turn a chain of data strings into XML content
+ * @returns the built data string (which is inside a text element)
  */
-static void
+static const char *
 ext_curl_build_data (curl_handle_t *curlp UNUSED, lx_document_t *docp,
 		     xmlNodePtr nodep, curl_data_chain_t *chainp,
 		     const char *name)
@@ -454,15 +765,15 @@ ext_curl_build_data (curl_handle_t *curlp UNUSED, lx_document_t *docp,
     }
 
     if (bufsiz == 0)		/* No data */
-	return;
+	return NULL;
 
     tp = xmlNewText(NULL);
     if (tp == NULL)
-	return;
+	return NULL;
 
     cp = buf = xmlMalloc(bufsiz + 1);
     if (buf == NULL)
-	return;
+	return NULL;
 
     /* Populate buf with the chain of data */
     TAILQ_FOREACH(cdp, chainp, cd_link) {
@@ -478,11 +789,13 @@ ext_curl_build_data (curl_handle_t *curlp UNUSED, lx_document_t *docp,
 	xmlAddChild(nodep, xp);
 	xmlAddChild(xp, tp);
     }
+
+    return buf;
 }
 
 /*
  * Turn the raw header value into a set of real XML tags:
-       <header>
+      <header>
         <version>HTTP/1.1</version>
         <code>404</code>
         <message>Not Found</message>
@@ -500,7 +813,7 @@ ext_curl_build_reply_headers (curl_handle_t *curlp, lx_document_t *docp,
 	return;
 
     xmlNodePtr nodep = xmlNewDocNode(docp, NULL,
-			      (const xmlChar *) "header", NULL);
+			      (const xmlChar *) "headers", NULL);
     if (nodep == NULL)
 	return;
 
@@ -559,7 +872,7 @@ ext_curl_build_reply_headers (curl_handle_t *curlp, lx_document_t *docp,
 	    while (*sp == ' ')
 		sp += 1;
 	    xmlNodePtr xp = xmlAddChildContent(docp, nodep,
-				   (const xmlChar *) "field",
+				   (const xmlChar *) "header",
 				   (const xmlChar *) sp);
 	    if (xp)
 		xmlSetProp(xp, (const xmlChar *) "name", (const xmlChar *) cp);
@@ -585,6 +898,7 @@ static xmlNodePtr
 ext_curl_build_results (lx_document_t *docp, curl_handle_t *curlp,
 			curl_opts_t *opts, CURLcode success)
 {
+    const char *raw_data;
     xmlNodePtr nodep = xmlNewDocNode(docp, NULL,
 			      (const xmlChar *) "results", NULL);
 
@@ -603,8 +917,12 @@ ext_curl_build_results (lx_document_t *docp, curl_handle_t *curlp,
 	ext_curl_build_reply_headers(curlp, docp, nodep);
 
 	/* Add raw data string */
-	ext_curl_build_data(curlp, docp, nodep,
-			    &curlp->ch_reply_data, "raw-data");
+	raw_data = ext_curl_build_data(curlp, docp, nodep,
+				       &curlp->ch_reply_data, "raw-data");
+
+	if (raw_data && opts->co_format)
+	    ext_curl_build_data_parsed(curlp, opts, docp, nodep, raw_data);
+
     } else {
 	xmlAddChildContent(docp, nodep, (const xmlChar *) "error",
 		       (const xmlChar *) curlp->ch_error);
