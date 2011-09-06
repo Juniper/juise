@@ -48,6 +48,10 @@
 #include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 
+/* The definition in <libxslt/xslt.h> lacks the 'const' and gives gcc fits */
+#define XSLT_NAMESPACE_CONST \
+    ((const xmlChar *) "http://www.w3.org/1999/XSL/Transform")
+
 #ifdef O_EXLOCK
 #define OPEN_FLAGS (O_CREAT | O_RDWR | O_EXLOCK)
 #else
@@ -105,11 +109,27 @@ extern char *source_daemon_name;
  *
  * Set the preserve bit only for gloabl variables.
  */
-#define SET_PRESERVE_FLAG_GLOBAL_VAR(tctxt, ret)		    \
-    do {							    \
-	if (!tctxt->vars)					    \
-    	    xsltExtensionInstructionResultRegister(tctxt, ret);	    \
-    } while (0);
+static void
+ext_set_preserve_flag (xsltTransformContextPtr tctxt, xmlXPathObjectPtr ret)
+{
+    if (tctxt->vars) {
+	if (tctxt == NULL || tctxt->inst == NULL)
+	    return;
+
+	xmlNodePtr parent = tctxt->inst->parent;
+	if (parent == NULL || parent->type != XML_ELEMENT_NODE)
+	    return;
+	
+	if (!streq((const char *) parent->name, "stylesheet"))
+	    return;
+
+	if (parent->ns == NULL
+	    	|| xmlStrcmp(parent->ns->href, XSLT_NAMESPACE_CONST) != 0)
+	    return;
+    }
+
+    xsltExtensionInstructionResultRegister(tctxt, ret);
+}
 
 js_boolean_t
 ext_fix_namespaces (lx_node_t *node)
@@ -299,7 +319,7 @@ ext_invoke (xmlXPathParserContext *ctxt, int nargs)
 
 	tctxt = xsltXPathGetTransformContext(ctxt);
 	ret = xmlXPathNewNodeSetList(results);
-	SET_PRESERVE_FLAG_GLOBAL_VAR(tctxt, ret);
+	ext_set_preserve_flag(tctxt, ret);
 	valuePush(ctxt, ret);
 	xmlXPathFreeNodeSet(results);
 	return;
@@ -347,7 +367,7 @@ ext_invoke (xmlXPathParserContext *ctxt, int nargs)
 
 		tctxt = xsltXPathGetTransformContext(ctxt);
 		ret = xmlXPathNewNodeSetList(results);
-		SET_PRESERVE_FLAG_GLOBAL_VAR(tctxt, ret);
+		ext_set_preserve_flag(tctxt, ret);
 		valuePush(ctxt, ret);
 		xmlXPathFreeNodeSet(results);
 		xmlXPathFreeObject(xop);
@@ -499,7 +519,10 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
     const char *sname = "junoscript";
     uint port = DEFAULT_NETCONF_PORT;
 
-    if (nargs == 1) {
+    if (nargs == 0) {
+	server = NULL;
+
+    } else if (nargs == 1) {
 	server =  xmlXPathPopString(ctxt);
 
     } else if (nargs == 2) {
@@ -577,7 +600,8 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
     xmlAddChild((xmlNodePtr) container, nodep);
  
     ret = xmlXPathNewNodeSet(nodep);
-    SET_PRESERVE_FLAG_GLOBAL_VAR(tctxt, ret);
+    ext_set_preserve_flag(tctxt, ret);
+
     valuePush(ctxt, ret);
     return;
 }
@@ -674,7 +698,7 @@ ext_execute (xmlXPathParserContext *ctxt, int nargs)
 
 	tctxt = xsltXPathGetTransformContext(ctxt);
 	ret = xmlXPathNewNodeSetList(results);
-	SET_PRESERVE_FLAG_GLOBAL_VAR(tctxt, ret);
+	ext_set_preserve_flag(tctxt, ret);
 	valuePush(ctxt, ret);
 	xmlXPathFreeNodeSet(results);
 	return;
@@ -729,7 +753,7 @@ ext_execute (xmlXPathParserContext *ctxt, int nargs)
 
 		tctxt = xsltXPathGetTransformContext(ctxt);
 		ret = xmlXPathNewNodeSetList(results);
-		SET_PRESERVE_FLAG_GLOBAL_VAR(tctxt, ret);
+		ext_set_preserve_flag(tctxt, ret);
 		valuePush(ctxt, ret);
 		xmlXPathFreeNodeSet(results);
 		return;
@@ -798,7 +822,7 @@ ext_gethello (xmlXPathParserContext *ctxt, int nargs)
 	xmlAddChild((xmlNodePtr) container, newhellop);
  
 	ret = xmlXPathNewNodeSet(newhellop);
-	SET_PRESERVE_FLAG_GLOBAL_VAR(tctxt, ret);
+	ext_set_preserve_flag(tctxt, ret);
 	valuePush(ctxt, ret);
     } else {
 	valuePush(ctxt, xmlXPathNewNodeSet(NULL));
@@ -1147,7 +1171,7 @@ ext_parse_ip (xmlXPathParserContext *ctxt, int nargs)
     xmlFree(str);
 
     ret = xmlXPathNewNodeSetList(results);
-    SET_PRESERVE_FLAG_GLOBAL_VAR(tctxt, ret);
+    ext_set_preserve_flag(tctxt, ret);
     valuePush(ctxt, ret);
     xmlXPathFreeNodeSet(results);
     return;

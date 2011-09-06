@@ -282,6 +282,9 @@ do_run_op_common (const char *scriptname, char **argv UNUSED, lx_node_t *nodep)
 
     if (use_debugger) {
 	slaxDebugInit();
+#if 0
+	slaxRestartListAdd(jsio_restart);
+#endif
 	slaxDebugSetStylesheet(script);
 	slaxDebugApplyStylesheet(scriptname, script, "input",
 				 indoc, params);

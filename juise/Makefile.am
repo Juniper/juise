@@ -5,6 +5,7 @@
 include ${top_srcdir}/warnings.mk
 
 AM_CFLAGS = \
+    -DCURL_DISABLE_TYPECHECK \
     -I${top_srcdir} \
     -I${top_srcdir}/libjuise \
     ${LIBSLAX_CFLAGS} \
@@ -21,7 +22,8 @@ LIBS = \
     ${LIBCURL_LIBS}
 
 noinst_HEADERS = \
-    juise.h
+    juise.h \
+    ext_curl.h
 
 if JUISE_DEBUG
 AM_CFLAGS += -g -DJUISE_DEBUG

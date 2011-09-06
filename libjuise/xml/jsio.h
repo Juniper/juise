@@ -193,6 +193,8 @@ jsio_init (unsigned flags);
 
 void
 jsio_cleanup (void);
+void
+jsio_restart (void);
 
 js_session_t *
 js_session_open_server (int fdin, int fdout, session_type_t stype, int flags);

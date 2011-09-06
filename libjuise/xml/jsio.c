@@ -176,6 +176,7 @@ jsio_askpass_clean_socket (void)
     if (jsio_askpass_socket_path[0])
 	unlink(jsio_askpass_socket_path);
     close(jsio_askpass_socket);
+    jsio_askpass_socket = 0;
 }
 
 /*
@@ -1521,8 +1522,11 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
     js_session_t *jsp;
     int rc;
 
-    if (host_name == NULL || *host_name == '\0')
+    if (host_name == NULL || *host_name == '\0') {
 	host_name = js_default_server;
+	if (host_name == NULL || *host_name == '\0')
+	    return NULL;
+    }
 
     if (stype == ST_DEFAULT)
 	stype = js_default_stype;
@@ -1806,7 +1810,22 @@ jsio_init (unsigned flags UNUSED)
 }
 
 void
+jsio_restart (void)
+{
+    for (;;) {
+	patnode_t *pnp = patricia_find_next(&js_session_root, NULL);
+
+	if (pnp == NULL)
+	    break;
+	
+       	patricia_delete(&js_session_root, pnp);
+	js_session_terminate((js_session_t *) pnp);
+    }
+}
+
+void
 jsio_cleanup (void)
 {
+    jsio_restart();
     jsio_askpass_clean_socket();
 }
