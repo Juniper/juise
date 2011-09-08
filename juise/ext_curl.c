@@ -25,6 +25,7 @@
 #include <libjuise/time/time_const.h>
 #include <libjuise/io/pid_lock.h>
 #include <libjuise/io/trace.h>
+#include <libjuise/io/memdump.h>
 #include <libjuise/data/parse_ip.h>
 #include <libjuise/common/allocadup.h>
 #include <libjuise/string/strextra.h>
@@ -59,6 +60,7 @@ typedef struct curl_opts_s {
     char *co_method;		/* HTTP method (GET,POST,etc) */
     u_int8_t co_upload;		/* Are we uploading (aka FTP PUT)? */
     u_int8_t co_fail_on_error;	/* Fail explicitly if HTTP code >= 400 */
+    u_int8_t co_verbose;	/* Verbose (debug) output */
     char *co_username;		/* Value for CURLOPT_USERNAME */
     char *co_password;		/* Value for CURLOPT_PASSWORD */
     curl_data_chain_t co_headers; /* Headers for CURLOPT_HTTPHEADER */
@@ -169,6 +171,7 @@ ext_curl_options_copy (curl_opts_t *top, curl_opts_t *fromp)
     COPY_STRING(co_method);
     COPY_FIELD(co_upload);
     COPY_FIELD(co_fail_on_error);
+    COPY_FIELD(co_verbose);
     COPY_STRING(co_username);
     COPY_STRING(co_password);
     COPY_STRING(co_content_type);
@@ -252,6 +255,8 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	opts->co_upload = TRUE;
     else if (streq(key, "fail-on-error"))
 	opts->co_fail_on_error = TRUE;
+    else if (streq(key, "verbose"))
+	opts->co_verbose = TRUE;
 
     else if (streq(key, "header")) {
 	/* Header fields aren't quite so easy */
@@ -271,7 +276,7 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	cdp = xmlMalloc(sizeof(*cdp) + len);
 	if (cdp) {
 	    cdp->cd_len = len;
-	    memcpy(cdp->cd_data, buf, len);
+	    memcpy(cdp->cd_data, buf, len + 1);
 	    TAILQ_INSERT_TAIL(&opts->co_headers, cdp, cd_link);
 	}
 
@@ -441,6 +446,56 @@ ext_curl_handle_alloc (void)
     return curlp;
 }
 
+static int
+ext_curl_verbose (CURL *handle UNUSED, curl_infotype type,
+		char *data, size_t size, void *opaque)
+{
+    curl_handle_t *curlp UNUSED = opaque;
+    const char *text, *dir;
+ 
+    switch (type) {
+    case CURLINFO_TEXT:
+	fprintf(stderr, "== Info: %s", data);
+	return 0;
+ 
+    case CURLINFO_HEADER_OUT:
+	text = "Send header";
+	dir = "=> ";
+	break;
+
+    case CURLINFO_DATA_OUT:
+	text = "Send data";
+	dir = "=> ";
+	break;
+
+    case CURLINFO_SSL_DATA_OUT:
+	text = "Send SSL data";
+	dir = "=> ";
+	break;
+
+    case CURLINFO_HEADER_IN:
+	text = "Recv header";
+	dir = "<= ";
+	break;
+
+    case CURLINFO_DATA_IN:
+	text = "Recv data";
+	dir = "<= ";
+	break;
+
+    case CURLINFO_SSL_DATA_IN:
+	text = "Recv SSL data";
+	dir = "<= ";
+	break;
+
+    default:	    /* In case a new one is introduced to shock us */ 
+	return 0;
+    }
+ 
+    memdump(stderr, text, data, size, dir, 0);
+    return 0;
+}
+
 /*
  * Turn a chain of cur_data_t into a libcurl-style slist.
  */
@@ -562,6 +617,7 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
     char *content_header = NULL;
 
     curl_easy_reset(curlp->ch_handle);
+    ext_curl_handle_clean(curlp); /* Shouldn't be needed */
 
     if (opts->co_url == NULL) {
 	LX_ERR("curl: missing URL\n");
@@ -592,6 +648,17 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 
     CURL_SET(CURLOPT_FAILONERROR, opts->co_fail_on_error ? 1L : 0L);
 
+    if (opts->co_verbose) {
+	/*
+	 * Turn on the callback to get debug information out of libcurl.
+	 * The DEBUGFUNCTION has no effect until we enable VERBOSE.
+	 */ 
+	curl_easy_setopt(curlp->ch_handle,
+			 CURLOPT_DEBUGFUNCTION, ext_curl_verbose);
+	curl_easy_setopt(curlp->ch_handle, CURLOPT_DEBUGDATA, curlp);
+	curl_easy_setopt(curlp->ch_handle, CURLOPT_VERBOSE, 1L);
+    }
+
     /* Build our headers */
     struct curl_slist *headers;
 
@@ -605,7 +672,8 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
      * Build a list of headers containing both the handles options
      * and the ones passed into this function.
      */
-    headers = ext_curl_build_slist(&curlp->ch_opts.co_headers, NULL);
+    if (opts != &curlp->ch_opts)
+	headers = ext_curl_build_slist(&curlp->ch_opts.co_headers, headers);
     headers = ext_curl_build_slist(&opts->co_headers, headers);
     CURL_SET(CURLOPT_HTTPHEADER, headers);
 
@@ -1109,6 +1177,7 @@ ext_curl_perform (xmlXPathParserContext *ctxt, int nargs)
     ret = xmlXPathNewNodeSetList(results);
 
     ext_curl_options_release(&co);
+    ext_curl_handle_clean(curlp);
 
     valuePush(ctxt, ret);
     xmlXPathFreeNodeSet(results);
