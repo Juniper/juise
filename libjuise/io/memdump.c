@@ -48,7 +48,7 @@ memdump (FILE *fp, const char *title, const char *data,
             }
             sprintf(bp, "%02x ", (unsigned char) *data);
             bp += strlen(bp);
-            *tp++ = (isprint(*data) && *data >= ' ') ? *data : '.';
+            *tp++ = (isprint((int) *data) && *data >= ' ') ? *data : '.';
             data += 1;
         }
 
