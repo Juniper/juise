@@ -698,9 +698,12 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 
     curl_data_chain_t *param_data_chains[] = {
 	&curlp->ch_opts.co_params,
-	&opts->co_params,
+	NULL,			/* Slot filled in below */
 	NULL
     };
+
+    if (opts != &curlp->ch_opts)
+	param_data_chains[1] = &opts->co_params;
 
     char *param_data = ext_curl_build_param_data(param_data_chains);
     if (param_data) {
