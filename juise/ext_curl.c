@@ -38,7 +38,7 @@
 #include "ext_curl.h"
 
 #define CURL_FULL_NS "http://xml.juniper.net/curl"
-#define CURL_NAME_SIZE 8
+#define CURL_NAME_SIZE 12
 
 /*
  * Used to chain growing lists of data, such as incoming headers and data
@@ -217,6 +217,33 @@ ext_curl_handle_find (const char *name)
     return NULL;
 }
 
+static void
+ext_curl_set_contents (curl_opts_t *opts, xmlNodePtr nodep)
+{
+    if (opts->co_contents) {
+	xmlFree(opts->co_contents);
+	opts->co_contents = NULL;
+    }
+
+    if (nodep && nodep->type == XML_ELEMENT_NODE && nodep->children
+		&& nodep->children->next == NULL) {
+	xmlBufferPtr buf = xmlBufferCreate();
+	if (buf) {
+	    xmlSaveCtxtPtr handle = xmlSaveToBuffer(buf, NULL, 0);
+	    if (handle) {
+		xmlSaveTree(handle, nodep->children);
+		xmlSaveFlush(handle);
+		xmlSaveClose(handle);
+
+		opts->co_contents = (char *) buf->content;
+		buf->content = NULL;
+	    }
+
+	    xmlBufferFree(buf);
+	}
+    }
+}
+
 #define CURL_SET_STRING(_v) \
     do { \
 	if (_v) \
@@ -248,7 +275,7 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
     else if (streq(key, "content-type"))
 	CURL_SET_STRING(opts->co_content_type);
     else if (streq(key, "contents"))
-	CURL_SET_STRING(opts->co_contents);
+	ext_curl_set_contents(opts, nodep);
     else if (streq(key, "format"))
 	CURL_SET_STRING(opts->co_format);
     else if (streq(key, "upload"))
@@ -430,7 +457,7 @@ ext_curl_handle_alloc (void)
     if (curlp) {
 	bzero(curlp, sizeof(*curlp));
 	/* Give it a unique number as a name */
-	snprintf(curlp->ch_name, sizeof(curlp->ch_name), "%u", seed++);
+	snprintf(curlp->ch_name, sizeof(curlp->ch_name), "curl%u", seed++);
 	TAILQ_INIT(&curlp->ch_reply_data);
 	TAILQ_INIT(&curlp->ch_reply_headers);
 	TAILQ_INIT(&curlp->ch_opts.co_headers);
@@ -614,7 +641,6 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 {
     CURLcode success;
     long putv = 0, postv = 0, getv = 0, deletev = 0;
-    char *content_header = NULL;
 
     curl_easy_reset(curlp->ch_handle);
     ext_curl_handle_clean(curlp); /* Shouldn't be needed */
@@ -668,6 +694,19 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
      */
     headers = curl_slist_append(NULL, "Expect:"); /* Turn off Expect */
 
+    if (opts->co_content_type) {
+	static char content_header_field[] = "Content-Type: ";
+	size_t mlen = strlen(opts->co_content_type);
+	char *content_header = alloca(mlen + sizeof(content_header_field));
+
+	memcpy(content_header, content_header_field,
+	       sizeof(content_header_field));
+	memcpy(content_header + sizeof(content_header_field) - 1,
+	       opts->co_content_type, mlen + 1);
+
+	headers = curl_slist_append(headers, content_header);
+    }
+
     /*
      * Build a list of headers containing both the handles options
      * and the ones passed into this function.
@@ -696,6 +735,12 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
     CURL_COND(CURLOPT_PUT, putv);
     CURL_COND(CURLOPT_POST, postv);
 
+    if (postv) {
+	int len = opts->co_contents ? strlen(opts->co_contents) : 0;
+	CURL_SET(CURLOPT_POSTFIELDSIZE, len);
+	CURL_SET(CURLOPT_POSTFIELDS, opts->co_contents ?: "");
+    }
+
     curl_data_chain_t *param_data_chains[] = {
 	&curlp->ch_opts.co_params,
 	NULL,			/* Slot filled in below */
@@ -722,19 +767,6 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 	    CURL_SET(CURLOPT_POSTFIELDS, param_data);
 	    CURL_SET(CURLOPT_POSTFIELDSIZE, (long) strlen(param_data));
 	}
-    }
-
-    if (opts->co_content_type) {
-	static char content_header_field[] = "Content-Type: ";
-	size_t mlen = strlen(opts->co_content_type);
-	content_header = alloca(mlen + sizeof(content_header_field));
-
-	memcpy(content_header, content_header_field,
-	       sizeof(content_header_field));
-	memcpy(content_header + sizeof(content_header_field) - 1,
-	       opts->co_content_type, mlen + 1);
-
-	CURL_SET(CURLOPT_HTTPHEADER, content_header);
     }
 
     success = curl_easy_perform(curlp->ch_handle);
