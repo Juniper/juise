@@ -640,7 +640,7 @@ static CURLcode
 ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 {
     CURLcode success;
-    long putv = 0, postv = 0, getv = 0, deletev = 0;
+    long putv = 0, postv = 0, getv = 0, deletev = 0, headv = 0;
 
     curl_easy_reset(curlp->ch_handle);
     ext_curl_handle_clean(curlp); /* Shouldn't be needed */
@@ -719,6 +719,8 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
     if (opts->co_method) {
 	if (streq(opts->co_method, "get"))
 	    getv = 1;
+	if (streq(opts->co_method, "head"))
+	    headv = 1;
 	else if (streq(opts->co_method, "put"))
 	    putv = 1;
 	else if (streq(opts->co_method, "post"))
@@ -734,6 +736,7 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
     CURL_COND(CURLOPT_HTTPGET, getv);
     CURL_COND(CURLOPT_PUT, putv);
     CURL_COND(CURLOPT_POST, postv);
+    CURL_COND(CURLOPT_NOBODY, headv);
 
     if (postv) {
 	int len = opts->co_contents ? strlen(opts->co_contents) : 0;
