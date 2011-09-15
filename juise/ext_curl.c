@@ -736,7 +736,7 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
     CURL_COND(CURLOPT_HTTPGET, getv);
     CURL_COND(CURLOPT_PUT, putv);
     CURL_COND(CURLOPT_POST, postv);
-    CURL_COND(CURLOPT_NOBODY, headv);
+    CURL_COND(CURLOPT_NOBODY, headv); /* There's no "body" in a HEAD request */
 
     if (postv) {
 	int len = opts->co_contents ? strlen(opts->co_contents) : 0;
