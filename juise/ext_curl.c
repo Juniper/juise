@@ -103,6 +103,7 @@ ext_curl_chain_clean (curl_data_chain_t *chainp)
         if (cdp == NULL)
             break;
         TAILQ_REMOVE(chainp, cdp, cd_link);
+	xmlFree(cdp);
     }
 }
 
