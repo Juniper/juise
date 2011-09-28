@@ -10,8 +10,8 @@
 #define JUISE_H
 
 extern trace_file_t *trace_file;
-extern int indent;
-extern int use_debugger;
+extern int opt_indent;
+extern int opt_debugger;
 
 void
 run_server (int fdin, int fdout, session_type_t stype);

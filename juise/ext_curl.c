@@ -19,6 +19,7 @@
 #include <libxml/tree.h>
 #include <libxml/xmlsave.h>
 #include <libxslt/extensions.h>
+#include <libslax/slaxdata.h>
 
 #include "config.h"
 
@@ -41,17 +42,6 @@
 #define CURL_NAME_SIZE 12
 
 /*
- * Used to chain growing lists of data, such as incoming headers and data
- */
-typedef struct curl_data_s {
-    TAILQ_ENTRY(curl_data_s) cd_link; /* Next session */
-    int cd_len; 		/* Length of the chunk of data */
-    char cd_data[0];		/* Data follows this header */
-} curl_data_t;
-
-typedef TAILQ_HEAD(curl_data_chain_s, curl_data_s) curl_data_chain_t;
-
-/*
  * Defines the set of options we which to control the next request.
  * Options can be temporarily given on the curl:perform() call
  */
@@ -63,8 +53,8 @@ typedef struct curl_opts_s {
     u_int8_t co_verbose;	/* Verbose (debug) output */
     char *co_username;		/* Value for CURLOPT_USERNAME */
     char *co_password;		/* Value for CURLOPT_PASSWORD */
-    curl_data_chain_t co_headers; /* Headers for CURLOPT_HTTPHEADER */
-    curl_data_chain_t co_params; /* Parameters for GET or POST */
+    slax_data_list_t co_headers; /* Headers for CURLOPT_HTTPHEADER */
+    slax_data_list_t co_params; /* Parameters for GET or POST */
     char *co_content_type;	 /* Content-Type header */
     char *co_contents;		 /* Contents for a post */
     char *co_format;		 /* Format of the response */
@@ -79,8 +69,8 @@ typedef struct curl_opts_s {
  */
 typedef struct curl_handle_s {
     TAILQ_ENTRY(curl_handle_s) ch_link; /* Next session */
-    curl_data_chain_t ch_reply_headers;
-    curl_data_chain_t ch_reply_data;
+    slax_data_list_t ch_reply_headers;
+    slax_data_list_t ch_reply_data;
     char ch_name[CURL_NAME_SIZE]; /* Unique ID for this handle */
     CURL *ch_handle;		/* libcurl "easy" handle */
     curl_opts_t ch_opts;	/* Options set for this handle */
@@ -94,46 +84,10 @@ TAILQ_HEAD(curl_session_s, curl_handle_s) ext_curl_sessions;
  * read from the peer.
  */
 static void
-ext_curl_chain_clean (curl_data_chain_t *chainp)
-{
-    curl_data_t *cdp;
-
-    for (;;) {
-	cdp = TAILQ_FIRST(chainp);
-        if (cdp == NULL)
-            break;
-        TAILQ_REMOVE(chainp, cdp, cd_link);
-	xmlFree(cdp);
-    }
-}
-
-static void
-ext_curl_chain_copy (curl_data_chain_t *top, curl_data_chain_t *fromp)
-{
-    curl_data_t *cdp, *newp;
-
-    TAILQ_FOREACH(cdp, fromp, cd_link) {
-	newp  = xmlMalloc(sizeof(*cdp) + cdp->cd_len + 1);
-	if (newp == NULL)
-	    break;
-
-	bzero(newp, sizeof(*newp));
-	newp->cd_len = cdp->cd_len;
-	memcpy(newp->cd_data, cdp->cd_data, cdp->cd_len + 1);
-
-	TAILQ_INSERT_TAIL(top, cdp, cd_link);
-    }
-}
-
-/*
- * Discard any transient data in the handle, particularly data
- * read from the peer.
- */
-static void
 ext_curl_handle_clean (curl_handle_t *curlp)
 {
-    ext_curl_chain_clean(&curlp->ch_reply_data);
-    ext_curl_chain_clean(&curlp->ch_reply_headers);
+    slaxDataListClean(&curlp->ch_reply_data);
+    slaxDataListClean(&curlp->ch_reply_headers);
 }
 
 /*
@@ -151,8 +105,8 @@ ext_curl_options_release (curl_opts_t *opts)
     xmlFreeAndEasy(opts->co_contents);
     xmlFreeAndEasy(opts->co_format);
 
-    ext_curl_chain_clean(&opts->co_headers);
-    ext_curl_chain_clean(&opts->co_params);
+    slaxDataListClean(&opts->co_headers);
+    slaxDataListClean(&opts->co_params);
 
     bzero(opts, sizeof(*opts));
 }
@@ -179,11 +133,11 @@ ext_curl_options_copy (curl_opts_t *top, curl_opts_t *fromp)
     COPY_STRING(co_contents);
     COPY_STRING(co_format);
 
-    TAILQ_INIT(&top->co_headers);
-    ext_curl_chain_copy(&top->co_headers, &fromp->co_headers);
+    slaxDataListInit(&top->co_headers);
+    slaxDataListCopy(&top->co_headers, &fromp->co_headers);
 
-    TAILQ_INIT(&top->co_params);
-    ext_curl_chain_copy(&top->co_params, &fromp->co_params);
+    slaxDataListInit(&top->co_params);
+    slaxDataListCopy(&top->co_params, &fromp->co_params);
 }
 
 /*
@@ -259,7 +213,6 @@ static void
 ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 {
     const char *key;
-    curl_data_t *cdp;
 
     key = lx_node_name(nodep);
     if (key == NULL)
@@ -301,12 +254,7 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	    len = snprintf(buf, bufsiz, "%s: %s", name, value);
 	}
 
-	cdp = xmlMalloc(sizeof(*cdp) + len);
-	if (cdp) {
-	    cdp->cd_len = len;
-	    memcpy(cdp->cd_data, buf, len + 1);
-	    TAILQ_INSERT_TAIL(&opts->co_headers, cdp, cd_link);
-	}
+	slaxDataListAddLenNul(&opts->co_headers, buf, len);
 
 	xmlFree(name);
 
@@ -353,12 +301,7 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	    len = snprintf(buf, bufsiz, "%s=%s", name, real_value);
 	}
 
-	cdp = xmlMalloc(sizeof(*cdp) + len);
-	if (cdp) {
-	    cdp->cd_len = len;
-	    memcpy(cdp->cd_data, buf, len);
-	    TAILQ_INSERT_TAIL(&opts->co_params, cdp, cd_link);
-	}
+	slaxDataListAddLenNul(&opts->co_params, buf, len);
 
 	xmlFree(name);
 
@@ -370,25 +313,18 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
  */
 static size_t
 ext_curl_record_data (curl_handle_t *curlp UNUSED, void *buf, size_t bufsiz,
-		      curl_data_chain_t *chainp)
+		      slax_data_list_t *listp)
 {
-    curl_data_t *cdp;
+    slax_data_node_t *dnp;
 
     /*
      * We allocate an extra byte to allow us to NUL terminate it.  The
      * data is opaque to us, but will likely be a string, so we want
      * to allow this option.
      */
-    cdp  = xmlMalloc(sizeof(*cdp) + bufsiz + 1);
-    if (cdp == NULL)
-	return 0;
-
-    bzero(cdp, sizeof(*cdp));
-    cdp->cd_len = bufsiz;
-    memcpy(cdp->cd_data, buf, bufsiz);
-    cdp->cd_data[bufsiz] = '\0';
-
-    TAILQ_INSERT_TAIL(chainp, cdp, cd_link);
+    dnp = slaxDataListAddLen(listp, buf, bufsiz + 1);
+    if (dnp)
+	dnp->dn_data[bufsiz] = '\0';
 
     return bufsiz;
 }
@@ -459,10 +395,10 @@ ext_curl_handle_alloc (void)
 	bzero(curlp, sizeof(*curlp));
 	/* Give it a unique number as a name */
 	snprintf(curlp->ch_name, sizeof(curlp->ch_name), "curl%u", seed++);
-	TAILQ_INIT(&curlp->ch_reply_data);
-	TAILQ_INIT(&curlp->ch_reply_headers);
-	TAILQ_INIT(&curlp->ch_opts.co_headers);
-	TAILQ_INIT(&curlp->ch_opts.co_params);
+	slaxDataListInit(&curlp->ch_reply_data);
+	slaxDataListInit(&curlp->ch_reply_headers);
+	slaxDataListInit(&curlp->ch_opts.co_headers);
+	slaxDataListInit(&curlp->ch_opts.co_params);
 
 	/* Create and populate the real libcurl handle */
 	curlp->ch_handle = curl_easy_init();
@@ -528,28 +464,28 @@ ext_curl_verbose (CURL *handle UNUSED, curl_infotype type,
  * Turn a chain of cur_data_t into a libcurl-style slist.
  */
 static struct curl_slist *
-ext_curl_build_slist (curl_data_chain_t *chainp, struct curl_slist *slist)
+ext_curl_build_slist (slax_data_list_t *listp, struct curl_slist *slist)
 {
-    curl_data_t *cdp;
+    slax_data_node_t *dnp;
 
-    TAILQ_FOREACH(cdp, chainp, cd_link) {
-	slist = curl_slist_append(slist, cdp->cd_data);
+    SLAXDATALIST_FOREACH(dnp, listp) {
+	slist = curl_slist_append(slist, dnp->dn_data);
     }
 
     return slist;
 }
 
 static char *
-ext_curl_build_param_data (curl_data_chain_t **chains)
+ext_curl_build_param_data (slax_data_list_t **chains)
 {
-    curl_data_chain_t **chainp;
-    curl_data_t *cdp;
+    slax_data_list_t **chainp;
+    slax_data_node_t *dnp;
     size_t len = 0;
     char *buf, *cp;
 
     for (chainp = chains; *chainp; chainp++) {
-	TAILQ_FOREACH(cdp, *chainp, cd_link) {
-	    len += cdp->cd_len + 1;
+	SLAXDATALIST_FOREACH(dnp, *chainp) {
+	    len += dnp->dn_len + 1;
 	}
     }
 
@@ -561,11 +497,11 @@ ext_curl_build_param_data (curl_data_chain_t **chains)
 	return NULL;
 
     for (cp = buf, chainp = chains; *chainp; chainp++) {
-	TAILQ_FOREACH(cdp, *chainp, cd_link) {
+	SLAXDATALIST_FOREACH(dnp, *chainp) {
 	    if (cp != buf)
 		*cp++ = '&';
-	    memcpy(cp, cdp->cd_data, cdp->cd_len);
-	    cp += cdp->cd_len;
+	    memcpy(cp, dnp->dn_data, dnp->dn_len);
+	    cp += dnp->dn_len;
 	}
     }
     *cp = '\0';
@@ -745,16 +681,16 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 	CURL_SET(CURLOPT_POSTFIELDS, opts->co_contents ?: "");
     }
 
-    curl_data_chain_t *param_data_chains[] = {
+    slax_data_list_t *param_data_lists[] = {
 	&curlp->ch_opts.co_params,
 	NULL,			/* Slot filled in below */
 	NULL
     };
 
     if (opts != &curlp->ch_opts)
-	param_data_chains[1] = &opts->co_params;
+	param_data_lists[1] = &opts->co_params;
 
-    char *param_data = ext_curl_build_param_data(param_data_chains);
+    char *param_data = ext_curl_build_param_data(param_data_lists);
     if (param_data) {
 	if (getv || deletev) {
 	    size_t ulen = strlen(opts->co_url), plen = strlen(param_data);
@@ -875,17 +811,17 @@ ext_curl_build_data_parsed (curl_handle_t *curlp UNUSED, curl_opts_t *opts,
  */
 static const char *
 ext_curl_build_data (curl_handle_t *curlp UNUSED, lx_document_t *docp,
-		     xmlNodePtr nodep, curl_data_chain_t *chainp,
+		     xmlNodePtr nodep, slax_data_list_t *listp,
 		     const char *name)
 {
     char *buf, *cp;
     size_t bufsiz = 0;
-    curl_data_t *cdp;
+    slax_data_node_t *dnp;
     xmlNodePtr tp, xp;
 
     bufsiz = 0;
-    TAILQ_FOREACH(cdp, chainp, cd_link) {
-	bufsiz += cdp->cd_len;
+    SLAXDATALIST_FOREACH(dnp, listp) {
+	bufsiz += dnp->dn_len;
     }
 
     if (bufsiz == 0)		/* No data */
@@ -900,9 +836,9 @@ ext_curl_build_data (curl_handle_t *curlp UNUSED, lx_document_t *docp,
 	return NULL;
 
     /* Populate buf with the chain of data */
-    TAILQ_FOREACH(cdp, chainp, cd_link) {
-	memcpy(cp, cdp->cd_data, cdp->cd_len);
-	cp += cdp->cd_len;
+    SLAXDATALIST_FOREACH(dnp, listp) {
+	memcpy(cp, dnp->dn_data, dnp->dn_len);
+	cp += dnp->dn_len;
     }
     *cp = '\0';			/* NUL terminate content */
 
@@ -946,17 +882,17 @@ ext_curl_build_reply_headers (curl_handle_t *curlp, lx_document_t *docp,
     int count = 0;
     size_t len;
     char *cp, *sp, *ep;
-    curl_data_t *cdp;
+    slax_data_node_t *dnp;
 
-    TAILQ_FOREACH(cdp, &curlp->ch_reply_headers, cd_link) {
-	len = cdp->cd_len;
-	if (len > 0 && cdp->cd_data[len - 1] == '\n')
+    SLAXDATALIST_FOREACH(dnp, &curlp->ch_reply_headers) {
+	len = dnp->dn_len;
+	if (len > 0 && dnp->dn_data[len - 1] == '\n')
 	    len -= 1;		/* Drop trailing newlines */
-	if (len > 0 && cdp->cd_data[len - 1] == '\r')
+	if (len > 0 && dnp->dn_data[len - 1] == '\r')
 	    len -= 1;		  /* Drop trailing returns */
-	cdp->cd_data[len] = '\0'; /* NUL terminate it */
+	dnp->dn_data[len] = '\0'; /* NUL terminate it */
 
-	cp = cdp->cd_data;
+	cp = dnp->dn_data;
 	ep = cp + len;
 
 	if (count++ == 0) {

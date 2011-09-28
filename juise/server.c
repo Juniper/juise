@@ -121,10 +121,10 @@ srv_run_script (js_session_t *jsp, const char *scriptname,
     if (indoc == NULL)
 	errx(1, "unable to build input document");
 
-    if (indent)
+    if (opt_indent)
 	script->indent = 1;
 
-    if (use_debugger) {
+    if (opt_debugger) {
 	slaxDebugInit();
 	slaxDebugSetStylesheet(script);
 	slaxDebugApplyStylesheet(scriptname, script, "input",

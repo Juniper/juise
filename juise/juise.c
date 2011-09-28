@@ -15,7 +15,9 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/param.h>
+#include <sys/queue.h>
 #include <pwd.h>
 #include <sys/socket.h>
 
@@ -28,13 +30,10 @@
 #include <libexslt/exslt.h>
 #include <libxslt/xsltutils.h>
 
-#if 0
-#include <libxml/globals.h>
-#endif
-
 #include "config.h"
 #include <libslax/slax.h>
 #include <libslax/slaxconfig.h>
+#include <libslax/slaxdata.h>
 
 #include <libjuise/string/strextra.h>
 #include <libjuise/time/timestr.h>
@@ -48,17 +47,16 @@
 #include "juise.h"
 #include "ext_curl.h"
 
-#define MAX_PARAMETERS 64
-#define MAX_PATHS 64
-
-static const char *params[MAX_PARAMETERS + 1];
+static slax_data_list_t plist;
+static const char **params;
 static int nbparams;
-static char *server_input;
 
-int use_debugger;
+static char *server_input;
 trace_file_t *trace_file;
-int indent;
 int dump_all;
+
+int opt_debugger;
+int opt_indent;
 
 static void
 juise_trace (void *vfp, lx_node_t *nodep, const char *fmt, ...)
@@ -112,17 +110,23 @@ juise_make_param (const char *pname, const char *pvalue)
 {
     char *tvalue;
     char quote;
-    int plen, i;
+    int plen;
+    slax_data_node_t *dnp;
+    int isname = 1;
 
     if (pname == NULL || pvalue == NULL)
 	errx(1, "missing parameter value");
 
-    for (i = 0; i < nbparams; i += 2)
-	if (streq(pname, params[i])) {
-	    trace(trace_file, TRACE_ALL, "param: ignoring dup: '%s' (%s->%s)",
-		  pname, params[i], params[i + 1]);
-	    return;
+    SLAXDATALIST_FOREACH(dnp, &plist) {
+	if (isname) {
+	    if (streq(pname, dnp->dn_data)) {
+		trace(trace_file, TRACE_ALL,
+		      "param: ignoring dup: '%s'", pname);
+		return;
+	    }
 	}
+	isname ^= 1;
+    }
 
     plen = strlen(pvalue);
     tvalue = xmlMalloc(plen + 3);
@@ -135,11 +139,9 @@ juise_make_param (const char *pname, const char *pvalue)
     tvalue[plen + 1] = quote;
     tvalue[plen + 2] = '\0';
 
-    if (nbparams + 2 >= MAX_PARAMETERS)
-	errx(1, "too many parameters");
-
-    params[nbparams++] = strdup(pname);
-    params[nbparams++] = strdup(tvalue);
+    nbparams += 1;
+    slaxDataListAddNul(&plist, pname);
+    slaxDataListAddNul(&plist, tvalue);
 
     trace(trace_file, TRACE_ALL, "param: '%s' -> '%s'", pname, tvalue);
 }
@@ -277,10 +279,10 @@ do_run_op_common (const char *scriptname, char **argv UNUSED, lx_node_t *nodep)
     if (indoc == NULL)
 	errx(1, "unable to build input document");
 
-    if (indent)
+    if (opt_indent)
 	script->indent = 1;
 
-    if (use_debugger) {
+    if (opt_debugger) {
 	slaxDebugInit();
 #if 0
 	slaxRestartListAdd(jsio_restart);
@@ -462,7 +464,7 @@ do_run_as_cgi (const char *scriptname, char **argv)
 	}
     }
 
-    indent = 1;
+    opt_indent = 1;
 
     return do_run_op_common(scriptname, argv, nodep);
 }
@@ -493,6 +495,27 @@ static void
 print_help (void)
 {
     printf("Usage: juise [mode] [options] [script] [file]\n");
+    printf("\t--agent OR -A: turn on ssh agent forwarding\n");
+    printf("\t--canned-input: allow premade (file) input for testing\n");
+    printf("\t--debug OR -d: use the libslax debugger\n");
+    printf("\t--directory <dir> OR -D <dir>: set JUISE_DIR (for server scripts)\n");
+    printf("\t--include <dir> OR -I <dir>: search directory for includes/imports\n");
+    printf("\t--indent OR -g: indent output ala output-method/indent\n");
+    printf("\t--junoscript OR -J: use junoscript API protocol\n");
+    printf("\t--lib <dir> OR -L <dir>: search directory for extension libraries\n");
+    printf("\t--no-randomize: do not initialize the random number generator\n");
+    printf("\t--param <name> <value> OR -a <name> <value>: pass parameters\n");
+    printf("\t--protocol <name> OR -P <name>: use the given API protocol\n");
+    printf("\t--run-server OR -R: run in juise server mode\n");
+    printf("\t--script <name> OR -S <name>: run the given script\n");
+    printf("\t--target <name> OR -T <name>: specify the default target device\n");
+    printf("\t--trace <file> OR -t <file>: write trace data to a file\n");
+    printf("\t--user <name> OR -u <name>: specify the user name for API connections\n");
+    printf("\t--verbose OR -v: enable debugging output (slaxLog())\n");
+    printf("\t--version OR -V: show version information (and exit)\n");
+    printf("\t--write-version <version> OR -w <version>: write in version\n");
+    printf("\t--wait: wait after starting (for gdb to attach)\n");
+
     printf("\nProject juise home page: http://juise.googlecode.com\n");
 }
 
@@ -512,6 +535,10 @@ main (int argc UNUSED, char **argv, char **envp)
     session_type_t stype;
     int skip_args = FALSE;
     int waiting = 0;
+    int i;
+    slax_data_node_t *dnp;
+
+    slaxDataListInit(&plist);
 
     cp = *argv;
     if (cp) {
@@ -541,36 +568,44 @@ main (int argc UNUSED, char **argv, char **envp)
 	    if (*cp != '-') {
 		break;
 
-	    } else if (streq(cp, "--version") || streq(cp, "-V")) {
-		print_version();
-		exit(0);
+	    } else if (streq(cp, "--agent") || streq(cp, "-A")) {
+		ssh_agent_forwarding = TRUE;
+
+	    } else if (streq(cp, "--canned-input")) {
+		func = do_run_server_on_input;
+		server_input = *++argv;
+
+	    } else if (streq(cp, "--debug") || streq(cp, "-d")) {
+		opt_debugger = TRUE;
+
+	    } else if (streq(cp, "--directory") || streq(cp, "-D")) {
+		srv_set_juise_dir(*++argv);
+
+	    } else if (streq(cp, "--include") || streq(cp, "-I")) {
+		slaxIncludeAdd(*++argv);
+
+	    } else if (streq(cp, "--indent") || streq(cp, "-g")) {
+		opt_indent = TRUE;
+
+	    } else if (streq(cp, "--junoscript") || streq(cp, "-J")) {
+		stype = ST_JUNOSCRIPT;
+
+	    } else if (streq(cp, "--lib") || streq(cp, "-L")) {
+		slaxDynAdd(*++argv);
+
+	    } else if (streq(cp, "--no-randomize")) {
+		randomize = 0;
 
 	    } else if (streq(cp, "--op") || streq(cp, "-O")) {
 		if (func)
 		    errx(1, "open one action allowed");
 		func = do_run_op;
 
-	    } else if (streq(cp, "--trace") || streq(cp, "-t")) {
-		trace_file_name = *++argv;
+	    } else if (streq(cp, "--param") || streq(cp, "-a")) {
+		char *pname = *++argv;
+		char *pvalue = *++argv;
 
-	    } else if (streq(cp, "--debug") || streq(cp, "-d")) {
-		use_debugger = TRUE;
-
-	    } else if (streq(cp, "--directory") || streq(cp, "-D")) {
-		srv_set_juise_dir(*++argv);
-
-	    } else if (streq(cp, "--junoscript") || streq(cp, "-J")) {
-		stype = ST_JUNOSCRIPT;
-
-	    } else if (streq(cp, "--run-server") || streq(cp, "-R")) {
-		func = do_run_server_on_stdin;
-
-	    } else if (streq(cp, "--canned-input")) {
-		func = do_run_server_on_input;
-		server_input = *++argv;
-
-	    } else if (streq(cp, "--verbose") || streq(cp, "-v")) {
-		logger = TRUE;
+		juise_make_param(pname, pvalue);
 
 	    } else if (streq(cp, "--protocol") || streq(cp, "-P")) {
 		cp = *++argv;
@@ -581,29 +616,27 @@ main (int argc UNUSED, char **argv, char **envp)
 		}
 		jsio_set_default_session_type(stype);
 
-	    } else if (streq(cp, "--indent") || streq(cp, "-g")) {
-		indent = TRUE;
-
-	    } else if (streq(cp, "--target") || streq(cp, "-T")) {
-		target = *++argv;
-
-	    } else if (streq(cp, "--user") || streq(cp, "-u")) {
-		user = *++argv;
+	    } else if (streq(cp, "--run-server") || streq(cp, "-R")) {
+		func = do_run_server_on_stdin;
 
 	    } else if (streq(cp, "--script") || streq(cp, "-S")) {
 		script = *++argv;
 
-	    } else if (streq(cp, "--agent") || streq(cp, "-A")) {
-		ssh_agent_forwarding = TRUE;
+	    } else if (streq(cp, "--target") || streq(cp, "-T")) {
+		target = *++argv;
 
-	    } else if (streq(cp, "--param") || streq(cp, "-a")) {
-		char *pname = *++argv;
-		char *pvalue = *++argv;
+	    } else if (streq(cp, "--trace") || streq(cp, "-t")) {
+		trace_file_name = *++argv;
 
-		juise_make_param(pname, pvalue);
+	    } else if (streq(cp, "--user") || streq(cp, "-u")) {
+		user = *++argv;
 
-	    } else if (streq(cp, "--no-randomize")) {
-		randomize = 0;
+	    } else if (streq(cp, "--verbose") || streq(cp, "-v")) {
+		logger = TRUE;
+
+	    } else if (streq(cp, "--version") || streq(cp, "-V")) {
+		print_version();
+		exit(0);
 
 	    } else if (streq(cp, "--wait")) {
 		waiting = atoi(*++argv);
@@ -643,6 +676,14 @@ main (int argc UNUSED, char **argv, char **envp)
 	}
     }
 
+
+    params = alloca(nbparams * 2 * sizeof(*params) + 1);
+    i = 0;
+    SLAXDATALIST_FOREACH(dnp, &plist) {
+	params[i++] = dnp->dn_data;
+    }
+    params[i] = NULL;
+
     if (func == NULL)
 	func = do_run_op; /* the default action */
 
@@ -666,7 +707,6 @@ main (int argc UNUSED, char **argv, char **envp)
 	}
 
 	if (dump_all) {
-	    int i;
 	    for (i = 0; save_argv[i]; i++)
 		trace(trace_file, TRACE_ALL, "argv: '%s'", save_argv[i]);
 
