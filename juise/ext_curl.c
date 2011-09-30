@@ -51,6 +51,7 @@ typedef struct curl_opts_s {
     u_int8_t co_upload;		/* Are we uploading (aka FTP PUT)? */
     u_int8_t co_fail_on_error;	/* Fail explicitly if HTTP code >= 400 */
     u_int8_t co_verbose;	/* Verbose (debug) output */
+    u_int8_t co_insecure;	/* Allow insecure SSL certs  */
     char *co_username;		/* Value for CURLOPT_USERNAME */
     char *co_password;		/* Value for CURLOPT_PASSWORD */
     slax_data_list_t co_headers; /* Headers for CURLOPT_HTTPHEADER */
@@ -127,6 +128,7 @@ ext_curl_options_copy (curl_opts_t *top, curl_opts_t *fromp)
     COPY_FIELD(co_upload);
     COPY_FIELD(co_fail_on_error);
     COPY_FIELD(co_verbose);
+    COPY_FIELD(co_insecure);
     COPY_STRING(co_username);
     COPY_STRING(co_password);
     COPY_STRING(co_content_type);
@@ -238,6 +240,8 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	opts->co_fail_on_error = TRUE;
     else if (streq(key, "verbose"))
 	opts->co_verbose = TRUE;
+    else if (streq(key, "insecure"))
+	opts->co_insecure = TRUE;
 
     else if (streq(key, "header")) {
 	/* Header fields aren't quite so easy */
@@ -620,6 +624,13 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 			 CURLOPT_DEBUGFUNCTION, ext_curl_verbose);
 	curl_easy_setopt(curlp->ch_handle, CURLOPT_DEBUGDATA, curlp);
 	curl_easy_setopt(curlp->ch_handle, CURLOPT_VERBOSE, 1L);
+    }
+
+    if (opts->co_insecure) {
+	/* Don't care about the signing CA */
+	curl_easy_setopt(curlp->ch_handle, CURLOPT_SSL_VERIFYPEER, 0L);
+	/* Don't care about the common name in the cert */
+	curl_easy_setopt(curlp->ch_handle, CURLOPT_SSL_VERIFYHOST, 1L);
     }
 
     /* Build our headers */

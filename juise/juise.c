@@ -51,7 +51,6 @@ static slax_data_list_t plist;
 static const char **params;
 static int nbparams;
 
-static char *server_input;
 trace_file_t *trace_file;
 int dump_all;
 
@@ -249,7 +248,8 @@ juise_build_input_doc (lx_node_t *newp)
 }
 
 static int
-do_run_op_common (const char *scriptname, char **argv UNUSED, lx_node_t *nodep)
+do_run_op_common (const char *scriptname, const char *input,
+		  char **argv UNUSED, lx_node_t *nodep)
 {
     lx_document_t *scriptdoc;
     FILE *scriptfile;
@@ -275,9 +275,23 @@ do_run_op_common (const char *scriptname, char **argv UNUSED, lx_node_t *nodep)
 	errx(1, "%d errors parsing script: '%s'",
 	     script ? script->errors : 1, scriptname);
 
-    indoc = juise_build_input_doc(nodep);
-    if (indoc == NULL)
-	errx(1, "unable to build input document");
+    if (input) {
+	FILE *infile;
+
+	infile = streq(input, "-") ? stdin : fopen(input, "r");
+	if (infile == NULL)
+	    err(1, "file open failed for '%s'", input);
+
+	indoc = slaxLoadFile(input, infile, NULL, FALSE);
+
+	if (infile != stdin)
+	    fclose(infile);
+
+    } else {
+	indoc = juise_build_input_doc(nodep);
+	if (indoc == NULL)
+	    errx(1, "unable to build input document");
+    }
 
     if (opt_indent)
 	script->indent = 1;
@@ -307,24 +321,22 @@ do_run_op_common (const char *scriptname, char **argv UNUSED, lx_node_t *nodep)
 }
 
 static int
-do_run_op (const char *scriptname, char **argv)
+do_run_op (const char *scriptname, const char *input, char **argv)
 {
-    return do_run_op_common(scriptname, argv, NULL);
+    return do_run_op_common(scriptname, input, argv, NULL);
 }
 
 static int
-do_run_server_on_stdin (const char *scriptname UNUSED, char **argv UNUSED)
+do_run_server_on_stdin (const char *scriptname UNUSED,
+			const char *input UNUSED, char **argv UNUSED)
 {
-    run_server(0, 1, ST_DEFAULT);
-    return 0;
-}
+    int fd = 0;
 
-static int
-do_run_server_on_input (const char *scriptname UNUSED, char **argv UNUSED)
-{
-    int fd = open(server_input, O_RDONLY);
-    if (fd < 0)
-	err(1, "could not open file '%s'", server_input);
+    if (input && !streq(input, "-")) {
+	fd = open(input, O_RDONLY);
+	if (fd < 0)
+	    err(1, "could not open file '%s'", input);
+    }
 
     run_server(fd, 1, ST_DEFAULT);
     return 0;
@@ -365,7 +377,7 @@ parse_query_string (lx_node_t *nodep, char *str)
 }
 
 static int
-do_run_as_cgi (const char *scriptname, char **argv)
+do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 {
     const char *cgi_params[] = {
 	"CONTENT_LENGTH",	"content-length",
@@ -466,11 +478,12 @@ do_run_as_cgi (const char *scriptname, char **argv)
 
     opt_indent = 1;
 
-    return do_run_op_common(scriptname, argv, nodep);
+    return do_run_op_common(scriptname, input, argv, nodep);
 }
 
 static int
-do_run_as_fastcgi (const char *scriptname UNUSED, char **argv UNUSED)
+do_run_as_fastcgi (const char *scriptname UNUSED, const char *input UNUSED,
+		   char **argv UNUSED)
 {
     return 0;
 }
@@ -525,7 +538,7 @@ main (int argc UNUSED, char **argv, char **envp)
     char **save_argv = argv;
     char *cp;
     const char *script = NULL, *trace_file_name = NULL;
-    int (*func)(const char *, char **) = NULL;
+    int (*func)(const char *, const char *, char **) = NULL;
     FILE *trace_fp = NULL;
     int randomize = 1;
     int logger = FALSE;
@@ -537,6 +550,7 @@ main (int argc UNUSED, char **argv, char **envp)
     int waiting = 0;
     int i;
     slax_data_node_t *dnp;
+    char *input = NULL;
 
     slaxDataListInit(&plist);
 
@@ -571,10 +585,6 @@ main (int argc UNUSED, char **argv, char **envp)
 	    } else if (streq(cp, "--agent") || streq(cp, "-A")) {
 		ssh_agent_forwarding = TRUE;
 
-	    } else if (streq(cp, "--canned-input")) {
-		func = do_run_server_on_input;
-		server_input = *++argv;
-
 	    } else if (streq(cp, "--debug") || streq(cp, "-d")) {
 		opt_debugger = TRUE;
 
@@ -583,6 +593,9 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--include") || streq(cp, "-I")) {
 		slaxIncludeAdd(*++argv);
+
+	    } else if (streq(cp, "--input") || streq(cp, "-i")) {
+		input = *++argv;
 
 	    } else if (streq(cp, "--indent") || streq(cp, "-g")) {
 		opt_indent = TRUE;
@@ -761,7 +774,7 @@ main (int argc UNUSED, char **argv, char **envp)
     if (ssh_agent_forwarding)
 	jsio_set_ssh_options("-A");
 
-    func(script, argv);
+    func(script, input, argv);
 
     if (trace_fp && trace_fp != stderr)
 	fclose(trace_fp);
