@@ -10,7 +10,7 @@
 #
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.1.0], [phil@juniper.net])
+AC_INIT([juise], [0.1.2], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT([])
 AC_DISABLE_SHARED
@@ -24,7 +24,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 #
 LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
-LIBSLAX_REQUIRED_VERSION=0.9.0
+LIBSLAX_REQUIRED_VERSION=0.9.6
 LIBCURL_REQUIRED_VERSION=7.21.6
 
 AC_PROG_CC
@@ -317,6 +317,8 @@ then
 	then
 		LIBSLAX_LIBS="$LIBSLAX_LIBS `$SLAX_CONFIG --libs`"
 		LIBSLAX_CFLAGS="$LIBSLAX_CFLAGS `$SLAX_CONFIG --cflags`"
+		SLAX_EXTDIR="`$SLAX_CONFIG --extdir`"
+		SLAX_LIBDIR="`$SLAX_CONFIG --libdir`"
 		AC_MSG_RESULT($SLAXVERS found)
 	else
 		AC_MSG_ERROR(Version $SLAXVERS found. You need at least libslax $LIBSLAX_REQUIRED_VERSION for this version of juise)
@@ -328,8 +330,8 @@ fi
 AC_SUBST(SLAX_CONFIG)
 AC_SUBST(LIBSLAX_CFLAGS)
 AC_SUBST(LIBSLAX_LIBS)
-
-
+AC_SUBST(SLAX_EXTDIR)
+AC_SUBST(SLAX_LIBDIR)
 
 AC_SUBST(LIBCURL_REQUIRED_VERSION)
 AC_MSG_CHECKING(for libcurl libraries >= $LIBCURL_REQUIRED_VERSION) 
@@ -490,6 +492,8 @@ AC_CONFIG_FILES([
   juise/Makefile
   juise-askpass/Makefile
   mod_juise/Makefile
+  extensions/Makefile
+  extensions/curl/Makefile
 ])
 AC_OUTPUT
 
@@ -512,6 +516,8 @@ AC_MSG_NOTICE([summary of build options:
   libslax version:  ${SLAXVERS}
   libslax cflags:   ${LIBSLAX_CFLAGS}
   libslax libs:     ${LIBSLAX_LIBS}
+  libslax libdir:   ${SLAX_LIBDIR}
+  libslax extdir:   ${SLAX_EXTDIR}
   libcurl version:  ${CURLVERS}
   libcurl cflags:   ${LIBCURL_CFLAGS}
   libcurl libs:     ${LIBCURL_LIBS}

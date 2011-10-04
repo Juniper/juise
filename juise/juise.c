@@ -45,7 +45,6 @@
 #include <libjuise/juiseconfig.h>
 
 #include "juise.h"
-#include "ext_curl.h"
 
 static slax_data_list_t plist;
 static const char **params;
@@ -761,7 +760,6 @@ main (int argc UNUSED, char **argv, char **envp)
 
     exsltRegisterAll();
     ext_register_all();
-    ext_curl_init();
 
     jsio_init(0);
 

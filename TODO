@@ -1,0 +1,9 @@
+* List of nits and projects
+
+Nit: rename "parse_ipaddr.c" to "parse_ip.c" to make "parse_ip.h"
+
+Nit: canonicalize "-" vs "_" in filenames.
+
+New: need -C mode for commit scripts, also --configuration XXX to
+allow pre-fetched config data.
+

@@ -5,25 +5,21 @@
 include ${top_srcdir}/warnings.mk
 
 AM_CFLAGS = \
-    -DCURL_DISABLE_TYPECHECK \
     -I${top_srcdir} \
     -I${top_srcdir}/libjuise \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
     ${LIBXML_CFLAGS} \
-    ${LIBCURL_CFLAGS} \
     ${WARNINGS}
 
 LIBS = \
     ${LIBSLAX_LIBS} \
     ${LIBXSLT_LIBS} \
     -lexslt \
-    ${LIBXML_LIBS} \
-    ${LIBCURL_LIBS}
+    ${LIBXML_LIBS}
 
 noinst_HEADERS = \
-    juise.h \
-    ext_curl.h
+    juise.h
 
 if JUISE_DEBUG
 AM_CFLAGS += -g -DJUISE_DEBUG
@@ -39,7 +35,7 @@ endif
 
 bin_PROGRAMS = juise
 
-juise_SOURCES = juise.c server.c ext_curl.c
+juise_SOURCES = juise.c server.c
 juise_LDADD = ../libjuise/libjuise.la
 juise_LDFLAGS = -static
 

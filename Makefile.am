@@ -4,7 +4,7 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libjuise juise juise-askpass
+SUBDIRS = libjuise juise juise-askpass extensions
 
 if HAVE_LIGHTTPD
 SUBDIRS += mod_juise

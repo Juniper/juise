@@ -20,6 +20,7 @@
 #include <libxml/xmlsave.h>
 #include <libxslt/extensions.h>
 #include <libslax/slaxdata.h>
+#include <libslax/slaxdyn.h>
 
 #include "config.h"
 
@@ -1240,4 +1241,21 @@ ext_curl_init (void)
     (void) lx_extension_register(CURL_FULL_NS, "single", ext_curl_single);
     (void) lx_extension_register(CURL_FULL_NS, "open", ext_curl_open);
     (void) lx_extension_register(CURL_FULL_NS, "set", ext_curl_set);
+}
+
+
+slax_function_table_t slaxCurlTable[] = {
+    { "close", ext_curl_close },
+    { "perform", ext_curl_perform },
+    { "single", ext_curl_single },
+    { "open", ext_curl_open },
+    { "set", ext_curl_set },
+    { NULL, NULL }
+};
+
+SLAX_DYN_FUNC(slaxDynLibInit)
+{
+    arg->da_functions = slaxCurlTable; /* Fill in our function table */
+
+    return SLAX_DYN_VERSION;
 }
