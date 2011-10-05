@@ -10,7 +10,7 @@ AM_CFLAGS = \
     -I${top_srcdir} \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
-    ${LIBXML_CFLAG} \
+    ${LIBXML_CFLAGS} \
     ${WARNINGS} 
 
 lib_LTLIBRARIES = libjuise.la
@@ -65,3 +65,8 @@ libjuise_la_SOURCES = \
     xml/extensions.c \
     xml/jsio.c \
     xml/libxml.c
+
+LIBS = \
+    ${LIBSLAX_LIBS} \
+    ${LIBXSLT_LIBS} \
+    ${LIBXML_LIBS}

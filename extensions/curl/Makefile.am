@@ -4,7 +4,7 @@
 
 include ${top_srcdir}/warnings.mk
 
-curlincdir = ${includedir}/libslax
+ext_curlincdir = ${includedir}/libslax
 
 EXTRA_DIST = curl.txt
 
@@ -14,14 +14,14 @@ AM_CFLAGS = \
     -I${top_srcdir}/libjuise \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
-    ${LIBXML_CFLAG} \
-    ${LIBCURL_CFLAG} \
+    ${LIBXML_CFLAGS} \
+    ${LIBCURL_CFLAGS} \
     ${WARNINGS}
 
 AM_CFLAGS += \
  -DSLAX_EXTDIR=\"${SLAX_EXTDIR}\"
 
-lib_LTLIBRARIES = libcurl.la
+lib_LTLIBRARIES = libext_curl.la
 LIBS = \
     ${LIBXSLT_LIBS} \
     -lexslt \
@@ -30,7 +30,7 @@ LIBS = \
     -L../../libjuise -ljuise \
     -L${SLAX_LIBDIR} -lslax
 
-libcurl_la_SOURCES = \
+libext_curl_la_SOURCES = \
     ext_curl.c
 
 noinst_HEADERS = \
@@ -41,7 +41,7 @@ libdir = ${SLAX_EXTDIR}
 UGLY_NAME = http%3A%2F%2Fxml.juniper.net%2Fextensions%2Fcurl.ext
 
 install-exec-hook:
-	@DLNAME=`sh -c '. ${libdir}/libcurl.la ; echo $$dlname'`; \
+	@DLNAME=`sh -c '. ${libdir}/libext_curl.la ; echo $$dlname'`; \
                     echo Install link $$DLNAME "->" ${UGLY_NAME} "..." \
                     && cd ${SLAX_EXTDIR} \
 	            && rm -f ${UGLY_NAME} \

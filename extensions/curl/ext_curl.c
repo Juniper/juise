@@ -285,7 +285,7 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	    len = snprintf(buf, bufsiz, "%s: %s", name, value);
 	}
 
-	slaxDataListAddLenNul(&opts->co_headers, buf, len);
+	slaxDataListAddLen(&opts->co_headers, buf, len);
 
 	xmlFree(name);
 
@@ -332,7 +332,7 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	    len = snprintf(buf, bufsiz, "%s=%s", name, real_value);
 	}
 
-	slaxDataListAddLenNul(&opts->co_params, buf, len);
+	slaxDataListAddLen(&opts->co_params, buf, len);
 
 	xmlFree(name);
 
@@ -346,16 +346,7 @@ static size_t
 ext_curl_record_data (curl_handle_t *curlp UNUSED, void *buf, size_t bufsiz,
 		      slax_data_list_t *listp)
 {
-    slax_data_node_t *dnp;
-
-    /*
-     * We allocate an extra byte to allow us to NUL terminate it.  The
-     * data is opaque to us, but will likely be a string, so we want
-     * to allow this option.
-     */
-    dnp = slaxDataListAddLen(listp, buf, bufsiz + 1);
-    if (dnp)
-	dnp->dn_data[bufsiz] = '\0';
+    slaxDataListAddLen(listp, buf, bufsiz);
 
     return bufsiz;
 }

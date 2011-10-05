@@ -76,9 +76,9 @@ am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
 am__installdirs = "$(DESTDIR)$(libdir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
-libcurl_la_LIBADD =
-am_libcurl_la_OBJECTS = ext_curl.lo
-libcurl_la_OBJECTS = $(am_libcurl_la_OBJECTS)
+libext_curl_la_LIBADD =
+am_libext_curl_la_OBJECTS = ext_curl.lo
+libext_curl_la_OBJECTS = $(am_libext_curl_la_OBJECTS)
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
@@ -108,8 +108,8 @@ am__v_CCLD_0 = @echo "  CCLD  " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(libcurl_la_SOURCES)
-DIST_SOURCES = $(libcurl_la_SOURCES)
+SOURCES = $(libext_curl_la_SOURCES)
+DIST_SOURCES = $(libext_curl_la_SOURCES)
 HEADERS = $(noinst_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -285,14 +285,14 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-curlincdir = ${includedir}/libslax
+ext_curlincdir = ${includedir}/libslax
 EXTRA_DIST = curl.txt
 AM_CFLAGS = -DCURL_DISABLE_TYPECHECK -I${top_srcdir} \
 	-I${top_srcdir}/libjuise ${LIBSLAX_CFLAGS} ${LIBXSLT_CFLAGS} \
-	${LIBXML_CFLAG} ${LIBCURL_CFLAG} ${WARNINGS} \
+	${LIBXML_CFLAGS} ${LIBCURL_CFLAGS} ${WARNINGS} \
 	-DSLAX_EXTDIR=\"${SLAX_EXTDIR}\"
-lib_LTLIBRARIES = libcurl.la
-libcurl_la_SOURCES = \
+lib_LTLIBRARIES = libext_curl.la
+libext_curl_la_SOURCES = \
     ext_curl.c
 
 noinst_HEADERS = \
@@ -364,8 +364,8 @@ clean-libLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-libcurl.la: $(libcurl_la_OBJECTS) $(libcurl_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(LINK) -rpath $(libdir) $(libcurl_la_OBJECTS) $(libcurl_la_LIBADD) $(LIBS)
+libext_curl.la: $(libext_curl_la_OBJECTS) $(libext_curl_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(LINK) -rpath $(libdir) $(libext_curl_la_OBJECTS) $(libext_curl_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -611,7 +611,7 @@ uninstall-am: uninstall-libLTLIBRARIES
 include ${top_srcdir}/warnings.mk
 
 install-exec-hook:
-	@DLNAME=`sh -c '. ${libdir}/libcurl.la ; echo $$dlname'`; \
+	@DLNAME=`sh -c '. ${libdir}/libext_curl.la ; echo $$dlname'`; \
                     echo Install link $$DLNAME "->" ${UGLY_NAME} "..." \
                     && cd ${SLAX_EXTDIR} \
 	            && rm -f ${UGLY_NAME} \

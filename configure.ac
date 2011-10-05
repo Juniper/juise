@@ -435,6 +435,16 @@ case $host_os in
      darwin*)
         LIBTOOL=glibtool
 	;;
+     cygwin*|CYGWIN*)
+	LDFLAGS=-no-undefined
+	SLAX_WARNINGS=no
+	;;
+esac
+
+case $prefix in
+     NONE)
+	prefix=/usr/local
+	;;
 esac
 
 JUISEDIR=""
