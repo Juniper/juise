@@ -79,6 +79,8 @@ static int js_max = 345;	/* Max read buffer size */
 static char jsio_askpass_socket_path[BUFSIZ];
 static int jsio_askpass_socket;
 
+trace_file_t *trace_file;	/* Common trace file */
+
 const char *
 jsio_session_type_name (session_type_t stype)
 {

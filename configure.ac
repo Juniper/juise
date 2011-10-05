@@ -352,8 +352,8 @@ then
 	CURLVERS=`$CURL_CONFIG --version`
 	if test VERSION_TO_NUMBER(echo $CURLVERS) -ge VERSION_TO_NUMBER(echo $LIBCURL_REQUIRED_VERSION)
 	then
-		LIBCURL_LIBS="$LIBCURL_LIBS `$CURL_CONFIG --libs`"
-		LIBCURL_CFLAGS="$LIBCURL_CFLAGS `$CURL_CONFIG --cflags`"
+		CURL_LIBS="$CURL_LIBS `$CURL_CONFIG --libs`"
+		CURL_CFLAGS="$CURL_CFLAGS `$CURL_CONFIG --cflags`"
 		AC_MSG_RESULT($CURLVERS found)
 	else
 		AC_MSG_ERROR(Version $CURLVERS found. You need at least libcurl $LIBCURL_REQUIRED_VERSION for this version of juise)
@@ -363,8 +363,8 @@ else
 fi
 
 AC_SUBST(CURL_CONFIG)
-AC_SUBST(LIBCURL_CFLAGS)
-AC_SUBST(LIBCURL_LIBS)
+AC_SUBST(CURL_CFLAGS)
+AC_SUBST(CURL_LIBS)
 
 
 
@@ -518,9 +518,9 @@ AC_MSG_NOTICE([summary of build options:
   libslax libs:     ${LIBSLAX_LIBS}
   libslax libdir:   ${SLAX_LIBDIR}
   libslax extdir:   ${SLAX_EXTDIR}
-  libcurl version:  ${CURLVERS}
-  libcurl cflags:   ${LIBCURL_CFLAGS}
-  libcurl libs:     ${LIBCURL_LIBS}
+  curl version:     ${CURLVERS}
+  curl cflags:      ${CURL_CFLAGS}
+  curl libs:        ${CURL_LIBS}
   libpcre cflags:   ${PCRE_CFLAGS}
   libpcre libs:     ${PCRE_LIB}
   lighttpd src:     ${LIGHTTPD_SRC}

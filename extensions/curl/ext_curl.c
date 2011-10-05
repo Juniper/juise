@@ -53,13 +53,20 @@ typedef struct curl_opts_s {
     u_int8_t co_fail_on_error;	/* Fail explicitly if HTTP code >= 400 */
     u_int8_t co_verbose;	/* Verbose (debug) output */
     u_int8_t co_insecure;	/* Allow insecure SSL certs  */
+    u_int8_t co_secure;		/* Use SSL-enabled version of protocol */
     char *co_username;		/* Value for CURLOPT_USERNAME */
     char *co_password;		/* Value for CURLOPT_PASSWORD */
     slax_data_list_t co_headers; /* Headers for CURLOPT_HTTPHEADER */
     slax_data_list_t co_params; /* Parameters for GET or POST */
     char *co_content_type;	 /* Content-Type header */
     char *co_contents;		 /* Contents for a post */
+
+    /* Email-specific fields */
     char *co_format;		 /* Format of the response */
+    char *co_server;		 /* Email server name */
+    char *co_local;		 /* Email local  name */
+    char *co_from;		 /* Email from address */
+    slax_data_list_t co_to;	 /* Email to addresses */
 } curl_opts_t;
 
 /*
@@ -106,9 +113,13 @@ ext_curl_options_release (curl_opts_t *opts)
     xmlFreeAndEasy(opts->co_content_type);
     xmlFreeAndEasy(opts->co_contents);
     xmlFreeAndEasy(opts->co_format);
+    xmlFreeAndEasy(opts->co_server);
+    xmlFreeAndEasy(opts->co_local);
+    xmlFreeAndEasy(opts->co_from);
 
     slaxDataListClean(&opts->co_headers);
     slaxDataListClean(&opts->co_params);
+    slaxDataListClean(&opts->co_to);
 
     bzero(opts, sizeof(*opts));
 }
@@ -130,17 +141,24 @@ ext_curl_options_copy (curl_opts_t *top, curl_opts_t *fromp)
     COPY_FIELD(co_fail_on_error);
     COPY_FIELD(co_verbose);
     COPY_FIELD(co_insecure);
+    COPY_FIELD(co_secure);
     COPY_STRING(co_username);
     COPY_STRING(co_password);
     COPY_STRING(co_content_type);
     COPY_STRING(co_contents);
     COPY_STRING(co_format);
+    COPY_STRING(co_server);
+    COPY_STRING(co_local);
+    COPY_STRING(co_from);
 
     slaxDataListInit(&top->co_headers);
     slaxDataListCopy(&top->co_headers, &fromp->co_headers);
 
     slaxDataListInit(&top->co_params);
     slaxDataListCopy(&top->co_params, &fromp->co_params);
+
+    slaxDataListInit(&top->co_to);
+    slaxDataListCopy(&top->co_to, &fromp->co_to);
 }
 
 /*
@@ -235,6 +253,12 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	ext_curl_set_contents(opts, nodep);
     else if (streq(key, "format"))
 	CURL_SET_STRING(opts->co_format);
+    else if (streq(key, "server"))
+	CURL_SET_STRING(opts->co_server);
+    else if (streq(key, "local"))
+	CURL_SET_STRING(opts->co_local);
+    else if (streq(key, "from"))
+	CURL_SET_STRING(opts->co_from);
     else if (streq(key, "upload"))
 	opts->co_upload = TRUE;
     else if (streq(key, "fail-on-error"))
@@ -243,6 +267,8 @@ ext_curl_parse_node (curl_opts_t *opts, xmlNodePtr nodep)
 	opts->co_verbose = TRUE;
     else if (streq(key, "insecure"))
 	opts->co_insecure = TRUE;
+    else if (streq(key, "secure"))
+	opts->co_secure = TRUE;
 
     else if (streq(key, "header")) {
 	/* Header fields aren't quite so easy */
@@ -404,6 +430,7 @@ ext_curl_handle_alloc (void)
 	slaxDataListInit(&curlp->ch_reply_headers);
 	slaxDataListInit(&curlp->ch_opts.co_headers);
 	slaxDataListInit(&curlp->ch_opts.co_params);
+	slaxDataListInit(&curlp->ch_opts.co_to);
 
 	/* Create and populate the real libcurl handle */
 	curlp->ch_handle = curl_easy_init();
@@ -582,15 +609,35 @@ static CURLcode
 ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 {
     CURLcode success;
-    long putv = 0, postv = 0, getv = 0, deletev = 0, headv = 0;
+    long putv = 0, postv = 0, getv = 0, deletev = 0, headv = 0, emailv = 0;
 
     curl_easy_reset(curlp->ch_handle);
     ext_curl_handle_clean(curlp); /* Shouldn't be needed */
 
-    if (opts->co_url == NULL) {
-	LX_ERR("curl: missing URL\n");
-	return FALSE;
+    if (opts->co_method) {
+	if (streq(opts->co_method, "get"))
+	    getv = 1;
+	if (streq(opts->co_method, "head"))
+	    headv = 1;
+	else if (streq(opts->co_method, "put"))
+	    putv = 1;
+	else if (streq(opts->co_method, "post"))
+	    postv = 1;
+	else if (streq(opts->co_method, "email"))
+	    emailv = 1;
+	else if (streq(opts->co_method, "delete")) {
+	    deletev = 1;
+	    CURL_SET(CURLOPT_CUSTOMREQUEST, "DELETE");
+	}
     }
+
+    if (getv + postv + putv + deletev == 0)
+	getv = 1;		/* Default method */
+
+    CURL_COND(CURLOPT_HTTPGET, getv);
+    CURL_COND(CURLOPT_PUT, putv);
+    CURL_COND(CURLOPT_POST, postv);
+    CURL_COND(CURLOPT_NOBODY, headv); /* There's no "body" in a HEAD request */
 
     /* Here are some relatively static options we have to set */
     CURL_SET(CURLOPT_ERRORBUFFER, curlp->ch_error); /* Get real errors */
@@ -602,7 +649,27 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
     CURL_SET(CURLOPT_HEADERFUNCTION, ext_curl_header_data);
     CURL_SET(CURLOPT_WRITEHEADER, curlp);
 
-    CURL_SET(CURLOPT_URL, opts->co_url);
+    if (emailv) {
+	/*
+	 * Email is a completely different fish; we need to build the
+	 * URL from a couple of values.
+	 */
+	char buf[BUFSIZ];
+
+	snprintf(buf, sizeof(buf), "smtp%s://%s%s%s",
+		 opts->co_secure ? "s" : "", opts->co_server,
+		 opts->co_local ? "/" : "", opts->co_local ?: "");
+	CURL_SET(CURLOPT_URL, buf);
+
+    } else {
+	/* If we're not "email", then a missing URL is fatal */
+	if (opts->co_url == NULL) {
+	    LX_ERR("curl: missing URL\n");
+	    return FALSE;
+	}
+
+	CURL_SET(CURLOPT_URL, opts->co_url);
+    }
 
     /* Upload file via FTP */
     if (opts->co_upload) {
@@ -665,28 +732,6 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
     headers = ext_curl_build_slist(&opts->co_headers, headers);
     CURL_SET(CURLOPT_HTTPHEADER, headers);
 
-    if (opts->co_method) {
-	if (streq(opts->co_method, "get"))
-	    getv = 1;
-	if (streq(opts->co_method, "head"))
-	    headv = 1;
-	else if (streq(opts->co_method, "put"))
-	    putv = 1;
-	else if (streq(opts->co_method, "post"))
-	    postv = 1;
-	else if (streq(opts->co_method, "delete")) {
-	    deletev = 1;
-	    CURL_SET(CURLOPT_CUSTOMREQUEST, "DELETE");
-	}
-    }
-    if (getv + postv + putv + deletev == 0)
-	getv = 1;		/* Default method */
-
-    CURL_COND(CURLOPT_HTTPGET, getv);
-    CURL_COND(CURLOPT_PUT, putv);
-    CURL_COND(CURLOPT_POST, postv);
-    CURL_COND(CURLOPT_NOBODY, headv); /* There's no "body" in a HEAD request */
-
     if (postv) {
 	int len = opts->co_contents ? strlen(opts->co_contents) : 0;
 	CURL_SET(CURLOPT_POSTFIELDSIZE, len);
@@ -720,6 +765,15 @@ ext_curl_do_perform (curl_handle_t *curlp, curl_opts_t *opts)
 	    CURL_SET(CURLOPT_POSTFIELDSIZE, (long) strlen(param_data));
 	}
     }
+
+#if 0
+    if (emailv) {
+	/* Email has a whole set of values that need pumped in */
+	if (strchr(opts->co_from, '<') != NULL)
+	    
+
+    }
+#endif
 
     success = curl_easy_perform(curlp->ch_handle);
 
@@ -1255,6 +1309,8 @@ slax_function_table_t slaxCurlTable[] = {
 
 SLAX_DYN_FUNC(slaxDynLibInit)
 {
+    TAILQ_INIT(&ext_curl_sessions);
+
     arg->da_functions = slaxCurlTable; /* Fill in our function table */
 
     return SLAX_DYN_VERSION;

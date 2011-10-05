@@ -22,7 +22,13 @@ AM_CFLAGS += \
  -DSLAX_EXTDIR=\"${SLAX_EXTDIR}\"
 
 lib_LTLIBRARIES = libcurl.la
-LIBS = ${LIBXSLT_LIBS} -lexslt ${LIBXML_LIBS} -L${SLAX_LIBDIR} -lslax
+LIBS = \
+    ${LIBXSLT_LIBS} \
+    -lexslt \
+    ${LIBXML_LIBS} \
+    ${CURL_LIBS} \
+    -L../../libjuise -ljuise \
+    -L${SLAX_LIBDIR} -lslax
 
 libcurl_la_SOURCES = \
     ext_curl.c
@@ -35,8 +41,8 @@ libdir = ${SLAX_EXTDIR}
 UGLY_NAME = http%3A%2F%2Fxml.juniper.net%2Fextensions%2Fcurl.ext
 
 install-exec-hook:
-	@DLNAME=`sh -c '. libcurl.la ; echo $$dlname'` \
-		&& echo Install link $$DLNAME "->" ${UGLY_NAME} "..." \
-	        && cd ${SLAX_EXTDIR} \
-	        && rm -f ${UGLY_NAME} \
-		&& ${LN_S} $$DLNAME ${UGLY_NAME}
+	@DLNAME=`sh -c '. ${libdir}/libcurl.la ; echo $$dlname'`; \
+                    echo Install link $$DLNAME "->" ${UGLY_NAME} "..." \
+                    && cd ${SLAX_EXTDIR} \
+	            && rm -f ${UGLY_NAME} \
+		    && ${LN_S} $$DLNAME ${UGLY_NAME}

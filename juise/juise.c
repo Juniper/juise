@@ -50,7 +50,6 @@ static slax_data_list_t plist;
 static const char **params;
 static int nbparams;
 
-trace_file_t *trace_file;
 int dump_all;
 
 int opt_debugger;
