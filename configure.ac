@@ -10,7 +10,7 @@
 #
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.2.1], [phil@juniper.net])
+AC_INIT([juise], [0.2.2], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT([])
 AC_DISABLE_SHARED
@@ -24,7 +24,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 #
 LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
-LIBSLAX_REQUIRED_VERSION=0.9.8
+LIBSLAX_REQUIRED_VERSION=0.9.10
 LIBCURL_REQUIRED_VERSION=7.21.6
 
 AC_PROG_CC
@@ -352,8 +352,8 @@ then
 	CURLVERS=`$CURL_CONFIG --version`
 	if test VERSION_TO_NUMBER(echo $CURLVERS) -ge VERSION_TO_NUMBER(echo $LIBCURL_REQUIRED_VERSION)
 	then
-		CURL_LIBS="$CURL_LIBS `$CURL_CONFIG --libs`"
-		CURL_CFLAGS="$CURL_CFLAGS `$CURL_CONFIG --cflags`"
+		LIBCURL_LIBS="$LIBCURL_LIBS `$CURL_CONFIG --libs`"
+		LIBCURL_CFLAGS="$LIBCURL_CFLAGS `$CURL_CONFIG --cflags`"
 		AC_MSG_RESULT($CURLVERS found)
 	else
 		AC_MSG_ERROR(Version $CURLVERS found. You need at least libcurl $LIBCURL_REQUIRED_VERSION for this version of juise)
@@ -363,8 +363,8 @@ else
 fi
 
 AC_SUBST(CURL_CONFIG)
-AC_SUBST(CURL_CFLAGS)
-AC_SUBST(CURL_LIBS)
+AC_SUBST(LIBCURL_CFLAGS)
+AC_SUBST(LIBCURL_LIBS)
 
 
 
@@ -528,9 +528,9 @@ AC_MSG_NOTICE([summary of build options:
   libslax libs:     ${LIBSLAX_LIBS}
   libslax libdir:   ${SLAX_LIBDIR}
   libslax extdir:   ${SLAX_EXTDIR}
-  curl version:     ${CURLVERS}
-  curl cflags:      ${CURL_CFLAGS}
-  curl libs:        ${CURL_LIBS}
+  libcurl version:  ${CURLVERS}
+  libcurl cflags:   ${LIBCURL_CFLAGS}
+  libcurl libs:     ${LIBCURL_LIBS}
   libpcre cflags:   ${PCRE_CFLAGS}
   libpcre libs:     ${PCRE_LIB}
   lighttpd src:     ${LIGHTTPD_SRC}

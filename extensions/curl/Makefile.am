@@ -26,7 +26,7 @@ LIBS = \
     ${LIBXSLT_LIBS} \
     -lexslt \
     ${LIBXML_LIBS} \
-    ${CURL_LIBS} \
+    ${LIBCURL_LIBS} \
     -L../../libjuise -ljuise \
     -L${SLAX_LIBDIR} -lslax
 

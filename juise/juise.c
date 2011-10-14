@@ -254,6 +254,14 @@ do_run_op_common (const char *scriptname, const char *input,
     lx_document_t *indoc;
     xsltStylesheetPtr script;
     lx_document_t *res = NULL;
+    slax_data_node_t *dnp;
+    int i = 0;
+
+    params = alloca(nbparams * 2 * sizeof(*params) + 1);
+    SLAXDATALIST_FOREACH(dnp, &plist) {
+	params[i++] = dnp->dn_data;
+    }
+    params[i] = NULL;
 
     if (scriptname == NULL)
 	errx(1, "missing script name");
@@ -547,7 +555,6 @@ main (int argc UNUSED, char **argv, char **envp)
     int skip_args = FALSE;
     int waiting = 0;
     int i;
-    slax_data_node_t *dnp;
     char *input = NULL;
 
     slaxDataListInit(&plist);
@@ -686,14 +693,6 @@ main (int argc UNUSED, char **argv, char **envp)
 	    }
 	}
     }
-
-
-    params = alloca(nbparams * 2 * sizeof(*params) + 1);
-    i = 0;
-    SLAXDATALIST_FOREACH(dnp, &plist) {
-	params[i++] = dnp->dn_data;
-    }
-    params[i] = NULL;
 
     if (func == NULL)
 	func = do_run_op; /* the default action */
