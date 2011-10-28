@@ -245,9 +245,62 @@ juise_build_input_doc (lx_node_t *newp)
     return docp;
 }
 
+/*
+ * Emit the results for a CGI script.  If the top-level element
+ * is <cgi>, then we lift out the attributes and turn them
+ * into header fields and use the rest of the document as the result.
+ */
+static int
+do_write_cgi_results (lx_document_t *res, xsltStylesheetPtr script)
+{
+    lx_node_t *root = lx_document_root(res);
+
+    if (streq(lx_node_name(root), ELT_CGI)) {
+	xmlSaveCtxt *handle;
+	lx_node_t *nodep;
+	xmlAttrPtr attr;
+	char *value;
+
+	for (attr = root->properties; attr; attr = attr->next) {
+	    if (attr->name[0] == 'x' && attr->name[0] == 'm'
+			&& attr->name[0] == 'l')
+		continue;
+
+	    value = (char *) xmlGetProp(root, attr->name);
+	    if (value == NULL)
+		continue;
+
+	    printf("%s: %s\n", attr->name, value);
+	    xmlFree(value);
+	}
+
+	printf("\n");
+
+	for (nodep = lx_node_children(root); nodep;
+	     nodep = lx_node_next(nodep)) {
+	    if (nodep->type == XML_ELEMENT_NODE) {
+		fflush(stdout);
+		handle = xmlSaveToFd(fileno(stdout), NULL,
+				     XML_SAVE_FORMAT | XML_SAVE_NO_DECL);
+		if (handle) {
+		    xmlSaveTree(handle, nodep);
+		    xmlSaveFlush(handle);
+		    xmlSaveClose(handle);
+		    fflush(stdout);
+		    return 0;
+		}
+	    }
+	}
+    }
+
+    xsltSaveResultToFile(stdout, res, script);
+
+    return 0;
+}
+
 static int
 do_run_op_common (const char *scriptname, const char *input,
-		  char **argv UNUSED, lx_node_t *nodep)
+		  char **argv UNUSED, lx_node_t *nodep, int cgi_mode)
 {
     lx_document_t *scriptdoc;
     FILE *scriptfile;
@@ -313,7 +366,11 @@ do_run_op_common (const char *scriptname, const char *input,
     } else {
 	res = xsltApplyStylesheet(script, indoc, params);
 	if (res) {
-	    xsltSaveResultToFile(stdout, res, script);
+	    if (cgi_mode)
+		do_write_cgi_results(res, script);
+	    else
+		xsltSaveResultToFile(stdout, res, script);
+
 	    if (dump_all)
 		xsltSaveResultToFile(stderr, res, script);
 	    xmlFreeDoc(res);
@@ -329,7 +386,7 @@ do_run_op_common (const char *scriptname, const char *input,
 static int
 do_run_op (const char *scriptname, const char *input, char **argv)
 {
-    return do_run_op_common(scriptname, input, argv, NULL);
+    return do_run_op_common(scriptname, input, argv, NULL, FALSE);
 }
 
 static int
@@ -351,7 +408,7 @@ do_run_server_on_stdin (const char *scriptname UNUSED,
 static void
 parse_query_string (lx_node_t *nodep, char *str)
 {
-    char *cp, *ap, *ep;
+    char *cp, *ap, *ep, *xp;
 
     trace(trace_file, TRACE_ALL, "querystring: %p, (%u) '%s'",
 	  nodep, (unsigned) strlen(str), str);
@@ -366,6 +423,11 @@ parse_query_string (lx_node_t *nodep, char *str)
 	if (ap != NULL)
 	    *ap++ = '\0';
 
+	/* Pluses are really spaces; pluses are URL-escaped */
+	for (xp = ep; *xp; xp++)
+	    if (*xp == '+')
+		*xp = ' ';
+
 	/* At this point, cp is the name and ep is the value */
 	cp = xmlURIUnescapeString(cp, 0, NULL);
 	ep = xmlURIUnescapeString(ep, 0, NULL);
@@ -373,7 +435,7 @@ parse_query_string (lx_node_t *nodep, char *str)
 	if (cp && ep) {
 	    trace(trace_file, TRACE_ALL, "querystring: param: '%s' -> '%s'",
 		  cp, ep);
-	    if (strncmp(cp, "junos", 5) != 0)
+	    if (strncmp(cp, "junos", 5) != 0 && !streq(cp, ELT_CGI))
 		juise_make_param(cp, ep);
 	    juise_add_node(nodep, cp, ep);
 	}
@@ -416,7 +478,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
     lx_node_t *nodep, *paramp;
     char *cp, *bp;
     char buf[BUFSIZ];
-    struct line_s {
+    struct line_s {		/* XXX: should be a slax_data_list_t */
 	struct line_s *li_next;
 	unsigned li_len;
 	char li_data[0];
@@ -461,15 +523,23 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
     }
 
     if (len) {
-	bp = lines->li_next ? malloc(len) : lines->li_data;
+	/* If we have a linked line, combine them into a single buffer */
+	if (lines->li_next) {
+	    bp = malloc(len);
+
+	    if (bp) {
+		cp = bp;
+		for (lp = lines; lp; lp = lp->li_next) {
+		    memcpy(cp, lp->li_data, lp->li_len);
+		    cp += lp->li_len;
+		}
+		*cp = '\0';
+	    }
+	} else {
+	    bp = lines->li_data;
+	}
 
 	if (bp) {
-	    cp = bp;
-	    for (lp = lines; lp; lp = lp->li_next) {
-		memcpy(cp, lp->li_data, lp->li_len);
-		cp += lp->li_len;
-	    }
-
 	    parse_query_string(paramp, bp);
 
 	    if (bp != lines->li_data)
@@ -482,9 +552,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	}
     }
 
-    opt_indent = 1;
-
-    return do_run_op_common(scriptname, input, argv, nodep);
+    return do_run_op_common(scriptname, input, argv, nodep, TRUE);
 }
 
 static int
@@ -513,9 +581,8 @@ print_version (void)
 static void
 print_help (void)
 {
-    printf("Usage: juise [mode] [options] [script] [file]\n");
-    printf("\t--agent OR -A: turn on ssh agent forwarding\n");
-    printf("\t--canned-input: allow premade (file) input for testing\n");
+    printf("Usage: juise [@target] [options] [script] [param value]*\n");
+    printf("\t--agent OR -A: enable ssh-agent forwarding\n");
     printf("\t--debug OR -d: use the libslax debugger\n");
     printf("\t--directory <dir> OR -D <dir>: set JUISE_DIR (for server scripts)\n");
     printf("\t--include <dir> OR -I <dir>: search directory for includes/imports\n");
@@ -532,8 +599,7 @@ print_help (void)
     printf("\t--user <name> OR -u <name>: specify the user name for API connections\n");
     printf("\t--verbose OR -v: enable debugging output (slaxLog())\n");
     printf("\t--version OR -V: show version information (and exit)\n");
-    printf("\t--write-version <version> OR -w <version>: write in version\n");
-    printf("\t--wait: wait after starting (for gdb to attach)\n");
+    printf("\t--wait <seconds>: wait after starting (for gdb to attach)\n");
 
     printf("\nProject juise home page: http://juise.googlecode.com\n");
 }
@@ -556,6 +622,7 @@ main (int argc UNUSED, char **argv, char **envp)
     int waiting = 0;
     int i;
     char *input = NULL;
+    unsigned jsio_flags = 0;
 
     slaxDataListInit(&plist);
 
@@ -592,6 +659,9 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--debug") || streq(cp, "-d")) {
 		opt_debugger = TRUE;
+
+	    } else if (streq(cp, "--debug-io")) {
+		jsio_flags |= JSIO_MEMDUMP;
 
 	    } else if (streq(cp, "--directory") || streq(cp, "-D")) {
 		srv_set_juise_dir(*++argv);
@@ -759,7 +829,7 @@ main (int argc UNUSED, char **argv, char **envp)
     exsltRegisterAll();
     ext_register_all();
 
-    jsio_init(0);
+    jsio_init(jsio_flags);
 
     if (target)
 	jsio_set_default_server(target);

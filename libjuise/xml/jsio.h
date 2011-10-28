@@ -190,6 +190,7 @@ jsio_set_ssh_options (const char *opts);
 
 void
 jsio_init (unsigned flags);
+#define JSIO_MEMDUMP	(1<<0)	/* memdump() traffic */
 
 void
 jsio_cleanup (void);

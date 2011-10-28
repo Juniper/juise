@@ -500,6 +500,7 @@ AC_CONFIG_FILES([
   libjuise/juiseconfig.h
   libjuise/Makefile
   juise/Makefile
+  doc/Makefile
   juise-askpass/Makefile
   mod_juise/Makefile
   extensions/Makefile

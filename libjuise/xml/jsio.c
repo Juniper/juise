@@ -38,6 +38,7 @@
 #include <libjuise/io/logging.h>
 #include <libjuise/io/pid_lock.h>
 #include <libjuise/io/fbuf.h>
+#include <libjuise/io/memdump.h>
 #include <libjuise/env/env_paths.h>
 #include <libjuise/xml/xmlrpc.h>
 #include <libjuise/xml/client.h>
@@ -230,6 +231,8 @@ js_buffer_read_data (js_session_t *jsp, char *bp, int blen)
 
     } else {
 	rc = read(jsp->js_stdin, bp, blen);
+	if ((jsio_flags & JSIO_MEMDUMP) && rc > 0)
+	    memdump(stderr, "jsio: read", bp, rc, ">", 0);
     }
 
     return rc;
