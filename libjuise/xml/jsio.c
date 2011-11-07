@@ -1302,7 +1302,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
 		goto fail;
 	    }
 
-	    ext_fix_namespaces(nop);
+	    ext_jcs_fix_namespaces(nop);
 
 	    for (cop = lx_node_children(nop); cop; cop = lx_node_next(cop)) {
 		if (cop->type == XML_TEXT_NODE
@@ -1517,10 +1517,10 @@ js_session_open (const char *host_name, const char *username,
 }
 
 /*
- * Execute the give RPC in the given host_name's JUNOScript session.
+ * Execute the given RPC in the given host_name's JUNOScript session.
  */
 lx_nodeset_t *
-js_session_execute (xmlXPathParserContext *ctxt, const char *host_name, 
+js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
 		    lx_node_t *rpc_node, const xmlChar *rpc_name, 
 		    session_type_t stype)
 {

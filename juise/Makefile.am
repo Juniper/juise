@@ -44,8 +44,13 @@ man_MANS = juise.1x
 EXTRA_DIST = juise.1x
 
 install-exec-hook:
-	cd $(DESTDIR)$(bindir) && \
-	    ( for file in juise.cgi juise.fastcgi xml-mode ; do \
-		mv -f $$file$(EXEEXT) $$file$(EXEEXT).old ; \
-		$(LN_S) juise$(EXEEXT) $$file$(EXEEXT) ; \
+	mkdir -p ${libexecdir} ${bindir}
+	cd ${bindir} && fromdir= && todir= && \
+	    ( for file in xml-mode juise.cgi juise.fastcgi ; do \
+		[ -f $${todir}$$file${EXEEXT} ] \
+                     && mv -f $${todir}$$file${EXEEXT} \
+                              $${todir}$$file${EXEEXT}.old ; \
+		$(LN_S) $${fromdir}juise${EXEEXT} $${todir}$$file${EXEEXT} ; \
+                fromdir=${bindir}/ ; \
+                todir=${libexecdir}/ ; \
 	    done )

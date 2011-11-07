@@ -24,6 +24,10 @@
 #include <libxml/tree.h>
 #include <libxml/dict.h>
 #include <libxml/uri.h>
+#include <libxml/xpathInternals.h>
+#include <libxml/parserInternals.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 #include <libxslt/transform.h>
 #include <libxml/HTMLparser.h>
 #include <libxml/xmlsave.h>
@@ -46,8 +50,11 @@
 
 #include "juise.h"
 
+#define JM_NONE		0	/* Normal mode */
+#define JM_CGI		1	/* CGI mode */
+#define JM_CSCRIPT	2	/* Commit script mode */
+
 static slax_data_list_t plist;
-static const char **params;
 static int nbparams;
 
 int dump_all;
@@ -169,7 +176,7 @@ juise_add_node (lx_node_t *parent, const char *tag, const char *content)
 }
 
 static lx_document_t *
-juise_build_input_doc (lx_node_t *newp)
+juise_build_op_input (lx_node_t *newp)
 {
     xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
     lx_document_t *docp;
@@ -298,23 +305,12 @@ do_write_cgi_results (lx_document_t *res, xsltStylesheetPtr script)
     return 0;
 }
 
-static int
-do_run_op_common (const char *scriptname, const char *input,
-		  char **argv UNUSED, lx_node_t *nodep, int cgi_mode)
+static xsltStylesheetPtr
+read_script (const char *scriptname)
 {
     lx_document_t *scriptdoc;
     FILE *scriptfile;
-    lx_document_t *indoc;
     xsltStylesheetPtr script;
-    lx_document_t *res = NULL;
-    slax_data_node_t *dnp;
-    int i = 0;
-
-    params = alloca(nbparams * 2 * sizeof(*params) + 1);
-    SLAXDATALIST_FOREACH(dnp, &plist) {
-	params[i++] = dnp->dn_data;
-    }
-    params[i] = NULL;
 
     if (scriptname == NULL)
 	errx(1, "missing script name");
@@ -326,6 +322,7 @@ do_run_op_common (const char *scriptname, const char *input,
     scriptdoc = slaxLoadFile(scriptname, scriptfile, NULL, 0);
     if (scriptdoc == NULL)
 	errx(1, "cannot parse: '%s'", scriptname);
+
     if (scriptfile != stdin)
 	fclose(scriptfile);
 
@@ -333,6 +330,61 @@ do_run_op_common (const char *scriptname, const char *input,
     if (script == NULL || script->errors != 0)
 	errx(1, "%d errors parsing script: '%s'",
 	     script ? script->errors : 1, scriptname);
+
+    return script;
+}
+
+static lx_document_t *
+run_script (xsltStylesheetPtr script, const char *scriptname,
+	    lx_document_t *indoc, const char **params, int mode)
+{
+    lx_document_t *res = NULL;
+
+    if (opt_indent)
+	script->indent = 1;
+
+    if (opt_debugger) {
+	slaxDebugInit();
+	slaxDebugSetStylesheet(script);
+	res = slaxDebugApplyStylesheet(scriptname, script, "input",
+				       indoc, params);
+    } else {
+
+	res = xsltApplyStylesheet(script, indoc, params);
+	if (res) {
+	    if (mode == JM_CGI)
+		do_write_cgi_results(res, script);
+	    else if (mode == JM_NONE)
+		xsltSaveResultToFile(stdout, res, script);
+
+	    if (dump_all)
+		xsltSaveResultToFile(stderr, res, script);
+	}
+    }
+
+    return res;
+}
+
+static int
+do_run_op_common (const char *scriptname, const char *input,
+		  char **argv UNUSED, lx_node_t *nodep, int cgi_mode)
+{
+    lx_document_t *indoc, *res = NULL;
+    xsltStylesheetPtr script;
+    slax_data_node_t *dnp;
+    int i = 0;
+    const char **params;
+
+    params = alloca(nbparams * 2 * sizeof(*params) + 1);
+    SLAXDATALIST_FOREACH(dnp, &plist) {
+	params[i++] = dnp->dn_data;
+    }
+
+    params[i] = NULL;
+
+    script = read_script(scriptname);
+    if (script == NULL)
+	return -1;
 
     if (input) {
 	FILE *infile;
@@ -347,34 +399,14 @@ do_run_op_common (const char *scriptname, const char *input,
 	    fclose(infile);
 
     } else {
-	indoc = juise_build_input_doc(nodep);
+	indoc = juise_build_op_input(nodep);
 	if (indoc == NULL)
 	    errx(1, "unable to build input document");
     }
 
-    if (opt_indent)
-	script->indent = 1;
-
-    if (opt_debugger) {
-	slaxDebugInit();
-#if 0
-	slaxRestartListAdd(jsio_restart);
-#endif
-	slaxDebugSetStylesheet(script);
-	slaxDebugApplyStylesheet(scriptname, script, "input",
-				 indoc, params);
-    } else {
-	res = xsltApplyStylesheet(script, indoc, params);
-	if (res) {
-	    if (cgi_mode)
-		do_write_cgi_results(res, script);
-	    else
-		xsltSaveResultToFile(stdout, res, script);
-
-	    if (dump_all)
-		xsltSaveResultToFile(stderr, res, script);
-	    xmlFreeDoc(res);
-	}
+    res = run_script(script, scriptname, indoc, params, cgi_mode);
+    if (res) {
+	/* Now we need to check and load the output config */
     }
 
     xmlFreeDoc(indoc);
@@ -387,6 +419,112 @@ static int
 do_run_op (const char *scriptname, const char *input, char **argv)
 {
     return do_run_op_common(scriptname, input, argv, NULL, FALSE);
+}
+
+static lx_node_t *
+juise_build_get_configuration_rpc (lx_document_t **docpp)
+{
+    static char rpc_text[]
+	= "<rpc><get-configuration commit-scripts=\"view\"/></rpc>";
+    lx_document_t *xmlp;
+    lx_node_t *rootp;
+
+    *docpp = xmlp = xmlReadMemory(rpc_text, strlen(rpc_text), "rpc_text",
+				  NULL, XML_PARSE_NOENT);
+    if (xmlp == NULL)
+	return NULL;
+
+    rootp = xmlDocGetRootElement(xmlp);
+    if (rootp)
+	ext_jcs_fix_namespaces(rootp);
+
+    return rootp;
+}
+
+static lx_document_t *
+juise_build_input_commit (lx_nodeset_t *config_data)
+{
+    static char doc_text[] = "<commit-script-input \
+xmlns:junos=\"http://xml.juniper.net/junos/*/junos\"/>\n";
+    lx_document_t *docp;
+    lx_node_t *rootp, *nodep;
+    int i;
+
+    docp = xmlReadMemory(doc_text, strlen(doc_text), "doc_text",
+			 NULL, XML_PARSE_NOENT);
+    if (docp == NULL)
+	return NULL;
+
+    rootp = xmlDocGetRootElement(docp);
+
+    for (i = 0; i < config_data->nodeNr; i++) {
+	nodep = config_data->nodeTab[i];
+	if (nodep == NULL)
+	    continue;
+
+	xmlNodePtr newp = xmlDocCopyNode(nodep, docp, 1);
+	if (newp)
+	    xmlAddChild(rootp, newp);
+    }
+
+    return docp;
+}
+
+static int
+do_test_commit_script (const char *scriptname, const char *input UNUSED,
+		       char **argv UNUSED)
+{
+    lx_document_t *rpc = NULL, *docp, *indoc, *res = NULL;
+    xmlXPathContextPtr ctxt;
+    xmlXPathParserContext *pctxt;
+    lx_nodeset_t *config_data;
+    lx_node_t *get_config_rpc;
+    xsltStylesheetPtr script;
+    const char **params;
+    slax_data_node_t *dnp;
+    int i = 0;
+    js_session_t *jsp;
+
+    params = alloca(nbparams * 2 * sizeof(*params) + 1);
+    SLAXDATALIST_FOREACH(dnp, &plist) {
+	params[i++] = dnp->dn_data;
+    }
+    params[i] = NULL;
+
+    docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
+    ctxt = xmlXPathNewContext(docp);
+    pctxt = xmlXPathNewParserContext(NULL, ctxt);
+
+    jsp = js_session_open(NULL, NULL, NULL, 0, 0, 0);
+    if (jsp == NULL)
+	return 0;
+    
+    get_config_rpc = juise_build_get_configuration_rpc(&rpc);
+
+    config_data = js_session_execute(pctxt, NULL, get_config_rpc,
+				     NULL, ST_DEFAULT);
+    if (config_data == NULL)
+	err(0, "get-configuration rpc failed");
+
+    if (rpc)
+	xmlFreeDoc(rpc);
+
+    script = read_script(scriptname);
+    if (script == NULL)
+	return -1;
+
+    indoc = juise_build_input_commit(config_data);
+
+    res = run_script(script, scriptname, indoc, params, FALSE);
+    if (res)
+	xmlFreeDoc(res);
+
+
+    xmlFreeDoc(indoc);
+    xsltFreeStylesheet(script);
+    js_session_close(NULL, 0);
+
+    return 0;
 }
 
 static int
@@ -583,9 +721,11 @@ print_help (void)
 {
     printf("Usage: juise [@target] [options] [script] [param value]*\n");
     printf("\t--agent OR -A: enable ssh-agent forwarding\n");
+    printf("\t--commit-script OR -c: test a commit script\n");
     printf("\t--debug OR -d: use the libslax debugger\n");
     printf("\t--directory <dir> OR -D <dir>: set JUISE_DIR (for server scripts)\n");
     printf("\t--include <dir> OR -I <dir>: search directory for includes/imports\n");
+    printf("\t--input <file> OR -i <file>: use given file for input\n");
     printf("\t--indent OR -g: indent output ala output-method/indent\n");
     printf("\t--junoscript OR -J: use junoscript API protocol\n");
     printf("\t--lib <dir> OR -L <dir>: search directory for extension libraries\n");
@@ -623,6 +763,7 @@ main (int argc UNUSED, char **argv, char **envp)
     int i;
     char *input = NULL;
     unsigned jsio_flags = 0;
+    int opt_commit_script = FALSE;
 
     slaxDataListInit(&plist);
 
@@ -656,6 +797,10 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--agent") || streq(cp, "-A")) {
 		ssh_agent_forwarding = TRUE;
+
+	    } else if (streq(cp, "--commit-script") || streq(cp, "-c")) {
+		opt_commit_script = TRUE;
+		func = do_test_commit_script;
 
 	    } else if (streq(cp, "--debug") || streq(cp, "-d")) {
 		opt_debugger = TRUE;
@@ -827,7 +972,7 @@ main (int argc UNUSED, char **argv, char **envp)
 	slaxLogEnable(TRUE);
 
     exsltRegisterAll();
-    ext_register_all();
+    ext_jcs_register_all();
 
     jsio_init(jsio_flags);
 

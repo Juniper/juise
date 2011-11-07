@@ -93,6 +93,11 @@ Make indented output as if the script contained:
 
 (The "-g" is for "good-looking output").
 
+--input <file>
+-i <file>
+
+Use given file for input.
+
 --junoscript
 -J
 
@@ -336,15 +341,205 @@ element of those libraries.
 
 *** curl
 
-**** curl:open
+curl and libcurl are software components that allow access to a number
+of protocols, include http, https, smtp, ftp, and scp.
+
+**** curl Elements
+
+***** <url>
+
+The <url> element sets the base URL for the request.
+
+    SYNTAX::
+      <url> "target-url";
+
+***** <method>
+
+The <method> element sets the method used to transfer data.  This
+controls the HTTP request type, as well as triggering other transfer
+mechanisms.
+
+    SYNTAX::
+      <method> $method;
+
+Method names are listed in the table below.
+
+|--------|
+| Method |
+|--------|
+| get    |
+| post   |
+| delete |
+| head   |
+| email  |
+| put    |
+| upload |
+|--------|
+
+The "get" method is the default.
+
+***** <username>
+
+The <username> element sets the user name to use for the transfer.
+
+    SYNTAX::
+      <username> "username";
+
+***** <password>
+
+The <password> element sets the user's password for the transfer.
+
+    SYNTAX::
+      <password> "password";
+
+***** <content-type>
+
+The <content-type> element gives the MIME type for the transfer
+payload.
+
+    SYNTAX::
+      <content-type> "mime/type";
+
+***** <contents>
+
+The <contents> element gives the contents to be transfered.
+
+    SYNTAX::
+      <contents> "multi-\nline\ncontents\n";
+
+***** <format>
+
+The <format> element gives the expected format of the returned
+results, allowing the curl extension to automatically make the content
+available in the native format.
+
+<format> "xml"; 
+
+|-------------+--------------------------|
+| Format name | Special behavior         |
+|-------------+--------------------------|
+| html        | Result is parsed as HTML |
+| text        | None                     |
+| xml         | Result is parsed as XML  |
+|-------------+--------------------------|
+
+***** <server>
+
+The <server> element gives the outgoing SMTP server name.  At present,
+MX records are not handled, but that will be fixed shortly.
+
+    SYNTAX::
+      <server> "email-server.example.com";
+
+***** <local>
+
+The <local> element gives the name to use as the local hostname for
+"email" (SMTP) requests .
+
+    SYNTAX::
+      <local> "local host name";
+
+***** <from>
+
+The <from> element gives the "From" address to use for "email" (SMTP)
+requests.
+
+    SYNTAX::
+      <from> "source-user@email.example.com";
+
+***** <subject>
+
+The <subject> element gives the "Subject" field for "email" (SMTP)
+requests. 
+
+    SYNTAX::
+      <subject> "email subject string";
+
+***** <upload>
+
+The <upload> element indicates this is a file upload request.
+
+    SYNTAX::
+      <upload>;
+
+***** <fail-on-error>
+
+The <fail-on-error> element indicates that the transfer should fail if
+any errors where detected, including insignificant ones.
+
+    SYNTAX::
+      <fail-on-error>;
+
+***** <verbose>
+
+The <verbose> element requests an insanely detailed level of debug
+information that can be useful when debugging requests.  The curl
+extension will display detailed information about the operations and
+communication of the curl transfer.
+
+    SYNTAX::
+      <verbose>;
+
+***** <insecure>
+
+The <insecure> element indicates a willingness to tolerate insecure
+communications operations.  In particular, it will
+allow SSL Certs without checking the common name.
+
+    SYNTAX::
+      <insecure>;
+
+***** <secure>
+
+The <secure> element requests the use of the "secure" sibling of many
+protocols, including HTTPS and FTPS.
+
+    SYNTAX::
+      <secure>;
+
+***** <to>
+
+The <to> element gives a "To" address for "email" (SMTP) requests.
+For multiple address, use multiple <to> elements.
+
+    SYNTAX::
+      <to> "to-user@email.examplecom";
+
+***** <cc>
+
+The <cc> element gives a "Cc" address for "email" (SMTP) requests.
+For multiple address, use multiple <cc> elements.
+
+    SYNTAX::
+      <cc> "cc-user@email.examplecom";
+
+***** <header>
+
+The <header> element gives additional header fields for the request.
+
+    SYNTAX::
+      <header name="name"> "value";
+
+***** <param>
+
+The <param> element gives additional parameter values for the
+request.  These parameters are typically encoded into the URL.
+
+    SYNTAX::
+      <param name="x"> "y";
 
 **** curl:perform
+
+The "curl:perform" extension function performs simple transfers.
+
+**** curl:open
+
+**** curl:set
 
 **** curl:single
 
 **** curl:close
 
-**** curl elements
 
 {{document:
     name juise-manual;

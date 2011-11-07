@@ -505,6 +505,8 @@ AC_CONFIG_FILES([
   mod_juise/Makefile
   extensions/Makefile
   extensions/curl/Makefile
+  web/Makefile
+  web/lighttpd.conf
 ])
 AC_OUTPUT
 

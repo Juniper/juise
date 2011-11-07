@@ -1,0 +1,52 @@
+server.document-root = "@prefix@/share/juise/web"
+server.tag  = "lighttpd/1.4.28 juisebox"
+server.port = 3000
+server.bind = "127.0.0.1"
+
+server.modules = (
+    "mod_auth", 
+    "mod_expire",
+    "mod_access",
+    "mod_rewrite",
+    "mod_cgi",
+    "mod_juise",
+    "mod_fastcgi",
+)
+
+juise.assign = ( ".slax"  => "@prefix@/usr/libexec/juise/juise.cgi" )
+
+debug.log-request-header = "enable"
+debug.log-response-header = "enable"
+debug.log-file-not-found = "enable"
+debug.log-request-handling = "enable"
+
+mimetype.assign = (
+  ".html" => "text/html", 
+  ".txt" => "text/plain",
+  ".jpg" => "image/jpeg",
+  ".png" => "image/png" 
+)
+
+url.access-deny = ( "~", ".inc", ".conf" )
+expire.url = ( "/static/images/" => "access 1 hours" )
+
+# ssl.engine = "enable"
+# ssl.pemfile = "@prefix@/share/juise/web/etc/server.pem"
+
+#auth.backend = "plain"
+#auth.backend.plain.userfile = "lighttpd.user"
+#auth.backend.plain.groupfile = "lighttpd.group"
+#auth.require = (
+#     "/server-status" => (
+#        "method"  => "digest",
+#        "realm"   => "download archiv",
+#        "require" => "user=jan"
+#    ),
+#    "/server-config" => (
+#        "method"  => "digest",
+#        "realm"   => "download archiv",
+#        "require" => "valid-user"
+#    )
+#)
+#
+#url.rewrite = ( "^/$" => "/status" )

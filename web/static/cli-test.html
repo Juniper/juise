@@ -1,0 +1,462 @@
+<html>
+ <head>
+   <style type="text/css" title="currentStyle" media="screen">
+
+div.hidden, img.hidden {
+    display: none;
+}
+
+div.keeper div.icon-box  img.keeper {
+    border: 1px solid #966535;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+
+/*
+    background-color: ;
+    background-color: #ff0f0f;
+    background: linear-gradient(top, #E7CF82 0%,  #CF9BCB2A 2%, 
+                                          #A35D31 97%, #966535 100%);
+    background: -moz-linear-gradient(top, #E7CF82 0%,  #CB9B2A 2%, 
+                                          #A35D31 97%, #966535 100%);
+    background: -webkit-linear-gradient(top, #E7CF82 0%,  #CB9B2A 2%, 
+                                          #A35D31 97%, #966535 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0,
+                      startColorstr='#cb9b2a, endColorstr='#966535);
+*/
+}
+
+div#debug-log {
+    font-size: 70%;
+    display: block;
+    color: blue;
+    border: 1px solid blue;
+    white-space: pre;
+}
+
+div#header {
+    width: 100%;
+    height: 60px;
+    padding: 10px;
+}
+
+div#header-logo {
+    display: inline-block;
+    background: url(/images/logo.png) no-repeat;
+    margin-left: 10px;
+    height: 60px;
+    width: 20%;
+    border-right: 1px #a0ffa0 solid;
+}
+
+div#header-info {
+    display: inline-block;
+    height: 60px;
+    width: 50%;
+    border-right: 1px #a0ffa0 solid;
+}
+
+div#header-status {
+    display: inline-block;
+}
+
+div#target-list {
+    border-top: 1px solid #a0ffa0;
+    display: block;
+}
+
+div.target-info {
+    display: inline-block;
+    font-family: Helvetica, Arial, sans-serif;
+    font-weight: bold;
+    font-size: 14px;
+    margin-right: 10px;
+    margin-left: 10px;
+    padding: 5px 10px 5px 10px;
+}
+
+div#target-contents, div#target-contents-none {
+    display: inline-block;
+    font-family: Verdana, Arial, Helvetica, sans-serif ;
+    padding: 5px 10px 5px 10px;
+}
+
+div.target {
+    display: inline-block;
+    margin-left: 2px;
+    margin-right: 2px;
+}
+
+div#footer {
+    padding-top: 100px;
+    clear: both;
+    display: block;
+    height: 100px;
+    width: 100%;
+    font-size: 8;
+    text-align: center;
+}
+
+div#command-area {
+    display: block;
+//    border: 1px solid red;
+//    background-color: #c0c0c0;
+    padding: 10px;
+}
+
+xdiv#command-line {
+    border: 1px solid black;
+}
+
+form#command-line {
+    margin: 0px;
+}
+
+input.command-line {
+    font-family: Verdana, Arial, Helvetica, sans-serif ;
+    font-family: monospace;
+}
+
+div.command-wrapper {
+    border: 1px solid blue;
+    margin-top: 5px;
+    background: white;
+}
+
+div.command-target, input.command-target {
+    display: inline-block;
+    font-size: 14px;
+    font-family: Verdana, Arial, Helvetica, sans-serif ;
+}
+
+div.label {
+    display: inline;
+    padding-left: 3px;
+    padding-right: 3px;
+    font-size: 14px;
+}
+
+div.command-line, input.command-line {
+    display: inline-block;
+    background: #e0e0ff;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+div.command-number {
+    display: inline-block;
+    font-size 11px;
+    float: right;
+}
+
+div.command-output {
+    padding: 3px;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+div.icon-box {
+    display: inline-block;
+    margin-right: 5px;
+}
+
+img.icon {
+ height: 16px;
+}
+
+.buttonish {
+    text-align: center;
+    text-decoration: none;
+    text-shadow: -1px -1px 2px #777777;
+    text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
+}
+
+.rounded {
+    border: 1px solid #659635;
+    background: #99ca28;
+    padding: 2px 8px 2px 8px;
+
+    border-radius: 5px;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+}
+
+.green {
+    color: #ffffff;
+    background: linear-gradient(top, #CFE782 0%,  #9BCB2A 2%, 
+                                          #5DA331 97%, #659635 100%);
+    background: -moz-linear-gradient(top, #CFE782 0%,  #9BCB2A 2%, 
+                                          #5DA331 97%, #659635 100%);
+    background: -webkit-linear-gradient(top, #CFE782 0%,  #9BCB2A 2%, 
+                                          #5DA331 97%, #659635 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0,
+                      startColorstr='#9bcb2a, endColorstr='#659635);
+}
+
+.blue {
+    color: #0c0c0c;
+    background: linear-gradient(top, #c0c0ff 0%,  #d0d0ff 2%, 
+                                          #e0e0ff 97%, #f0f0ff 100%);
+    background: -moz-linear-gradient(top, #c0c0ff 0%,  #d0d0ff 2%, 
+                                          #e0e0ff 97%, #f0f0ff 100%);
+    background: -webkit-linear-gradient(top, #c0c0ff 0%,  #d0d0ff 2%, 
+                                          #e0e0ff 97%, #f0f0ff 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0,
+                              startColorstr='#c0c0ff, endColorstr='#f0f0ff);
+
+}
+
+//
+// No longer used but worth remembering...
+//
+div.aqua {
+    width: 155px;
+    height: 35px;
+    background: #cde;
+    border: 2px solid #ccc;
+    border-color: #8ba2c1 #5890bf #4f93ca #768fa5;
+    font: 600 16px/1 Lucida Sans, Verdana, sans-serif;
+    color: #fff;
+    text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    border-radius: 16px; -moz-border-radius: 16px; -webkit-border-radius: 16px;
+    box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+    -moz-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+    -webkit-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+}
+
+div.aqua:hover {
+    text-shadow: rgb(255, 255, 255) 0px 0px 5px;
+}
+
+
+.new-aqua {
+  width: 155px;
+  height: 35px;
+  background: #cde;
+  border: 2px solid #ccc;
+  border-color: #8ba2c1 #5890bf #4f93ca #768fa5;
+  font: 600 16px/1 Lucida Sans, Verdana, sans-serif;
+  color: #fff;
+  text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  border-radius: 16px;
+  -moz-border-radius: 16px;
+  -webkit-border-radius: 16px;
+  box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+  -moz-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+  -webkit-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+}
+.new-aqua:hover {
+  text-shadow: rgb(255, 255, 255) 0px 0px 5px;
+}
+
+
+
+
+   </style>
+
+ <script type="text/javascript" src="jquery.js"></script>          
+ <script type="text/javascript">                                         
+
+jQuery(document).ready(function () {
+    var $ = jQuery;
+
+    dbgpr("document is ready");
+
+    var output_close_after = 5;
+    var output_remove_after = 10;
+
+    var $cmd = $('#command-line');
+    var $top = $('#command-top');
+    var command_number = 0;
+
+    $cmd.submit(function (event) {
+        event.preventDefault();
+
+        if (this.command.value == "") {
+            dbgpr('submit; skipping since command value is empty');
+            return false;
+        }
+
+        addCommandWrapper(this.target.value, this.command.value);
+        touchTarget(this, this.target.value);
+
+        return false;
+    });
+
+    function touchTarget (form, target) {
+        var $tset = $('#target-contents');
+        var id = 'target-is-' + target;
+        var $target = $('#' + id, $tset);
+
+        if ($target && $target.length > 0) {
+            dbgpr("target", target, "was found");
+            $target.remove();
+            $tset.prepend($target);
+        } else {
+            dbgpr("target", target, "not found");
+
+            var content = '<div id="' + id + '" class="target ' + id 
+                + ' target-info rounded buttonish green">'
+                + target
+                + '</div>';
+
+            var $target = jQuery(content);
+            $tset.prepend($target);
+        }
+
+        $target.click(function (event) {
+            setTarget(form, target);
+        });
+
+        $('#target-contents-none').css({ display: "none" });
+    }
+
+    function setTarget (form, target) {
+        dbgpr("setTarget:", target);
+        form.target.value = target;
+        $('#command-target').focus();
+    }
+
+    function addCommandWrapper (target, command) {
+        var content = '<div class="command-wrapper rounded">'
+                + '<div class="icon-box">'
+                + '<img src="/icons/button-remove.png" '
+                +       'class="icon icon-remove-section"/>'
+                + '<img src="/icons/button-keeper.png" '
+                +       'class="icon keeper icon-keeper-section"/>'
+                + '<img src="/icons/arrow-up.png" '
+                +       'class="icon icon-hide-section hidden"/>'
+                + '<img src="/icons/arrow-down.png" '
+                +       'class="icon icon-unhide-section"/>'
+                + '</div>';
+
+        if (target) {
+            content += '<div class="command-target rounded buttonish green">'
+                + target
+                + '</div><div class="label"> -> </div>';
+        }
+
+        content += '<div class="command command-line rounded blue">'
+                + command
+                + '</div><div class="command-number">'
+                + " (" + ++command_number + ")"
+                + '</div><div class="command-output" style="white-space: pre">'
+                + "test-output\nmore\nand more and more\noutput\n"
+                + '</div>';
+
+        var $newp = jQuery(content);
+        $newp.insertAfter($top);
+
+        unhideSection($newp);
+
+        $('.icon-remove-section', $newp).click(function () {
+            $newp.remove();
+        });
+        $('.icon-keeper-section', $newp).click(function () {
+            $newp.toggleClass("keeper");
+        });
+        $('.icon-unhide-section', $newp).click(function () {
+            unhideSection($newp);
+        });
+        $('.icon-hide-section', $newp).click(function () {
+            hideSection($newp);
+        });
+
+        var last = $top.parents()[0];
+        if (last) {
+            trimOutputSections(last);
+        }
+
+        return false;
+    }
+  
+    function trimOutputSections (last) {
+        var keep = 0;
+
+        for (var i = 0; last.children[i]; i++) {
+            var $child = $(last.children[i]);
+            if ($child.hasClass("keeper")) {
+                keep += 1;
+            } else if (i == output_close_after + 1 + keep) {
+                hideSection($child);
+            } else if (i == output_remove_after + 1 + keep) {
+                $child.remove();
+            }
+        }
+    }
+
+    function hideSection ($wrapper) {
+         $('.icon-unhide-section', $wrapper).removeClass("hidden");
+         $('.icon-hide-section', $wrapper).addClass("hidden");
+         $('.command-output', $wrapper).addClass("hidden");
+    }
+
+    function unhideSection ($wrapper) {
+         $('.icon-unhide-section', $wrapper).addClass("hidden");
+         $('.icon-hide-section', $wrapper).removeClass("hidden");
+         $('.command-output', $wrapper).removeClass("hidden");
+    }
+
+    function dbgpr () {
+        var args = Array.prototype.slice.call(arguments);
+        $('#debug-log').append(args.join(" ") + "\n");
+    }
+
+    $('#command-target').focus();
+});
+
+
+ </script>
+ </head>
+ <body>
+
+<div id="header">
+  <div id="header-logo">&nbsp;</div>
+  <div id="header-info">
+    User: phil<br/>
+  </div>
+  <div id="header-status">Status: running</div>
+</div>
+
+<div id="target-list">
+  <div id="target-title" 
+         class="target-info rounded green buttonish">Recent Targets:</div>
+  <div id="target-contents-none">None</div>
+  <div id="target-contents"></div>
+</div>
+
+<div id="command-area">
+ <div id="command-top" class="command-top">
+  <form id="command-line" action="#">
+    <div class="label">On:</div>
+    <input spellcheck="false" autocomplete="off" id="command-target"
+	   class="rounded command-target green"
+	   maxlength="256" name="target" size="16" type="text"/>
+    <div class="label">Run:</div>
+    <input spellcheck="false" autocomplete="off" 
+	   class="command-line rounded blue"
+	   maxlength="2048" name="command" size="60" type="text"/>
+    <input type="submit" value="Enter"/>
+  </form>
+ </div>
+</div>
+
+<div id="footer">
+[ Copyright 2011, Juniper Networks ]
+</div>
+
+<div id="debug-log">Debug Log:
+</div>
+
+ </body>                                                                 
+ </html>

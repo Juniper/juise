@@ -1,0 +1,53 @@
+div.text, div.decoration, div.default, div.header-line {
+    color: #505050;
+    font-family: monospace;
+    white-space: pre;
+}
+
+div.data {
+    font-family: monospace;
+}
+
+div.line {
+    border: 1px solid red;
+    display: table;
+}
+
+div.indented {
+    display: table-cell;
+}
+
+div.indent {
+    display: table-cell;
+}
+
+div.item {
+    border: 1px solid blue;
+}
+
+
+div.text, div.decoration, div.data, div.header, div.pad, div.item {
+    font-family: monospace;
+    display: inline-block;
+    vertical-align: middle;
+    white-space: pre;
+    sborder: 1px solid orange;
+}
+
+div.pad {
+    border: 1px solid orange;
+}
+
+div.blank-line {
+    border: 1px inset;
+    margin: 5px;
+}
+
+div.indentxxx {
+   padding-left: 2em;
+}
+
+div.output {
+    font-family: monospace;
+    white-space: pre;
+}

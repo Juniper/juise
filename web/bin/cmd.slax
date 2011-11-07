@@ -1,0 +1,63 @@
+version 1.1;
+
+ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
+
+param $host;
+param $command;
+
+output-method html {
+    indent no;
+}
+
+match / {
+    <html> {
+	<head> {
+	    <meta http-equiv="content-type"
+		content="text/html; charset=iso-8859-1">;
+	    <meta name="author" content="Phil Shafer">;
+	    <title> {
+		expr "JUNOS Commands";
+		if ($host) {
+		    expr " @ " _ $host;
+		}
+	    }
+
+	    <script type="text/javascript">;
+	
+	    <style type="text/css" title="currentStyle" media="screen"> {
+		expr '@import url("/static/cmd.css");';
+	    }
+	}
+	<body> {
+	    <title> "JUNOS Commands in HTML";
+	    <h1> "JUNOS Commands";
+
+	    <form action="/bin/cmd.slax"> {
+		<input spellcheck="false" autocomplete="off"
+			maxlength="2048" name="command" size="60" type="text"
+			value=$command>;
+
+		<label> "@";
+		<input spellcheck="false" autocomplete="off"
+			maxlength="256" name="host" size="16" type="text"
+			value=$host>;
+		<input type="submit" value="OK">;
+	    }
+
+	    if ($host && $command) {
+		call make-content;
+	    }
+	}
+    }
+}
+
+template make-content {
+    var $conn = jcs:open($host);
+    if ($conn) {
+	var $rpc = <command format="html"> $command;
+        var $res = jcs:execute($conn, $rpc);
+	copy-of $res;
+    } else {
+	terminate "connection failure";
+    }
+}

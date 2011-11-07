@@ -62,7 +62,7 @@
 extern char *source_daemon_name;
 
 js_boolean_t
-ext_fix_namespaces (lx_node_t *node)
+ext_jcs_fix_namespaces (lx_node_t *node)
 {
     /*
      * Free the current namespace, meaning the one in which
@@ -103,22 +103,22 @@ ext_fix_namespaces (lx_node_t *node)
      */
     lx_node_t *child;
     for (child = lx_node_children(node); child; child = lx_node_next(child))
-	ext_fix_namespaces(child);
+	ext_jcs_fix_namespaces(child);
 
     return FALSE;
 }
 
 #ifdef XXX_UNUSED
-static char *ext_auth_info;
+static char *ext_jcs_auth_info;
 
 /*
  * Record authentication information to pass to sub-processes
  */
 char *
-ext_set_auth_info (char *str)
+ext_jcs_set_auth_info (char *str)
 {
-    char *old = ext_auth_info;
-    ext_auth_info = str;
+    char *old = ext_jcs_auth_info;
+    ext_jcs_auth_info = str;
     return old;
 }
 
@@ -126,18 +126,18 @@ ext_set_auth_info (char *str)
  * Get authentication information 
  */
 char *
-ext_get_auth_info (void)
+ext_jcs_get_auth_info (void)
 {
-    return ext_auth_info;
+    return ext_jcs_auth_info;
 }
 
 /*
  * Get the authentication information for a particular parameter
  */
 void
-ext_extract_authinfo (const char *key, char *value, size_t size)
+ext_jcs_extract_authinfo (const char *key, char *value, size_t size)
 {
-    const char *auth_info = ext_get_auth_info();
+    const char *auth_info = ext_jcs_get_auth_info();
     char *cp;
 
     if (auth_info && (cp = strstr(auth_info, key))) {
@@ -158,7 +158,7 @@ ext_extract_authinfo (const char *key, char *value, size_t size)
  * Build a node containing a text node
  */
 static xmlNode *
-ext_make_text_node (xmlNs *nsp, const xmlChar *name,
+ext_jcs_make_text_node (xmlNs *nsp, const xmlChar *name,
 		    const xmlChar *content, int len)
 {
     xmlNode *newp = xmlNewNode(nsp, name);
@@ -176,16 +176,15 @@ ext_make_text_node (xmlNs *nsp, const xmlChar *name,
     return newp;
 }
 
-
 /*
- * lx_ext_rpc: turns an xnm:rpc element into the results of that RPC.
+ * lx_ext_jcs_rpc: turns an xnm:rpc element into the results of that RPC.
  * Open a child process for "cli xml-mode" and pass it the RPC,
  * wrapped in a JUNOScript session.  Read the results of the RPC
  * and lift out the rpc-reply element, which we return.
  */
 static lx_nodeset_t *
-ext_rpc (xmlXPathParserContext *ctxt UNUSED, lx_node_t *rpc_node UNUSED, 
-	 const xmlChar *rpc_name UNUSED)
+ext_jcs_rpc (xmlXPathParserContext *ctxt, lx_node_t *rpc_node,
+	     const xmlChar *rpc_name)
 {
     js_session_t *jsp;
     lx_nodeset_t *results = NULL;
@@ -220,7 +219,7 @@ ext_rpc (xmlXPathParserContext *ctxt UNUSED, lx_node_t *rpc_node UNUSED,
  * Usage: var $out = jcs:invoke('get-chassis-inventory');
  */
 static void
-ext_invoke (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_invoke (xmlXPathParserContext *ctxt, int nargs)
 {
     xsltTransformContextPtr tctxt;
     xmlXPathObjectPtr ret;
@@ -240,7 +239,7 @@ ext_invoke (xmlXPathParserContext *ctxt, int nargs)
      * Invoked with a simple string argument?  Handle it.
      */
     if (xop->stringval) {
-	lx_nodeset_t *results = ext_rpc(ctxt, NULL, xop->stringval);
+	lx_nodeset_t *results = ext_jcs_rpc(ctxt, NULL, xop->stringval);
 
 	xmlXPathFreeObject(xop);
 
@@ -289,7 +288,7 @@ ext_invoke (xmlXPathParserContext *ctxt, int nargs)
 		 * Okay, so now we've found the tag.  Do the RPC and
 		 * process the results.
 		 */
-		lx_nodeset_t *results = ext_rpc(ctxt, cop, NULL);
+		lx_nodeset_t *results = ext_jcs_rpc(ctxt, cop, NULL);
 		if (results == NULL) {
 		    xmlXPathFreeObject(xop);
 		    return;
@@ -315,7 +314,7 @@ ext_invoke (xmlXPathParserContext *ctxt, int nargs)
  * function
  */
 static void 
-ext_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username, 
+ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username, 
 			xmlChar **passphrase, session_type_t *stype, uint *port)
 {
     lx_node_t *nop, *cop;
@@ -366,7 +365,7 @@ ext_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username,
  * Extract server name and method information from session cookie
  */
 static void 
-ext_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server, 
+ext_jcs_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server, 
 		     session_type_t *stype)
 {
     lx_node_t *nop, *cop;
@@ -374,6 +373,9 @@ ext_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
     int i;
 
     *stype = ST_DEFAULT;    /* Default session */
+
+    if (nodeset == NULL)
+	return;
 
     for (i = 0; i < nodeset->nodeNr; i++) {
 	nop = nodeset->nodeTab[i];
@@ -434,7 +436,7 @@ ext_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
  *
  */
 static void
-ext_open (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_open (xmlXPathParserContext *ctxt, int nargs)
 {
     xsltTransformContextPtr tctxt;
     xmlXPathObjectPtr ret;
@@ -467,7 +469,7 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
 	    return;
 	}
 
-	ext_extract_second_arg(xop->nodesetval, &username, &passphrase, 
+	ext_jcs_extract_second_arg(xop->nodesetval, &username, &passphrase, 
 			       &stype, &port);
 	xmlXPathFreeObject(xop);
 
@@ -504,12 +506,12 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
     if (!server)
 	server = xmlStrdup((const xmlChar *) "");
 
-    serverp = ext_make_text_node(NULL, (const xmlChar *) "server",
+    serverp = ext_jcs_make_text_node(NULL, (const xmlChar *) "server",
 				 server, xmlStrlen(server));
     xmlAddChild(nodep, serverp);
 
     sname = jsio_session_type_name(stype);
-    methodp = ext_make_text_node(NULL, (const xmlChar *) "method",
+    methodp = ext_jcs_make_text_node(NULL, (const xmlChar *) "method",
 				 (const xmlChar *) sname, strlen(sname));
 
     xmlAddSibling(serverp, methodp);
@@ -543,7 +545,7 @@ ext_open (xmlXPathParserContext *ctxt, int nargs)
  *  Closes the given connection.
  */
 static void
-ext_close (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_close (xmlXPathParserContext *ctxt, int nargs)
 {
     xmlXPathObject *xop = NULL;
     xmlChar *server = NULL;
@@ -559,7 +561,7 @@ ext_close (xmlXPathParserContext *ctxt, int nargs)
 	LX_ERR("xnm:invoke: null argument\n");
 	return;
     }
-    ext_extract_scookie(xop->nodesetval, &server, &stype);
+    ext_jcs_extract_scookie(xop->nodesetval, &server, &stype);
 
     js_session_close((char *) server, stype);
 
@@ -586,7 +588,7 @@ ext_close (xmlXPathParserContext *ctxt, int nargs)
  * $results = jcs:execute($connection, $rpc);
  */
 static void
-ext_execute (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
 {
     xsltTransformContextPtr tctxt;
     xmlXPathObjectPtr ret;
@@ -600,16 +602,24 @@ ext_execute (xmlXPathParserContext *ctxt, int nargs)
 
     xmlXPathObject *xop = valuePop(ctxt);
     if (xop == NULL) {
-	LX_ERR("xnm:invoke: null argument\n");
+	LX_ERR("jcs:execute: null argument\n");
 	return;
     }
 
     xmlXPathObject *sop = valuePop(ctxt);
     if (sop == NULL) {
-	LX_ERR("xnm:invoke: null argument\n");
+	xmlXPathFreeObject(xop);
+	LX_ERR("jcs:execute: null argument\n");
 	return;
     }
-    ext_extract_scookie(sop->nodesetval, &server, &stype);
+    ext_jcs_extract_scookie(sop->nodesetval, &server, &stype);
+    if (server == NULL) {
+	xmlXPathFreeObject(xop);
+	xmlXPathFreeObject(sop);
+	LX_ERR("jcs:execute: null argument\n");
+	return;
+	
+    }
 
     /*
      * Invoked with a simple string argument?  Handle it.
@@ -713,7 +723,7 @@ ext_execute (xmlXPathParserContext *ctxt, int nargs)
  *  
  */
 static void
-ext_gethello (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_gethello (xmlXPathParserContext *ctxt, int nargs)
 {
     xsltTransformContextPtr tctxt;
     xmlDocPtr container;
@@ -732,7 +742,7 @@ ext_gethello (xmlXPathParserContext *ctxt, int nargs)
 	LX_ERR("xnm:invoke: null argument\n");
 	return;
     }
-    ext_extract_scookie(xop->nodesetval, &server, &stype);
+    ext_jcs_extract_scookie(xop->nodesetval, &server, &stype);
 
     hellop = js_gethello((char *) server, stype);
 
@@ -763,7 +773,7 @@ ext_gethello (xmlXPathParserContext *ctxt, int nargs)
 }
 
 static void
-ext_getprotocol (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_getprotocol (xmlXPathParserContext *ctxt, int nargs)
 {
     xmlXPathObject *xop = NULL;
     xmlNodeSetPtr nodeset;
@@ -825,7 +835,7 @@ ext_getprotocol (xmlXPathParserContext *ctxt, int nargs)
  * Usage:  var $name = jcs:hostname($address);
  */
 static void
-ext_hostname (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_hostname (xmlXPathParserContext *ctxt, int nargs)
 {
     if (nargs == 0) {
 	xmlXPathSetArityError(ctxt);
@@ -897,7 +907,7 @@ ext_hostname (xmlXPathParserContext *ctxt, int nargs)
  *   var $results = jcs:parse-ip("080:0:0:0:8:800:200C:417A/100") 
  */
 static void
-ext_parse_ip (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 {
     xsltTransformContextPtr tctxt;
     xmlDocPtr container;
@@ -1014,7 +1024,7 @@ ext_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 
     /* Output: results[1] =>  Address */
     inet_ntop(af, &addr, address, sizeof(address));
-    newp = ext_make_text_node(NULL, (const xmlChar *) "parse-ip",
+    newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
 			      (const xmlChar *) address, strlen(address));
     if (newp) {
 	xmlXPathNodeSetAdd(results, newp);
@@ -1025,7 +1035,7 @@ ext_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 
     /* Output: results[2] => inet or inet6 */
     const char *tag = (af == AF_INET) ? "inet" : "inet6";
-    newp = ext_make_text_node(NULL, (const xmlChar *) "parse-ip",
+    newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
 			      (const xmlChar *) tag, strlen(tag));
 
     if (newp) {
@@ -1042,7 +1052,7 @@ ext_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 
 	/* Output: results[3] => Prefix length */
 	snprintf(address, sizeof(address), "%d", (int) pfxlen);
-	newp = ext_make_text_node(NULL, (const xmlChar *) "parse-ip",
+	newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
 				  (const xmlChar *) address, strlen(address));
 
 	if (newp) {
@@ -1064,7 +1074,7 @@ ext_parse_ip (xmlXPathParserContext *ctxt, int nargs)
     	    inet_ntop(af, &v6_net, address, sizeof(address));
 	}
 
-	newp = ext_make_text_node(NULL, (const xmlChar *) "parse-ip",
+	newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
 				  (const xmlChar *) address, strlen(address));
 	if (newp) {
     	    xmlXPathNodeSetAdd(results, newp);
@@ -1079,7 +1089,7 @@ ext_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 	/* Output: results[5] => Netmask only in case of ipv4 */
 	if (af == AF_INET) {
 	    inet_ntop(af, v4_msk, address, sizeof(address));
-	    newp = ext_make_text_node(NULL, (const xmlChar *) "parse-ip",
+	    newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
 				      (const xmlChar *) address,
 				      strlen(address));
 
@@ -1144,7 +1154,7 @@ time_diff (const struct timeval *new, const struct timeval *old,
  * 'frequency' should be passed as greater than zero.
  */
 static void
-ext_dampen (xmlXPathParserContext *ctxt, int nargs)
+ext_jcs_dampen (xmlXPathParserContext *ctxt, int nargs)
 {
     char filename[MAXPATHLEN + 1];
     char new_filename[MAXPATHLEN + 1];
@@ -1273,19 +1283,20 @@ ext_dampen (xmlXPathParserContext *ctxt, int nargs)
  * details of the libxslt interactions here.
  */
 int
-ext_register_all (void)
+ext_jcs_register_all (void)
 {
     slaxExtRegisterOther (JCS_FULL_NS);
 
-    (void) lx_extension_register(JCS_FULL_NS, "close", ext_close);
-    (void) lx_extension_register(JCS_FULL_NS, "dampen", ext_dampen);
-    (void) lx_extension_register(JCS_FULL_NS, "execute", ext_execute);
-    (void) lx_extension_register(JCS_FULL_NS, "get-hello", ext_gethello);
-    (void) lx_extension_register(JCS_FULL_NS, "get-protocol", ext_getprotocol);
-    (void) lx_extension_register(JCS_FULL_NS, "hostname", ext_hostname);
-    (void) lx_extension_register(JCS_FULL_NS, "invoke", ext_invoke);
-    (void) lx_extension_register(JCS_FULL_NS, "open", ext_open);
-    (void) lx_extension_register(JCS_FULL_NS, "parse-ip", ext_parse_ip);
+    (void) lx_extension_register(JCS_FULL_NS, "close", ext_jcs_close);
+    (void) lx_extension_register(JCS_FULL_NS, "dampen", ext_jcs_dampen);
+    (void) lx_extension_register(JCS_FULL_NS, "execute", ext_jcs_execute);
+    (void) lx_extension_register(JCS_FULL_NS, "get-hello", ext_jcs_gethello);
+    (void) lx_extension_register(JCS_FULL_NS, "get-protocol",
+				 ext_jcs_getprotocol);
+    (void) lx_extension_register(JCS_FULL_NS, "hostname", ext_jcs_hostname);
+    (void) lx_extension_register(JCS_FULL_NS, "invoke", ext_jcs_invoke);
+    (void) lx_extension_register(JCS_FULL_NS, "open", ext_jcs_open);
+    (void) lx_extension_register(JCS_FULL_NS, "parse-ip", ext_jcs_parse_ip);
 
     return 0;
 }
