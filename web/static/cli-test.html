@@ -6,31 +6,28 @@ div.hidden, img.hidden {
     display: none;
 }
 
-div.keeper div.icon-box  img.keeper {
+div.keeper-active div.icon-box img.keeper {
     border: 1px solid #966535;
     border-radius: 4px;
     -moz-border-radius: 4px;
     -webkit-border-radius: 4px;
-
-/*
-    background-color: ;
-    background-color: #ff0f0f;
-    background: linear-gradient(top, #E7CF82 0%,  #CF9BCB2A 2%, 
-                                          #A35D31 97%, #966535 100%);
-    background: -moz-linear-gradient(top, #E7CF82 0%,  #CB9B2A 2%, 
-                                          #A35D31 97%, #966535 100%);
-    background: -webkit-linear-gradient(top, #E7CF82 0%,  #CB9B2A 2%, 
-                                          #A35D31 97%, #966535 100%);
-    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0,
-                      startColorstr='#cb9b2a, endColorstr='#966535);
-*/
 }
 
-div#debug-log {
+div.icon-box img.keeper {
+    border: 1px solid #ffffff;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+}
+
+div#debug-container {
     font-size: 70%;
     display: block;
     color: blue;
     border: 1px solid blue;
+}
+
+div#debug-log {
     white-space: pre;
 }
 
@@ -62,7 +59,11 @@ div#header-status {
 
 div#target-list {
     border-top: 1px solid #a0ffa0;
-    display: block;
+    display: table-cell;
+}
+
+div#target-title {
+    display: table-cell;
 }
 
 div.target-info {
@@ -76,7 +77,7 @@ div.target-info {
 }
 
 div#target-contents, div#target-contents-none {
-    display: inline-block;
+    display: table-cell;
     font-family: Verdana, Arial, Helvetica, sans-serif ;
     padding: 5px 10px 5px 10px;
 }
@@ -158,6 +159,10 @@ div.command-output {
 div.icon-box {
     display: inline-block;
     margin-right: 5px;
+}
+
+div#debug-title {
+    display: inline-block;
 }
 
 img.icon {
@@ -264,7 +269,7 @@ div.aqua:hover {
 
    </style>
 
- <script type="text/javascript" src="jquery.js"></script>          
+ <script type="text/javascript" src="/jquery/jquery.js"></script>          
  <script type="text/javascript">                                         
 
 jQuery(document).ready(function () {
@@ -272,8 +277,14 @@ jQuery(document).ready(function () {
 
     dbgpr("document is ready");
 
-    var output_close_after = 5;
-    var output_remove_after = 10;
+    var prefs = {
+        output_close_after: 5,
+        output_remove_after: 10,
+        slide_speed: 'fast',
+        max_targets_inline: 10,
+        max_targets_list: 40,
+        max_target_position: 10,
+    }
 
     var $cmd = $('#command-line');
     var $top = $('#command-top');
@@ -299,11 +310,10 @@ jQuery(document).ready(function () {
         var $target = $('#' + id, $tset);
 
         if ($target && $target.length > 0) {
-            dbgpr("target", target, "was found");
             $target.remove();
             $tset.prepend($target);
+
         } else {
-            dbgpr("target", target, "not found");
 
             var content = '<div id="' + id + '" class="target ' + id 
                 + ' target-info rounded buttonish green">'
@@ -312,6 +322,7 @@ jQuery(document).ready(function () {
 
             var $target = jQuery(content);
             $tset.prepend($target);
+            trimTargets($tset);
         }
 
         $target.click(function (event) {
@@ -319,6 +330,16 @@ jQuery(document).ready(function () {
         });
 
         $('#target-contents-none').css({ display: "none" });
+    }
+
+    function trimTargets ($tset) {
+        $('.target', $tset).each(function (index, target) {
+            var delta = $(target).position().top - 
+                        $(target).parent().position().top;
+            if ( delta > prefs.max_target_position) {
+                $(target).remove();
+            }
+        });     
     }
 
     function setTarget (form, target) {
@@ -334,9 +355,9 @@ jQuery(document).ready(function () {
                 +       'class="icon icon-remove-section"/>'
                 + '<img src="/icons/button-keeper.png" '
                 +       'class="icon keeper icon-keeper-section"/>'
-                + '<img src="/icons/arrow-up.png" '
+                + '<img src="/icons/button-hide.png" '
                 +       'class="icon icon-hide-section hidden"/>'
-                + '<img src="/icons/arrow-down.png" '
+                + '<img src="/icons/button-unhide.png" '
                 +       'class="icon icon-unhide-section"/>'
                 + '</div>';
 
@@ -350,7 +371,8 @@ jQuery(document).ready(function () {
                 + command
                 + '</div><div class="command-number">'
                 + " (" + ++command_number + ")"
-                + '</div><div class="command-output" style="white-space: pre">'
+                + '</div><div class="command-output can-hide" '
+                +    'style="white-space: pre">'
                 + "test-output\nmore\nand more and more\noutput\n"
                 + '</div>';
 
@@ -360,10 +382,10 @@ jQuery(document).ready(function () {
         unhideSection($newp);
 
         $('.icon-remove-section', $newp).click(function () {
-            $newp.remove();
+            removeSection($newp);
         });
         $('.icon-keeper-section', $newp).click(function () {
-            $newp.toggleClass("keeper");
+            $newp.toggleClass("keeper-active");
         });
         $('.icon-unhide-section', $newp).click(function () {
             unhideSection($newp);
@@ -385,29 +407,52 @@ jQuery(document).ready(function () {
 
         for (var i = 0; last.children[i]; i++) {
             var $child = $(last.children[i]);
-            if ($child.hasClass("keeper")) {
+            if ($child.hasClass("keeper-active")) {
                 keep += 1;
-            } else if (i == output_close_after + 1 + keep) {
+            } else if (i == prefs.output_close_after + 1 + keep) {
                 hideSection($child);
-            } else if (i == output_remove_after + 1 + keep) {
-                $child.remove();
+            } else if (i == prefs.output_remove_after + 1 + keep) {
+                removeSection($child);
             }
         }
+    }
+
+    function removeSection ($wrapper) {
+        $wrapper.slideUp(prefs.slide_speed, function () {
+            $wrapper.remove();
+        });
     }
 
     function hideSection ($wrapper) {
          $('.icon-unhide-section', $wrapper).removeClass("hidden");
          $('.icon-hide-section', $wrapper).addClass("hidden");
-         $('.command-output', $wrapper).addClass("hidden");
+         $('.can-hide', $wrapper).slideUp(prefs.slide_speed);
     }
 
     function unhideSection ($wrapper) {
          $('.icon-unhide-section', $wrapper).addClass("hidden");
          $('.icon-hide-section', $wrapper).removeClass("hidden");
-         $('.command-output', $wrapper).removeClass("hidden");
+         $('.can-hide', $wrapper).slideDown(prefs.slide_speed);
     }
 
+    var dbgpr_inited = 0;
     function dbgpr () {
+        if (dbgpr_inited == 0) {
+            dbgpr_inited = 1;
+            var $dc = $('#debug-container');
+            var $dl = $('#debug-log');
+
+            $('.icon-remove-section', $dc).click(function () {
+                removeSection($dc);
+            });
+            $('.icon-unhide-section', $dc).click(function () {
+                unhideSection($dc);
+            });
+            $('.icon-hide-section', $dc).click(function () {
+                hideSection($dc);
+            });
+        }
+
         var args = Array.prototype.slice.call(arguments);
         $('#debug-log').append(args.join(" ") + "\n");
     }
@@ -455,7 +500,14 @@ jQuery(document).ready(function () {
 [ Copyright 2011, Juniper Networks ]
 </div>
 
-<div id="debug-log">Debug Log:
+<div id="debug-container">
+  <div class="icon-box">
+    <img src="/icons/button-remove.png" class="icon icon-remove-section"/>
+    <img src="/icons/button-hide.png" class="icon icon-hide-section"/>
+    <img src="/icons/button-unhide.png" class="icon icon-unhide-section hidden"/>
+  </div>
+  <div id="debug-title">Debug Log:</div>
+  <div id="debug-log" class="can-hide">&nbsp;</div>
 </div>
 
  </body>                                                                 
