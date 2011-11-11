@@ -1,5 +1,8 @@
 <html>
  <head>
+    <link rel="icon" href="/favicon.ico" type="image/png">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/png"> 
+
    <style type="text/css" title="currentStyle" media="screen">
 
 div.hidden, img.hidden {
@@ -32,7 +35,7 @@ div#debug-log {
 }
 
 div#header {
-    width: 100%;
+    width: 95%;
     height: 60px;
     padding: 10px;
 }
@@ -59,11 +62,21 @@ div#header-status {
 
 div#target-list {
     border-top: 1px solid #a0ffa0;
-    display: table-cell;
+    display: block;
 }
 
 div#target-title {
     display: table-cell;
+}
+
+div#target-history {
+    border: 1px solid #659635;
+    position: absolute;
+    width: 25%;
+}
+
+div.target-history-name {
+    display: inline-block;
 }
 
 div.target-info {
@@ -105,11 +118,7 @@ div#command-area {
     padding: 10px;
 }
 
-xdiv#command-line {
-    border: 1px solid black;
-}
-
-form#command-line {
+form#command-form {
     margin: 0px;
 }
 
@@ -284,29 +293,148 @@ jQuery(document).ready(function () {
         max_targets_inline: 10,
         max_targets_list: 40,
         max_target_position: 10,
+        stay_on_page: false,
     }
 
-    var $cmd = $('#command-line');
+    var $cmd = $('#command-form');
     var $top = $('#command-top');
+    var $history = $('#target-history-form');
     var command_number = 0;
+
+    $('.icon-clear-target', $cmd).click(function () {
+        $cmd[0].target.value = "";
+        $('#command-target').focus();
+    });
+
+    $('.icon-clear-command', $cmd).click(function () {
+        $cmd[0].command.value = "";
+        $('#command-line').focus();
+    });
 
     $cmd.submit(function (event) {
         event.preventDefault();
 
         if (this.command.value == "") {
             dbgpr('submit; skipping since command value is empty');
+            $('#command-line').focus();
             return false;
         }
 
-        addCommandWrapper(this.target.value, this.command.value);
-        touchTarget(this, this.target.value);
+        var tset = [ ];
+        var tname = "";
+        var cname = "";
+        var value = this.command.value;
+        $(this.target.value.split(" ")).each(function (i, e) {
+            if (e != "") {
+                tset.push(e);
+                addCommandWrapper(e, value);
+                touchTargetHistory(e);
+                tname += " " + e;
+                cname += "_" + e.replace("_", "__", "g");
+            }
+        });
+
+        tname = tname.substr(1);
+        cname = cname.substr(1);
+        touchTarget(this, tname, cname);
 
         return false;
     });
 
-    function touchTarget (form, target) {
+    var shown = false;
+
+    $('#target-title').click(function (e) {
+        var $this = $(this);
+        dbgpr("title click: ", $this.offset().top, "+", $this.offset().left);
+
+        shown = !shown;
+        if (shown) {
+            $('#target-history').css({
+                top: $this.offset().top + 30,
+                left: $this.offset().left + 50,
+                display: "block",
+            });
+        } else {
+            submitTargetHistory(null);
+        }
+    });
+
+    $history.submit(submitTargetHistory);
+
+    /* XXX This is not working */
+    $('#target-history').keydown(function (e) {
+        if (e.keyCode == 13) {
+            submitTargetHistory(e);
+            return false;
+        }
+        if (e.keyCode == 27) {
+            submitTargetHistory(e, true);
+            return false;
+        }
+    });
+
+    function submitTargetHistory (event, nochange) {
+        if (event)
+            event.preventDefault();
+
+        shown = false;
+        $('#target-history').css({ display: "none" });
+
+        var tname = "";
+
+        $('input:checked', $history).each(function () {
+            if (this.name)
+                tname += " " + this.name;
+            $(this).removeAttr('checked');
+        });
+
+        if (nochange)
+            return;
+
+        if (tname != "")
+            setTarget($cmd.get(0), tname.substr(1));
+        else
+            $('#command-target').focus();
+
+    }
+
+    function touchTargetHistory (target) {
+        var id = 'target-history-' + target;
+        var $target = $('#' + id, $history);
+
+        if ($target && $target.length > 0) {
+            $target.remove();
+            $history.prepend($target);
+        } else {
+            var content = '<div id="' + id + '" class="target-history-entry">'
+                + '<input type="checkbox" name="' + target 
+                + '" id="input-' + target + '">'
+                + '<div id="click-' + target 
+                + '" class="target-history-name">'
+                + target + '</div>'
+                + '</div>';
+            var $target = jQuery(content);
+            $history.prepend($target);
+            $('#click-' + target).click(function (e) {
+                $('#input-' + target).attr("checked", "checked");
+                submitTargetHistory(e);
+            });
+        }
+        $('#target-history-none').css({ display: "none" });
+    }
+
+    function setupConfirmExit () {
+        if (prefs.stay_on_page) {
+            window.onbeforeunload = function (e) {
+                return "Are you sure?  You don't look sure.....";
+            }
+        }
+    }
+
+
+    function touchTarget (form, target, cname) {
         var $tset = $('#target-contents');
-        var id = 'target-is-' + target;
+        var id = 'target-is-' + cname;
         var $target = $('#' + id, $tset);
 
         if ($target && $target.length > 0) {
@@ -345,7 +473,7 @@ jQuery(document).ready(function () {
     function setTarget (form, target) {
         dbgpr("setTarget:", target);
         form.target.value = target;
-        $('#command-target').focus();
+        $('#command-line').focus();
     }
 
     function addCommandWrapper (target, command) {
@@ -457,6 +585,8 @@ jQuery(document).ready(function () {
         $('#debug-log').append(args.join(" ") + "\n");
     }
 
+    /* Some last minute initialization */
+    setupConfirmExit();
     $('#command-target').focus();
 });
 
@@ -474,6 +604,12 @@ jQuery(document).ready(function () {
 </div>
 
 <div id="target-list">
+  <div id="target-history" style="display: none" class="green rounded">
+    <div id="target-history-none">None</div>
+    <form id="target-history-form" action="#">
+      <input type="submit" id="target-history-submit" value="Select Target(s)"</input>
+    </form>
+  </div>
   <div id="target-title" 
          class="target-info rounded green buttonish">Recent Targets:</div>
   <div id="target-contents-none">None</div>
@@ -482,13 +618,15 @@ jQuery(document).ready(function () {
 
 <div id="command-area">
  <div id="command-top" class="command-top">
-  <form id="command-line" action="#">
+  <form id="command-form" action="#">
     <div class="label">On:</div>
+    <img src="/icons/button-remove.png" class="icon icon-clear-target"/>
     <input spellcheck="false" autocomplete="off" id="command-target"
 	   class="rounded command-target green"
 	   maxlength="256" name="target" size="16" type="text"/>
     <div class="label">Run:</div>
-    <input spellcheck="false" autocomplete="off" 
+    <img src="/icons/button-remove.png" class="icon icon-clear-command"/>
+    <input spellcheck="false" autocomplete="off" id="command-line"
 	   class="command-line rounded blue"
 	   maxlength="2048" name="command" size="60" type="text"/>
     <input type="submit" value="Enter"/>

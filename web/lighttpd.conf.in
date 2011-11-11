@@ -13,7 +13,7 @@ server.modules = (
     "mod_fastcgi",
 )
 
-juise.assign = ( ".slax"  => "@prefix@/usr/libexec/juise/juise.cgi" )
+juise.assign = ( ".slax"  => "@prefix@/libexec/juise.cgi" )
 
 debug.log-request-header = "enable"
 debug.log-response-header = "enable"
@@ -24,7 +24,8 @@ mimetype.assign = (
   ".html" => "text/html", 
   ".txt" => "text/plain",
   ".jpg" => "image/jpeg",
-  ".png" => "image/png" 
+  ".png" => "image/png",
+  ".ico" => "image/png",
 )
 
 url.access-deny = ( "~", ".inc", ".conf" )

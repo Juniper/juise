@@ -2,3 +2,4 @@
 # $Id$
 #
 
+CLEANFILES = lighttpd.conf
