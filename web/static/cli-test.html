@@ -131,6 +131,14 @@ div.prefs-item label, div.prefs-item input {
     display: table-cell;
 }
 
+button#prefs-restore {
+    float: left;
+}
+
+input#prefs-submit {
+    float: right;
+}
+
 div#footer {
     padding-top: 100px;
     clear: both;
@@ -315,15 +323,334 @@ jQuery(function ($) {
 
     dbgpr("document is ready");
 
-    var x =  {
-        0: { a: 1, b: 2, c: 3 },
-    };
+    /*
+     * There are three areas in the main display: the target list,
+     * the command, and the command output.  Their use is highly
+     * interrelated.
+     *
+     * XXX Need more here
+     */
+
+    var $cmd = $('#command-form');
+    var $top = $('#command-top');
+    var $history = $('#target-history-form');
+    var command_number = 0;
+
+    function command_init () {
+        /* The "clear" icons wipe the values clear for target and command */
+        $('.icon-clear-target', $cmd).click(function () {
+            $cmd[0].target.value = "";
+            $('#command-target').focus();
+        });
+        $('.icon-clear-command', $cmd).click(function () {
+            $cmd[0].command.value = "";
+            $('#command-line').focus();
+        });
+
+        $cmd.submit(command_submit);
+        $history.submit(target_history_submit);
+        $('#target-title').click(target_title_click);
+    }
+
+    function command_submit (event) {
+        event.preventDefault();
+
+        if (this.command.value == "") {
+            dbgpr('submit; skipping since command value is empty');
+            $('#command-line').focus();
+            return false;
+        }
+
+        /*
+         * Since multiple targets are allowed in the target field,
+         * we need to break the target string up into distinct values.
+         */
+        var count = 0;
+        var tset = [ ];
+        var tname = "";
+        var cname = "";
+        var value = this.command.value;
+        $(this.target.value.split(" ")).each(function (i, x) {
+            if (x != "") {
+                count += 1;
+                tset.push(x);
+                commmand_wrapper_add(x, value);
+                target_mark_used_history(x);
+                tname += " " + x;
+                cname += "_" + x.replace("_", "__", "g");
+            }
+        });
+
+        tname = tname.substr(1);
+        cname = cname.substr(1);
+        target_mark_used_list(this, tname, cname);
+
+        command_output_trim(count);
+
+        return false;
+    }
+
+    /*
+     * The target history displays a list of previous targets, ordered
+     * by the MRU.  Individual target name can be selected, or the
+     * boxes and submit can be used to enter multiple targets.
+     */
+    var target_history_shown = false;
+
+    function target_title_click (event) {
+        var $this = $(this);
+        dbgpr("title click: ", $this.offset().top, "+", $this.offset().left);
+
+        target_history_shown = !target_history_shown;
+        if (target_history_shown) {
+            $('#target-history').css({
+                top: $this.offset().top + 30,
+                left: $this.offset().left + 50,
+                display: "block",
+            });
+        } else {
+            target_history_submit(null);
+        }
+    }
+
+    /* XXX This is not working */
+    $('#target-history').keydown(function (e) {
+        if (e.keyCode == 13) {
+            target_history_submit(e);
+            return false;
+        }
+        if (e.keyCode == 27) {
+            target_history_submit(e, true);
+            return false;
+        }
+    });
+
+    function target_history_submit (event, nochange) {
+        if (event)
+            event.preventDefault();
+
+        target_history_shown = false;
+        $('#target-history').css({ display: "none" });
+
+        var tname = "";
+
+        $('input:checked', $history).each(function () {
+            if (this.name)
+                tname += " " + this.name;
+            $(this).removeAttr('checked');
+        });
+
+        if (nochange)
+            return;
+
+        if (tname != "")
+            target_set($cmd.get(0), tname.substr(1));
+        else
+            $('#command-target').focus();
+
+    }
+
+    function target_mark_used_history (target) {
+        var id = 'target-history-' + target;
+        var $target = $('#' + id, $history);
+
+        if ($target && $target.length > 0) {
+            $target.remove();
+            $history.prepend($target);
+        } else {
+            var content = '<div id="' + id + '" class="target-history-entry">'
+                + '<input type="checkbox" name="' + target 
+                + '" id="input-' + target + '">'
+                + '<div id="click-' + target 
+                + '" class="target-history-name">'
+                + target + '</div>'
+                + '</div>';
+            var $target = jQuery(content);
+            $history.prepend($target);
+        }
+
+        $('#click-' + target).click(function (e) {
+            $('#input-' + target).attr("checked", "checked");
+            target_history_submit(e);
+        });
+
+        $('#target-history-none').css({ display: "none" });
+    }
+
+    function target_mark_used_list (form, target, cname) {
+        var $tset = $('#target-contents');
+        var id = 'target-is-' + cname;
+        var $target = $('#' + id, $tset);
+
+        if ($target && $target.length > 0) {
+            $target.remove();
+            $tset.prepend($target);
+
+        } else {
+
+            var content = '<div id="' + id + '" class="target ' + id 
+                + ' target-info rounded buttonish green">'
+                + target
+                + '</div>';
+
+            var $target = jQuery(content);
+            $tset.prepend($target);
+            target_trim($tset);
+        }
+
+        $target.click(function (event) {
+            target_set(form, target);
+        });
+
+        $('#target-contents-none').css({ display: "none" });
+    }
+
+    function target_trim ($tset) {
+        $('.target', $tset).each(function (index, target) {
+            var delta = $(target).position().top - 
+                        $(target).parent().position().top;
+            if ( delta > prefs.max_target_position) {
+                $(target).remove();
+            }
+        });     
+    }
+
+    function target_set (form, target) {
+        dbgpr("target_set:", target);
+        form.target.value = target;
+        $('#command-line').focus();
+    }
+
+    function command_set (form, line) {
+        dbgpr("comand_set:", line);
+        form.command.value = line;
+        $('#command-line').focus();
+    }
+
+    function commmand_wrapper_add (target, command) {
+        var content = '<div class="command-wrapper rounded">'
+                + '<div class="icon-box">'
+                + '<img src="/icons/button-remove.png" '
+                +       'class="icon icon-remove-section"/>'
+                + '<img src="/icons/button-keeper.png" '
+                +       'class="icon keeper icon-keeper-section"/>'
+                + '<img src="/icons/button-hide.png" '
+                +       'class="icon icon-hide-section hidden"/>'
+                + '<img src="/icons/button-unhide.png" '
+                +       'class="icon icon-unhide-section"/>'
+                + '</div>';
+
+        if (target) {
+            content += '<div class="command-target rounded buttonish green">'
+                + target
+                + '</div><div class="label"> -> </div>';
+        }
+
+        content += '<div class="command command-line rounded blue">'
+                + command
+                + '</div><div class="command-number">'
+                + " (" + ++command_number + ")"
+                + '</div><div class="command-output can-hide" '
+                +    'style="white-space: pre">'
+                + "test-output\nmore\nand more and more\noutput\n"
+                + '</div>';
+
+        var $newp = jQuery(content);
+        $newp.insertAfter($top);
+
+        div_unhide($newp);
+
+        $('.icon-remove-section', $newp).click(function () {
+            div_remove($newp);
+        });
+        $('.icon-keeper-section', $newp).click(function () {
+            $newp.toggleClass("keeper-active");
+        });
+        $('.icon-unhide-section', $newp).click(function () {
+            div_unhide($newp);
+        });
+        $('.icon-hide-section', $newp).click(function () {
+            div_hide($newp);
+        });
+
+        $('.command-target', $newp).click(function () {
+            target_set($cmd.get(0), $(this).text());
+        });
+
+        $('.command-line', $newp).click(function () {
+            command_set($cmd.get(0), $(this).text());
+        });
+
+        return false;
+    }
+  
+    function command_output_trim_changed () {
+        command_output_trim(0);
+    }
+
+    function command_output_trim (fresh_count) {
+        var last = $top.parents()[0];
+        if (!last)
+            return;
+
+        var keep = 0;
+        for (var i = 0; last.children[i]; i++) {
+            var $child = $(last.children[i]);
+            if ($child.hasClass("keeper-active")) {
+                keep += 1;
+            } else if (i <= fresh_count) {
+                /* do nothing */
+            } else if (i >= prefs.output_remove_after + 1 + keep) {
+                div_remove($child);
+            } else if (i >= prefs.output_close_after + 1 + keep) {
+                if (!div_is_hidden($child))
+                    div_hide($child);
+            } else {
+                if (div_is_hidden($child))
+                    div_unhide($child);
+            }
+        }
+    }
+
+    function div_remove ($wrapper) {
+        $wrapper.slideUp(prefs.slide_speed, function () {
+            $wrapper.remove();
+        });
+    }
+
+    function div_is_hidden ($wrapper) {
+        return $('.icon-hide-section', $wrapper).hasClass("hidden");
+    }
+
+    function div_hide ($wrapper) {
+        $('.icon-unhide-section', $wrapper).removeClass("hidden");
+        $('.icon-hide-section', $wrapper).addClass("hidden");
+        $('.can-hide', $wrapper).slideUp(prefs.slide_speed);
+    }
+
+    function div_unhide ($wrapper) {
+        $('.icon-unhide-section', $wrapper).addClass("hidden");
+        $('.icon-hide-section', $wrapper).removeClass("hidden");
+        $('.can-hide', $wrapper).slideDown(prefs.slide_speed);
+    }
+
+    /*----------------------------------------------------------------------
+     * Preferences allow customizable behavior.  We have our preferences
+     * described in the array "prefs_info".  We keep the current values in
+     * the "prefs" array.
+     *
+     * XXX need to make radio buttons, pulldowns, etc for enum types.
+     * Need to add ranges.  Need verifiation code.  Probably should
+     * use the forms plugin.
+     */
 
     var prefs_info = {
         output_close_after: { def: 5, type: "number",
-                              title: "Number of active commands" },
+                              change: command_output_trim_changed,
+                              title: "Number of open commands" },
         output_remove_after: { def: 10, type: "number",
-                               title: "Number of open commands" },
+                               change: command_output_trim_changed,
+                               title: "Total Number of commands" },
         slide_speed: { def: "fast", type: "number-plus",
                        title: "Speed of slide animations" },
         max_targets_inline: { def: 10, type: "number",
@@ -333,92 +660,32 @@ jQuery(function ($) {
         max_target_position: { def: 10, type: "number",
                                title: "Target button rows" },
         stay_on_page: { def: false, type: "boolean",
+                        change: function (value, first) {
+                            setupConfirmExit();
+                        },
                         title: "Give warning if leaving this page" },
+        live_action: { def: false, type: "boolean",
+                        title: "Interact with real devices" },
     }
 
-    var prefs = {
-        output_close_after: 5,
-        output_remove_after: 10,
-        slide_speed: 'fast',
-        max_targets_inline: 10,
-        max_targets_list: 40,
-        max_target_position: 10,
-        stay_on_page: false,
-    }
-
-    for (var key in prefs_info) {
-        prefs[key] = prefs_info[key].def;
-    }
-
-    var $cmd = $('#command-form');
-    var $top = $('#command-top');
-    var $history = $('#target-history-form');
-    var command_number = 0;
-
-    $('.icon-clear-target', $cmd).click(function () {
-        $cmd[0].target.value = "";
-        $('#command-target').focus();
-    });
-
-    $('.icon-clear-command', $cmd).click(function () {
-        $cmd[0].command.value = "";
-        $('#command-line').focus();
-    });
-
-    $cmd.submit(function (event) {
-        event.preventDefault();
-
-        if (this.command.value == "") {
-            dbgpr('submit; skipping since command value is empty');
-            $('#command-line').focus();
-            return false;
-        }
-
-        var tset = [ ];
-        var tname = "";
-        var cname = "";
-        var value = this.command.value;
-        $(this.target.value.split(" ")).each(function (i, x) {
-            if (x != "") {
-                tset.push(x);
-                addCommandWrapper(x, value);
-                touchTargetHistory(x);
-                tname += " " + x;
-                cname += "_" + x.replace("_", "__", "g");
-            }
-        });
-
-        tname = tname.substr(1);
-        cname = cname.substr(1);
-        touchTarget(this, tname, cname);
-
-        return false;
-    });
-
-    var shown = false;
-
-    $('#target-title').click(function (e) {
-        var $this = $(this);
-        dbgpr("title click: ", $this.offset().top, "+", $this.offset().left);
-
-        shown = !shown;
-        if (shown) {
-            $('#target-history').css({
-                top: $this.offset().top + 30,
-                left: $this.offset().left + 50,
-                display: "block",
-            });
-        } else {
-            submitTargetHistory(null);
-        }
-    });
-
-    $history.submit(submitTargetHistory);
+    var prefs = { }
 
     var prefs_shown = false;
     var prefs_form_built = false;
 
-    $('#prefs').click(function (event) {
+    function prefs_init () {
+        for (var key in prefs_info) {
+            prefs[key] = prefs_info[key].def;
+            if (prefs_info[key].change)
+                prefs_info[key].change(prefs_info[key].def, true);
+        }
+
+        $('#prefs').click(prefs_edit);
+    }
+
+    function prefs_edit (event) {
+        event.preventDefault();
+
         var $this = $(this);
         var $pform = $('#prefs-form');
 
@@ -459,15 +726,28 @@ jQuery(function ($) {
 
                 for (var key in prefs_info) {
                     var info = prefs_info[key];
-                    prefsSetValue(key, this[key].value, info.type);
+                    prefs_set_value(info, key, this[key].value, info.type);
                 }
             });
+
+            $('#prefs-restore').click(function (event) {
+                event.preventDefault();
+
+                dbgpr("prefs-restore");
+                for (var key in prefs_info) {
+                    prefs[key] = prefs_info[key].def;
+                    if (prefs_info[key].change)
+                        prefs_info[key].change(prefs_info[key].def, false);
+                    form[key].value = prefs_info[key].def;
+                }
+            });
+
         } else {
             $pform.parent().css({ display: "none" });
         }
-    });
+    }
 
-    function prefsSetValue (name, value, type) {
+    function prefs_set_value (info, name, value, type) {
         if (type == "boolean") {
             value = (value == "true");
             if (prefs[name] == value)
@@ -488,226 +768,13 @@ jQuery(function ($) {
 
         dbgpr("prefs: ", name, "set to", value, "; was ", prefs[name]);
         prefs[name] = value;
+        if (info.change)
+            info.change(value, true);
     }
 
-    /* XXX This is not working */
-    $('#target-history').keydown(function (e) {
-        if (e.keyCode == 13) {
-            submitTargetHistory(e);
-            return false;
-        }
-        if (e.keyCode == 27) {
-            submitTargetHistory(e, true);
-            return false;
-        }
-    });
-
-    function submitTargetHistory (event, nochange) {
-        if (event)
-            event.preventDefault();
-
-        shown = false;
-        $('#target-history').css({ display: "none" });
-
-        var tname = "";
-
-        $('input:checked', $history).each(function () {
-            if (this.name)
-                tname += " " + this.name;
-            $(this).removeAttr('checked');
-        });
-
-        if (nochange)
-            return;
-
-        if (tname != "")
-            setTarget($cmd.get(0), tname.substr(1));
-        else
-            $('#command-target').focus();
-
-    }
-
-    function touchTargetHistory (target) {
-        var id = 'target-history-' + target;
-        var $target = $('#' + id, $history);
-
-        if ($target && $target.length > 0) {
-            $target.remove();
-            $history.prepend($target);
-        } else {
-            var content = '<div id="' + id + '" class="target-history-entry">'
-                + '<input type="checkbox" name="' + target 
-                + '" id="input-' + target + '">'
-                + '<div id="click-' + target 
-                + '" class="target-history-name">'
-                + target + '</div>'
-                + '</div>';
-            var $target = jQuery(content);
-            $history.prepend($target);
-        }
-
-        $('#click-' + target).click(function (e) {
-            $('#input-' + target).attr("checked", "checked");
-            submitTargetHistory(e);
-        });
-
-        $('#target-history-none').css({ display: "none" });
-    }
-
-    function setupConfirmExit () {
-        if (prefs.stay_on_page) {
-            window.onbeforeunload = function (e) {
-                return "Are you sure?  You don't look sure.....";
-            }
-        }
-    }
-
-
-    function touchTarget (form, target, cname) {
-        var $tset = $('#target-contents');
-        var id = 'target-is-' + cname;
-        var $target = $('#' + id, $tset);
-
-        if ($target && $target.length > 0) {
-            $target.remove();
-            $tset.prepend($target);
-
-        } else {
-
-            var content = '<div id="' + id + '" class="target ' + id 
-                + ' target-info rounded buttonish green">'
-                + target
-                + '</div>';
-
-            var $target = jQuery(content);
-            $tset.prepend($target);
-            trimTargets($tset);
-        }
-
-        $target.click(function (event) {
-            setTarget(form, target);
-        });
-
-        $('#target-contents-none').css({ display: "none" });
-    }
-
-    function trimTargets ($tset) {
-        $('.target', $tset).each(function (index, target) {
-            var delta = $(target).position().top - 
-                        $(target).parent().position().top;
-            if ( delta > prefs.max_target_position) {
-                $(target).remove();
-            }
-        });     
-    }
-
-    function setTarget (form, target) {
-        dbgpr("setTarget:", target);
-        form.target.value = target;
-        $('#command-line').focus();
-    }
-
-    function setCommandLine (form, line) {
-        dbgpr("setComandLine:", line);
-        form.command.value = line;
-        $('#command-line').focus();
-    }
-
-    function addCommandWrapper (target, command) {
-        var content = '<div class="command-wrapper rounded">'
-                + '<div class="icon-box">'
-                + '<img src="/icons/button-remove.png" '
-                +       'class="icon icon-remove-section"/>'
-                + '<img src="/icons/button-keeper.png" '
-                +       'class="icon keeper icon-keeper-section"/>'
-                + '<img src="/icons/button-hide.png" '
-                +       'class="icon icon-hide-section hidden"/>'
-                + '<img src="/icons/button-unhide.png" '
-                +       'class="icon icon-unhide-section"/>'
-                + '</div>';
-
-        if (target) {
-            content += '<div class="command-target rounded buttonish green">'
-                + target
-                + '</div><div class="label"> -> </div>';
-        }
-
-        content += '<div class="command command-line rounded blue">'
-                + command
-                + '</div><div class="command-number">'
-                + " (" + ++command_number + ")"
-                + '</div><div class="command-output can-hide" '
-                +    'style="white-space: pre">'
-                + "test-output\nmore\nand more and more\noutput\n"
-                + '</div>';
-
-        var $newp = jQuery(content);
-        $newp.insertAfter($top);
-
-        unhideSection($newp);
-
-        $('.icon-remove-section', $newp).click(function () {
-            removeSection($newp);
-        });
-        $('.icon-keeper-section', $newp).click(function () {
-            $newp.toggleClass("keeper-active");
-        });
-        $('.icon-unhide-section', $newp).click(function () {
-            unhideSection($newp);
-        });
-        $('.icon-hide-section', $newp).click(function () {
-            hideSection($newp);
-        });
-
-        $('.command-target', $newp).click(function () {
-            setTarget($cmd.get(0), $(this).text());
-        });
-
-        $('.command-line', $newp).click(function () {
-            setCommandLine($cmd.get(0), $(this).text());
-        });
-
-        var last = $top.parents()[0];
-        if (last) {
-            trimOutputSections(last);
-        }
-
-        return false;
-    }
-  
-    function trimOutputSections (last) {
-        var keep = 0;
-
-        for (var i = 0; last.children[i]; i++) {
-            var $child = $(last.children[i]);
-            if ($child.hasClass("keeper-active")) {
-                keep += 1;
-            } else if (i == prefs.output_close_after + 1 + keep) {
-                hideSection($child);
-            } else if (i == prefs.output_remove_after + 1 + keep) {
-                removeSection($child);
-            }
-        }
-    }
-
-    function removeSection ($wrapper) {
-        $wrapper.slideUp(prefs.slide_speed, function () {
-            $wrapper.remove();
-        });
-    }
-
-    function hideSection ($wrapper) {
-         $('.icon-unhide-section', $wrapper).removeClass("hidden");
-         $('.icon-hide-section', $wrapper).addClass("hidden");
-         $('.can-hide', $wrapper).slideUp(prefs.slide_speed);
-    }
-
-    function unhideSection ($wrapper) {
-         $('.icon-unhide-section', $wrapper).addClass("hidden");
-         $('.icon-hide-section', $wrapper).removeClass("hidden");
-         $('.can-hide', $wrapper).slideDown(prefs.slide_speed);
-    }
-
+    /*
+     * dbgpr() is our old-and-trusted debug print function
+     */
     var dbgpr_inited = 0;
     function dbgpr () {
         if (dbgpr_inited == 0) {
@@ -716,18 +783,28 @@ jQuery(function ($) {
             var $dl = $('#debug-log');
 
             $('.icon-remove-section', $dc).click(function () {
-                removeSection($dc);
+                div_remove($dc);
             });
             $('.icon-unhide-section', $dc).click(function () {
-                unhideSection($dc);
+                div_unhide($dc);
             });
             $('.icon-hide-section', $dc).click(function () {
-                hideSection($dc);
+                div_hide($dc);
             });
         }
 
         var args = Array.prototype.slice.call(arguments);
         $('#debug-log').prepend(args.join(" ") + "\n");
+    }
+
+    function setupConfirmExit () {
+        if (prefs.stay_on_page) {
+            window.onbeforeunload = function (e) {
+                return "Are you sure?  You don't look sure.....";
+            }
+        } else {
+            window.onbeforeunload = null;
+        }
     }
 
     /* Keyboard handling code */
@@ -758,8 +835,8 @@ jQuery(function ($) {
             return keybinding[e.keyCode](e, this);
     });
 
-    /* Some last minute initialization */
-    setupConfirmExit();
+    prefs_init();
+    command_init();
     $('#command-target').focus();
 });
 
@@ -780,7 +857,8 @@ jQuery(function ($) {
   <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
     <div id="prefs-title">Preferences</div>
     <form id="prefs-form" action="#">
-      <input name="submit" type="submit" value="Apply"/>
+      <input id="prefs-submit" name="submit" type="submit" value="Apply"/>
+      <button id="prefs-restore" name="restore">Restore Defaults</button>
     </form>
   </div>
 </div>
