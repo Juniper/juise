@@ -41,22 +41,28 @@ div#header {
 }
 
 div#header-logo {
-    display: inline-block;
+    display: table-cell;
     background: url(/images/logo.png) no-repeat;
     margin-left: 10px;
     height: 60px;
-    width: 20%;
+    width: 200px;
     border-right: 1px #a0ffa0 solid;
 }
 
 div#header-info {
-    display: inline-block;
+    display: table-cell;
     height: 60px;
-    width: 50%;
+    width: 60%;
     border-right: 1px #a0ffa0 solid;
 }
 
 div#header-status {
+    height: 60px;
+    width: 200px;
+    display: table-cell;
+}
+
+xdiv#header-status div, xdiv#header-info div {
     display: inline-block;
 }
 
@@ -99,6 +105,30 @@ div.target {
     display: inline-block;
     margin-left: 2px;
     margin-right: 2px;
+}
+
+div#prefs-form-wrapper {
+    border: 1px solid #659635;
+    position: absolute;
+    width: 25%;
+}
+
+div#prefs-title {
+    font-size: 120%;
+    font-weight: 600;
+}
+
+div.prefs-item {
+    display: table-row;
+}
+
+div.prefs-item label {
+    padding-left: 10px;
+    padding-right: 5px;
+}
+
+div.prefs-item label, div.prefs-item input {
+    display: table-cell;
 }
 
 div#footer {
@@ -281,8 +311,7 @@ div.aqua:hover {
  <script type="text/javascript" src="/jquery/jquery.js"></script>          
  <script type="text/javascript">                                         
 
-jQuery(document).ready(function () {
-    var $ = jQuery;
+jQuery(function ($) {
 
     dbgpr("document is ready");
 
@@ -324,13 +353,13 @@ jQuery(document).ready(function () {
         var tname = "";
         var cname = "";
         var value = this.command.value;
-        $(this.target.value.split(" ")).each(function (i, e) {
-            if (e != "") {
-                tset.push(e);
-                addCommandWrapper(e, value);
-                touchTargetHistory(e);
-                tname += " " + e;
-                cname += "_" + e.replace("_", "__", "g");
+        $(this.target.value.split(" ")).each(function (i, x) {
+            if (x != "") {
+                tset.push(x);
+                addCommandWrapper(x, value);
+                touchTargetHistory(x);
+                tname += " " + x;
+                cname += "_" + x.replace("_", "__", "g");
             }
         });
 
@@ -360,6 +389,48 @@ jQuery(document).ready(function () {
     });
 
     $history.submit(submitTargetHistory);
+
+    var prefs_shown = false;
+
+    $('#prefs').click(function (event) {
+        var $this = $(this);
+        var $pform = $('#prefs-form');
+
+        prefs_shown = !prefs_shown;
+        if (prefs_shown) {
+            var form = $pform.get(0);
+            form.output_close_after.value = prefs.output_close_after;
+            form.slide_speed.value = prefs.slide_speed;
+
+            $pform.parent().css({
+                display: "block",
+                top: $this.offset().top + 30,
+                left: $this.offset().left - 400,
+                width: "400px",
+                "background-color": "#ffffff",
+            });
+
+            $pform.submit(function (event) {
+                event.preventDefault();
+                prefs_shown = false;
+                $pform.parent().css({ display: "none" });
+
+                prefsSetValue("output_close_after",
+                              this.output_close_after.value, true);
+                prefsSetValue("slide_speed", this.slide_speed.value, false);
+            });
+        } else {
+            $pform.parent().css({ display: "none" });
+        }
+    });
+
+    function prefsSetValue (name, value, number_only) {
+        var ival = parseInt(value);
+        if (!isNaN(ival))
+            prefs[name] = ival;
+        else if (!number_only)
+            prefs[name] = value;
+    }
 
     /* XXX This is not working */
     $('#target-history').keydown(function (e) {
@@ -415,11 +486,13 @@ jQuery(document).ready(function () {
                 + '</div>';
             var $target = jQuery(content);
             $history.prepend($target);
-            $('#click-' + target).click(function (e) {
-                $('#input-' + target).attr("checked", "checked");
-                submitTargetHistory(e);
-            });
         }
+
+        $('#click-' + target).click(function (e) {
+            $('#input-' + target).attr("checked", "checked");
+            submitTargetHistory(e);
+        });
+
         $('#target-history-none').css({ display: "none" });
     }
 
@@ -476,6 +549,12 @@ jQuery(document).ready(function () {
         $('#command-line').focus();
     }
 
+    function setCommandLine (form, line) {
+        dbgpr("setComandLine:", line);
+        form.command.value = line;
+        $('#command-line').focus();
+    }
+
     function addCommandWrapper (target, command) {
         var content = '<div class="command-wrapper rounded">'
                 + '<div class="icon-box">'
@@ -520,6 +599,14 @@ jQuery(document).ready(function () {
         });
         $('.icon-hide-section', $newp).click(function () {
             hideSection($newp);
+        });
+
+        $('.command-target', $newp).click(function () {
+            setTarget($cmd.get(0), $(this).text());
+        });
+
+        $('.command-line', $newp).click(function () {
+            setCommandLine($cmd.get(0), $(this).text());
         });
 
         var last = $top.parents()[0];
@@ -582,8 +669,36 @@ jQuery(document).ready(function () {
         }
 
         var args = Array.prototype.slice.call(arguments);
-        $('#debug-log').append(args.join(" ") + "\n");
+        $('#debug-log').prepend(args.join(" ") + "\n");
     }
+
+    /* Keyboard handling code */
+
+    function key_previous (e, input) {
+        dbgpr("key_previous called\n");
+    }
+
+    var MOD_CTRL = 0x100;
+    var MOD_META = 0x200;
+
+    var keybinding = { };
+    keybinding['p'] = key_previous,
+    key_previous[MOD_CTRL | 77] = key_previous;
+
+    $('#xxcommand-line').keydown(function (e) {
+        dbgpr("press", e.ctrlKey ? "C-" : "", 
+              (e.altKey || e.metaKey) ? "M-" : "",e.keyCode, 
+              "(", e.charCode, ")");
+
+        var code = e.keyCode;
+        if (e.ctrlKey)
+            code += MOD_CTRL;
+        if (e.altKey || e.metaKey)
+            code += MOD_META;
+
+        if (keybinding[code])
+            return keybinding[e.keyCode](e, this);
+    });
 
     /* Some last minute initialization */
     setupConfirmExit();
@@ -598,9 +713,28 @@ jQuery(document).ready(function () {
 <div id="header">
   <div id="header-logo">&nbsp;</div>
   <div id="header-info">
-    User: phil<br/>
+    <div>User: phil</div>
   </div>
-  <div id="header-status">Status: running</div>
+  <div id="header-status">
+    <div>Status: <a href="#">running</a></div>
+    <a id="prefs" href="#">Edit Preferences</a>
+  </div>
+  <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
+    <div id="prefs-title">Preferences</div>
+    <form id="prefs-form" action="#">
+
+      <div class="prefs-item">
+        <label for="output_close_after">Open command count</label>
+        <input name="output_close_after" type="text"/><br/>
+      </div>
+      <div class="prefs-item">
+        <label for="slide_speed">Slide speed</label>
+        <input name="slide_speed" type="text"/><br/>
+      </div>
+
+      <input name="submit" type="submit" value="Apply"/>
+    </form>
+  </div>
 </div>
 
 <div id="target-list">
