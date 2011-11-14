@@ -315,6 +315,27 @@ jQuery(function ($) {
 
     dbgpr("document is ready");
 
+    var x =  {
+        0: { a: 1, b: 2, c: 3 },
+    };
+
+    var prefs_info = {
+        output_close_after: { def: 5, type: "number",
+                              title: "Number of active commands" },
+        output_remove_after: { def: 10, type: "number",
+                               title: "Number of open commands" },
+        slide_speed: { def: "fast", type: "number-plus",
+                       title: "Speed of slide animations" },
+        max_targets_inline: { def: 10, type: "number",
+                              title: "Number of targets kept on screen" },
+        max_targets_list: { def: 40, type: "number",
+                            title: "Number of targets kept in list" },
+        max_target_position: { def: 10, type: "number",
+                               title: "Target button rows" },
+        stay_on_page: { def: false, type: "boolean",
+                        title: "Give warning if leaving this page" },
+    }
+
     var prefs = {
         output_close_after: 5,
         output_remove_after: 10,
@@ -323,6 +344,10 @@ jQuery(function ($) {
         max_targets_list: 40,
         max_target_position: 10,
         stay_on_page: false,
+    }
+
+    for (var key in prefs_info) {
+        prefs[key] = prefs_info[key].def;
     }
 
     var $cmd = $('#command-form');
@@ -391,6 +416,7 @@ jQuery(function ($) {
     $history.submit(submitTargetHistory);
 
     var prefs_shown = false;
+    var prefs_form_built = false;
 
     $('#prefs').click(function (event) {
         var $this = $(this);
@@ -399,8 +425,24 @@ jQuery(function ($) {
         prefs_shown = !prefs_shown;
         if (prefs_shown) {
             var form = $pform.get(0);
-            form.output_close_after.value = prefs.output_close_after;
-            form.slide_speed.value = prefs.slide_speed;
+
+            if (!prefs_form_built) {
+                prefs_form_built = true;
+                for (var key in prefs_info) {
+                    var info = prefs_info[key];
+                    var content = '<div class="prefs-item">'
+                        + '<label for="' + key + '">' + info.title
+                        + '</label>'
+                        + '<input name="' + key + '" type="text"/>'
+                        + '<br/></div>';
+                    var $target = jQuery(content);
+                    $pform.prepend($target);
+                }
+            }
+
+            for (var key in prefs_info) {
+                form[key].value = prefs[key];
+            }
 
             $pform.parent().css({
                 display: "block",
@@ -415,21 +457,37 @@ jQuery(function ($) {
                 prefs_shown = false;
                 $pform.parent().css({ display: "none" });
 
-                prefsSetValue("output_close_after",
-                              this.output_close_after.value, true);
-                prefsSetValue("slide_speed", this.slide_speed.value, false);
+                for (var key in prefs_info) {
+                    var info = prefs_info[key];
+                    prefsSetValue(key, this[key].value, info.type);
+                }
             });
         } else {
             $pform.parent().css({ display: "none" });
         }
     });
 
-    function prefsSetValue (name, value, number_only) {
-        var ival = parseInt(value);
-        if (!isNaN(ival))
-            prefs[name] = ival;
-        else if (!number_only)
-            prefs[name] = value;
+    function prefsSetValue (name, value, type) {
+        if (type == "boolean") {
+            value = (value == "true");
+            if (prefs[name] == value)
+                return;
+        } else {
+            var ival = parseInt(value);
+
+            if (!isNaN(ival)) {
+                if (prefs[name] == ival)
+                    return;
+                value = ival;
+
+            } else if (type == "number-plus") {
+                if (prefs[name] == value)
+                    return;
+            }
+        }
+
+        dbgpr("prefs: ", name, "set to", value, "; was ", prefs[name]);
+        prefs[name] = value;
     }
 
     /* XXX This is not working */
@@ -722,16 +780,6 @@ jQuery(function ($) {
   <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
     <div id="prefs-title">Preferences</div>
     <form id="prefs-form" action="#">
-
-      <div class="prefs-item">
-        <label for="output_close_after">Open command count</label>
-        <input name="output_close_after" type="text"/><br/>
-      </div>
-      <div class="prefs-item">
-        <label for="slide_speed">Slide speed</label>
-        <input name="slide_speed" type="text"/><br/>
-      </div>
-
       <input name="submit" type="submit" value="Apply"/>
     </form>
   </div>
