@@ -1,9 +1,12 @@
 <html>
- <head>
+  <head>
     <link rel="icon" href="/favicon.ico" type="image/png">
     <link rel="shortcut icon" href="/favicon.ico" type="image/png"> 
 
-   <style type="text/css" title="currentStyle" media="screen">
+    <style type="text/css" title="currentStyle" media="screen">
+	@import url("/static/cmd.css");
+    </style>
+    <style type="text/css" title="currentStyle" media="screen">
 
 div.hidden, img.hidden {
     display: none;
@@ -551,14 +554,47 @@ jQuery(function ($) {
                 + '</div><div class="command-number">'
                 + " (" + ++command_number + ")"
                 + '</div><div class="command-output can-hide" '
-                +    'style="white-space: pre">'
-                + "test-output\nmore\nand more and more\noutput\n"
-                + '</div>';
+                +    'style="white-space: pre">';
+
+        if (prefs.live_action) {
+            content += '<img src="/icons/loading.png">';
+            content += "    ....loading...\n";
+        } else {
+            content += "test-output\nmore\nand more and more\noutput\n";
+        }
+
+        content += '</div>';
 
         var $newp = jQuery(content);
         $newp.insertAfter($top);
 
         div_unhide($newp);
+
+        if (prefs.live_action) {
+            $(".command-output", $newp)
+      	        .load("/bin/cmd.slax", { target: target, command: command },
+                      function (text, status, http) {
+                          dbgpr("target", target);
+                          dbgpr("command", command);
+                          dbgpr("text", text);
+                          dbgpr("status", status);
+                          dbgpr("http", http);
+                          if (status == "error") {
+                              $(this).html('<div class="command-error">'
+                                           + 'An error occurred: '
+                                           + http.statusText
+                                           + '</div>');
+                          } else {
+                              var $xml = $($.parseXML(text));
+                              var $err = $xml.find("[nodeName='xnm:error']");
+                              if ($err[0])
+                                  $(this).html('<div class="command-error">'
+                                     + 'An error occurred: '
+                                     + html_escape($("message", $err).text())
+                                     + '</div>');
+                          }
+                      });
+        }
 
         $('.icon-remove-section', $newp).click(function () {
             div_remove($newp);
@@ -584,6 +620,12 @@ jQuery(function ($) {
         return false;
     }
   
+    function html_escape (val) {
+        return val.replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;");
+    }
+
     function command_output_trim_changed () {
         command_output_trim(0);
     }
