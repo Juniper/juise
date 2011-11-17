@@ -61,6 +61,7 @@ int dump_all;
 
 int opt_debugger;
 int opt_indent;
+static int opt_load;
 
 static void
 juise_trace (void *vfp, lx_node_t *nodep, const char *fmt, ...)
@@ -405,9 +406,8 @@ do_run_op_common (const char *scriptname, const char *input,
     }
 
     res = run_script(script, scriptname, indoc, params, cgi_mode);
-    if (res) {
-	/* Now we need to check and load the output config */
-    }
+    if (res)
+	xmlFreeDoc(res);
 
     xmlFreeDoc(indoc);
     xsltFreeStylesheet(script);
@@ -418,7 +418,7 @@ do_run_op_common (const char *scriptname, const char *input,
 static int
 do_run_op (const char *scriptname, const char *input, char **argv)
 {
-    return do_run_op_common(scriptname, input, argv, NULL, FALSE);
+    return do_run_op_common(scriptname, input, argv, NULL, JM_NONE);
 }
 
 static lx_node_t *
@@ -470,6 +470,199 @@ xmlns:junos=\"http://xml.juniper.net/junos/*/junos\"/>\n";
     return docp;
 }
 
+static void
+output_node (const char *title, lx_node_t *nodep)
+{
+    lx_output_t *handle = lx_output_open_fd(1);
+
+    if (handle == NULL)
+	return;
+
+    printf("\n%s:\n", title);
+    fflush(stdout);
+
+    lx_output_node(handle, nodep);
+    lx_output_close(handle);
+
+    printf("\n");
+    fflush(stdout);
+}
+
+static void
+output_nodeset (const char *title, lx_nodeset_t *nsp)
+{
+    lx_output_t *handle = lx_output_open_fd(1);
+    int i;
+    lx_node_t *nodep;
+
+    if (handle == NULL)
+	return;
+
+    printf("\nResults from %s:\n", title);
+    fflush(stdout);
+
+    for (i = 0; i < nsp->nodeNr; i++) {
+	nodep = nsp->nodeTab[i];
+	if (nodep == NULL || nodep->type != XML_ELEMENT_NODE)
+	    continue;
+	lx_output_node(handle, nodep);
+    }
+
+    lx_output_close(handle);
+    printf("\n");
+    fflush(stdout);
+}
+
+static int
+result_has_success (lx_nodeset_t *nsp)
+{
+    int i;
+    lx_node_t *nodep;
+
+    for (i = 0; i < nsp->nodeNr; i++) {
+	nodep = nsp->nodeTab[i];
+	if (nodep == NULL || nodep->type != XML_ELEMENT_NODE)
+	    continue;
+
+	if (!streq((const char *) nodep->name,
+		   ELT_LOAD_CONFIGURATION_RESULTS))
+	    continue;
+
+	for (nodep = nodep->children; nodep; nodep = nodep->next) {
+	    if (nodep->type != XML_ELEMENT_NODE)
+		continue;
+	    if (streq((const char *) nodep->name, ELT_LOAD_SUCCESS))
+		return TRUE;
+	}
+    }
+
+    return FALSE;
+}
+
+static int
+load_change (js_session_t *jsp UNUSED, xmlXPathParserContext *pctxt,
+	     lx_node_t *changep, int transient)
+{
+    static char rpc_text[] = "<rpc><load-configuration \
+xmlns:junos=\"http://xml.juniper.net/junos/*/junos\">\
+<configuration/></load-configuration></rpc>\n";
+
+    lx_document_t *docp;
+    lx_node_t *rootp, *nodep, *confp = NULL, *childp;
+    lx_nodeset_t *res;
+    int rc = FALSE;
+
+    docp = xmlReadMemory(rpc_text, strlen(rpc_text), "rpc_text",
+			 NULL, XML_PARSE_NOENT);
+    if (docp == NULL)
+	return TRUE;
+
+    rootp = xmlDocGetRootElement(docp);
+
+    if (rootp && rootp->children && rootp->children->children)
+	confp = rootp->children->children;
+
+    if (confp == NULL || confp->type != XML_ELEMENT_NODE) {
+	xmlFreeDoc(docp);
+	return TRUE;
+    }
+
+    for (childp = changep->children; childp; childp = childp->next) {
+	nodep = xmlDocCopyNode(childp, docp, 1);
+	if (nodep)
+	    xmlAddChild(confp, nodep);
+    }
+
+    res = js_session_execute(pctxt, NULL, rootp, NULL, ST_DEFAULT);
+    if (res == NULL) {
+	fprintf(stderr, "load-configuration failed");
+	output_node("Failed to load the following configuration", changep);
+	rc = TRUE;
+
+    } else {
+	output_nodeset(transient ? "load change-transient" : "load change",
+		       res);
+	if (!result_has_success(res)) {
+	    output_node("Failed to load the following configuration",
+			changep);
+	    rc = TRUE;
+	}
+    }
+
+    xmlFreeDoc(docp);
+    return rc;
+}
+
+static int
+invoke_rpc (js_session_t *jsp UNUSED, xmlXPathParserContext *pctxt,
+	    const char *title, const char *rpc_text)
+{
+    lx_document_t *docp;
+    lx_node_t *rootp;
+    lx_nodeset_t *res;
+
+    docp = xmlReadMemory(rpc_text, strlen(rpc_text), "rpc_text",
+			 NULL, XML_PARSE_NOENT);
+    if (docp == NULL)
+	return TRUE;
+
+    rootp = xmlDocGetRootElement(docp);
+
+    res = js_session_execute(pctxt, NULL, rootp, NULL, ST_DEFAULT);
+    if (res == NULL) {
+	fprintf(stderr, "load-configuration failed");
+    } else {
+	output_nodeset(title, res);
+    }
+
+    xmlFreeDoc(docp);
+
+    return FALSE;
+}
+
+static int
+run_edit_private (js_session_t *jsp UNUSED,
+		  xmlXPathParserContext *pctxt UNUSED)
+{
+    static char rpc_text[] = "<rpc><open-configuration \
+xmlns:junos=\"http://xml.juniper.net/junos/*/junos\">\
+<private/></open-configuration></rpc>\n";
+
+    return invoke_rpc(jsp, pctxt, "edit private", rpc_text);
+}
+
+static int
+run_commit_check (js_session_t *jsp UNUSED,
+		  xmlXPathParserContext *pctxt UNUSED)
+{
+    static char rpc_text[] = "<rpc><commit-configuration \
+xmlns:junos=\"http://xml.juniper.net/junos/*/junos\">\
+<check/></commit-configuration></rpc>\n";
+
+    return invoke_rpc(jsp, pctxt, "commit check", rpc_text);
+}
+
+static void
+report_error (const char *tag, lx_node_t *child)
+{
+    const char *path = lx_node_child_value(child, ELT_EDIT_PATH);
+    const char *stmt = lx_node_child_value(child, ELT_STATEMENT);
+    const char *msg = lx_node_child_value(child, ELT_MESSAGE);
+    int indent = 0;
+
+    if (path) {
+	fprintf(stderr, "%s\n", path);
+	indent += 2;
+    }
+
+    if (stmt) {
+	fprintf(stderr, "%*s'%s'\n", indent, "", stmt);
+	indent += 2;
+    }
+    
+    fprintf(stderr, "%*s%s: %s\n", indent, "", tag, msg ?: "unknown");
+}
+
 static int
 do_test_commit_script (const char *scriptname, const char *input UNUSED,
 		       char **argv UNUSED)
@@ -484,6 +677,7 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
     slax_data_node_t *dnp;
     int i = 0;
     js_session_t *jsp;
+    int rc = FALSE;
 
     params = alloca(nbparams * 2 * sizeof(*params) + 1);
     SLAXDATALIST_FOREACH(dnp, &plist) {
@@ -497,7 +691,7 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
 
     jsp = js_session_open(NULL, NULL, NULL, 0, 0, 0);
     if (jsp == NULL)
-	return 0;
+	errx(1, "could not open session to target");
     
     get_config_rpc = juise_build_get_configuration_rpc(&rpc);
 
@@ -515,10 +709,85 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
 
     indoc = juise_build_input_commit(config_data);
 
-    res = run_script(script, scriptname, indoc, params, FALSE);
-    if (res)
-	xmlFreeDoc(res);
+    res = run_script(script, scriptname, indoc, params, JM_CSCRIPT);
+    if (res) {
+	/*
+	 * We need to look through the output of a commit script,
+	 * which can contain:
+	 * <error> -- report and stop
+	 * <warning> -- report and continue
+	 * <change> -- normal configuration change
+	 * <change-transient> -- transient configuration change
+	 * <syslog> -- report (but don't syslog)
+	 * <progress> -- report
+	 */
+	int seen_error = 0, seen_change = 0, seen_transient = 0;
+	lx_node_t *childp;
+	lx_node_t *rootp = xmlDocGetRootElement(res);
 
+	if (rootp == NULL)
+	    errx(1, "could not find document root");
+
+	for (childp = rootp->children; childp; childp = childp->next) {
+	    if (childp->type != XML_ELEMENT_NODE)
+		continue;
+
+	    if (streq((const char *) childp->name, ELT_ERROR)) {
+		seen_error += 1;
+		report_error("error", childp);
+
+	    } else if (streq((const char *) childp->name, ELT_WARNING)) {
+		report_error("warning", childp);
+
+	    } else if (streq((const char *) childp->name, ELT_CHANGE)) {
+		/* Wait for second pass */
+		seen_change += 1;
+
+	    } else if (streq((const char *) childp->name,
+			     ELT_CHANGE_TRANSIENT)) {
+		/* Wait for second pass */
+		seen_transient += 1;
+
+	    } else if (streq((const char *) childp->name, ELT_SYSLOG)) {
+		const char *msg = lx_node_value(childp);
+		fprintf(stdout, "syslog: %s\n", msg);
+
+	    } else if (streq((const char *) childp->name, ELT_PROGRESS)) {
+		const char *msg = lx_node_value(childp);
+		fprintf(stdout, "progress-message: %s\n", msg);
+
+	    } else {
+		fprintf(stderr, "unknown tag: '%s' (ignored)\n",
+			(const char *) childp->name);
+	    }
+	}
+
+	if (!seen_error && (seen_change || seen_transient)) {
+	    if (run_edit_private(jsp, pctxt))
+		goto done;
+
+	    for (childp = rootp->children; childp; childp = childp->next) {
+		if (childp->type != XML_ELEMENT_NODE)
+		    continue;
+
+		if (streq((const char *) childp->name, ELT_CHANGE))
+		    rc = load_change(jsp, pctxt, childp, FALSE);
+
+		else if (streq((const char *) childp->name,
+			       ELT_CHANGE_TRANSIENT))
+		    rc = load_change(jsp, pctxt, childp, TRUE);
+
+		if (rc)
+		    break;
+	    }
+
+	    if (!rc)
+		run_commit_check(jsp, pctxt);
+	}
+
+    done:
+	xmlFreeDoc(res);
+    }
 
     xmlFreeDoc(indoc);
     xsltFreeStylesheet(script);
@@ -690,7 +959,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	}
     }
 
-    return do_run_op_common(scriptname, input, argv, nodep, TRUE);
+    return do_run_op_common(scriptname, input, argv, nodep, JM_CGI);
 }
 
 static int
@@ -728,6 +997,7 @@ print_help (void)
     printf("\t--input <file> OR -i <file>: use given file for input\n");
     printf("\t--indent OR -g: indent output ala output-method/indent\n");
     printf("\t--junoscript OR -J: use junoscript API protocol\n");
+    printf("\t--load OR -l: load commit script changes in test mode\n");
     printf("\t--lib <dir> OR -L <dir>: search directory for extension libraries\n");
     printf("\t--no-randomize: do not initialize the random number generator\n");
     printf("\t--param <name> <value> OR -a <name> <value>: pass parameters\n");
@@ -822,6 +1092,9 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--junoscript") || streq(cp, "-J")) {
 		stype = ST_JUNOSCRIPT;
+
+	    } else if (streq(cp, "--load") || streq(cp, "-l")) {
+		opt_load = TRUE;
 
 	    } else if (streq(cp, "--lib") || streq(cp, "-L")) {
 		slaxDynAdd(*++argv);
@@ -978,6 +1251,8 @@ main (int argc UNUSED, char **argv, char **envp)
 
     if (target)
 	jsio_set_default_server(target);
+    else if (opt_commit_script)
+	errx(1, "target must be specified for commit script mode");
 
     if (user)
 	jsio_set_default_user(user);

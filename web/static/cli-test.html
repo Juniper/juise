@@ -1,329 +1,17 @@
 <html>
   <head>
-    <link rel="icon" href="/favicon.ico" type="image/png">
-    <link rel="shortcut icon" href="/favicon.ico" type="image/png"> 
+    <link rel="icon" href="/favicon.ico" type="image/png"/>
+    <link rel="shortcut icon" href="/favicon.ico" type="image/png"/>
 
     <style type="text/css" title="currentStyle" media="screen">
 	@import url("/static/cmd.css");
     </style>
-    <style type="text/css" title="currentStyle" media="screen">
 
-div.hidden, img.hidden {
-    display: none;
-}
-
-div.keeper-active div.icon-box img.keeper {
-    border: 1px solid #966535;
-    border-radius: 4px;
-    -moz-border-radius: 4px;
-    -webkit-border-radius: 4px;
-}
-
-div.icon-box img.keeper {
-    border: 1px solid #ffffff;
-    border-radius: 4px;
-    -moz-border-radius: 4px;
-    -webkit-border-radius: 4px;
-}
-
-div#debug-container {
-    font-size: 70%;
-    display: block;
-    color: blue;
-    border: 1px solid blue;
-}
-
-div#debug-log {
-    white-space: pre;
-}
-
-div#header {
-    width: 95%;
-    height: 60px;
-    padding: 10px;
-}
-
-div#header-logo {
-    display: table-cell;
-    background: url(/images/logo.png) no-repeat;
-    margin-left: 10px;
-    height: 60px;
-    width: 200px;
-    border-right: 1px #a0ffa0 solid;
-}
-
-div#header-info {
-    display: table-cell;
-    height: 60px;
-    width: 60%;
-    border-right: 1px #a0ffa0 solid;
-}
-
-div#header-status {
-    height: 60px;
-    width: 200px;
-    display: table-cell;
-}
-
-xdiv#header-status div, xdiv#header-info div {
-    display: inline-block;
-}
-
-div#target-list {
-    border-top: 1px solid #a0ffa0;
-    display: block;
-}
-
-div#target-title {
-    display: table-cell;
-}
-
-div#target-history {
-    border: 1px solid #659635;
-    position: absolute;
-    width: 25%;
-}
-
-div.target-history-name {
-    display: inline-block;
-}
-
-div.target-info {
-    display: inline-block;
-    font-family: Helvetica, Arial, sans-serif;
-    font-weight: bold;
-    font-size: 14px;
-    margin-right: 10px;
-    margin-left: 10px;
-    padding: 5px 10px 5px 10px;
-}
-
-div#target-contents, div#target-contents-none {
-    display: table-cell;
-    font-family: Verdana, Arial, Helvetica, sans-serif ;
-    padding: 5px 10px 5px 10px;
-}
-
-div.target {
-    display: inline-block;
-    margin-left: 2px;
-    margin-right: 2px;
-}
-
-div#prefs-form-wrapper {
-    border: 1px solid #659635;
-    position: absolute;
-    width: 25%;
-}
-
-div#prefs-title {
-    font-size: 120%;
-    font-weight: 600;
-}
-
-div.prefs-item {
-    display: table-row;
-}
-
-div.prefs-item label {
-    padding-left: 10px;
-    padding-right: 5px;
-}
-
-div.prefs-item label, div.prefs-item input {
-    display: table-cell;
-}
-
-button#prefs-restore {
-    float: left;
-}
-
-input#prefs-submit {
-    float: right;
-}
-
-div#footer {
-    padding-top: 100px;
-    clear: both;
-    display: block;
-    height: 100px;
-    width: 100%;
-    font-size: 8;
-    text-align: center;
-}
-
-div#command-area {
-    display: block;
-//    border: 1px solid red;
-//    background-color: #c0c0c0;
-    padding: 10px;
-}
-
-form#command-form {
-    margin: 0px;
-}
-
-input.command-line {
-    font-family: Verdana, Arial, Helvetica, sans-serif ;
-    font-family: monospace;
-}
-
-div.command-wrapper {
-    border: 1px solid blue;
-    margin-top: 5px;
-    background: white;
-}
-
-div.command-target, input.command-target {
-    display: inline-block;
-    font-size: 14px;
-    font-family: Verdana, Arial, Helvetica, sans-serif ;
-}
-
-div.label {
-    display: inline;
-    padding-left: 3px;
-    padding-right: 3px;
-    font-size: 14px;
-}
-
-div.command-line, input.command-line {
-    display: inline-block;
-    background: #e0e0ff;
-    font-family: monospace;
-    font-size: 14px;
-}
-
-div.command-number {
-    display: inline-block;
-    font-size 11px;
-    float: right;
-}
-
-div.command-output {
-    padding: 3px;
-    font-family: monospace;
-    font-size: 14px;
-}
-
-div.icon-box {
-    display: inline-block;
-    margin-right: 5px;
-}
-
-div#debug-title {
-    display: inline-block;
-}
-
-img.icon {
- height: 16px;
-}
-
-.buttonish {
-    text-align: center;
-    text-decoration: none;
-    text-shadow: -1px -1px 2px #777777;
-    text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
-}
-
-.rounded {
-    border: 1px solid #659635;
-    background: #99ca28;
-    padding: 2px 8px 2px 8px;
-
-    border-radius: 5px;
-    -moz-border-radius: 5px;
-    -webkit-border-radius: 5px;
-}
-
-.green {
-    color: #ffffff;
-    background: linear-gradient(top, #CFE782 0%,  #9BCB2A 2%, 
-                                          #5DA331 97%, #659635 100%);
-    background: -moz-linear-gradient(top, #CFE782 0%,  #9BCB2A 2%, 
-                                          #5DA331 97%, #659635 100%);
-    background: -webkit-linear-gradient(top, #CFE782 0%,  #9BCB2A 2%, 
-                                          #5DA331 97%, #659635 100%);
-    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0,
-                      startColorstr='#9bcb2a, endColorstr='#659635);
-}
-
-.blue {
-    color: #0c0c0c;
-    background: linear-gradient(top, #c0c0ff 0%,  #d0d0ff 2%, 
-                                          #e0e0ff 97%, #f0f0ff 100%);
-    background: -moz-linear-gradient(top, #c0c0ff 0%,  #d0d0ff 2%, 
-                                          #e0e0ff 97%, #f0f0ff 100%);
-    background: -webkit-linear-gradient(top, #c0c0ff 0%,  #d0d0ff 2%, 
-                                          #e0e0ff 97%, #f0f0ff 100%);
-    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0,
-                              startColorstr='#c0c0ff, endColorstr='#f0f0ff);
-
-}
-
-//
-// No longer used but worth remembering...
-//
-div.aqua {
-    width: 155px;
-    height: 35px;
-    background: #cde;
-    border: 2px solid #ccc;
-    border-color: #8ba2c1 #5890bf #4f93ca #768fa5;
-    font: 600 16px/1 Lucida Sans, Verdana, sans-serif;
-    color: #fff;
-    text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
-    text-align: center;
-    vertical-align: middle;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    border-radius: 16px; -moz-border-radius: 16px; -webkit-border-radius: 16px;
-    box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-    -moz-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-    -webkit-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-}
-
-div.aqua:hover {
-    text-shadow: rgb(255, 255, 255) 0px 0px 5px;
-}
-
-
-.new-aqua {
-  width: 155px;
-  height: 35px;
-  background: #cde;
-  border: 2px solid #ccc;
-  border-color: #8ba2c1 #5890bf #4f93ca #768fa5;
-  font: 600 16px/1 Lucida Sans, Verdana, sans-serif;
-  color: #fff;
-  text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
-  text-align: center;
-  vertical-align: middle;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  border-radius: 16px;
-  -moz-border-radius: 16px;
-  -webkit-border-radius: 16px;
-  box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-  -moz-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-  -webkit-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-}
-.new-aqua:hover {
-  text-shadow: rgb(255, 255, 255) 0px 0px 5px;
-}
-
-
-
-
-   </style>
-
- <script type="text/javascript" src="/jquery/jquery.js"></script>          
- <script type="text/javascript">                                         
+    <script type="text/javascript" src="/jquery/jquery.js"></script>
+    <script type="text/javascript">
 
 jQuery(function ($) {
-
+    var dbgpr_inited = 0;
     dbgpr("document is ready");
 
     /*
@@ -336,7 +24,8 @@ jQuery(function ($) {
 
     var $cmd = $('#command-form');
     var $top = $('#command-top');
-    var $history = $('#target-history-form');
+    var $target_history = $('#target-history-form');
+    var $command_history = $('#command-history-data');
     var command_number = 0;
 
     function command_init () {
@@ -349,10 +38,14 @@ jQuery(function ($) {
             $cmd[0].command.value = "";
             $('#command-line').focus();
         });
+        $('.icon-pulldown-command', $cmd).click(function (event) {
+            command_history_click(event, this);
+            $('#command-line').focus();
+        });
 
         $cmd.submit(command_submit);
-        $history.submit(target_history_submit);
-        $('#target-title').click(target_title_click);
+        $target_history.submit(target_history_submit);
+        $('#target-title').click(target_history_click);
     }
 
     function command_submit (event) {
@@ -378,7 +71,7 @@ jQuery(function ($) {
                 count += 1;
                 tset.push(x);
                 commmand_wrapper_add(x, value);
-                target_mark_used_history(x);
+                target_history_mark_used(x);
                 tname += " " + x;
                 cname += "_" + x.replace("_", "__", "g");
             }
@@ -386,8 +79,10 @@ jQuery(function ($) {
 
         tname = tname.substr(1);
         cname = cname.substr(1);
-        target_mark_used_list(this, tname, cname);
+        if (cname && cname != "")
+            target_list_mark_used(this, tname, cname);
 
+        command_history_mark_used(value);
         command_output_trim(count);
 
         return false;
@@ -400,9 +95,10 @@ jQuery(function ($) {
      */
     var target_history_shown = false;
 
-    function target_title_click (event) {
+    function target_history_click (event) {
         var $this = $(this);
-        dbgpr("title click: ", $this.offset().top, "+", $this.offset().left);
+        dbgpr("target history click: ", $this.offset().top,
+              "+", $this.offset().left);
 
         target_history_shown = !target_history_shown;
         if (target_history_shown) {
@@ -437,7 +133,7 @@ jQuery(function ($) {
 
         var tname = "";
 
-        $('input:checked', $history).each(function () {
+        $('input:checked', $target_history).each(function () {
             if (this.name)
                 tname += " " + this.name;
             $(this).removeAttr('checked');
@@ -453,23 +149,23 @@ jQuery(function ($) {
 
     }
 
-    function target_mark_used_history (target) {
+    function target_history_mark_used (target) {
         var id = 'target-history-' + target;
-        var $target = $('#' + id, $history);
+        var $target = $('#' + id, $target_history);
 
         if ($target && $target.length > 0) {
             $target.remove();
-            $history.prepend($target);
+            $target_history.prepend($target);
         } else {
             var content = '<div id="' + id + '" class="target-history-entry">'
                 + '<input type="checkbox" name="' + target 
                 + '" id="input-' + target + '">'
                 + '<div id="click-' + target 
                 + '" class="target-history-name">'
-                + target + '</div>'
+                + html_escape(target) + '</div>'
                 + '</div>';
-            var $target = jQuery(content);
-            $history.prepend($target);
+            $target = jQuery(content);
+            $target_history.prepend($target);
         }
 
         $('#click-' + target).click(function (e) {
@@ -478,9 +174,10 @@ jQuery(function ($) {
         });
 
         $('#target-history-none').css({ display: "none" });
+        $('#target-history-form').css({ display: "block" });
     }
 
-    function target_mark_used_list (form, target, cname) {
+    function target_list_mark_used (form, target, cname) {
         var $tset = $('#target-contents');
         var id = 'target-is-' + cname;
         var $target = $('#' + id, $tset);
@@ -498,7 +195,7 @@ jQuery(function ($) {
 
             var $target = jQuery(content);
             $tset.prepend($target);
-            target_trim($tset);
+            target_list_trim($tset);
         }
 
         $target.click(function (event) {
@@ -508,7 +205,7 @@ jQuery(function ($) {
         $('#target-contents-none').css({ display: "none" });
     }
 
-    function target_trim ($tset) {
+    function target_list_trim ($tset) {
         $('.target', $tset).each(function (index, target) {
             var delta = $(target).position().top - 
                         $(target).parent().position().top;
@@ -516,6 +213,65 @@ jQuery(function ($) {
                 $(target).remove();
             }
         });     
+    }
+
+    var command_history_shown = false;
+
+    function command_history_click (event) {
+        var $this = $("#command-line");
+        dbgpr("command history click: ", $this.offset().top,
+              "+", $this.offset().left);
+
+        command_history_shown = !command_history_shown;
+        if (command_history_shown) {
+            var $toppx = $this.offset().top + $this.outerHeight();
+            $('#command-history').css({
+                top: $toppx + "px",
+                left: $this.offset().left,
+                width: $this.css('width'),
+                display: "block",
+            });
+        } else {
+            command_history_submit(null);
+        }
+    }
+
+    function command_history_submit (command) {
+        command_history_shown = false;
+        $('#command-history').css({ display: "none" });
+
+        if (command && command != "")
+            command_set($cmd.get(0), command);
+
+        $('#command-command').focus();
+    }
+
+    function command_history_mark_used (command) {
+        var $command = null;
+        var $elt;
+        $command_history.each(function (i, elt) {
+            $elt = $(elt);
+            if ($elt.text() == command)
+                $comment = $elt;
+        });
+
+        if ($command && $command.length > 0) {
+            $command.remove();
+            $command_history.prepend($command);
+        } else {
+            var content = '<div class="command-history-entry">'
+                + html_escape(command)
+                + '</div>';
+            $command = jQuery(content);
+            $command_history.prepend($command);
+        }
+
+        $command.click(function (e) {
+            command_history_submit(command);
+        });
+
+        $('#command-history-none').css({ display: "none" });
+        $command_history.css({ display: "block" });
     }
 
     function target_set (form, target) {
@@ -695,6 +451,8 @@ jQuery(function ($) {
                                title: "Total Number of commands" },
         slide_speed: { def: "fast", type: "number-plus",
                        title: "Speed of slide animations" },
+        max_commands_list: { def: 40, type: "number",
+                            title: "Number of commands kept in list" },
         max_targets_inline: { def: 10, type: "number",
                               title: "Number of targets kept on screen" },
         max_targets_list: { def: 40, type: "number",
@@ -817,7 +575,6 @@ jQuery(function ($) {
     /*
      * dbgpr() is our old-and-trusted debug print function
      */
-    var dbgpr_inited = 0;
     function dbgpr () {
         if (dbgpr_inited == 0) {
             dbgpr_inited = 1;
@@ -832,6 +589,9 @@ jQuery(function ($) {
             });
             $('.icon-hide-section', $dc).click(function () {
                 div_hide($dc);
+            });
+            $('.icon-clean-section', $dc).click(function () {
+                $('.can-hide', $dc).text("");
             });
         }
 
@@ -907,8 +667,8 @@ jQuery(function ($) {
 
 <div id="target-list">
   <div id="target-history" style="display: none" class="green rounded">
-    <div id="target-history-none">None</div>
-    <form id="target-history-form" action="#">
+    <div id="target-history-none">No targets have been entered</div>
+    <form id="target-history-form" action="#" style="display: none">
       <input type="submit" id="target-history-submit" value="Select Target(s)"</input>
     </form>
   </div>
@@ -919,6 +679,12 @@ jQuery(function ($) {
 </div>
 
 <div id="command-area">
+  <div id="command-history" style="display: none"
+	class="command-line rounded blue">
+    <div id="command-history-none">No commands have been entered</div>
+    <div id="command-history-data" style="display: none"></div>
+  </div>
+
  <div id="command-top" class="command-top">
   <form id="command-form" action="#">
     <div class="label">On:</div>
@@ -931,6 +697,7 @@ jQuery(function ($) {
     <input spellcheck="false" autocomplete="off" id="command-line"
 	   class="command-line rounded blue"
 	   maxlength="2048" name="command" size="60" type="text"/>
+    <img src="/icons/button-pulldown.png" class="icon icon-pulldown-command"/>
     <input type="submit" value="Enter"/>
   </form>
  </div>
@@ -945,6 +712,7 @@ jQuery(function ($) {
     <img src="/icons/button-remove.png" class="icon icon-remove-section"/>
     <img src="/icons/button-hide.png" class="icon icon-hide-section"/>
     <img src="/icons/button-unhide.png" class="icon icon-unhide-section hidden"/>
+    <img src="/icons/button-clean.png" class="icon icon-clean-section"/>
   </div>
   <div id="debug-title">Debug Log:</div>
   <div id="debug-log" class="can-hide">&nbsp;</div>
