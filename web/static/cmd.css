@@ -182,17 +182,24 @@ div#command-history {
     width: 60em;
     font-family: Verdana, Arial, Helvetica, sans-serif ;
     font-family: monospace;
-    font-family: monospace;
     font-size: 12px;
     background: #e0e0ff;
+    padding-left: 0px;
+    padding-right: 0px;
 }
 
 div.command-history-entry:hover {
     background: #c0c0ff;
 }
 
+div.command-history-entry:first-child {
+    border-top: 0px none;
+}
+
 div.command-history-entry {
-    border: 1px solid #d0d0ff;
+    border-top: 1px solid #c0c0ff;
+    padding-left: 8px;
+    padding-right: 8px;
 }
 
 div#prefs-form-wrapper {
@@ -299,7 +306,8 @@ div#debug-title {
 }
 
 img.icon {
- height: 16px;
+    height: 16px;
+    vertical-align: middle;
 }
 
 .buttonish {

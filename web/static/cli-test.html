@@ -51,6 +51,8 @@ jQuery(function ($) {
     function command_submit (event) {
         event.preventDefault();
 
+        command_history_submit(null);
+
         if (this.command.value == "") {
             dbgpr('submit; skipping since command value is empty');
             $('#command-line').focus();
