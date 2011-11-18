@@ -8,7 +8,7 @@
 div.text, div.decoration, div.default, div.header-line {
     color: #505050;
     font-family: monospace;
-    white-space: pre;
+    white-space: pre-wrap;
 }
 
 div.data {
@@ -30,14 +30,14 @@ div.indent {
 
 div.item {
     border: 1px solid #d0d0ff;
+    white-space: pre;
 }
-
 
 div.text, div.decoration, div.data, div.header, div.pad, div.item {
     font-family: monospace;
     display: inline-block;
     vertical-align: middle;
-    white-space: pre;
+    white-space: pre-wrap;
     sborder: 1px solid orange;
 }
 
@@ -56,7 +56,7 @@ div.indentxxx {
 
 div.output {
     font-family: monospace;
-    white-space: pre;
+    white-space: pre-wrap;
 }
 
 div.header-line {
@@ -97,7 +97,7 @@ div#debug-container {
 }
 
 div#debug-log {
-    white-space: pre;
+    white-space: pre-wrap;
 }
 
 div#header {
@@ -341,6 +341,7 @@ input.text-entry {
     border-style: inset;
     border-width: 2px;
     border-radius: 10px;
+    border-color: black #444444 #555555 #444444;
 }
 
 .rounded {
