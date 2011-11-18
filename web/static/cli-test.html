@@ -42,6 +42,10 @@ jQuery(function ($) {
             command_history_click(event, this);
             $('#command-line').focus();
         });
+        $('.icon-pulldown-target', $cmd).click(function (event) {
+            target_history_click(event, $('#command-target'));
+            $('#command-line').focus();
+        });
 
         $cmd.submit(command_submit);
         $target_history.submit(target_history_submit);
@@ -97,16 +101,23 @@ jQuery(function ($) {
      */
     var target_history_shown = false;
 
-    function target_history_click (event) {
-        var $this = $(this);
-        dbgpr("target history click: ", $this.offset().top,
-              "+", $this.offset().left);
+    function target_history_click (event, $this) {
+        var top, left, width;
+        if (!$this)
+            $this = $('#command-target', $cmd);
+
+        top = $this.offset().top + $this.outerHeight();
+        left = $this.offset().left;
+        width = $this.outerWidth();
+
+        dbgpr("target history click: ", top, left);
 
         target_history_shown = !target_history_shown;
         if (target_history_shown) {
             $('#target-history').css({
-                top: $this.offset().top + 30,
-                left: $this.offset().left + 50,
+                top: top,
+                left: left,
+                width: width,
                 display: "block",
             });
         } else {
@@ -160,9 +171,9 @@ jQuery(function ($) {
             $target_history.prepend($target);
         } else {
             var content = '<div id="' + id + '" class="target-history-entry">'
-                + '<input type="checkbox" name="' + target 
+                + '<input type="checkbox" name="' + target
                 + '" id="input-' + target + '">'
-                + '<div id="click-' + target 
+                + '<div id="click-' + target
                 + '" class="target-history-name">'
                 + html_escape(target) + '</div>'
                 + '</div>';
@@ -170,9 +181,10 @@ jQuery(function ($) {
             $target_history.prepend($target);
         }
 
-        $('#click-' + target).click(function (e) {
+        $('#' + id).click(function (e) {
             $('#input-' + target).attr("checked", "checked");
-            target_history_submit(e);
+            if (e.target.localName != "input")
+                target_history_submit(e);
         });
 
         $('#target-history-none').css({ display: "none" });
@@ -230,7 +242,7 @@ jQuery(function ($) {
             $('#command-history').css({
                 top: $toppx + "px",
                 left: $this.offset().left,
-                width: $this.css('width'),
+                width: $this.outerWidth(),
                 display: "block",
             });
         } else {
@@ -671,7 +683,7 @@ jQuery(function ($) {
   <div id="target-history" style="display: none" class="green rounded">
     <div id="target-history-none">No targets have been entered</div>
     <form id="target-history-form" action="#" style="display: none">
-      <input type="submit" id="target-history-submit" value="Select Target(s)"</input>
+      <input type="submit" id="target-history-submit" value="Select Target(s)"></input>
     </form>
   </div>
   <div id="target-title" 
@@ -692,12 +704,13 @@ jQuery(function ($) {
     <div class="label">On:</div>
     <img src="/icons/button-remove.png" class="icon icon-clear-target"/>
     <input spellcheck="false" autocomplete="off" id="command-target"
-	   class="rounded command-target green"
+	   class="command-target text-entry rounded green"
 	   maxlength="256" name="target" size="16" type="text"/>
+    <img src="/icons/button-pulldown.png" class="icon icon-pulldown-target"/>
     <div class="label">Run:</div>
     <img src="/icons/button-remove.png" class="icon icon-clear-command"/>
     <input spellcheck="false" autocomplete="off" id="command-line"
-	   class="command-line rounded blue"
+	   class="command-line text-entry rounded blue"
 	   maxlength="2048" name="command" size="60" type="text"/>
     <img src="/icons/button-pulldown.png" class="icon icon-pulldown-command"/>
     <input type="submit" value="Enter"/>

@@ -7,7 +7,7 @@ ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = libjuise juise juise-askpass extensions doc
 
 if HAVE_LIGHTTPD
-SUBDIRS += mod_juise
+SUBDIRS += mod_juise web
 endif
 
 bin_SCRIPTS=juise-config
@@ -34,3 +34,6 @@ upload: dist
 	@${UPLOAD} -s 'Release ${PACKAGE_VERSION}' \
 		-l Type-Source,OpSys-All,Featured \
 		juise-${PACKAGE_VERSION}.tar.gz
+	@echo "Uploading juise-manual-${PACKAGE_VERSION}.html ... "
+	@${UPLOAD} -s 'Full Documentation' -l Type-Docs,Featured \
+		doc/juise-manual-${PACKAGE_VERSION}.html
