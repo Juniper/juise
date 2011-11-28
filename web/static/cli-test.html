@@ -8,6 +8,8 @@
     </style>
 
     <script type="text/javascript" src="/jquery/jquery.js"></script>
+    <script type="text/javascript" src="/jquery/jquery.mruPulldown.js"></script>
+
     <script type="text/javascript">
 
 jQuery(function ($) {
@@ -22,44 +24,67 @@ jQuery(function ($) {
      * XXX Need more here
      */
 
-    var $cmd = $('#command-form');
-    var $top = $('#command-top');
+    var $top = $('#input-top');
+    var $cmd = $('#command-top');
+    var $input = $('#input-form');
+    var $target = $('#target-top');
+    var $command_line = $('#command-line');
+
     var $target_history = $('#target-history-form');
     var $command_history = $('#command-history-data');
     var command_number = 0;
+    var cmdHistory, tgtHistory;
 
     function command_init () {
         /* The "clear" icons wipe the values clear for target and command */
-        $('.icon-clear-target', $cmd).click(function () {
-            $cmd[0].target.value = "";
+        $('.icon-clear-target', $top).click(function () {
+            $input[0].target.value = "";
             $('#command-target').focus();
         });
-        $('.icon-clear-command', $cmd).click(function () {
-            $cmd[0].command.value = "";
-            $('#command-line').focus();
-        });
-        $('.icon-pulldown-command', $cmd).click(function (event) {
-            command_history_click(event, this);
-            $('#command-line').focus();
-        });
-        $('.icon-pulldown-target', $cmd).click(function (event) {
-            target_history_click(event, $('#command-target'));
+        $('.icon-clear-command', $top).click(function () {
+            $input[0].command.value = "";
             $('#command-line').focus();
         });
 
-        $cmd.submit(command_submit);
-        $target_history.submit(target_history_submit);
-        $('#target-title').click(target_history_click);
-    }
+        cmdHistory = $.mruPulldown({
+            name: "command-history",
+            top: $('#command-top'),
+            entryClass: "command-history-entry",
+            click: function (me) {
+                if (tgtHistory)
+                    tgtHistory.close();
+            },
+        });
 
-    function command_submit (event) {
+        tgtHistory = $.mruPulldown({
+            name: "target-history",
+            top: $('#target-top'),
+            multiple: $('#target-history-form'),
+            history: $('#target-history'),
+            entryClass: "target-history-entry",
+            focusAfter: $command_line,
+            click: function (me) {
+                if (cmdHistory)
+                    cmdHistory.close();
+            },
+        });
+
+        $input.submit(commandSubmit);
+
+        $('#target-title').click(function () {
+            tgtHistory.pulldown();
+        });
+    }                     
+
+    function commandSubmit (event) {
         event.preventDefault();
 
-        command_history_submit(null);
+        tgtHistory.close();
+        cmdHistory.close();
 
         if (this.command.value == "") {
             dbgpr('submit; skipping since command value is empty');
-            $('#command-line').focus();
+            $command_line.focus();
             return false;
         }
 
@@ -77,7 +102,7 @@ jQuery(function ($) {
                 count += 1;
                 tset.push(x);
                 commmand_wrapper_add(x, value);
-                target_history_mark_used(x);
+                tgtHistory.markUsed(x);
                 tname += " " + x;
                 cname += "_" + x.replace("_", "__", "g");
             }
@@ -88,7 +113,7 @@ jQuery(function ($) {
         if (cname && cname != "")
             target_list_mark_used(this, tname, cname);
 
-        command_history_mark_used(value);
+        cmdHistory.markUsed(value);
         command_output_trim(count);
 
         return false;
@@ -104,7 +129,7 @@ jQuery(function ($) {
     function target_history_click (event, $this) {
         var top, left, width;
         if (!$this)
-            $this = $('#command-target', $cmd);
+            $this = $('#command-target', $top);
 
         top = $this.offset().top + $this.outerHeight();
         left = $this.offset().left;
@@ -156,39 +181,10 @@ jQuery(function ($) {
             return;
 
         if (tname != "")
-            target_set($cmd.get(0), tname.substr(1));
+            target_set($input.get(0), tname.substr(1));
         else
             $('#command-target').focus();
 
-    }
-
-    function target_history_mark_used (target) {
-        var id = 'target-history-' + target;
-        var $target = $('#' + id, $target_history);
-
-        if ($target && $target.length > 0) {
-            $target.remove();
-            $target_history.prepend($target);
-        } else {
-            var content = '<div id="' + id + '" class="target-history-entry">'
-                + '<input type="checkbox" name="' + target
-                + '" id="input-' + target + '">'
-                + '<div id="click-' + target
-                + '" class="target-history-name">'
-                + html_escape(target) + '</div>'
-                + '</div>';
-            $target = jQuery(content);
-            $target_history.prepend($target);
-        }
-
-        $('#' + id).click(function (e) {
-            $('#input-' + target).attr("checked", "checked");
-            if (e.target.localName != "input")
-                target_history_submit(e);
-        });
-
-        $('#target-history-none').css({ display: "none" });
-        $('#target-history-form').css({ display: "block" });
     }
 
     function target_list_mark_used (form, target, cname) {
@@ -213,6 +209,7 @@ jQuery(function ($) {
         }
 
         $target.click(function (event) {
+            tgtHistory.close();
             target_set(form, target);
         });
 
@@ -229,75 +226,15 @@ jQuery(function ($) {
         });     
     }
 
-    var command_history_shown = false;
-
-    function command_history_click (event) {
-        var $this = $("#command-line");
-        dbgpr("command history click: ", $this.offset().top,
-              "+", $this.offset().left);
-
-        command_history_shown = !command_history_shown;
-        if (command_history_shown) {
-            var $toppx = $this.offset().top + $this.outerHeight();
-            $('#command-history').css({
-                top: $toppx + "px",
-                left: $this.offset().left,
-                width: $this.outerWidth(),
-                display: "block",
-            });
-        } else {
-            command_history_submit(null);
-        }
-    }
-
-    function command_history_submit (command) {
-        command_history_shown = false;
-        $('#command-history').css({ display: "none" });
-
-        if (command && command != "")
-            command_set($cmd.get(0), command);
-
-        $('#command-command').focus();
-    }
-
-    function command_history_mark_used (command) {
-        var $command = null;
-        var $elt;
-        $command_history.each(function (i, elt) {
-            $elt = $(elt);
-            if ($elt.text() == command)
-                $comment = $elt;
-        });
-
-        if ($command && $command.length > 0) {
-            $command.remove();
-            $command_history.prepend($command);
-        } else {
-            var content = '<div class="command-history-entry">'
-                + html_escape(command)
-                + '</div>';
-            $command = jQuery(content);
-            $command_history.prepend($command);
-        }
-
-        $command.click(function (e) {
-            command_history_submit(command);
-        });
-
-        $('#command-history-none').css({ display: "none" });
-        $command_history.css({ display: "block" });
-    }
-
     function target_set (form, target) {
         dbgpr("target_set:", target);
-        form.target.value = target;
-        $('#command-line').focus();
+        tgtHistory.select(target);
+        $command_line.focus();
     }
 
-    function command_set (form, line) {
+    function command_set (line) {
         dbgpr("comand_set:", line);
-        form.command.value = line;
-        $('#command-line').focus();
+        cmdHistory.select(line).focus();
     }
 
     function commmand_wrapper_add (target, command) {
@@ -380,16 +317,16 @@ jQuery(function ($) {
         });
 
         $('.command-target', $newp).click(function () {
-            target_set($cmd.get(0), $(this).text());
+            target_set($input.get(0), $(this).text());
         });
 
         $('.command-line', $newp).click(function () {
-            command_set($cmd.get(0), $(this).text());
+            command_set($(this).text());
         });
 
         return false;
     }
-  
+
     function html_escape (val) {
         return val.replace(/&/g, "&amp;")
                   .replace(/</g, "&lt;")
@@ -401,7 +338,7 @@ jQuery(function ($) {
     }
 
     function command_output_trim (fresh_count) {
-        var last = $top.parents()[0];
+        var last = $('.contents', $cmd).get(0);
         if (!last)
             return;
 
@@ -410,11 +347,11 @@ jQuery(function ($) {
             var $child = $(last.children[i]);
             if ($child.hasClass("keeper-active")) {
                 keep += 1;
-            } else if (i <= fresh_count) {
+            } else if (i < fresh_count) {
                 /* do nothing */
-            } else if (i >= prefs.output_remove_after + 1 + keep) {
+            } else if (i >= prefs.output_remove_after + keep) {
                 div_remove($child);
-            } else if (i >= prefs.output_close_after + 1 + keep) {
+            } else if (i >= prefs.output_close_after + keep) {
                 if (!div_is_hidden($child))
                     div_hide($child);
             } else {
@@ -661,77 +598,82 @@ jQuery(function ($) {
  </head>
  <body>
 
-<div id="header">
-  <div id="header-logo">&nbsp;</div>
-  <div id="header-info">
-    <div>User: phil</div>
-  </div>
-  <div id="header-status">
-    <div>Status: <a href="#">running</a></div>
-    <a id="prefs" href="#">Edit Preferences</a>
-  </div>
-  <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
-    <div id="prefs-title">Preferences</div>
-    <form id="prefs-form" action="#">
-      <input id="prefs-submit" name="submit" type="submit" value="Apply"/>
-      <button id="prefs-restore" name="restore">Restore Defaults</button>
-    </form>
-  </div>
-</div>
+   <div id="header">
+     <div id="header-logo">&nbsp;</div>
+     <div id="header-info">
+       <div>User: phil</div>
+     </div>
+     <div id="header-status">
+       <div>Status: <a href="#">running</a></div>
+       <a id="prefs" href="#">Edit Preferences</a>
+     </div>
+     <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
+       <div id="prefs-title">Preferences</div>
+       <form id="prefs-form" action="#">
+	 <input id="prefs-submit" name="submit" type="submit" value="Apply"/>
+	 <button id="prefs-restore" name="restore">Restore Defaults</button>
+       </form>
+     </div>
+   </div>
 
-<div id="target-list">
-  <div id="target-history" style="display: none" class="green rounded">
-    <div id="target-history-none">No targets have been entered</div>
-    <form id="target-history-form" action="#" style="display: none">
-      <input type="submit" id="target-history-submit" value="Select Target(s)"></input>
-    </form>
-  </div>
-  <div id="target-title" 
-         class="target-info rounded green buttonish">Recent Targets:</div>
-  <div id="target-contents-none">None</div>
-  <div id="target-contents"></div>
-</div>
+   <div id="target-list">
+     <div id="target-title" 
+          class="target-info rounded green buttonish">Recent Targets:</div>
+     <div id="target-contents-none">None</div>
+     <div id="target-contents"></div>
+   </div>
 
-<div id="command-area">
-  <div id="command-history" style="display: none"
-	class="command-line rounded blue">
-    <div id="command-history-none">No commands have been entered</div>
-    <div id="command-history-data" style="display: none"></div>
-  </div>
+   <div id="target-history" style="display: none" class="green rounded">
+     <div class="empty">No targets have been entered</div>
+     <form id="target-history-form" action="#">
+       <div class="contents"></div>
+       <input type="submit" id="target-history-submit" 
+	      value="Select Target(s)"/>
+     </form>
+   </div>
 
- <div id="command-top" class="command-top">
-  <form id="command-form" action="#">
-    <div class="label">On:</div>
-    <img src="/icons/button-remove.png" class="icon icon-clear-target"/>
-    <input spellcheck="false" autocomplete="off" id="command-target"
-	   class="command-target text-entry rounded green"
-	   maxlength="256" name="target" size="16" type="text"/>
-    <img src="/icons/button-pulldown.png" class="icon icon-pulldown-target"/>
-    <div class="label">Run:</div>
-    <img src="/icons/button-remove.png" class="icon icon-clear-command"/>
-    <input spellcheck="false" autocomplete="off" id="command-line"
-	   class="command-line text-entry rounded blue"
-	   maxlength="2048" name="command" size="60" type="text"/>
-    <img src="/icons/button-pulldown.png" class="icon icon-pulldown-command"/>
-    <input type="submit" value="Enter"/>
-  </form>
- </div>
-</div>
+   <div id="input-top" class="input-top">
+     <form id="input-form" action="#">
+       <div id="target-top" class="history">
+	 <div class="label">On:</div>
+	 <img src="/icons/button-remove.png" class="icon icon-clear"/>
+	 <input spellcheck="false" autocomplete="off" id="command-target"
+		class="command-target input text-entry rounded green"
+		maxlength="256" name="target" size="16" type="text"/>
+	 <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
+       </div>
 
-<div id="footer">
-[ Copyright 2011, Juniper Networks ]
-</div>
+       <div id="command-top">
+	 <div id="command-history" style="display: none"
+	      class="history command-line rounded blue">
+	   <div class="empty">No commands have been entered</div>
+	   <div class="contents" style="display: none"></div>
+	 </div>
+	 <div class="label">Run:</div>
+	 <img src="/icons/button-remove.png" class="icon icon-clear"/>
+	 <input spellcheck="false" autocomplete="off" id="command-line"
+		class="command-line input text-entry rounded blue"
+		maxlength="2048" name="command" size="60" type="text"/>
+	 <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
+       </div>
+       <input type="submit" value="Enter"/>
+     </form>
+   </div>
 
-<div id="debug-container">
-  <div class="icon-box">
-    <img src="/icons/button-remove.png" class="icon icon-remove-section"/>
-    <img src="/icons/button-hide.png" class="icon icon-hide-section"/>
-    <img src="/icons/button-unhide.png" class="icon icon-unhide-section hidden"/>
-    <img src="/icons/button-clean.png" class="icon icon-clean-section"/>
-  </div>
-  <div id="debug-title">Debug Log:</div>
-  <div id="debug-log" class="can-hide">&nbsp;</div>
-</div>
+   <div id="footer">
+     [ Copyright 2011, Juniper Networks ]
+   </div>
+
+   <div id="debug-container">
+     <div class="icon-box">
+       <img src="/icons/button-remove.png" class="icon icon-remove-section"/>
+       <img src="/icons/button-hide.png" class="icon icon-hide-section"/>
+       <img src="/icons/button-unhide.png" class="icon icon-unhide-section hidden"/>
+       <img src="/icons/button-clean.png" class="icon icon-clean-section"/>
+     </div>
+     <div id="debug-title">Debug Log:</div>
+     <div id="debug-log" class="can-hide">&nbsp;</div>
+   </div>
 
  </body>                                                                 
- </html>
+</html>

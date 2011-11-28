@@ -246,6 +246,7 @@ EXTRA_DIST = \
     jquery/jquery-ui.min.js \
     jquery/jquery.js \
     jquery/jquery.min.js \
+    jquery/jquery.mruPulldown.js \
     lighttpd.conf.in \
     static/cli-test.html \
     static/cmd.css \

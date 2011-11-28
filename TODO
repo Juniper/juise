@@ -6,4 +6,3 @@ Nit: canonicalize "-" vs "_" in filenames.
 
 New: need -C mode for commit scripts, also --configuration XXX to
 allow pre-fetched config data.
-

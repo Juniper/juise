@@ -157,18 +157,21 @@ div.target-history-name {
     display: inline-block;
 }
 
-div.target-history-entry:hover {
+div.target-history-entry-parent:hover {
     background: #659635;
 }
 
-div.target-history-entry:first-child {
+div.target-history-entry-parent:first-child {
     border-top: 0px none;
 }
 
-div.target-history-entry {
+div.target-history-entry-parent {
     border-top: 1px solid #659635;
     padding-left: 8px;
     padding-right: 8px;
+}
+div.target-history-entry {
+    display: inline-block;
 }
 
 div.target-info {
@@ -264,12 +267,16 @@ div#footer {
     text-align: center;
 }
 
-div#command-area {
+div#input-top {
     display: block;
     padding: 10px;
 }
 
-form#command-form {
+div#command-top, div#target-top {
+    display: inline-block;
+}
+
+form#input-form {
     margin: 0px;
 }
 
