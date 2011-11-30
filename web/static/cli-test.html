@@ -4,11 +4,14 @@
     <link rel="shortcut icon" href="/favicon.ico" type="image/png"/>
 
     <style type="text/css" title="currentStyle" media="screen">
+	@import url("/themes/black-tie/jquery-ui-black-tie.css");
+	@import url("/themes/black-tie/addons-black-tie.css");
 	@import url("/static/cmd.css");
     </style>
 
     <script type="text/javascript" src="/jquery/jquery.js"></script>
     <script type="text/javascript" src="/jquery/jquery.mruPulldown.js"></script>
+    <script type="text/javascript" src="/jquery/jquery-ui.js"></script>
 
     <script type="text/javascript">
 
@@ -25,6 +28,7 @@ jQuery(function ($) {
      */
 
     var $top = $('#input-top');
+    var $output_top = $('#output-top');
     var $cmd = $('#command-top');
     var $input = $('#input-form');
     var $target = $('#target-top');
@@ -273,13 +277,17 @@ jQuery(function ($) {
         content += '</div>';
 
         var $newp = jQuery(content);
-        $newp.insertAfter($top);
+	$output_top.prepend($newp);
+	$newp.slideUp(0).slideDown(prefs.slide_speed);
 
         div_unhide($newp);
 
         if (prefs.live_action) {
-            $(".command-output", $newp)
-      	        .load("/bin/cmd.slax", { target: target, command: command },
+            var $out = $(".command-output", $newp);
+            $out.slideUp(0).slideDown(prefs.slide_speed);
+
+      	    $out.load("/bin/cmd.slax",
+                      { target: target, command: command, form: "false" },
                       function (text, status, http) {
                           dbgpr("target", target);
                           dbgpr("command", command);
@@ -300,6 +308,7 @@ jQuery(function ($) {
                                      + html_escape($("message", $err).text())
                                      + '</div>');
                           }
+                          $out.slideDown(prefs.slide_speed);
                       });
         }
 
@@ -431,7 +440,7 @@ jQuery(function ($) {
                 prefs_info[key].change(prefs_info[key].def, true);
         }
 
-        $('#prefs').click(prefs_edit);
+        $('#prefs').button().click(prefs_edit);
     }
 
     function prefs_edit (event) {
@@ -532,16 +541,25 @@ jQuery(function ($) {
             var $dc = $('#debug-container');
             var $dl = $('#debug-log');
 
-            $('.icon-remove-section', $dc).click(function () {
+            $('.icon-remove-section', $dc).button({
+                text: false,
+                icons: { primary: 'ui-icon-closethick' },
+            }).click(function () {
                 div_remove($dc);
-            });
-            $('.icon-unhide-section', $dc).click(function () {
-                div_unhide($dc);
-            });
-            $('.icon-hide-section', $dc).click(function () {
+            }).next().button({
+                text: false,
+                icons: { primary: 'ui-icon-minusthick' },
+            }).click(function () {
                 div_hide($dc);
-            });
-            $('.icon-clean-section', $dc).click(function () {
+            }).next().button({
+                text: false,
+                icons: { primary: 'ui-icon-plusthick' },
+            }).click(function () {
+                div_unhide($dc);
+            }).addClass("hidden").next().button({
+                text: false,
+                icons: { primary: 'ui-icon-trash' },
+            }).click(function () {
                 $('.can-hide', $dc).text("");
             });
         }
@@ -594,86 +612,90 @@ jQuery(function ($) {
 });
 
 
- </script>
- </head>
- <body>
+    </script>
+  </head>
+  <body>
 
-   <div id="header">
-     <div id="header-logo">&nbsp;</div>
-     <div id="header-info">
-       <div>User: phil</div>
-     </div>
-     <div id="header-status">
-       <div>Status: <a href="#">running</a></div>
-       <a id="prefs" href="#">Edit Preferences</a>
-     </div>
-     <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
-       <div id="prefs-title">Preferences</div>
-       <form id="prefs-form" action="#">
-	 <input id="prefs-submit" name="submit" type="submit" value="Apply"/>
-	 <button id="prefs-restore" name="restore">Restore Defaults</button>
-       </form>
-     </div>
-   </div>
+    <div id="header">
+      <div id="header-logo">&nbsp;</div>
+      <div id="header-info" class="ui-widget ui-corner-all">
+	<div>User: phil</div>
+	<div>Status: running</div>
+      </div>
+      <div id="header-actions">
+	<button id="prefs">Edit Preferences</button>
+      </div>
+      <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
+	<div id="prefs-title">Preferences</div>
+	<form id="prefs-form" action="#">
+	  <input id="prefs-submit" name="submit" type="submit" value="Apply"/>
+	  <button id="prefs-restore" name="restore">Restore Defaults</button>
+	</form>
+      </div>
+    </div>
 
-   <div id="target-list">
-     <div id="target-title" 
-          class="target-info rounded green buttonish">Recent Targets:</div>
-     <div id="target-contents-none">None</div>
-     <div id="target-contents"></div>
-   </div>
+    <div id="content-wrapper">
+      <div id="input-top" class="ui-widget ui-corner-all">
+	<div id="target-list">
+	  <div id="target-title" 
+               class="target-info rounded green buttonish">Recent Targets:</div>
+	  <div id="target-contents-none">None</div>
+	  <div id="target-contents"></div>
+	</div>
 
-   <div id="target-history" style="display: none" class="green rounded">
-     <div class="empty">No targets have been entered</div>
-     <form id="target-history-form" action="#">
-       <div class="contents"></div>
-       <input type="submit" id="target-history-submit" 
-	      value="Select Target(s)"/>
-     </form>
-   </div>
+	<div id="target-history" style="display: none" class="green rounded">
+	  <div class="empty">No targets have been entered</div>
+	  <form id="target-history-form" action="#">
+	    <div class="contents"></div>
+	    <input type="submit" id="target-history-submit" 
+		   value="Select Target(s)"/>
+	  </form>
+	</div>
 
-   <div id="input-top" class="input-top">
-     <form id="input-form" action="#">
-       <div id="target-top" class="history">
-	 <div class="label">On:</div>
-	 <img src="/icons/button-remove.png" class="icon icon-clear"/>
-	 <input spellcheck="false" autocomplete="off" id="command-target"
-		class="command-target input text-entry rounded green"
-		maxlength="256" name="target" size="16" type="text"/>
-	 <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
-       </div>
+	<form id="input-form" action="#">
+	  <div id="target-top" class="history">
+	    <div class="label">On:</div>
+	    <img src="/icons/button-remove.png" class="icon icon-clear"/>
+	    <input spellcheck="false" autocomplete="off" id="command-target"
+		   class="command-target input text-entry rounded green"
+		   maxlength="256" name="target" size="16" type="text"/>
+	    <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
+	  </div>
 
-       <div id="command-top">
-	 <div id="command-history" style="display: none"
-	      class="history command-line rounded blue">
-	   <div class="empty">No commands have been entered</div>
-	   <div class="contents" style="display: none"></div>
-	 </div>
-	 <div class="label">Run:</div>
-	 <img src="/icons/button-remove.png" class="icon icon-clear"/>
-	 <input spellcheck="false" autocomplete="off" id="command-line"
-		class="command-line input text-entry rounded blue"
-		maxlength="2048" name="command" size="60" type="text"/>
-	 <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
-       </div>
-       <input type="submit" value="Enter"/>
-     </form>
-   </div>
+	  <div id="command-top">
+	    <div id="command-history" style="display: none"
+		 class="history command-line rounded blue">
+	      <div class="empty">No commands have been entered</div>
+	      <div class="contents" style="display: none"></div>
+	    </div>
+	    <div class="label">Run:</div>
+	    <img src="/icons/button-remove.png" class="icon icon-clear"/>
+	    <input spellcheck="false" autocomplete="off" id="command-line"
+		   class="command-line input text-entry rounded blue"
+		   maxlength="2048" name="command" size="60" type="text"/>
+	    <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
+	  </div>
+	  <input type="submit" value="Enter"/>
+	</form>
+      </div>
 
-   <div id="footer">
-     [ Copyright 2011, Juniper Networks ]
-   </div>
+      <div id="output-top"></div>
+    </div>
 
-   <div id="debug-container">
-     <div class="icon-box">
-       <img src="/icons/button-remove.png" class="icon icon-remove-section"/>
-       <img src="/icons/button-hide.png" class="icon icon-hide-section"/>
-       <img src="/icons/button-unhide.png" class="icon icon-unhide-section hidden"/>
-       <img src="/icons/button-clean.png" class="icon icon-clean-section"/>
-     </div>
-     <div id="debug-title">Debug Log:</div>
-     <div id="debug-log" class="can-hide">&nbsp;</div>
-   </div>
+    <div id="footer">
+      [ Copyright 2011, Juniper Networks ]
+    </div>
 
- </body>                                                                 
+    <div id="debug-container" class="ui-widget ui-corner-all">
+      <div class="ui-widget-header ui-corner-all">
+	<button class="icon-remove-section">Close</button>
+	<button class="icon-hide-section">Hide</button>
+	<button class="icon-unhide-section">Show</button>
+	<button class="icon-clean-section">Clean</button>
+	<div id="debug-title">Debug Log:</div>
+      </div>
+      <div id="debug-log" class="can-hide">&nbsp;</div>
+    </div>
+
+  </body>
 </html>

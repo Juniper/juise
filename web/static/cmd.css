@@ -5,6 +5,32 @@
  * See ../Copyright for more information
  */
 
+body {
+    min-height: 100%;
+}
+
+#content-wrapper {
+    margin: 0 4px;
+}
+
+button.ui-button-icon-only {
+    height: 16px;
+    width: 16px;
+    vertical-align: middle;
+}
+
+div#debug-container div.ui-widget-header {
+    padding: 4px;
+}
+
+.ui-widget {
+    font-size: 100%;
+}
+
+#prefs {
+    font-size: 70%;
+}
+
 div.text, div.decoration, div.default, div.header-line {
     color: #505050;
     font-family: monospace;
@@ -71,7 +97,7 @@ div.header-line {
  * juise rendering
  */
 
-div.hidden, img.hidden {
+div.hidden, img.hidden, button.hidden {
     display: none;
 }
 
@@ -90,6 +116,7 @@ div.icon-box img.keeper {
 }
 
 div#debug-container {
+    margin: 0 4px;
     font-size: 70%;
     display: block;
     color: blue;
@@ -98,42 +125,44 @@ div#debug-container {
 
 div#debug-log {
     white-space: pre-wrap;
+    background-color: #ffffff;
 }
 
 div#header {
     width: 95%;
     height: 60px;
     padding: 10px;
+    padding-left: 30px;
 }
 
 div#header-logo {
     display: table-cell;
     background: url(/images/logo.png) no-repeat;
-    margin-left: 10px;
     height: 60px;
     width: 200px;
-    border-right: 1px #a0ffa0 solid;
 }
 
 div#header-info {
     display: table-cell;
     height: 60px;
     width: 60%;
-    border-right: 1px #a0ffa0 solid;
+    background-color: #ffffff;
+    font-size: 80%;
+    padding-left: 10px;
 }
 
-div#header-status {
+div#header-actions {
     height: 60px;
     width: 200px;
     display: table-cell;
+    padding-left: 10px;
 }
 
-xdiv#header-status div, xdiv#header-info div {
+xdiv#header-actions div, xdiv#header-info div {
     display: inline-block;
 }
 
 div#target-list {
-    border-top: 1px solid #a0ffa0;
     display: block;
 }
 
@@ -191,6 +220,7 @@ div#target-contents, div#target-contents-none {
 
 div#target-contents-none {
     padding-left: 10px;
+    font-size: 70%;
 }
 
 div.target {
@@ -278,6 +308,7 @@ div#command-top, div#target-top {
 
 form#input-form {
     margin: 0px;
+    margin-top: 10px;
 }
 
 input.command-line {

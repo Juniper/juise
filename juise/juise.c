@@ -62,6 +62,7 @@ int dump_all;
 int opt_debugger;
 int opt_indent;
 static int opt_load;
+char *opt_output_format;
 
 static void
 juise_trace (void *vfp, lx_node_t *nodep, const char *fmt, ...)
@@ -422,12 +423,18 @@ do_run_op (const char *scriptname, const char *input, char **argv)
 }
 
 static lx_node_t *
-juise_build_get_configuration_rpc (lx_document_t **docpp)
+juise_build_get_configuration_rpc (lx_document_t **docpp, int post,
+				   const char *format)
 {
-    static char rpc_text[]
-	= "<rpc><get-configuration commit-scripts=\"view\"/></rpc>";
+    char rpc_text[BUFSIZ];
     lx_document_t *xmlp;
     lx_node_t *rootp;
+
+    snprintf(rpc_text, sizeof(rpc_text),
+	     "<rpc><get-configuration%s%s%s/></rpc>",
+	     post ? "" : " commit-scripts=\"view\"",
+	     streq(format, "text") ? " format=\"text\"" : "",
+	     streq(format, "compare") ? " compare=\"\"" : "");
 
     *docpp = xmlp = xmlReadMemory(rpc_text, strlen(rpc_text), "rpc_text",
 				  NULL, XML_PARSE_NOENT);
@@ -600,24 +607,30 @@ invoke_rpc (js_session_t *jsp UNUSED, xmlXPathParserContext *pctxt,
     lx_document_t *docp;
     lx_node_t *rootp;
     lx_nodeset_t *res;
+    int rc = FALSE;
 
     docp = xmlReadMemory(rpc_text, strlen(rpc_text), "rpc_text",
 			 NULL, XML_PARSE_NOENT);
-    if (docp == NULL)
+    if (docp == NULL) {
+	fprintf(stderr, "rpc failed to parse");
 	return TRUE;
+    }
 
     rootp = xmlDocGetRootElement(docp);
 
     res = js_session_execute(pctxt, NULL, rootp, NULL, ST_DEFAULT);
     if (res == NULL) {
-	fprintf(stderr, "load-configuration failed");
+	fprintf(stderr, "rpc execution failed");
+	rc = TRUE;
     } else {
 	output_nodeset(title, res);
+	xmlXPathFreeNodeSet(res);
     }
+
 
     xmlFreeDoc(docp);
 
-    return FALSE;
+    return rc;
 }
 
 static int
@@ -664,6 +677,31 @@ report_error (const char *tag, lx_node_t *child)
 }
 
 static int
+show_post_commit_config (js_session_t *jsp UNUSED,
+			 xmlXPathParserContext *pctxt,
+			 const char *format)
+{
+    lx_document_t *rpc = NULL;
+    lx_node_t *get_config_rpc;
+    lx_nodeset_t *res;
+
+    get_config_rpc = juise_build_get_configuration_rpc(&rpc, TRUE, format);
+
+    res = js_session_execute(pctxt, NULL, get_config_rpc,
+				     NULL, ST_DEFAULT);
+    if (res == NULL)
+	err(0, "get-configuration (post) rpc failed");
+
+    output_nodeset("script", res);
+    xmlXPathFreeNodeSet(res);
+
+    if (rpc)
+	xmlFreeDoc(rpc);
+
+    return FALSE;
+}
+
+static int
 do_test_commit_script (const char *scriptname, const char *input UNUSED,
 		       char **argv UNUSED)
 {
@@ -693,7 +731,7 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
     if (jsp == NULL)
 	errx(1, "could not open session to target");
     
-    get_config_rpc = juise_build_get_configuration_rpc(&rpc);
+    get_config_rpc = juise_build_get_configuration_rpc(&rpc, FALSE, "xml");
 
     config_data = js_session_execute(pctxt, NULL, get_config_rpc,
 				     NULL, ST_DEFAULT);
@@ -781,8 +819,8 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
 		    break;
 	    }
 
-	    if (!rc)
-		run_commit_check(jsp, pctxt);
+	    if (!rc && !run_commit_check(jsp, pctxt) && opt_output_format)
+		show_post_commit_config(jsp, pctxt, opt_output_format);
 	}
 
     done:
@@ -1107,6 +1145,13 @@ main (int argc UNUSED, char **argv, char **envp)
 		    errx(1, "open one action allowed");
 		func = do_run_op;
 
+	    } else if (streq(cp, "--output-format")) {
+		opt_output_format = *++argv;
+		if (!streq(opt_output_format, "html")
+			    && !streq(opt_output_format, "text")
+			    && !streq(opt_output_format, "compare"))
+		    errx(1, "invalid output format: %s", opt_output_format);
+	    
 	    } else if (streq(cp, "--param") || streq(cp, "-a")) {
 		char *pname = *++argv;
 		char *pvalue = *++argv;

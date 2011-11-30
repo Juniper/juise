@@ -4,14 +4,14 @@ ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
 
 param $target;
 param $command;
-param $form;
+param $form = "true";
 
 output-method html {
     indent no;
 }
 
 match / {
-    if ($form) {
+    if ($form != "false") {
 	<html> {
 	    <head> {
 		<meta http-equiv="content-type"

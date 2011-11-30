@@ -2,7 +2,7 @@
 # $Id$
 #
 
-CLEANFILES = lighttpd.conf
+# CLEANFILES = lighttpd.conf
 
 EXTRA_DIST = \
     Makefile.am \
