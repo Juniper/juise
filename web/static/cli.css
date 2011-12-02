@@ -23,6 +23,16 @@ div#debug-container div.ui-widget-header {
     padding: 4px;
 }
 
+#target-history .empty {
+    color: #d0d0d0;
+    text-align:center;
+}
+
+#command-history .empty {
+    color: grey;
+    padding-left: 20px;
+}
+
 .ui-widget {
     font-size: 100%;
 }
@@ -126,6 +136,7 @@ div#debug-container {
 div#debug-log {
     white-space: pre-wrap;
     background-color: #ffffff;
+    font-size: 66%;
 }
 
 div#header {
@@ -133,6 +144,7 @@ div#header {
     height: 60px;
     padding: 10px;
     padding-left: 30px;
+    margin-bottom: 4px;
 }
 
 div#header-logo {
@@ -168,6 +180,7 @@ div#target-list {
 
 div#target-title {
     display: table-cell;
+    padding: 6px 1px 6px 0px;
 }
 
 div#target-history {
@@ -308,22 +321,36 @@ div#command-top, div#target-top {
 
 form#input-form {
     margin: 0px;
-    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
-input.command-line {
+input.command-input {
     font-family: Verdana, Arial, Helvetica, sans-serif ;
     font-family: monospace;
     font-size: 12px;
 }
 
-div.command-wrapper {
-    border: 1px solid blue;
+div.output-wrapper {
+/*    border: 1px solid blue; */
     margin-top: 5px;
     background: white;
+    padding: 0px;
 }
 
-div.command-target, input.command-target {
+div.output-header button {
+    margin-right: 4px;
+}
+
+div.output-header {
+    padding: 4px;
+}
+
+div.output-header div.target-value, div.output-header div.command-value {
+    font-weight: normal;
+    font-size: 12px;
+}
+
+div.target-value, input.target-value {
     display: inline-block;
     font-size: 12px;
     font-family: Verdana, Arial, Helvetica, sans-serif ;
@@ -336,7 +363,7 @@ div.label {
     font-size: 12px;
 }
 
-div.command-line {
+div.command-value {
     display: inline-block;
     font-family: monospace;
     font-size: 12px;
@@ -348,8 +375,8 @@ div.command-number {
     float: right;
 }
 
-div.command-output {
-    padding: 3px;
+div.output-content {
+    padding: 3px 8px;
     font-family: monospace;
     font-size: 12px;
 }

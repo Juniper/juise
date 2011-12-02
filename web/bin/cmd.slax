@@ -27,7 +27,7 @@ match / {
 		<script type="text/javascript">;
 	
 		<style type="text/css" title="currentStyle" media="screen"> {
-		    expr '@import url("/static/cmd.css");';
+		    expr '@import url("/static/cli.css");';
 		}
 	    }
 	    <body> {

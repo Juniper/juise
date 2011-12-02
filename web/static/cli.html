@@ -1,0 +1,105 @@
+<html>
+  <head>
+    <link rel="icon" href="/favicon.ico" type="image/png"/>
+    <link rel="shortcut icon" href="/favicon.ico" type="image/png"/>
+
+    <style type="text/css" title="currentStyle" media="screen">
+	@import url("/themes/black-tie/jquery-ui-black-tie.css");
+	@import url("/themes/black-tie/addons-black-tie.css");
+	@import url("/static/cli.css");
+    </style>
+
+    <script type="text/javascript" src="/jquery/jquery.js"></script>
+    <script type="text/javascript" src="/jquery/jquery.mruPulldown.js"
+    		></script>
+    <script type="text/javascript" src="/jquery/jquery-ui.js"></script>
+    <script type="text/javascript" src="/jquery/jquery.dbgpr.js"></script>
+    <script type="text/javascript" src="/static/cli.js"></script>
+  </head>
+
+  <body>
+
+    <div id="header">
+      <div id="header-logo">&nbsp;</div>
+      <div id="header-info" class="ui-widget ui-corner-all">
+	<div>User: phil</div>
+	<div>Status: running</div>
+      </div>
+      <div id="header-actions">
+	<button id="prefs">Edit Preferences</button>
+      </div>
+      <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
+	<div id="prefs-title">Preferences</div>
+	<form id="prefs-form" action="#">
+	  <input id="prefs-submit" name="submit" type="submit" value="Apply"/>
+	  <button id="prefs-restore" name="restore">Restore Defaults</button>
+	</form>
+      </div>
+    </div>
+
+    <div id="content-wrapper">
+      <div id="input-top" class="ui-widget ui-corner-all">
+	<button id="target-clear" class="icon-clear"></button>
+	<button id="command-clear" class="icon-clear"></button>
+
+	<form id="input-form" action="#">
+	  <div id="target-top" class="history">
+	    <div class="label">On:</div>
+	    <input spellcheck="false" autocomplete="off" id="target"
+		   class="target-value input text-entry rounded green"
+		   maxlength="256" name="target" size="16" type="text"/>
+	    <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
+	  </div>
+
+	  <div id="command-top">
+	    <div id="command-history" style="display: none"
+		 class="history command-value rounded blue">
+	      <div class="empty">No commands</div>
+	      <div class="contents" style="display: none"></div>
+	    </div>
+	    <div class="label">Run:</div>
+	    <input spellcheck="false" autocomplete="off" id="command"
+		   class="command-value input text-entry rounded blue"
+		   maxlength="2048" name="command" size="60" type="text"/>
+	    <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
+	  </div>
+	  <input type="submit" value="Enter"/>
+	</form>
+
+	<div id="target-history" style="display: none" class="green rounded">
+	  <div class="empty">No targets</div>
+	  <form id="target-history-form" action="#">
+	    <div class="contents" style="display: none">
+              <input type="submit" id="target-history-submit"
+		     value="Select Target(s)"/>
+            </div>
+	  </form>
+	</div>
+
+	<div id="target-list">
+	  <div id="target-title">Recent Targets:</div>
+	  <div id="target-contents-none">None</div>
+	  <div id="target-contents"></div>
+	</div>
+      </div>
+
+      <div id="output-top"></div>
+    </div>
+
+    <div id="footer">
+      [ Copyright 2011, Juniper Networks ]
+    </div>
+
+    <div id="debug-container" class="ui-widget ui-corner-all">
+      <div class="ui-widget-header ui-corner-all">
+	<button class="icon-remove-section"></button>
+	<button class="icon-hide-section"></button>
+	<button class="icon-unhide-section"></button>
+	<button class="icon-clear-section"></button>
+	<div id="debug-title">Debug Log:</div>
+      </div>
+      <div id="debug-log" class="can-hide">&nbsp;</div>
+    </div>
+
+  </body>
+</html>

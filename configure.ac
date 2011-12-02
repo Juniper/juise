@@ -15,6 +15,12 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT([])
 AC_DISABLE_SHARED
 
+case $prefix in
+     NONE)
+	prefix=/usr/local
+	;;
+esac
+
 # Support silent build rules.  Requires at least automake-1.11.
 # Disable with "configure --disable-silent-rules" or "make V=1"
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -438,12 +444,6 @@ case $host_os in
      cygwin*|CYGWIN*)
 	LDFLAGS=-no-undefined
 	SLAX_WARNINGS=no
-	;;
-esac
-
-case $prefix in
-     NONE)
-	prefix=/usr/local
 	;;
 esac
 

@@ -30,7 +30,7 @@ jQuery.mruPulldown({
             version: "0.0.1",
         }
         $.extend(me, info);
-        dbgpr("pulldown: init:", me.name, me);
+        $.dbgpr("pulldown: init:", me.name, me);
 
         var shown = false;
 
@@ -64,7 +64,7 @@ jQuery.mruPulldown({
             me.clearIcon = $('.icon-clear', me.top);
 
         me.pulldown = function () {
-            dbgpr("pulldown: click:", me.name);
+            $.dbgpr("pulldown: click:", me.name);
             shown = !shown;
             if (shown) {
                 var top, left, width;
@@ -74,7 +74,7 @@ jQuery.mruPulldown({
                 left = me.target.offset().left;
                 width = me.target.outerWidth();
 
-                dbgpr("pulldown: click:", me.name, top, left);
+                $.dbgpr("pulldown: click:", me.name, top, left);
 
                 me.history.css({
                     top: top,
@@ -89,7 +89,7 @@ jQuery.mruPulldown({
                  * div was shown, which we retreat as a "cancel".
                  * Drop the pulldown and give the input field focus.
                  */
-                dbgpr("pulldown: click-to-cancel:", me.name);
+                $.dbgpr("pulldown: click-to-cancel:", me.name);
                 me.history.css({ display: "none" });
                 me.target.focus();
             }
@@ -100,15 +100,16 @@ jQuery.mruPulldown({
 
         me.pulldownIcon.click(me.pulldown);
 
-        me.clearIcon.click(function () {
-            me.target.get(0).value = "";
+        me.clearIcon.text("Clear").button({
+            text: false,
+            icons: { primary: 'ui-icon-trash' },
+        }).click(function () {
             me.select("");
             me.focus();
         });
 
-
         me.markUsed = function (value) {
-            dbgpr("pulldown: mark-used:", me.name, value);
+            $.dbgpr("pulldown: mark-used:", me.name, value);
             /*
              * Mark a value in the history as "used", pushing it
              * to the top of the MRU list.
@@ -125,7 +126,7 @@ jQuery.mruPulldown({
              * for re-adding it below.  If it doesn't exist, make it
              */
             if ($match) {
-                dbgpr("pulldown: mark-used:", me.name, "recent");
+                $.dbgpr("pulldown: mark-used:", me.name, "recent");
                 if (me.multiple)
                     $match = $match.parent();
 
@@ -137,7 +138,7 @@ jQuery.mruPulldown({
                            .replace(/</g, "&lt;")
                            .replace(/>/g, "&gt;")
 
-                dbgpr("pulldown: mark-used:", me.name, "new");
+                $.dbgpr("pulldown: mark-used:", me.name, "new");
                 var content = '<div class="' + me.entryClass + '">'
 	                    + evalue + '</div>';
                 if (me.multiple) {
@@ -177,7 +178,7 @@ jQuery.mruPulldown({
             });
 
             $('.empty', me.history).css({ display: "none" });
-            $('.contents', me.history).css({ display: "block" });
+            me.contents.css({ display: "block" });
         }
 
         if (me.multiple) {
@@ -215,7 +216,7 @@ jQuery.mruPulldown({
 
         me.close = function () {
             if (shown) {
-                dbgpr("pulldown: close:", me.name);
+                $.dbgpr("pulldown: close:", me.name);
                 shown = false;
                 me.history.css({ display: "none" });
             }
@@ -235,11 +236,6 @@ jQuery.mruPulldown({
         }
 
         return me;
-    }
-
-    function dbgpr () {
-        $('#debug-log').prepend(Array.prototype.slice
-                                .call(arguments).join(" ") + "\n");
     }
 
 })(jQuery);

@@ -4,4 +4,16 @@
 
 * Instructions for building juise
 
-... XXX ...
+** Building lighttpd
+
+You'll need to download source for lighttpd and build it, but you'll
+need to make an distinct "build" subdirectory.
+
+tar zxf lighttpd-src.1.4.28.tgz
+cd lighttpd-src.1.4.28
+mkdir build
+cd build
+../configure --with-your-own-options
+
+
+Then pass these directories to juise's configure script.
