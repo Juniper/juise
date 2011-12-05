@@ -63,7 +63,8 @@ jQuery.mruPulldown({
         if (!me.clearIcon)
             me.clearIcon = $('.icon-clear', me.top);
 
-        me.pulldown = function () {
+        me.pulldown = function (e, noCall) {
+            e.preventDefault();
             $.dbgpr("pulldown: click:", me.name);
             shown = !shown;
             if (shown) {
@@ -94,7 +95,7 @@ jQuery.mruPulldown({
                 me.target.focus();
             }
 
-            if (me.click)
+            if (!noCall && me.click)
                 me.click(me);
         }
 
@@ -103,9 +104,17 @@ jQuery.mruPulldown({
         me.clearIcon.text("Clear").button({
             text: false,
             icons: { primary: 'ui-icon-trash' },
-        }).click(function () {
+        }).attr("tabindex", "-1").click(function () {
+            $.dbgpr("pulldown: clear:", me.name);
             me.select("");
             me.focus();
+        });
+
+        me.pulldownIcon.button({
+            text: false,
+            icons: { primary: 'ui-icon-triangle-1-s' },
+        }).attr("tabindex", "-1").click(function () {
+            me.pulldown();
         });
 
         me.markUsed = function (value) {
@@ -161,8 +170,7 @@ jQuery.mruPulldown({
                     if (e.target.localName == "input")
                         return;
 
-                    var value = "";
-
+                    value = "";
                     $('input:checked', me.history).each(function () {
                         if (this.name)
                             value += " " + this.name;
@@ -204,12 +212,17 @@ jQuery.mruPulldown({
             });
         }
 
+        me.value = function () {
+            return me.target.get(0).value;
+        }
+
         me.select = function (value) {
             me.target.get(0).value = value;
             return me;
         }
 
         me.focus = function (value) {
+            $.dbgpr("pulldown: focus:", me.name);
             me.target.focus();
             return me;
         }

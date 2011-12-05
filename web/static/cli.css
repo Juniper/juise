@@ -315,11 +315,12 @@ div#input-top {
     padding: 10px;
 }
 
-div#command-top, div#target-top {
+form#target-input-form, form#command-input-form {
     display: inline-block;
 }
 
-form#input-form {
+div#target-top, div#command-top {
+    display: inline-block;
     margin: 0px;
     margin-bottom: 10px;
 }

@@ -3,11 +3,12 @@
     <link rel="icon" href="/favicon.ico" type="image/png"/>
     <link rel="shortcut icon" href="/favicon.ico" type="image/png"/>
 
-    <style type="text/css" title="currentStyle" media="screen">
-	@import url("/themes/black-tie/jquery-ui-black-tie.css");
-	@import url("/themes/black-tie/addons-black-tie.css");
-	@import url("/static/cli.css");
-    </style>
+    <link href="/themes/black-tie/jquery-ui-black-tie.css"
+	  type="text/css" rel="Stylesheet" class="ui-theme"/>
+    <link href="/static/cli.css"
+	  type="text/css" rel="Stylesheet" class="ui-main"/>
+    <link href="/themes/black-tie/addons-black-tie.css"
+	  type="text/css" rel="Stylesheet" class="ui-addon"/>
 
     <script type="text/javascript" src="/jquery/jquery.js"></script>
     <script type="text/javascript" src="/jquery/jquery.mruPulldown.js"
@@ -28,7 +29,7 @@
       <div id="header-actions">
 	<button id="prefs">Edit Preferences</button>
       </div>
-      <div id="prefs-form-wrapper" style="display: none" class="blue rounded">
+      <div id="prefs-form-wrapper" style="display: none; z-index: 1000" class="blue rounded">
 	<div id="prefs-title">Preferences</div>
 	<form id="prefs-form" action="#">
 	  <input id="prefs-submit" name="submit" type="submit" value="Apply"/>
@@ -39,32 +40,37 @@
 
     <div id="content-wrapper">
       <div id="input-top" class="ui-widget ui-corner-all">
-	<button id="target-clear" class="icon-clear"></button>
-	<button id="command-clear" class="icon-clear"></button>
 
-	<form id="input-form" action="#">
-	  <div id="target-top" class="history">
-	    <div class="label">On:</div>
+	<div id="target-top" class="history">
+	  <div class="label">On:</div>
+	  <button id="target-clear" class="icon-clear"></button>
+	  <form id="target-input-form" action="#">
 	    <input spellcheck="false" autocomplete="off" id="target"
 		   class="target-value input text-entry rounded green"
-		   maxlength="256" name="target" size="16" type="text"/>
-	    <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
-	  </div>
+		   maxlength="256" name="target" size="16"
+		   type="text"/>
+	  </form>
+	  <button id="command-pulldown" class="icon-pulldown"></button>
+	</div>
 
-	  <div id="command-top">
-	    <div id="command-history" style="display: none"
-		 class="history command-value rounded blue">
-	      <div class="empty">No commands</div>
-	      <div class="contents" style="display: none"></div>
-	    </div>
-	    <div class="label">Run:</div>
+	<div id="command-top">
+	  <div id="command-history" style="display: none"
+	       class="history command-value rounded blue">
+	    <div class="empty">No commands</div>
+	    <div class="contents" style="display: none"></div>
+	  </div>
+	  <div class="label">Run:</div>
+	  <button id="command-clear" class="icon-clear"></button>
+	  <form id="command-input-form" action="#">
 	    <input spellcheck="false" autocomplete="off" id="command"
 		   class="command-value input text-entry rounded blue"
-		   maxlength="2048" name="command" size="60" type="text"/>
-	    <img src="/icons/button-pulldown.png" class="icon icon-pulldown"/>
-	  </div>
-	  <input type="submit" value="Enter"/>
-	</form>
+		   maxlength="2048" name="command" size="60"
+		   type="text"/>
+	  </form>
+	  <button id="command-pulldown" class="icon-pulldown"></button>
+	</div>
+
+	<button id="input-enter" class="icon-enter"></button>
 
 	<div id="target-history" style="display: none" class="green rounded">
 	  <div class="empty">No targets</div>

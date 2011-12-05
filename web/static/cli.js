@@ -39,16 +39,31 @@ jQuery(function ($) {
             },
         });
 
-        $('#input-form').submit(commandSubmit);
+        $('#target-input-form').submit(commandSubmit);
+        $('#command-input-form').submit(commandSubmit);
+
+        $('#input-enter').text("Enter").button({
+            text: true,
+        }).click(function (e) {
+            commandSubmit(e);
+            cmdHistory.focus();
+            $(this).blur();
+            return false;
+        });
+    }
+
+    function enterSubmit(e) {
     }
 
     function commandSubmit (event) {
         event.preventDefault();
+        $.dbgpr("commandSubmit:", event.type);
 
         tgtHistory.close();
         cmdHistory.close();
 
-        if (this.command.value == "") {
+        var command = cmdHistory.value();
+        if (command == "") {
             $.dbgpr('submit; skipping since command value is empty');
             cmdHistory.focus();
             return false;
@@ -62,12 +77,12 @@ jQuery(function ($) {
         var tset = [ ];
         var tname = "";
         var cname = "";
-        var value = this.command.value;
-        $(this.target.value.split(" ")).each(function (i, x) {
+        var value = tgtHistory.value();
+        $(value.split(" ")).each(function (i, x) {
             if (x != "") {
                 count += 1;
                 tset.push(x);
-                commmandWrapperAdd(x, value);
+                commmandWrapperAdd(x, command);
                 tgtHistory.markUsed(x);
                 tname += " " + x;
                 cname += "_" + x.replace("_", "__", "g");
@@ -79,7 +94,7 @@ jQuery(function ($) {
         if (cname && cname != "")
             targetListMarkUsed(this, tname, cname);
 
-        cmdHistory.markUsed(value);
+        cmdHistory.markUsed(command);
         commandOutputTrim(count);
 
         return false;
@@ -109,6 +124,7 @@ jQuery(function ($) {
         $target.click(function (event) {
             tgtHistory.close();
             tgtHistory.select(target);
+            cmdHistory.focus();
         });
 
         $('#target-contents-none').css({ display: "none" });
@@ -288,10 +304,10 @@ jQuery(function ($) {
         max_target_position: { def: 10, type: "number",
                                title: "Target button rows" },
         stay_on_page: { def: false, type: "boolean",
-                        change: function (value, first) {
-                            setupConfirmExit();
-                        },
+                        change: prefsSetupConfirmExit,
                         title: "Give warning if leaving this page" },
+        theme: { def: "black-tie", type: "string",
+                 title: "UI Theme", change: prefsSwitchTheme },
         live_action: { def: false, type: "boolean",
                         title: "Interact with real devices" },
     };
@@ -394,13 +410,14 @@ jQuery(function ($) {
             }
         }
 
-        $.dbgpr("prefs: ", name, "set to", value, "; was ", prefs[name]);
+        var prev = prefs[name];
+        $.dbgpr("prefs: ", name, "set to", value, "; was ", prev);
         prefs[name] = value;
         if (info.change)
-            info.change(value, true);
+            info.change(value, true, prev);
     }
 
-    function setupConfirmExit () {
+    function prefsSetupConfirmExit () {
         if (prefs.stay_on_page) {
             window.onbeforeunload = function (e) {
                 return "Are you sure?  You don't look sure.....";
@@ -408,6 +425,17 @@ jQuery(function ($) {
         } else {
             window.onbeforeunload = null;
         }
+    }
+
+    function prefsSwitchTheme (value, initial, prev) {
+        if (initial)
+            return;
+
+        $("link.ui-theme, link.ui-addon").each(function (i, $this) {
+            var attr = $this.attr("href");
+            attr.replace(prev, value);
+            $this.attr("href", attr);
+        });
     }
 
     /*
