@@ -195,6 +195,11 @@ form#target-history-form {
     margin-bottom: 0px;
 }
 
+input#target-history-submit {
+    background: url(none);
+    margin-left: 2px;
+}
+
 div.target-history-name {
     display: inline-block;
 }
@@ -364,7 +369,7 @@ div.label {
     font-size: 12px;
 }
 
-div.command-value {
+div.command-value, input.command-value {
     display: inline-block;
     font-family: monospace;
     font-size: 12px;
@@ -435,11 +440,11 @@ input.text-entry {
 .blue {
     color: #0c0c0c;
     background: linear-gradient(top, 
-		#a0a0ff 0%,  #d0d0ff 2%, #e0e0ff 97%, #f0f0ff 100%);
+		#a0a0ff 0%,  #c8c8ff 10%, #d8d8ff 90%, #f0f0ff 100%);
     background: -moz-linear-gradient(top,
-		 #a0a0ff 0%,  #d0d0ff 2%, #e0e0ff 97%, #f0f0ff 100%);
+		 #a0a0ff 0%,  #c8c8ff 10%, #d8d8ff 90%, #f0f0ff 100%);
     background: -webkit-linear-gradient(top,
-		 #a0a0ff 0%,  #d0d0ff 2%, #e0e0ff 97%, #f0f0ff 100%);
+		 #a0a0ff 0%,  #c8c8ff 10%, #d8d8ff 90%, #f0f0ff 100%);
     filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0,
 		startColorstr='#a0a0ff', endColorstr='#f0f0ff');
 }
@@ -473,30 +478,27 @@ div.aqua:hover {
 
 
 .new-aqua {
-  width: 155px;
-  height: 35px;
-  background: #cde;
-  border: 2px solid #ccc;
-  border-color: #8ba2c1 #5890bf #4f93ca #768fa5;
-  font: 600 16px/1 Lucida Sans, Verdana, sans-serif;
-  color: #fff;
-  text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
-  text-align: center;
-  vertical-align: middle;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  border-radius: 16px;
-  -moz-border-radius: 16px;
-  -webkit-border-radius: 16px;
-  box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-  -moz-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-  -webkit-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+    width: 155px;
+    height: 35px;
+    background: #cde;
+    border: 2px solid #ccc;
+    border-color: #8ba2c1 #5890bf #4f93ca #768fa5;
+    font: 600 16px/1 Lucida Sans, Verdana, sans-serif;
+    color: #fff;
+    text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    border-radius: 16px;
+    -moz-border-radius: 16px;
+    -webkit-border-radius: 16px;
+    box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+    -moz-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
+    -webkit-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
 }
+
 .new-aqua:hover {
-  text-shadow: rgb(255, 255, 255) 0px 0px 5px;
+    text-shadow: rgb(255, 255, 255) 0px 0px 5px;
 }
-
-
-
-

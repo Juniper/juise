@@ -190,6 +190,10 @@ jQuery.mruPulldown({
         }
 
         if (me.multiple) {
+            $("input", me.multiple).button({
+                text: true,
+            });
+
             me.multiple.submit(function (e) {
                 if (e)
                     e.preventDefault();
@@ -210,6 +214,7 @@ jQuery.mruPulldown({
                     me.focusAfter.focus();
                 }
             });
+
         }
 
         me.value = function () {

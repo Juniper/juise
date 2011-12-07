@@ -1,6 +1,6 @@
 /*
  * $Id$
- *  -*-  indent-tabs-mode:nil;  -*-
+ *  -*-  indent-tabs-mode:nil -*-
  * Copyright 2011, Juniper Network Inc, All rights reserved
  * See ../Copyright for more information.
  */
@@ -69,10 +69,10 @@ jQuery(function ($) {
             return false;
         }
 
-        /*
-         * Since multiple targets are allowed in the target field,
-         * we need to break the target string up into distinct values.
-         */
+        //
+        // Since multiple targets are allowed in the target field,
+        // we need to break the target string up into distinct values.
+        //
         var count = 0;
         var tset = [ ];
         var tname = "";
@@ -143,8 +143,10 @@ jQuery(function ($) {
     function commmandWrapperAdd (target, command) {
         $.dbgpr("commmandWrapperAdd", target, command);
 
-        var content = '<div class="output-wrapper ui-widget ui-corner-all">'
-            + '<div class="output-header ui-widget-header ui-corner-all">'
+        var content = '<div class="output-wrapper ui-widget '
+            +     'ui-widget-content ui-corner-all">'
+            + '<div class="output-header ui-state-default '
+            +     'ui-widget-header ui-corner-all">'
             + '<button class="icon-remove-section"></button>'
             + '<button class="icon-hide-section hidden"></button>'
             + '<button class="icon-unhide-section"></button>'
@@ -241,7 +243,7 @@ jQuery(function ($) {
             if ($child.hasClass("keeper-active")) {
                 keep += 1;
             } else if (i < fresh_count) {
-                /* do nothing */
+                // do nothing
             } else if (i >= prefs.output_remove_after + keep) {
                 divRemove($child);
             } else if (i >= prefs.output_close_after + keep) {
@@ -328,10 +330,12 @@ jQuery(function ($) {
     }
 
     function prefsEdit (event) {
-        event.preventDefault();
+        $.dbgpr("prefsEdit:", event.type);
 
         var $this = $(this);
         var $pform = $('#prefs-form');
+        var $pwrapper = $('#prefs-dialog');
+        var $pset = $('#prefs-fieldset');
 
         prefs_shown = !prefs_shown;
         if (prefs_shown) {
@@ -339,6 +343,10 @@ jQuery(function ($) {
 
             if (!prefs_form_built) {
                 prefs_form_built = true;
+                //
+                // First we build the contents of the form, based on
+                // the information in pref_info[].
+                //
                 for (var key in prefs_info) {
                     var info = prefs_info[key];
                     var content = '<div class="prefs-item">'
@@ -347,7 +355,76 @@ jQuery(function ($) {
                         + '<input name="' + key + '" type="text"/>'
                         + '<br/></div>';
                     var $target = jQuery(content);
-                    $pform.prepend($target);
+                    $pset.prepend($target);
+                }
+
+                // Build the dialog box using jqueryui
+                $pwrapper.dialog({
+                    autoOpen: false,
+                    width: 600,
+                    modal: true,
+                    draggable: false,
+                    position: 'top',
+                    resizable: false,
+                    show: 'blind',
+                    open: function () {
+                        //
+                        // By default, there is no linkage between hitting
+                        // enter and submitting a form.  In our HTML, we
+                        // make a fake "submit" button so the browser does
+                        // the "right" thing, but here we hijack it and
+                        // make it use our own submit logic to click on
+                        // the "Apply" button.
+                        //
+                        $pform.unbind('submit');
+                        $pform.submit(function (e) {
+                            e.preventDefault();
+                            $("button :last", $pwrapper.parent()).click();
+                            return false;
+                        })
+                    },
+                    buttons: {
+                        "Restore defaults": function() {
+                            prefsRestore();
+                            $pwrapper.dialog("close");
+                        },
+                        Cancel: function() {
+                            $pwrapper.dialog("close");
+                        },
+                        Apply: function() {
+                            if (!prefsApply())
+                                $pwrapper.dialog("close");
+                        },
+                    },
+                    close: function() {
+                        prefs_shown = false;
+                        /* allFields.removeClass( "ui-state-error" ); */
+                    }
+                });
+
+                function prefsApply () {
+                    $.dbgpr("prefsApply");
+                    prefs_shown = false;
+
+                    for (var key in prefs_info) {
+                        var info = prefs_info[key];
+                        prefsSetValue(info, key, form[key].value, info.type);
+                    }
+
+                    return false;
+                }
+
+                function prefsRestore () {
+                    $.dbgpr("prefsRestore");
+
+                    for (var key in prefs_info) {
+                        var prev = prefs[key];
+                        prefs[key] = prefs_info[key].def;
+                        if (prefs_info[key].change)
+                            prefs_info[key].change(prefs_info[key].def,
+                                                   false, prev);
+                        form[key].value = prefs_info[key].def;
+                    }
                 }
             }
 
@@ -355,45 +432,23 @@ jQuery(function ($) {
                 form[key].value = prefs[key];
             }
 
-            $pform.parent().css({
-                display: "block",
-                top: $this.offset().top + 30,
-                left: $this.offset().left - 400,
-                width: "400px",
-                "background-color": "#ffffff",
-            });
-
-            $pform.submit(function (event) {
-                event.preventDefault();
-                prefs_shown = false;
-                $pform.parent().css({ display: "none" });
-
-                for (var key in prefs_info) {
-                    var info = prefs_info[key];
-                    prefsSetValue(info, key, this[key].value, info.type);
-                }
-            });
-
-            $('#prefs-restore').click(function (event) {
-                event.preventDefault();
-
-                $.dbgpr("prefs-restore");
-                for (var key in prefs_info) {
-                    prefs[key] = prefs_info[key].def;
-                    if (prefs_info[key].change)
-                        prefs_info[key].change(prefs_info[key].def, false);
-                    form[key].value = prefs_info[key].def;
-                }
-            });
+            $pwrapper.dialog("open");
 
         } else {
-            $pform.parent().css({ display: "none" });
+            $pwrapper.dialog("close");
+
+            if (tgtHistory.value())
+                cmdHistory.focus();
+            else tgtHistory.focus();
         }
     }
 
     function prefsSetValue (info, name, value, type) {
         if (type == "boolean") {
             value = (value == "true");
+            if (prefs[name] == value)
+                return;
+        } else if (type == "string") {
             if (prefs[name] == value)
                 return;
         } else {
@@ -414,7 +469,7 @@ jQuery(function ($) {
         $.dbgpr("prefs: ", name, "set to", value, "; was ", prev);
         prefs[name] = value;
         if (info.change)
-            info.change(value, true, prev);
+            info.change(value, false, prev);
     }
 
     function prefsSetupConfirmExit () {
@@ -431,9 +486,10 @@ jQuery(function ($) {
         if (initial)
             return;
 
-        $("link.ui-theme, link.ui-addon").each(function (i, $this) {
+        $("link.ui-theme, link.ui-addon").each(function () {
+            var $this = $(this);
             var attr = $this.attr("href");
-            attr.replace(prev, value);
+            attr = attr.replace(prev, value, "g");
             $this.attr("href", attr);
         });
     }
@@ -475,12 +531,12 @@ jQuery(function ($) {
             icons: { primary: 'ui-icon-star' },
         }).click(function () {
             $wrapper.toggleClass("keeper-active");
-            $wrapper.toggleClass("ui-state-highlight");
+            $(this).toggleClass("ui-state-highlight");
         });
     }
 
 
     prefsInit();
     cliInit();
-    $('#target').focus();
+    tgtHistory.focus();
 });

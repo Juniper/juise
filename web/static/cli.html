@@ -26,14 +26,16 @@
 	<div>User: phil</div>
 	<div>Status: running</div>
       </div>
+
       <div id="header-actions">
 	<button id="prefs">Edit Preferences</button>
       </div>
-      <div id="prefs-form-wrapper" style="display: none; z-index: 1000" class="blue rounded">
-	<div id="prefs-title">Preferences</div>
+
+      <div id="prefs-dialog" title="Preferences" style="display: none">
 	<form id="prefs-form" action="#">
-	  <input id="prefs-submit" name="submit" type="submit" value="Apply"/>
-	  <button id="prefs-restore" name="restore">Restore Defaults</button>
+	  <fieldset id="prefs-fieldset"></fieldset>
+          <input type="submit" id="prefs-submit"
+		 style="display: none" value="Submit"/>
 	</form>
       </div>
     </div>

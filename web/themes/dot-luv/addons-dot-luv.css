@@ -6,7 +6,8 @@
  */
 
 html {
-    background: url("addons/html_bg.png") repeat-x scroll 0 0 #5f5f5f;
+    background: #333333 url("addons/html_bg.png") 
+		50% 50% repeat; 
 }
 
 body {
@@ -17,17 +18,13 @@ body {
     background-color: #ffffff;
 }
 
-/*
-div#content-wrapper {
-    background: #333333 url(images/ui-bg_diagonals-thick_8_333333_40x40.png) 50% 50% repeat;
-}
-*/
-
 /* The default styles set fonts annoyingly large */
 body * {
     font-size: 12px;
 }
 
 .ui-widget-content {
+    background-image: none;
+    background-color: #ffffff;
     color: #333333;
 }
