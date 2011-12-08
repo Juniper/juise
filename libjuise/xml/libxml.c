@@ -23,6 +23,7 @@
 #include <libxml/xmlsave.h>
 #include <libxslt/extensions.h>
 #include <libslax/slax.h>
+#include <libslax/xmlsoft.h>
 
 #include "config.h"
 #include <libjuise/env/env_paths.h>
@@ -227,17 +228,6 @@ lx_document_root (lx_document_t *docp)
 }
 
 /*
- * Return the name of a node
- */
-const char *
-lx_node_name (lx_node_t *np)
-{
-    if (np == NULL || np->name == NULL)
-	return NULL;
-    return (const char *) np->name;
-}
-
-/*
  * Simple accessor for children
  */
 lx_node_t *
@@ -259,39 +249,6 @@ lx_node_next (lx_node_t *np)
     return np->next;
 }
 
-static boolean
-string_is_whitespace (char *str)
-{
-    for ( ; *str; str++)
-	if (!isspace((int) *str))
-	    return FALSE;
-    return TRUE;
-}
-
-/*
- * Return the value of this element
- */
-const char *
-lx_node_value (lx_node_t *np)
-{
-    lx_node_t *gp;
-  
-    if (np->type == XML_ELEMENT_NODE) {
-	for (gp = np->children; gp; gp = gp->next)
-	    if (gp->type == XML_TEXT_NODE
-		&& !string_is_whitespace((char *) gp->content))
-		return (char *) gp->content;
-	/*
-	 * If we found the element but not a valid text node,
-	 * return an empty string to the caller can see
-	 * empty elements.
-	 */
-	return "";
-    }
-     
-    return NULL;
-}
-
 /*
  * Return the value of a (simple) element
  */
@@ -305,7 +262,7 @@ lx_node_child_value (lx_node_t *parent, const char *name)
 	    	&& streq(name, (const char *) np->name)) {
 	    for (gp = np->children; gp; gp = gp->next)
 		if (gp->type == XML_TEXT_NODE
-			&& !string_is_whitespace((char *) gp->content))
+			&& !slaxStringIsWhitespace((char *) gp->content))
 		    return (char *) gp->content;
 	    /*
 	     * If we found the element but not a valid text node,
@@ -553,27 +510,6 @@ lx_trace_node (lx_node_t *nodep, const char *fmt, ...)
 	trace(trace_file, TRACE_ALL, "no data");
     }
 
-}
-
-/*
- * Register our extension functions.  We try to hide all the
- * details ofvoid) the libxslt interactions here.
- */
-int
-lx_extension_register (const char *ns, const char *name, xmlXPathFunction func)
-{
-    int rc;
-
-    if (ns == NULL)
-	ns = XNM_FULL_NS;
-
-    rc = xsltRegisterExtModuleFunction((const xmlChar *) name,
-				       (const xmlChar *) ns, func);
-    if (rc != 0)
-         xsltGenericError(xsltGenericErrorContext,
-             "could not register extension function for %s\n", name);
-
-    return rc;
 }
 
 /*

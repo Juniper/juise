@@ -34,6 +34,7 @@
 #include <libxslt/extensions.h>
 #include <libexslt/exslt.h>
 #include <libslax/slax.h>
+#include <libslax/xmlsoft.h>
 
 #include "config.h"
 #include <libjuise/time/time_const.h>
@@ -333,10 +334,10 @@ ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username,
 	    if (cop->type != XML_ELEMENT_NODE)
 		continue;
 
-	    key = lx_node_name(cop);
+	    key = xmlNodeName(cop);
 	    if (!key)
 		continue;
-	    value = lx_node_value(cop);
+	    value = xmlNodeValue(cop);
 
 	    if (streq(key, "username")) {
 		*username = xmlStrdup((const xmlChar *) value);
@@ -387,8 +388,8 @@ ext_jcs_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
 	    if (cop->type != XML_ELEMENT_NODE)
 		continue;
 
-	    key = lx_node_name(cop);
-	    value = lx_node_value(cop);
+	    key = xmlNodeName(cop);
+	    value = xmlNodeValue(cop);
 
 	    if (streq(key, "server")) {
 		*server = xmlStrdup((const xmlChar *) value);
@@ -803,13 +804,13 @@ ext_jcs_getprotocol (xmlXPathParserContext *ctxt, int nargs)
 	    if (cop->type != XML_ELEMENT_NODE)
 		continue;
 
-	    key = lx_node_name(cop);
+	    key = xmlNodeName(cop);
 
 	    if (!key)
 		continue;
 
 	    if (streq(key, "method")) {
-		value = lx_node_value(cop);
+		value = xmlNodeValue(cop);
 		if (value) {
 		    xmlXPathReturnString(ctxt,
 					 xmlStrdup((const xmlChar *) value));
@@ -1287,16 +1288,15 @@ ext_jcs_register_all (void)
 {
     slaxExtRegisterOther (JCS_FULL_NS);
 
-    (void) lx_extension_register(JCS_FULL_NS, "close", ext_jcs_close);
-    (void) lx_extension_register(JCS_FULL_NS, "dampen", ext_jcs_dampen);
-    (void) lx_extension_register(JCS_FULL_NS, "execute", ext_jcs_execute);
-    (void) lx_extension_register(JCS_FULL_NS, "get-hello", ext_jcs_gethello);
-    (void) lx_extension_register(JCS_FULL_NS, "get-protocol",
-				 ext_jcs_getprotocol);
-    (void) lx_extension_register(JCS_FULL_NS, "hostname", ext_jcs_hostname);
-    (void) lx_extension_register(JCS_FULL_NS, "invoke", ext_jcs_invoke);
-    (void) lx_extension_register(JCS_FULL_NS, "open", ext_jcs_open);
-    (void) lx_extension_register(JCS_FULL_NS, "parse-ip", ext_jcs_parse_ip);
+    slaxRegisterFunction(JCS_FULL_NS, "close", ext_jcs_close);
+    slaxRegisterFunction(JCS_FULL_NS, "dampen", ext_jcs_dampen);
+    slaxRegisterFunction(JCS_FULL_NS, "execute", ext_jcs_execute);
+    slaxRegisterFunction(JCS_FULL_NS, "get-hello", ext_jcs_gethello);
+    slaxRegisterFunction(JCS_FULL_NS, "get-protocol", ext_jcs_getprotocol);
+    slaxRegisterFunction(JCS_FULL_NS, "hostname", ext_jcs_hostname);
+    slaxRegisterFunction(JCS_FULL_NS, "invoke", ext_jcs_invoke);
+    slaxRegisterFunction(JCS_FULL_NS, "open", ext_jcs_open);
+    slaxRegisterFunction(JCS_FULL_NS, "parse-ip", ext_jcs_parse_ip);
 
     return 0;
 }

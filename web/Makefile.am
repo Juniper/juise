@@ -27,6 +27,7 @@ EXTRA_DIST = \
     jquery/jquery.min.js \
     jquery/jquery.mruPulldown.js \
     lighttpd.conf.in \
-    static/cli-test.html \
-    static/cmd.css \
+    static/cli.html \
+    static/cli.css \
+    static/cli.js \
     static/drag-test.html

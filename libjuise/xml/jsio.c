@@ -38,7 +38,6 @@
 #include <libjuise/io/logging.h>
 #include <libjuise/io/pid_lock.h>
 #include <libjuise/io/fbuf.h>
-#include <libjuise/io/memdump.h>
 #include <libjuise/env/env_paths.h>
 #include <libjuise/xml/xmlrpc.h>
 #include <libjuise/xml/client.h>
@@ -49,6 +48,7 @@
 #include <libjuise/juiseconfig.h>
 
 #include <libslax/slax.h>
+#include <libslax/xmlsoft.h>
 
 static const char xml_parser_reset[] = XML_PARSER_RESET;
 const int xml_parser_reset_len = sizeof(xml_parser_reset) - 1;
@@ -232,7 +232,7 @@ js_buffer_read_data (js_session_t *jsp, char *bp, int blen)
     } else {
 	rc = read(jsp->js_stdin, bp, blen);
 	if ((jsio_flags & JSIO_MEMDUMP) && rc > 0)
-	    memdump(stderr, "jsio: read", bp, rc, ">", 0);
+	    slaxMemDump(stderr, "jsio: read", bp, rc, ">", 0);
     }
 
     return rc;
@@ -1279,7 +1279,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
     if (trace_flag_is_set(trace_file, CS_TRC_RPC))
 	lx_trace_node(nop, "results of rpc");
 
-    if (!streq(lx_node_name(nop), XMLRPC_APINAME)) {
+    if (!streq(xmlNodeName(nop), XMLRPC_APINAME)) {
 	jsio_trace("jsio: could not find api tag");
 	goto fail;
     }
@@ -1293,7 +1293,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
     xsltRegisterLocalRVT(tctxt, container);
 
     for (nop = lx_node_children(nop); nop; nop = lx_node_next(nop)) {
-	if (streq(lx_node_name(nop), XMLRPC_REPLY)) {
+	if (streq(xmlNodeName(nop), XMLRPC_REPLY)) {
 	    lx_node_t *cop, *newp;
 	    lx_nodeset_t *setp = xmlXPathNodeSetCreate(NULL);
 
@@ -1675,7 +1675,7 @@ js_read_netconf_hello (js_session_t *jsp)
     }
 
     for (nop = lx_node_children(nop); nop; nop = lx_node_next(nop)) {
-	if (streq(lx_node_name(nop), "hello")) {
+	if (streq(xmlNodeName(nop), "hello")) {
 	    rop = xmlCopyNode(nop, 1);
 	    break;
 	}

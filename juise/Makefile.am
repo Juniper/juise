@@ -5,6 +5,7 @@
 include ${top_srcdir}/warnings.mk
 
 AM_CFLAGS = \
+    -DLIBSLAX_XMLSOFT_NEED_PRIVATE \
     -I${top_srcdir} \
     -I${top_srcdir}/libjuise \
     ${LIBSLAX_CFLAGS} \

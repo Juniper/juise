@@ -80,7 +80,6 @@ CHMOD = @CHMOD@
 CP = @CP@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CURL_CONFIG = @CURL_CONFIG@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -110,9 +109,6 @@ JUISE_SCRIPT_DIR = @JUISE_SCRIPT_DIR@
 JUISE_SRCDIR = @JUISE_SRCDIR@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBCURL_CFLAGS = @LIBCURL_CFLAGS@
-LIBCURL_LIBS = @LIBCURL_LIBS@
-LIBCURL_REQUIRED_VERSION = @LIBCURL_REQUIRED_VERSION@
 LIBJUISE_VERSION = @LIBJUISE_VERSION@
 LIBJUISE_VERSION_EXTRA = @LIBJUISE_VERSION_EXTRA@
 LIBJUISE_VERSION_NUMBER = @LIBJUISE_VERSION_NUMBER@
@@ -249,8 +245,9 @@ EXTRA_DIST = \
     jquery/jquery.min.js \
     jquery/jquery.mruPulldown.js \
     lighttpd.conf.in \
-    static/cli-test.html \
-    static/cmd.css \
+    static/cli.html \
+    static/cli.css \
+    static/cli.js \
     static/drag-test.html
 
 all: all-am

@@ -87,11 +87,6 @@ lx_node_t *lx_node_find (lx_node_t *top, const char **path);
 lx_node_t *lx_document_root (lx_document_t *docp);
 
 /*
- * Return the name of a node
- */
-const char *lx_node_name (lx_node_t *np);
-
-/*
  * Simple accessor for children
  */
 lx_node_t *lx_node_children (lx_node_t *np);
@@ -100,11 +95,6 @@ lx_node_t *lx_node_children (lx_node_t *np);
  * Return the next node (sibling)
  */
 lx_node_t *lx_node_next (lx_node_t *np);
-
-/*
- * Return the value of this element
- */
-const char *lx_node_value (lx_node_t *np);
 
 /*
  * Return the value of a (simple) element
@@ -198,59 +188,3 @@ lx_trace_document (lx_document_t *docp, const char *fmt, ...);
  */
 void
 lx_output_children (lx_output_t *handle, lx_node_t *nodep);
-
-/*
- * Register an extension function.
- */
-int lx_extension_register (const char *ns, const char *name,
-			   xmlXPathFunction func);
-
-/* ---------------------------------------------------------------------- */
-/* Functions that we wish were in libxml2/libxslt but are not. */
-
-/*
- * The stock xmlStrchr() returns a "const" pointer, which isn't good.
- */
-static inline xmlChar *
-xmlStrchru (xmlChar *str, xmlChar val)
-{
-    for ( ; str && *str != 0; str++)
-        if (*str == val)
-	    return str;
-
-    return NULL;
-}
-
-static inline int
-xmlAtoi (const xmlChar *nptr)
-{
-    return atoi((const char *) nptr);
-}
-
-static inline char *
-xmlStrdup2 (const char *str)
-{
-    return str ? (char *) xmlStrdup((const xmlChar *) str) : NULL;
-}
-
-/*
- * Free a chunk of memory
- */
-static inline void
-xmlFreeAndEasy (void *ptr)
-{
-    if (ptr)
-        xmlFree(ptr);
-}
-
-static inline xmlNodePtr
-xmlAddChildContent (xmlDocPtr docp, xmlNodePtr parent,
-		    const xmlChar *name, const xmlChar *value)
-{
-    xmlNodePtr nodep = xmlNewDocRawNode(docp, NULL, name, value);
-    if (nodep) {
-	xmlAddChild(parent, nodep);
-    }
-
-    return nodep;
-}

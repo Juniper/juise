@@ -7,6 +7,7 @@ include ${top_srcdir}/warnings.mk
 juiseincdir = ${includedir}/libjuise
 
 AM_CFLAGS = \
+    -DLIBSLAX_XMLSOFT_NEED_PRIVATE \
     -I${top_srcdir} \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
@@ -31,7 +32,6 @@ noinst_HEADERS = \
     io/fbuf.h \
     io/filecopy.h \
     io/logging.h \
-    io/memdump.h \
     io/pid_lock.h \
     io/rotate_log.h \
     io/trace.h \
@@ -60,7 +60,6 @@ libjuise_la_SOURCES = \
     io/fbuf.c \
     io/trace.c \
     io/logging.c \
-    io/memdump.c \
     io/rotate_log.c \
     xml/extensions.c \
     xml/jsio.c \

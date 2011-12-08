@@ -2,7 +2,7 @@
 # $Id$
 #
 
-SUBDIRS = curl
+SUBDIRS = 
 
 svnignore:
 	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}

@@ -10,7 +10,7 @@
 #
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.2.10], [phil@juniper.net])
+AC_INIT([juise], [0.3.0], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT([])
 AC_DISABLE_SHARED
@@ -30,8 +30,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 #
 LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
-LIBSLAX_REQUIRED_VERSION=0.9.14
-LIBCURL_REQUIRED_VERSION=7.21.6
+LIBSLAX_REQUIRED_VERSION=0.10.0
 
 AC_PROG_CC
 AC_PROG_INSTALL
@@ -339,41 +338,6 @@ AC_SUBST(LIBSLAX_LIBS)
 AC_SUBST(SLAX_EXTDIR)
 AC_SUBST(SLAX_LIBDIR)
 
-AC_SUBST(LIBCURL_REQUIRED_VERSION)
-AC_MSG_CHECKING(for libcurl libraries >= $LIBCURL_REQUIRED_VERSION) 
-if test "x$LIBCURL_CONFIG_PREFIX" != "x"
-then
-        CURL_CONFIG=${LIBCURL_CONFIG_PREFIX}/bin/curl-config
-else
-        CURL_CONFIG=curl-config
-fi
-
-dnl
-dnl make sure curl-config is executable,
-dnl test version and init our variables
-dnl
-
-if ${CURL_CONFIG} --libs > /dev/null 2>&1
-then
-	CURLVERS=`$CURL_CONFIG --version`
-	if test VERSION_TO_NUMBER(echo $CURLVERS) -ge VERSION_TO_NUMBER(echo $LIBCURL_REQUIRED_VERSION)
-	then
-		LIBCURL_LIBS="$LIBCURL_LIBS `$CURL_CONFIG --libs`"
-		LIBCURL_CFLAGS="$LIBCURL_CFLAGS `$CURL_CONFIG --cflags`"
-		AC_MSG_RESULT($CURLVERS found)
-	else
-		AC_MSG_ERROR(Version $CURLVERS found. You need at least libcurl $LIBCURL_REQUIRED_VERSION for this version of juise)
-	fi
-else
-	AC_MSG_ERROR([Could not find libcurl anywhere, check http://curl.haxx.se])
-fi
-
-AC_SUBST(CURL_CONFIG)
-AC_SUBST(LIBCURL_CFLAGS)
-AC_SUBST(LIBCURL_LIBS)
-
-
-
 #
 # ---- end of noise
 #
@@ -504,7 +468,6 @@ AC_CONFIG_FILES([
   juise-askpass/Makefile
   mod_juise/Makefile
   extensions/Makefile
-  extensions/curl/Makefile
   web/Makefile
   web/lighttpd.conf
 ])
@@ -531,9 +494,6 @@ AC_MSG_NOTICE([summary of build options:
   libslax libs:     ${LIBSLAX_LIBS}
   libslax libdir:   ${SLAX_LIBDIR}
   libslax extdir:   ${SLAX_EXTDIR}
-  libcurl version:  ${CURLVERS}
-  libcurl cflags:   ${LIBCURL_CFLAGS}
-  libcurl libs:     ${LIBCURL_LIBS}
   libpcre cflags:   ${PCRE_CFLAGS}
   libpcre libs:     ${PCRE_LIB}
   lighttpd src:     ${LIGHTTPD_SRC}

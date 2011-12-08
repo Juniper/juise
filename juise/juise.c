@@ -38,6 +38,7 @@
 #include <libslax/slax.h>
 #include <libslax/slaxconfig.h>
 #include <libslax/slaxdata.h>
+#include <libslax/xmlsoft.h>
 
 #include <libjuise/string/strextra.h>
 #include <libjuise/time/timestr.h>
@@ -264,7 +265,7 @@ do_write_cgi_results (lx_document_t *res, xsltStylesheetPtr script)
 {
     lx_node_t *root = lx_document_root(res);
 
-    if (streq(lx_node_name(root), ELT_CGI)) {
+    if (streq(xmlNodeName(root), ELT_CGI)) {
 	xmlSaveCtxt *handle;
 	lx_node_t *nodep;
 	xmlAttrPtr attr;
@@ -787,11 +788,11 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
 		seen_transient += 1;
 
 	    } else if (streq((const char *) childp->name, ELT_SYSLOG)) {
-		const char *msg = lx_node_value(childp);
+		const char *msg = xmlNodeValue(childp);
 		fprintf(stdout, "syslog: %s\n", msg);
 
 	    } else if (streq((const char *) childp->name, ELT_PROGRESS)) {
-		const char *msg = lx_node_value(childp);
+		const char *msg = xmlNodeValue(childp);
 		fprintf(stdout, "progress-message: %s\n", msg);
 
 	    } else {
