@@ -425,11 +425,18 @@ AC_ARG_WITH(script-dir,
         [JUISE_SCRIPT_DIR=$JUISE_DIR/scripts]
 )
 
+AC_ARG_WITH(web-dir,
+        [  --with-web-dir=[DIR]           Specify location of web server],
+        [JUISE_WEB_DIR=$withval],
+        [JUISE_WEB_DIR=$JUISE_DIR/web]
+)
+
 JUISE_SRCDIR='${srcdir}'
 JUISE_LIBDIR='${libdir}'
 JUISE_INCLUDEDIR='${includedir}'
 AC_SUBST(JUISE_DIR)
 AC_SUBST(JUISE_SCRIPT_DIR)
+AC_SUBST(JUISE_WEB_DIR)
 AC_SUBST(JUISE_SRCDIR)
 AC_SUBST(JUISE_LIBDIR)
 AC_SUBST(JUISE_INCLUDEDIR)
