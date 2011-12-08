@@ -1,0 +1,24 @@
+/*
+ * $Id$
+ *
+ * addons.css -- this file includes additional rules for
+ * each theme that are not supplied by the themeroller output.
+ */
+
+html {
+    background: #333333 url("addons/html_bg.png") 
+		50% 50% repeat; 
+}
+
+body {
+    background: url("addons/body_bg.png") repeat-x scroll 0 0;
+}
+
+#input-top {
+    background-color: #ffffff;
+}
+
+/* The default styles set fonts annoyingly large */
+body * {
+    font-size: 12px;
+}
