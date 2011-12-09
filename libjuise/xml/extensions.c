@@ -921,7 +921,7 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
     xmlNode *newp, *last = NULL;
     xmlNodeSet *results;
     parse_retcode_t status;
-    char address[IP_ADDR_BUFLEN];
+    char address[INET6_ADDRSTRLEN * 2 + 2]; /* Room for addr '/' mask '\0' */
     u_int32_t *v4_net = NULL, *v4_msk = NULL;
     struct in6_addr v6_net;
 
