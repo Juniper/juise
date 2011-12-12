@@ -17,3 +17,7 @@ cd build
 
 
 Then pass these directories to juise's configure script.
+
+** Cygwin
+
+Note that cygwin requires GCC4.

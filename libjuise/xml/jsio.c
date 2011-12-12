@@ -679,7 +679,7 @@ js_ssh_askpass (js_session_t *jsp, int fd)
 	jsio_trace("error writing to askpass: %m");
 
     close(fd);
-    jsp->js_askpassfd = -1;
+    jsp->js_askpassfd = 0;
 
     if (msg && msg != jsp->js_passphrase)
 	free(msg);
@@ -1087,7 +1087,7 @@ js_session_terminate (js_session_t *jsp)
 	}
     }
 
-    if (jsp->js_askpassfd >= 0)
+    if (jsp->js_askpassfd > 0)
 	close(jsp->js_askpassfd);
 
     fbuf_close(jsp->js_fbuf);
@@ -1744,7 +1744,7 @@ js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
     jsp->js_stdin = fdin;
     jsp->js_stdout = fdout;
     jsp->js_stderr = -1;
-    jsp->js_askpassfd = -1;
+    jsp->js_askpassfd = 0;
     jsp->js_fpout = fp;
     jsp->js_msgid = 0;
     jsp->js_hello = NULL;
