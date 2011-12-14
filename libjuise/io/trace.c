@@ -1,10 +1,14 @@
 /*
- * $Id: trace.c 392616 2010-08-04 02:31:10Z builder $
+ * $Id$
+ *
+ * Copyright (c) 1998, 2001-2008, 2011, Juniper Networks, Inc.
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  *
  * trace.c - tracing facility
- *
- * Copyright (c) 1998, 2001-2008, Juniper Networks, Inc.
- * All rights reserved.
  */
 
 #include <sys/types.h>

@@ -1,12 +1,16 @@
 /*
  * $Id$
  *
+ * Copyright (c) 2009-2011, Juniper Networks, Inc.
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
+ *
  * @file trace_priv.h
  * @brief 
  * Tracing facility APIs used internally
- *
- * Copyright (c) 2009-2010, Juniper Networks, Inc.
- * All rights reserved.
  */
 #ifndef __JNX_TRACE_PRIV_H__
 #define __JNX_TRACE_PRIV_H__

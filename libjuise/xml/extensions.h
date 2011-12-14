@@ -1,8 +1,12 @@
 /*
- * $Id: extensions.h 378661 2010-05-08 04:04:48Z builder $
+ * $Id$
  *
- * Copyright (c) 2005, 2008, Juniper Networks, Inc.
+ * Copyright (c) 2005, 2008, 2011, Juniper Networks, Inc.
  * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  *
  * Extension functions for commit scripts
  */

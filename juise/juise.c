@@ -1,9 +1,12 @@
 /*
  * $Id$
  *
- * Copyright (c) 2010, Juniper Networks, Inc.
+ * Copyright (c) 2010-2011, Juniper Networks, Inc.
  * All rights reserved.
- * See ../Copyright for the status of this software
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  *
  * juise -- driver for libjuise, allowing remote access for scripting
  */
@@ -921,7 +924,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 
     int len = 0;
     int i;
-    lx_node_t *nodep, *paramp;
+    lx_node_t *nodep, *paramp = NULL;
     char *cp, *bp;
     char buf[BUFSIZ];
     struct line_s {		/* XXX: should be a slax_data_list_t */
@@ -929,6 +932,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	unsigned li_len;
 	char li_data[0];
     } *lines, **lastp = &lines, *lp;
+    const char *method = NULL;
 
     nodep = xmlNewNode(NULL, (const xmlChar *) ELT_CGI);
     if (nodep == NULL)
@@ -942,12 +946,15 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	    juise_add_node(nodep, cgi_params[i + 1], cp);
 	    trace(trace_file, TRACE_ALL, "cgi: env: '%s' = '%s'",
 		  cgi_params[i], cp);
+
+	    if (streq("request-method", cgi_params[i]))
+		method = cp;
 	}
     }
 
     paramp = xmlNewNode(NULL, (const xmlChar *) ELT_PARAMETERS);
     if (paramp == NULL)
-	errx(1, "op: out of memory");
+	errx(1, "juise: out of memory");
     xmlAddChild(nodep, paramp);
 
     cp = getenv("QUERY_STRING");
@@ -986,7 +993,11 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	}
 
 	if (bp) {
-	    parse_query_string(paramp, bp);
+	    if (method && streq(method, "POST")) {
+		juise_add_node(nodep, ELT_PARAMETERS, bp);
+	    } else {
+		parse_query_string(paramp, bp);
+	    }
 
 	    if (bp != lines->li_data)
 		free(bp);

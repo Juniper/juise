@@ -1,12 +1,14 @@
 /*
- * $Id: timestr.c 346460 2009-11-14 05:06:47Z ssiano $
+ * $Id$
+ *
+ * Copyright (c) 1997-1998, 2000-2001, 2003, 2011, Juniper Networks, Inc.
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  * 
  * Time management code
- *
- * Paul Traina, October 1997
- *
- * Copyright (c) 1997-1998, 2000-2001, 2003, Juniper Networks, Inc.
- * All rights reserved.
  */
 
 #include <strings.h>

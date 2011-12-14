@@ -1,8 +1,12 @@
 /*
  * $Id$
  *  -*-  indent-tabs-mode:nil -*-
- * Copyright 2011, Juniper Network Inc, All rights reserved
- * See ../Copyright for more information.
+ * Copyright 2011, Juniper Network Inc.
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  */
 
 jQuery(function ($) {
@@ -351,11 +355,25 @@ jQuery(function ($) {
                     var info = prefs_info[key];
                     var content = '<div class="prefs-item">'
                         + '<label for="' + key + '">' + info.title
-                        + '</label>'
-                        + '<input name="' + key + '" type="text"/>'
-                        + '<br/></div>';
+                        + '</label>';
+
+                    if (info.type == "boolean") {
+                        content += '<input name="' + key
+                            + '" type="checkbox"/>';
+
+                    } else {
+                        content += '<input name="' + key + '" type="text"/>';
+                    }
+
+                    content += '<br/></div>';
                     var $target = jQuery(content);
                     $pset.prepend($target);
+
+                    if (info.type == "boolean") {
+                        $("input", target).button();
+                    } else {
+                        /* ... */
+                    }
                 }
 
                 // Build the dialog box using jqueryui

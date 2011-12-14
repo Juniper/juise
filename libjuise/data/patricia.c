@@ -1,11 +1,12 @@
 /*
- * $Id: patricia.c 346460 2009-11-14 05:06:47Z ssiano $
+ * $Id$
  *
- * patricia.c -- Patricia tree services
- * Tony Li  (with ideas and code stolen from Dennis Feguson)
- *
- * Copyright (c) 1996-2003, 2005-2006, Juniper Networks, Inc.
+ * Copyright (c) 1996-2003, 2005-2006, 2011, Juniper Networks, Inc.
  * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  */
 
 /*

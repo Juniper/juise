@@ -1,10 +1,12 @@
 /*
- * $Id: patricia.h 405100 2010-10-16 00:40:25Z builder $
+ * $Id$
  *
- * patricia.h -- External patricia tree services
- *
- * Copyright (c) 1996-2007, Juniper Networks, Inc.
+ * Copyright (c) 1996-2007, 2011, Juniper Networks, Inc.
  * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  */
 
 #ifndef	__JNX_PATRICIA_H__

@@ -120,6 +120,14 @@ if test "$HAVE_READLINE" = "yes" ; then
     AC_DEFINE([HAVE_READLINE], [1], [Enable support for GNU readline])
 fi
 
+AC_MSG_CHECKING([whether to build with libedit])
+AC_ARG_ENABLE([libedit],
+    [  --enable-libedit    Enable support for libedit (BSD readline)],
+    [HAVE_LIBEDIT=yes; AC_DEFINE([HAVE_LIBEDIT], [1], [Support libedit])],
+    [HAVE_LIBEDIT=no])
+AC_MSG_RESULT([$HAVE_LIBEDIT])
+AM_CONDITIONAL([HAVE_LIBEDIT], [test "$HAVE_LIBEDIT" != "no"])
+
 AC_MSG_CHECKING([whether to build with __printflike])
 AC_ARG_ENABLE([printflike],
     [  --enable-printflike    Enable use of GCC __printflike attribute],
@@ -509,5 +517,6 @@ AC_MSG_NOTICE([summary of build options:
 
   debug:            ${JUISE_DEBUG:-no}
   readline:         ${HAVE_READLINE:-no}
+  libedit:          ${HAVE_LIBEDIT:-no}
   printf-like:      ${HAVE_PRINTFLIKE:-no}
 ])

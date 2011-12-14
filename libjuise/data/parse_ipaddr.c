@@ -1,10 +1,14 @@
 /*
- * $Id: parse_ipaddr.c 398593 2010-09-09 20:27:17Z builder $
+ * $Id$
  *
  * General IP address parser.
  *
- * Copyright (c) 1999, 2001-2007, Juniper Networks, Inc.
+ * Copyright (c) 1999, 2001-2007, 2011, Juniper Networks, Inc.
  * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  */
 
 #include <sys/param.h>

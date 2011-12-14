@@ -18,6 +18,12 @@
 #
 # $Id$
 #
+# Copyright 2011, Juniper Networks, Inc.
+# All rights reserved.
+# This SOFTWARE is licensed under the LICENSE provided in the
+# ../Copyright file. By downloading, installing, copying, or otherwise
+# using the SOFTWARE, you agree to be bound by the terms of that
+# LICENSE.
 
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
@@ -40,6 +46,8 @@ build_triplet = @build@
 host_triplet = @host@
 @JUISE_DEBUG_TRUE@am__append_1 = -g -DJUISE_DEBUG
 bin_PROGRAMS = juise-askpass$(EXEEXT)
+@HAVE_READLINE_TRUE@am__append_2 = -L/opt/local/lib -lreadline
+@HAVE_LIBEDIT_TRUE@am__append_3 = -ledit
 subdir = juise-askpass
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -147,12 +155,8 @@ LIBJUISE_VERSION = @LIBJUISE_VERSION@
 LIBJUISE_VERSION_EXTRA = @LIBJUISE_VERSION_EXTRA@
 LIBJUISE_VERSION_NUMBER = @LIBJUISE_VERSION_NUMBER@
 LIBOBJS = @LIBOBJS@
-LIBS = \
-    ${LIBSLAX_LIBS} \
-    ${LIBXSLT_LIBS} \
-    -lexslt \
-    ${LIBXML_LIBS}
-
+LIBS = ${LIBSLAX_LIBS} ${LIBXSLT_LIBS} -lexslt ${LIBXML_LIBS} \
+	$(am__append_2) $(am__append_3)
 LIBSLAX_CFLAGS = @LIBSLAX_CFLAGS@
 LIBSLAX_LIBS = @LIBSLAX_LIBS@
 LIBSLAX_REQUIRED_VERSION = @LIBSLAX_REQUIRED_VERSION@

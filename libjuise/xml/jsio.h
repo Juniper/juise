@@ -1,8 +1,12 @@
 /*
- * $Id: jsio.h 413295 2010-12-01 06:39:06Z rsankar $
+ * $Id$
  *
- * Copyright (c) 2006-2008, Juniper Networks, Inc.
+ * Copyright (c) 2006-2008, 2011, Juniper Networks, Inc.
  * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  *
  * Session-based interface to JUNOScript process
  */

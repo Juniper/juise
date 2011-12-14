@@ -1,4 +1,13 @@
 /*
+ * $Id$
+ *
+ * Copyright (c) 2011, Juniper Networks, Inc.
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
+ *
  * Implement a "most recently used" pulldown, containing a small history
  * of previously used values.  The pulldown maintains a list of recent
  * values, accepts new values, and allows selection of old values.

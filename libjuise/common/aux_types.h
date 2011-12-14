@@ -1,10 +1,14 @@
 /*
- * $Id: aux_types.h 362048 2010-02-09 00:25:11Z builder $
+ * $Id$
  *
  * Local abstract types
  *
- * Copyright (c) 1997-2007, Juniper Networks, Inc.
+ * Copyright (c) 1997-2007, 2011, Juniper Networks, Inc.
  * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
  */
 
 #ifndef __JNX_AUX_TYPES_H__

@@ -1,6 +1,12 @@
 #
 # $Id$
 #
+# Copyright 2011, Juniper Networks, Inc.
+# All rights reserved.
+# This SOFTWARE is licensed under the LICENSE provided in the
+# ../Copyright file. By downloading, installing, copying, or otherwise
+# using the SOFTWARE, you agree to be bound by the terms of that
+# LICENSE.
 
 include ${top_srcdir}/warnings.mk
 
@@ -31,7 +37,11 @@ AM_CFLAGS += \
  -DJUISE_SCRIPT_DIR=\"${JUISE_SCRIPT_DIR}\"
 
 if HAVE_READLINE
-LIBS += -lreadline
+LIBS += -L/opt/local/lib -lreadline
+endif
+
+if HAVE_LIBEDIT
+LIBS += -ledit
 endif
 
 bin_PROGRAMS = juise
