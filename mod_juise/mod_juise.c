@@ -1049,8 +1049,10 @@ juise_create_env (server *srv, connection *con,
 		const char *vars[] = {
 		    "SSH_AGENT_PID",
 		    "SSH_AUTH_SOCK",
+		    "JUISE_OPTIONS",
 		    "JUISE_TRACE_FILE",
 		    "JUISE_WAIT",
+		    "PATH",
 		    NULL
 		};
 		const char **sp;

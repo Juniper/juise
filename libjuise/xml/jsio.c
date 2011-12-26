@@ -165,7 +165,7 @@ jsio_askpass_make_socket (void)
     if (listen(sock, 1) < 0)
 	return;
 
-    setenv("SSH_ASKPASS", "juise-askpass", 1);
+    setenv("SSH_ASKPASS", JUISE_LIBEXECDIR "/juise-askpass", 1);
     setenv("SSH_ASKPASS_SOCKET", jsio_askpass_socket_path, 1);
     setenv("DISPLAY", "ThisMustBeSetForSshAskPassToWork", 1);
 

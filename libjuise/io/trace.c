@@ -286,7 +286,7 @@ trace_file_open_with_perms (trace_file_t *traceptr, const char *file_name,
 	}
     } else {
 	/* file existed, make sure it's a regular file */
-	if (!(stbuf.st_mode & S_IFREG)) {
+	if (!(stbuf.st_mode & (S_IFREG | S_IFCHR))) {
             trace_file_close_internal(traceptr);
             if (traceptr && free_traceptr) {
 		free(traceptr->trace_file);

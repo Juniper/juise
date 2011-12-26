@@ -1,13 +1,12 @@
 #
 # $Id$
 #
-
-#
-# Release numbering: even numbered dot releases are official ones, and
-# odd numbers are development ones.  The svn version of this file will
-# only (ONLY!) ever (EVER!) contain odd numbers, so I'll always know if
-# a particular user has the dist or svn release.
-#
+# Copyright 2011, Juniper Networks, Inc.
+# All rights reserved.
+# This SOFTWARE is licensed under the LICENSE provided in the
+# ../Copyright file. By downloading, installing, copying, or otherwise
+# using the SOFTWARE, you agree to be bound by the terms of that
+# LICENSE.
 
 AC_PREREQ(2.2)
 AC_INIT([juise], [0.3.1], [phil@juniper.net])
@@ -442,11 +441,13 @@ AC_ARG_WITH(web-dir,
 JUISE_SRCDIR='${srcdir}'
 JUISE_LIBDIR='${libdir}'
 JUISE_INCLUDEDIR='${includedir}'
+JUISE_LIBEXECDIR='${pkglibexecdir}'
 AC_SUBST(JUISE_DIR)
 AC_SUBST(JUISE_SCRIPT_DIR)
 AC_SUBST(JUISE_WEB_DIR)
 AC_SUBST(JUISE_SRCDIR)
 AC_SUBST(JUISE_LIBDIR)
+AC_SUBST(JUISE_LIBEXECDIR)
 AC_SUBST(JUISE_INCLUDEDIR)
 AC_SUBST(JUISE_CFLAGS)
 AC_SUBST(JUISE_LIBTOOLLIBS)

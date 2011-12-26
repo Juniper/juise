@@ -30,7 +30,7 @@ endif
 
 AM_CFLAGS += -DJUISE_DIR=\"${JUISE_DIR}\"
 
-bin_PROGRAMS = juise-askpass
+pkglibexec_PROGRAMS = juise-askpass
 
 if HAVE_READLINE
 LIBS += -L/opt/local/lib -lreadline
@@ -43,3 +43,5 @@ endif
 juise_askpass_SOURCES = juise-askpass.c
 juise_askpass_LDADD = ../libjuise/libjuise.la
 juise_askpass_LDFLAGS = -static
+
+juise_askpassdir = ${JUISE_LIBEXECDIR}

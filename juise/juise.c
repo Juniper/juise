@@ -994,7 +994,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 
 	if (bp) {
 	    if (method && streq(method, "POST")) {
-		juise_add_node(nodep, ELT_PARAMETERS, bp);
+		juise_add_node(nodep, ELT_CONTENTS, bp);
 	    } else {
 		parse_query_string(paramp, bp);
 	    }
@@ -1017,6 +1017,63 @@ do_run_as_fastcgi (const char *scriptname UNUSED, const char *input UNUSED,
 		   char **argv UNUSED)
 {
     return 0;
+}
+
+static char **
+build_argv (const char *argstring)
+{
+    char *av[1000], **realv;
+    int ac = 0;
+    const char *cp, *sp;
+    char *ap;
+    int len;
+    char quote = 0;
+
+    if (argstring == NULL || *argstring == '\0')
+	return NULL;
+
+    for (sp = cp = argstring; ; cp++) {
+	if (*cp == '\'' || *cp == '\"') {
+	    if (quote == *cp) {
+		quote = 0;
+	    } else if (quote == 0) {
+		quote = *cp;
+	    }
+
+	} else if (*cp == '\\') {
+	    if (cp[0])
+		cp += 1;
+
+	} else if (quote) {
+	    /* do nothing */
+
+	} else if (*cp == ' ' || *cp == '\t' || *cp == '\0') {
+	    ap = malloc(cp - sp + 1);
+	    if (ap) {
+		memcpy(ap, sp, cp - sp);
+		ap[cp - sp] = '\0';
+		av[ac++] = ap;
+
+		if (*cp != '\0')
+		    sp = cp + 1;
+	    }
+	}
+
+	if (*cp == '\0')
+	    break;
+    }
+
+    if (ac == 0)
+	return NULL;
+
+    av[ac] = NULL;
+
+    len = (ac + 1) * sizeof(realv[0]);
+    realv = malloc(len);
+    if (realv)
+	memcpy(realv, av, len);
+
+    return realv;
 }
 
 static void
@@ -1084,6 +1141,7 @@ main (int argc UNUSED, char **argv, char **envp)
     char *input = NULL;
     unsigned jsio_flags = 0;
     int opt_commit_script = FALSE;
+    char *env_args = getenv("JUISE_OPTIONS");
 
     slaxDataListInit(&plist);
 
@@ -1109,7 +1167,9 @@ main (int argc UNUSED, char **argv, char **envp)
     }
 
     if (!skip_args) {
-	for (argv++; *argv; argv++) {
+	argv += 1;		/* Skip argv[0] */
+    parse_args:
+	for ( ; *argv; argv++) {
 	    cp = *argv;
 
 	    if (*cp != '-') {
@@ -1237,6 +1297,13 @@ main (int argc UNUSED, char **argv, char **envp)
 		juise_make_param(pname, pvalue);
 	    }
 	}
+    }
+
+    if (env_args) {
+	argv = build_argv(env_args);
+	env_args = NULL;
+	if (argv)
+	    goto parse_args;
     }
 
     if (func == NULL)

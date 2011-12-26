@@ -14,6 +14,7 @@ juiseincdir = ${includedir}/libjuise
 
 AM_CFLAGS = \
     -DLIBSLAX_XMLSOFT_NEED_PRIVATE \
+    -DJUISE_LIBEXECDIR=\"${JUISE_LIBEXECDIR}\" \
     -I${top_srcdir} \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
