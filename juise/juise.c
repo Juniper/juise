@@ -116,11 +116,8 @@ juise_log (void *vfp, const char *fmt, va_list vap)
 }
 
 static void
-juise_make_param (const char *pname, const char *pvalue)
+juise_make_param (const char *pname, const char *pvalue, int quoted_string)
 {
-    char *tvalue;
-    char quote;
-    int plen;
     slax_data_node_t *dnp;
     int isname = 1;
 
@@ -138,22 +135,23 @@ juise_make_param (const char *pname, const char *pvalue)
 	isname ^= 1;
     }
 
-    plen = strlen(pvalue);
-    tvalue = xmlMalloc(plen + 3);
-    if (tvalue == NULL)
-	errx(1, "out of memory");
+    if (quoted_string) {
+	int plen = strlen(pvalue);
+	char *tvalue = alloca(plen + 3);
+	char quote = strrchr(pvalue, '\"') ? '\'' : '\"';
 
-    quote = strrchr(pvalue, '\"') ? '\'' : '\"';
-    tvalue[0] = quote;
-    memcpy(tvalue + 1, pvalue, plen);
-    tvalue[plen + 1] = quote;
-    tvalue[plen + 2] = '\0';
+	tvalue[0] = quote;
+	memcpy(tvalue + 1, pvalue, plen);
+	tvalue[plen + 1] = quote;
+	tvalue[plen + 2] = '\0';
+	pvalue = tvalue;
+    }
 
     nbparams += 1;
     slaxDataListAddNul(&plist, pname);
-    slaxDataListAddNul(&plist, tvalue);
+    slaxDataListAddNul(&plist, pvalue);
 
-    trace(trace_file, TRACE_ALL, "param: '%s' -> '%s'", pname, tvalue);
+    trace(trace_file, TRACE_ALL, "param: '%s' -> '%s'", pname, pvalue);
 }
 
 static inline int
@@ -885,7 +883,7 @@ parse_query_string (lx_node_t *nodep, char *str)
 	    trace(trace_file, TRACE_ALL, "querystring: param: '%s' -> '%s'",
 		  cp, ep);
 	    if (strncmp(cp, "junos", 5) != 0 && !streq(cp, ELT_CGI))
-		juise_make_param(cp, ep);
+		juise_make_param(cp, ep, TRUE);
 	    juise_add_node(nodep, cp, ep);
 	}
 	xmlFreeAndEasy(ep);	/* xmlURIUnescapeString allocated them */
@@ -942,7 +940,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
     for (i = 0; cgi_params[i]; i += 2) {
 	cp = getenv(cgi_params[i]);
 	if (cp) {
-	    juise_make_param(cgi_params[i], cp);
+	    juise_make_param(cgi_params[i], cp, TRUE);
 	    juise_add_node(nodep, cgi_params[i + 1], cp);
 	    trace(trace_file, TRACE_ALL, "cgi: env: '%s' = '%s'",
 		  cgi_params[i], cp);
@@ -1008,6 +1006,9 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	    free(lp);
 	}
     }
+
+    juise_make_param("cgi", "/op-script-input/cgi", FALSE);
+
 
     return do_run_op_common(scriptname, input, argv, nodep, JM_CGI);
 }
@@ -1228,7 +1229,7 @@ main (int argc UNUSED, char **argv, char **envp)
 		char *pname = *++argv;
 		char *pvalue = *++argv;
 
-		juise_make_param(pname, pvalue);
+		juise_make_param(pname, pvalue, TRUE);
 
 	    } else if (streq(cp, "--protocol") || streq(cp, "-P")) {
 		cp = *++argv;
@@ -1294,7 +1295,7 @@ main (int argc UNUSED, char **argv, char **envp)
 		char *pname = cp;
 		char *pvalue = *++argv;
 
-		juise_make_param(pname, pvalue);
+		juise_make_param(pname, pvalue, TRUE);
 	    }
 	}
     }
