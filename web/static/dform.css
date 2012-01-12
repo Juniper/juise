@@ -1,0 +1,49 @@
+label.ui-dform-checkbox, label.ui-dform-radio {
+    display: inline !important;
+}
+
+.ui-dform-submit, .ui-dform-span, .ui-dform-label, .ui-dform-tabs {
+    margin: 10px 0;
+}
+
+.ui-dform-submit {
+    display: block;
+}
+
+.ui-tabs-nav .ui-dform-label { 
+    margin: 0;
+ }
+
+.ui-tabs-panel blockquote { 
+    margin: 0; 
+}
+
+label.ui-accordion-header { 
+    margin: 0; 
+}
+
+.ui-dform-elements {
+    display block;
+}
+
+.ui-dform-elements label {
+    display: inline-block;
+    color: #202020;
+    width: 16em;
+    text-align: right;
+    padding-right: 8px;
+}
+
+div.ui-dform-elements input {
+    display: inline-block;
+}
+
+div.ui-dform-radiobuttons, div.ui-dform-checkboxes {
+    display: inline-block;
+}
+
+div.ui-dform-radiobuttons label, div.ui-dform-checkboxes label {
+    width: auto;
+    text-align: auto;
+    padding-right: 8px;
+}

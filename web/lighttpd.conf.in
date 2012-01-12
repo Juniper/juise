@@ -23,6 +23,7 @@ debug.log-request-handling = "enable"
 mimetype.assign = (
   ".html" => "text/html", 
   ".txt" => "text/plain",
+  ".css" => "text/css",
   ".jpg" => "image/jpeg",
   ".png" => "image/png",
   ".ico" => "image/png",

@@ -67,6 +67,7 @@ int opt_debugger;
 int opt_indent;
 static int opt_load;
 char *opt_output_format;
+char *opt_username;
 
 static void
 juise_trace (void *vfp, lx_node_t *nodep, const char *fmt, ...)
@@ -230,17 +231,23 @@ juise_build_op_input (lx_node_t *newp)
 	    break;
 	xmlAddChild(nodep, childp);
 
-	pwd = getpwuid(getuid());
-	if (pwd) {
-	    char nbuf[10];
-	    juise_add_node(childp, ELT_USER, pwd->pw_name);
+	if (opt_username)
+	    juise_add_node(childp, ELT_USER, opt_username);
+	else {
+	    pwd = getpwuid(getuid());
+	    if (pwd) {
+		char nbuf[10];
+		juise_add_node(childp, ELT_USER, pwd->pw_name);
 
+#if 0
 #ifdef HAVE_PWD_CLASS
-	    juise_add_node(childp, ELT_CLASS_NAME, pwd->pw_class);
+		juise_add_node(childp, ELT_CLASS_NAME, pwd->pw_class);
+#endif
 #endif
 
-	    snprintf(nbuf, sizeof(nbuf), "%d", (int) pwd->pw_uid);
-	    juise_add_node(childp, ELT_UID, nbuf);
+		snprintf(nbuf, sizeof(nbuf), "%d", (int) pwd->pw_uid);
+		juise_add_node(childp, ELT_UID, nbuf);
+	    }
 	}
 
 	juise_add_node(childp, ELT_OP_CONTEXT, "");
@@ -1133,7 +1140,6 @@ main (int argc UNUSED, char **argv, char **envp)
     int randomize = 1;
     int logger = FALSE;
     char *target = NULL;
-    char *user = NULL;
     int ssh_agent_forwarding = FALSE;
     session_type_t stype;
     int skip_args = FALSE;
@@ -1253,7 +1259,7 @@ main (int argc UNUSED, char **argv, char **envp)
 		trace_file_name = *++argv;
 
 	    } else if (streq(cp, "--user") || streq(cp, "-u")) {
-		user = *++argv;
+		opt_username = *++argv;
 
 	    } else if (streq(cp, "--verbose") || streq(cp, "-v")) {
 		logger = TRUE;
@@ -1285,7 +1291,7 @@ main (int argc UNUSED, char **argv, char **envp)
 		target = cp + 1;
 
 	    } else if (target == NULL && (target = strchr(cp, '@')) != NULL) {
-		user = cp;
+		opt_username = cp;
 		*target++ = '\0';
 
 	    } else if (script == NULL) {
@@ -1309,6 +1315,14 @@ main (int argc UNUSED, char **argv, char **envp)
 
     if (func == NULL)
 	func = do_run_op; /* the default action */
+
+    cp = getenv("JUISEPATH");
+    if (cp)
+	slaxIncludeAddPath(cp);
+
+    cp = getenv("SLAXPATH");
+    if (cp)
+	slaxIncludeAddPath(cp);
 
     if (trace_file_name == NULL)
 	trace_file_name = getenv("JUISE_TRACE_FILE");
@@ -1379,8 +1393,8 @@ main (int argc UNUSED, char **argv, char **envp)
     else if (opt_commit_script)
 	errx(1, "target must be specified for commit script mode");
 
-    if (user)
-	jsio_set_default_user(user);
+    if (opt_username)
+	jsio_set_default_user(opt_username);
 
     if (ssh_agent_forwarding)
 	jsio_set_ssh_options("-A");

@@ -64,34 +64,24 @@ jcs:open() call, allowing either "user@device" or "@device".
 
 *** Command Line Options
 
---agent
--A
-
+= --agent OR -A
 Enable forwarding of ssh-agent credentials, allowing remote ssh
 sessions to connect to the local ssh-agent process.
 
---debug
--d
-
+= --debug OR -d
 Start the libslax debugger, allowing the user to interactively debug
 script execution.  Refer to the documentation in the libslax
 distribution for more information (libslax.googlecode.com).
 
---directory <dir>
--D <dir>
-
+= --directory <dir> OR -D <dir>
 Use the given directory as the location for server scripts.  This
 directory can also be set using the JUISE_DIR environment variable.
 
---include <dir>
--I <dir>
-
+= --include <dir> OR -I <dir>
 Add the given directory to the search path for files that are
 referenced via the SLAX "include" or "import" statements.
 
---indent
--g
-
+= --indent OR -g
 Make indented output as if the script contained:
 
     output-method {
@@ -100,79 +90,53 @@ Make indented output as if the script contained:
 
 (The "-g" is for "good-looking output").
 
---input <file>
--i <file>
-
+= --input <file> OR -i <file>
 Use given file for input.
 
---junoscript
--J
-
+= --junoscript OR -J
 Default to using the older JUNOScript XML API instead of the NETCONF
 API for jcs:open() connections.
 
---lib <dir>
--L <dir>
-
+= --lib <dir> OR -L <dir>
 Add the given directory to the list of directories searched for
 dynamic extension libraries.  Refer to libslax for more information.
 
---no-randomize
-
+= --no-randomize
 Avoid initializing the random number generator so script execution can
 be predictable (e.g. during debugging).
 
---param <name> <value>
--a <name> <value>
-
+= --param <name> <value> OR -a <name> <value>
 An alternative method of giving parameters to a script.
 
---protocol <name>
--P <name>
-
+= --protocol <name> OR -P <name>
 Use the given protocol as the default protocol for jcs:open()
 connections. 
 
---run-server
--R
-
+= --run-server OR -R
 Run juise in server mode, where it accepts incoming RPCs and executes
 scripts given by the RPC name.  See ^server^ section for details.
 
---script <name>
--S <name>
-
+= --script <name> OR -S <name>
 An alternative method of giving the script name.
 
---target <name>
--T <name>
-
+= --target <name> OR -T <name>
 An alternative method of giving the default target name.
 
---trace <file>
--t <file>
-
+= --trace <file> OR -t <file>
 Save trace data to the given file.
 
---user <name>
--u <name>
-
+= --user <name> OR -u <name>
 An alternative method of giving the user name for API connections.
 
---verbose
--v
-
+= --verbose OR -v
 Enable debugging output.  Any calls to slaxLog() will be displayed.
 
---version
--V
-
+= --version OR -V
 Display any version information, including the versions of libslax,
 libxslt, and libxml2.  After displaying this information,
 juise will exit.
 
---wait <seconds>
-
+= --wait <seconds>
 After starting and parsing arguments, juise will wait for the
 specified number of seconds, allowing the user to attach to the
 process with "gdb" for additional debugging.

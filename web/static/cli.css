@@ -74,7 +74,7 @@ div.text, div.decoration, div.data, div.header, div.pad, div.item {
     display: inline-block;
     vertical-align: middle;
     white-space: pre-wrap;
-    sborder: 1px solid orange;
+    /* border: 1px solid orange; */
 }
 
 div.pad {
