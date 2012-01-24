@@ -242,9 +242,9 @@ BASE_FILES = \
     jquery/jquery.js \
     jquery/jquery.min.js \
     jquery/jquery.mruPulldown.js \
-    static/cli.html \
-    static/cli.css \
-    static/cli.js \
+    clira/clira.html \
+    clira/clira.css \
+    clira/clira.js \
     static/drag-test.html
 
 THEME_BLACK_TIE = \

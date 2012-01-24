@@ -16,6 +16,257 @@ jQuery(function ($) {
     var $output = $('#output-top');
     var command_number = 0;
     var cmdHistory, tgtHistory;
+    var prefs = { };            // Initial value (to handle early references)
+
+    var prefs_fields = [
+        {
+            name: "output_close_after",
+            def: 5,
+            type: "number",
+            change: commandOutputTrimChanged,
+            title: "Number of open commands",
+        },
+        {
+            name: "output_remove_after",
+            def: 10,
+            type: "number",
+            change: commandOutputTrimChanged,
+            title: "Total number of commands",
+        },
+        {
+            name: "slide_speed",
+            def: 0, // "fast",
+            type: "number-plus",
+            title: "Speed of slide animations",
+        },
+        {
+            name: "max_commands_list",
+            def: 40,
+            type: "number",
+            title: "Number of commands kept in list",
+        },
+        {
+            name: "max_targets_inline",
+            def: 10,
+            type: "number",
+            title: "Number of targets kept on screen",
+        },
+        {
+            name: "max_targets_list",
+            def: 40,
+            type: "number",
+            title: "Number of targets kept in list",
+        },
+        {
+            name: "max_target_position",
+            def: 10,
+            type: "number",
+            title: "Target button rows",
+        },
+        {
+            name: "stay_on_page",
+            def: false,
+            type: "boolean",
+            label: "Stay",
+            change: prefsSetupConfirmExit,
+            title: "Give warning if leaving this page",
+        },
+        {
+            name: "theme",
+            def: "black-tie",
+            type: "string",
+            title: "UI Theme",
+            change: prefsSwitchTheme,
+        },
+        {
+            name: "live_action",
+            def: false,
+            type: "boolean",
+            label: "Live",
+            title: "Interact with real devices",
+        },
+    ];
+
+    var prefs_options = {
+        preferences: {
+            apply: function () {
+                $.dbgpr("prefsApply");
+                prefs_form.close();
+                prefs = prefs_form.getData();
+            }
+        },
+        title: "Preferences",
+        dialog : { },
+    }
+
+    var testForms = {
+        first: {
+            title: "Ping Options",
+            command: {
+                rpc: "ping",
+            },
+            tabs: {
+                event: "mouseover",
+            },
+            fieldsets: [
+                {
+                    legend: "Basic",
+                    fields: [
+                        {
+                            name: "host",
+                            title: "Hostname or IP address of remote host",
+                            type: "text",
+                        },
+                        {
+                            name: "count",
+                            title: "Number of ping requests to send",
+                            type: "number",
+                            range: "1..2000000000",
+                            units: "packets",
+                        },
+                        {
+                            name: "interval",
+                            title: "Delay between ping requests",
+                            units: "seconds",
+                            type: "number",
+                        },
+                        {
+                            name: "no-resolve",
+                            title: "Don't attempt to print addresses symbolically",
+                            type: "boolean",
+                        },
+                        {
+                            name: "size",
+                            title: "Size of request packets",
+                            type: "number",
+                            units: "bytes",
+                            range: "0..65468",
+                        },
+                        {
+                            name: "wait",
+                            title: "Delay after sending last packet",
+                            type: "number",
+                            units: "seconds",
+                        },
+                    ],
+                },
+                {
+                    legend: "Outgoing",
+                    fields: [
+                        {
+                            name: "bypass-routing",
+                            title: "Bypass routing table, use specified interface",
+                            type: "boolean",
+                        },
+                        {
+                            name: "do-not-fragment",
+                            title: "Don't fragment echo request packets (IPv4)",
+                            type: "boolean",
+                        },
+                        {
+                            name: "inet",
+                            title: "Force ping to IPv4 destination",
+                            type: "boolean",
+                        },
+                        {
+                            name: "inet6",
+                            title: "Force ping to IPv6 destination",
+                            type: "boolean",
+                        },
+                        {
+                            name: "logical-system",
+                            title: "Name of logical system",
+                            type: "string",
+                        },
+                        {
+                            name: "interface",
+                            title: "Source interface (multicast, all-ones, unrouted packets)",
+                            type: "interface-name",
+                        },
+                        {
+                            name: "routing-instance",
+                            title: "Routing instance for ping attempt",
+                            type: "string",
+                        },
+                        {
+                            name: "source",
+                            title: "Source address of echo request",
+                            type: "ip-address",
+                        },
+                    ],
+                },
+                {
+                    legend: "ICMP",
+                    fields: [
+                        {
+                            name: "loose-source",
+                            title: "Intermediate loose source route entry (IPv4)",
+                            type: "boolean",
+                        },
+                        {
+                            name: "record-route",
+                            title: "Record and report packet's path (IPv4)",
+                            type: "boolean",
+                        },
+                        {
+                            name: "strict",
+                            title: "Use strict source route option (IPv4)",
+                            type: "boolean",
+                        },
+                        {
+                            name: "strict-source",
+                            title: "Intermediate strict source route entry (IPv4)",
+                            type: "boolean",
+                        },
+                    ],
+                },
+                {
+                    legend: "Advanced",
+                    fields: [
+                        {
+                            name: "detail",
+                            title: "Display incoming interface of received packet",
+                            type: "boolean",
+                        },
+                        {
+                            name: "verbose",
+                            title: "Display detailed output",
+                            type: "boolean",
+                        },
+                        {
+                            name: "mac-address",
+                            title: "MAC address of the nexthop in xx:xx:xx:xx:xx:xx format",
+                            type: "mac-address",
+                        },
+                        {
+                            name: "pattern",
+                            title: "Hexadecimal fill pattern",
+                            type: "string",
+                        },
+                        {
+                            name: "rapid",
+                            title: "Send requests rapidly (default count of 5)",
+                            type: "boolean",
+                        },
+                        {
+                            name: "tos",
+                            title: "IP type-of-service value",
+                            type: "number",
+                            range: "0..255",
+                        },
+                        {
+                            name: "ttl",
+                            title: "IP time-to-live value (IPv6 hop-limit value)",
+                            type: "number",
+                            units: "hops",
+                            range: "0..63",
+                        },
+
+                    ],
+                },
+            ],
+        },
+    }
 
     function cliInit () {
         cmdHistory = $.mruPulldown({
@@ -54,9 +305,24 @@ jQuery(function ($) {
             $(this).blur();
             return false;
         });
-    }
 
-    function enterSubmit(e) {
+        var prefs_form = $.yform(prefs_options, "#prefs-dialog", prefs_fields);
+        prefs = prefs_form.getData();
+
+        $("#prefs").button().click(function (event) {
+            $.dbgpr("prefsEdit:", event.type);
+            if (prefs_form.shown()) {
+                prefs_form.close();
+
+                /* Put the focus back where it belongs */
+                if (tgtHistory.value())
+                    cmdHistory.focus();
+                else tgtHistory.focus();
+
+            } else {
+                prefs_form.open();
+            }
+        });
     }
 
     function commandSubmit (event) {
@@ -145,6 +411,7 @@ jQuery(function ($) {
     }
 
     function commmandWrapperAdd (target, command) {
+        var test;
         $.dbgpr("commmandWrapperAdd", target, command);
 
         var content = '<div class="output-wrapper ui-widget '
@@ -172,6 +439,15 @@ jQuery(function ($) {
         if (prefs.live_action) {
             content += '<img src="/icons/loading.png">';
             content += "    ....loading...\n";
+
+        } else if (command.substring(0, 9) == "test form") {
+            test = command.substring(10);
+            if (testForms[test]) {
+                content += "<div class='ui-yform'></div>";
+            } else {
+                test = undefined;
+            }
+
         } else {
             content += "test-output\nmore\nand more and more\noutput\n";
         }
@@ -180,7 +456,8 @@ jQuery(function ($) {
 
         var $newp = jQuery(content);
         $output.prepend($newp);
-        $newp.slideUp(0).slideDown(prefs.slide_speed);
+        if (prefs.slide_speed > 0)
+            $newp.slideUp(0).slideDown(prefs.slide_speed);
         divUnhide($newp);
 
         if (prefs.live_action) {
@@ -211,6 +488,11 @@ jQuery(function ($) {
                           }
                           $out.slideDown(prefs.slide_speed);
                       });
+        } else if (test) {
+            var yd = $("div.ui-yform", $newp);
+            var yf = $.yform(testForms[test], yd);
+            yf.buildForm();
+            yf.focus();
         }
 
         decorateIcons($newp);
@@ -282,214 +564,6 @@ jQuery(function ($) {
         $('.can-hide', $wrapper).slideDown(prefs.slide_speed);
     }
 
-    /*----------------------------------------------------------------------
-     * Preferences allow customizable behavior.  We have our preferences
-     * described in the array "prefsInfo".  We keep the current values in
-     * the "prefs" array.
-     *
-     * XXX need to make radio buttons, pulldowns, etc for enum types.
-     * Need to add ranges.  Need verifiation code.  Probably should
-     * use the forms plugin.
-     */
-
-    var prefs_info = {
-        output_close_after: { def: 5, type: "number",
-                              change: commandOutputTrimChanged,
-                              title: "Number of open commands" },
-        output_remove_after: { def: 10, type: "number",
-                               change: commandOutputTrimChanged,
-                               title: "Total Number of commands" },
-        slide_speed: { def: "fast", type: "number-plus",
-                       title: "Speed of slide animations" },
-        max_commands_list: { def: 40, type: "number",
-                            title: "Number of commands kept in list" },
-        max_targets_inline: { def: 10, type: "number",
-                              title: "Number of targets kept on screen" },
-        max_targets_list: { def: 40, type: "number",
-                            title: "Number of targets kept in list" },
-        max_target_position: { def: 10, type: "number",
-                               title: "Target button rows" },
-        stay_on_page: { def: false, type: "boolean",
-                        change: prefsSetupConfirmExit,
-                        title: "Give warning if leaving this page" },
-        theme: { def: "black-tie", type: "string",
-                 title: "UI Theme", change: prefsSwitchTheme },
-        live_action: { def: false, type: "boolean",
-                        title: "Interact with real devices" },
-    };
-
-    var prefs = { };
-
-    var prefs_shown = false;
-    var prefs_form_built = false;
-
-    function prefsInit () {
-        for (var key in prefs_info) {
-            prefs[key] = prefs_info[key].def;
-            if (prefs_info[key].change)
-                prefs_info[key].change(prefs_info[key].def, true);
-        }
-
-        $('#prefs').button().click(prefsEdit);
-    }
-
-    function prefsEdit (event) {
-        $.dbgpr("prefsEdit:", event.type);
-
-        var $this = $(this);
-        var $pform = $('#prefs-form');
-        var $pwrapper = $('#prefs-dialog');
-        var $pset = $('#prefs-fieldset');
-
-        prefs_shown = !prefs_shown;
-        if (prefs_shown) {
-            var form = $pform.get(0);
-
-            if (!prefs_form_built) {
-                prefs_form_built = true;
-                //
-                // First we build the contents of the form, based on
-                // the information in pref_info[].
-                //
-                for (var key in prefs_info) {
-                    var info = prefs_info[key];
-                    var content = '<div class="prefs-item">'
-                        + '<label for="' + key + '">' + info.title
-                        + '</label>';
-
-                    if (info.type == "boolean") {
-                        content += '<input name="' + key
-                            + '" type="checkbox"/>';
-
-                    } else {
-                        content += '<input name="' + key + '" type="text"/>';
-                    }
-
-                    content += '<br/></div>';
-                    var $target = jQuery(content);
-                    $pset.prepend($target);
-
-                    if (info.type == "boolean") {
-                        $("input", target).button();
-                    } else {
-                        /* ... */
-                    }
-                }
-
-                // Build the dialog box using jqueryui
-                $pwrapper.dialog({
-                    autoOpen: false,
-                    width: 600,
-                    modal: true,
-                    draggable: false,
-                    position: 'top',
-                    resizable: false,
-                    show: 'blind',
-                    open: function () {
-                        //
-                        // By default, there is no linkage between hitting
-                        // enter and submitting a form.  In our HTML, we
-                        // make a fake "submit" button so the browser does
-                        // the "right" thing, but here we hijack it and
-                        // make it use our own submit logic to click on
-                        // the "Apply" button.
-                        //
-                        $pform.unbind('submit');
-                        $pform.submit(function (e) {
-                            e.preventDefault();
-                            $("button :last", $pwrapper.parent()).click();
-                            return false;
-                        })
-                    },
-                    buttons: {
-                        "Restore defaults": function() {
-                            prefsRestore();
-                            $pwrapper.dialog("close");
-                        },
-                        Cancel: function() {
-                            $pwrapper.dialog("close");
-                        },
-                        Apply: function() {
-                            if (!prefsApply())
-                                $pwrapper.dialog("close");
-                        },
-                    },
-                    close: function() {
-                        prefs_shown = false;
-                        /* allFields.removeClass( "ui-state-error" ); */
-                    }
-                });
-
-                function prefsApply () {
-                    $.dbgpr("prefsApply");
-                    prefs_shown = false;
-
-                    for (var key in prefs_info) {
-                        var info = prefs_info[key];
-                        prefsSetValue(info, key, form[key].value, info.type);
-                    }
-
-                    return false;
-                }
-
-                function prefsRestore () {
-                    $.dbgpr("prefsRestore");
-
-                    for (var key in prefs_info) {
-                        var prev = prefs[key];
-                        prefs[key] = prefs_info[key].def;
-                        if (prefs_info[key].change)
-                            prefs_info[key].change(prefs_info[key].def,
-                                                   false, prev);
-                        form[key].value = prefs_info[key].def;
-                    }
-                }
-            }
-
-            for (var key in prefs_info) {
-                form[key].value = prefs[key];
-            }
-
-            $pwrapper.dialog("open");
-
-        } else {
-            $pwrapper.dialog("close");
-
-            if (tgtHistory.value())
-                cmdHistory.focus();
-            else tgtHistory.focus();
-        }
-    }
-
-    function prefsSetValue (info, name, value, type) {
-        if (type == "boolean") {
-            value = (value == "true");
-            if (prefs[name] == value)
-                return;
-        } else if (type == "string") {
-            if (prefs[name] == value)
-                return;
-        } else {
-            var ival = parseInt(value);
-
-            if (!isNaN(ival)) {
-                if (prefs[name] == ival)
-                    return;
-                value = ival;
-
-            } else if (type == "number-plus") {
-                if (prefs[name] == value)
-                    return;
-            }
-        }
-
-        var prev = prefs[name];
-        $.dbgpr("prefs: ", name, "set to", value, "; was ", prev);
-        prefs[name] = value;
-        if (info.change)
-            info.change(value, false, prev);
-    }
-
     function prefsSetupConfirmExit () {
         if (prefs.stay_on_page) {
             window.onbeforeunload = function (e) {
@@ -553,8 +627,6 @@ jQuery(function ($) {
         });
     }
 
-
-    prefsInit();
     cliInit();
     tgtHistory.focus();
 });

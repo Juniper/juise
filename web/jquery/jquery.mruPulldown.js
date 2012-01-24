@@ -32,7 +32,7 @@ jQuery.mruPulldown({
 
  */
 
-(function ($) {
+jQuery(function ($) {
     $.mruPulldown = function (info) {
         var me = {
             depth: 40,
@@ -265,4 +265,4 @@ jQuery.mruPulldown({
         return me;
     }
 
-})(jQuery);
+});

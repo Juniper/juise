@@ -275,36 +275,23 @@ div.command-history-entry {
     padding-right: 8px;
 }
 
-div#prefs-form-wrapper {
-    border: 1px solid #d0d0ff;
-    position: absolute;
-    width: 25%;
-}
-
 div#prefs-title {
     font-size: 120%;
     font-weight: 600;
 }
 
-div.prefs-item {
+div.prefs-item, div.ui-yf-item {
     display: table-row;
 }
 
-div.prefs-item label {
+div.prefs-item label, div.ui-yf-item label {
     padding-left: 10px;
     padding-right: 5px;
 }
 
-div.prefs-item label, div.prefs-item input {
+div.prefs-item label, div.prefs-item input, div.prefs-item div,
+div.ui-yf-item label, div.ui-yf-item input, div.ui-yf-item div {
     display: table-cell;
-}
-
-button#prefs-restore {
-    float: left;
-}
-
-input#prefs-submit {
-    float: right;
 }
 
 div#footer {

@@ -5,7 +5,9 @@
 
     <link href="/themes/black-tie/jquery-ui-black-tie.css"
 	  type="text/css" rel="Stylesheet" class="ui-theme"/>
-    <link href="/static/cli.css"
+    <link href="/jquery/jquery.checkbox.css"
+	  type="text/css" rel="Stylesheet" class="ui-checkbox"/>
+    <link href="/clira/clira.css"
 	  type="text/css" rel="Stylesheet" class="ui-main"/>
     <link href="/themes/black-tie/addons-black-tie.css"
 	  type="text/css" rel="Stylesheet" class="ui-addon"/>
@@ -14,9 +16,22 @@
     <script type="text/javascript" src="/jquery/jquery.mruPulldown.js"
     		></script>
     <script type="text/javascript" src="/jquery/jquery-ui.js"></script>
-    <script type="text/javascript" src="/jquery/jquery.dbgpr.js"></script>
+    <script type="text/javascript" src="/jquery/jquery.checkbox.js"></script> 
 
-    <script type="text/javascript" src="/static/cli.js"></script>
+    <script type="text/javascript" src="/jquery/jquery.dbgpr.js"></script>
+    <script type="text/javascript" src="/jquery/yform.js"></script> 
+
+    <script type="text/javascript" src="/clira/clira.js"></script>
+
+<!--
+    <script type="text/javascript" src="/jquery/dform.js"></script> 
+    <script type="text/javascript" src="/jquery/dform.converters.js"></script> 
+    <script type="text/javascript" src="/jquery/dform.extensions.js"></script> 
+    <script type="text/javascript" src="/jquery/dform.plugins.js"></script> 
+    <script type="text/javascript" src="/jquery/dform.subscribers.js"></script> 
+    <script type="text/javascript" src="/jquery/dform.wizard.js"></script> 
+-->
+
   </head>
 
   <body>
@@ -33,11 +48,6 @@
       </div>
 
       <div id="prefs-dialog" title="Preferences" style="display: none">
-	<form id="prefs-form" action="#">
-	  <fieldset id="prefs-fieldset"></fieldset>
-          <input type="submit" id="prefs-submit"
-		 style="display: none" value="Submit"/>
-	</form>
       </div>
     </div>
 

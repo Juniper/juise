@@ -12,28 +12,6 @@
 jQuery(function ($) {
     var count = 0;
 
-    $.dform.removeSubscription("elements");
-    $.dform.subscribe({
-        elements : function (options, type) {
-            var $scoper = $(this);
-            $.each(options, function(index, nested) {
-                var values = nested;
-                if (typeof (index) == "string")
-                    values["name"] = name;
-                $scoper.append("<div class='ui-dform-elements'></div>");
-                var $new = $($scoper.children().get(-1));
-                $new.formElement(values);
-            });
-        },
-        wizard : function (options, type) {
-            $.dbgpr("wizard:", options.type, "+", this.name, "/", this.type);
-            var x;
-            for (x in options) {
-                $.dbgpr(">>", x, ":", options[x]);
-            }
-        },
-    });
-
     var options = {
         "action" : "index.html",
         "method" : "post",
@@ -104,6 +82,23 @@ jQuery(function ($) {
             },
             {
                 "type" : "fieldset",
+                "caption" : "Size information",
+                "elements" : [
+                    {
+                        "name" : "size",
+                        "caption" : "Dress Size",
+                        "type" : "text",
+                    },
+                    {
+                        "name" : "shoe",
+                        "caption" : "Shoe size",
+                        "type" : "text",
+                        "validate" : { "required" : true }
+                    },
+                ],
+            },
+            {
+                "type" : "fieldset",
                 "caption" : "Address information",
                 "elements" : [
                     {
@@ -147,21 +142,38 @@ jQuery(function ($) {
                             "africa" : "Africa",
                             "australia" : "Australia"
                         }
-                    }
+                    },
                 ]
-            },
-            {
-                "type" : "submit",
-                "value" : "Signup"
             },
         ],
         wizard: {
-            next: function () {
-                $.dbgpr("next");
+            steps: "fieldset",
+            next: function (options, $top, old) {
+                var value = $("input[name='sex']:checked", $top).val();
+                $.dbgpr("next", value);
+                if (old == 0)
+                    return (value == "m") ? 2 : 1;
+                return old + 1;
+            },
+            prev: function (options, $top, old) {
+                var value = $("input[name='sex']:checked", $top).val();
+                $.dbgpr("prev", value);
+                if (old == 2)
+                    return (value == "m") ? 0 : 1;
+                return 0;
+            },
+            submit: {
+                location: ".ui-dform-step-buttons-2",
+                value: "Apply",
+                click: function (options, $top) {
+                    $.dbgpr("click", this, ":", this.name);
+                },
+            },
+            cancel : function (options, $top) {
+                $.dbgpr("cancel");
             },
         },
     };
 
     $('#demo').buildForm(options);
-
 });
