@@ -174,6 +174,9 @@ jQuery(function ($) {
                 return;
             this.built = true;
 
+            if (guide.tabs)
+                yform.form.append("<ul class='ui-yf-tablist'></ul>");
+
             if (guide.preferences) {
                 buildFormData();
                 loadForm(yform.data);
@@ -183,8 +186,53 @@ jQuery(function ($) {
                 buildFormData();
                 loadForm(yform.data);
 
+                $form
+                    .append("<button class='ui-yf-cancel'>Cancel</button>"
+                            + "<button>class='ui-yf-execute'>Ok</button>"
+                            + "");
+                $form.unbind('submit');
+                $form.submit(function (e) {
+                    e.preventDefault();
+                    $("button :last", $form).click();
+                    return false;
+                })
+                                  
+                $(".ui-yf-cancel", $form).button().click(function (event) {
+                    $.dbgpr("yform command cancel");
+                });
+                $(".ui-yf-execute", $form).button().click(function (event) {
+                    $.dbgpr("yform command cancel");
+                    var $rpc = buildRpc();
+                });
+
             } else {
                 /* ... */
+            }
+
+            if (guide.tabs) {
+                var $tablist = $(".ui-yf-tablist", yform.form);
+                $("fieldset", yform.form).each(function (i, fs) {
+                    $tablist.append("<li><a href='#" + $(fs).attr("id")
+                                    + "'>" + $("legend", fs).text()
+                                    + "</a></li>");
+                    $("legend", fs).remove();
+                });
+
+                var tabs = $.extend({
+                    event: "mouseover",
+                }, guide.tabs);
+                yform.form.tabs(tabs);
+
+                // Need to make sure the form can hold members plus overhead
+                var max = 40, hgt, over = 0;
+                $("fieldset", yform.form).each(function (i, fs) {
+                    hgt = $(fs).outerHeight();
+                    if (over == 0)
+                        over = yform.form.height() - t;
+                    if (max < hgt)
+                        max = hgt;
+                });
+                yform.form.height(max + over);
             }
         }
 
@@ -219,13 +267,15 @@ jQuery(function ($) {
 
         function buildFormData () {
             /* Supports either simple fields, or fieldsets */
+            var parent = $form;
+
             if (guide.fieldsets) {
                 for (var fn = 0; fn < guide.fieldsets.length; fn++) {
                     var fs = guide.fieldsets[fn];
-                    buildFieldSet($form, fs.fields, true, idgen++, fs.legend);
+                    buildFieldSet(parent, fs.fields, true, idgen++, fs.legend);
                 }
             } else {
-                buildFieldSet($form, fields, false, idgen++);
+                buildFieldSet(parent, fields, false, idgen++);
             }
         }
 
@@ -305,6 +355,9 @@ jQuery(function ($) {
 
         yform.getData = function () {
             return yform.data;
+        }
+
+        function buildRpc () {
         }
 
         /*
