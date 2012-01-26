@@ -187,22 +187,20 @@ jQuery(function ($) {
                 loadForm(yform.data);
 
                 $form
-                    .append("<button class='ui-yf-cancel'>Cancel</button>"
-                            + "<button>class='ui-yf-execute'>Ok</button>"
-                            + "");
+                    .append("<button class='ui-yf-execute'>Ok</button>"
+                            + "<input type='submit' style='display: none'/>");
                 $form.unbind('submit');
                 $form.submit(function (e) {
                     e.preventDefault();
-                    $("button :last", $form).click();
+                    $.dbgpr("submit: redirecting...");
+                    $(".ui-yf-execute", $form).click();
                     return false;
                 })
                                   
-                $(".ui-yf-cancel", $form).button().click(function (event) {
-                    $.dbgpr("yform command cancel");
-                });
                 $(".ui-yf-execute", $form).button().click(function (event) {
-                    $.dbgpr("yform command cancel");
-                    var $rpc = buildRpc();
+                    event.preventDefault();
+                    $.dbgpr("yform command execute button", $(this).text());
+                    yform.guide.command.execute(yform);
                 });
 
             } else {
@@ -219,20 +217,16 @@ jQuery(function ($) {
                 });
 
                 var tabs = $.extend({
-                    event: "mouseover",
+                    // event: "mouseover",
                 }, guide.tabs);
                 yform.form.tabs(tabs);
 
-                // Need to make sure the form can hold members plus overhead
-                var max = 40, hgt, over = 0;
-                $("fieldset", yform.form).each(function (i, fs) {
-                    hgt = $(fs).outerHeight();
-                    if (over == 0)
-                        over = yform.form.height() - t;
-                    if (max < hgt)
-                        max = hgt;
+                yform.form.submit(function (e) {
+                    $.dbgpr("yform.submit");
+                    e.preventDefault();
+                    $("button :last", yform.form).click();
+                    return false;
                 });
-                yform.form.height(max + over);
             }
         }
 
@@ -357,7 +351,13 @@ jQuery(function ($) {
             return yform.data;
         }
 
-        function buildRpc () {
+        yform.buildRpc = function () {
+            var rpc = "<" + yform.guide.command.rpc ">";
+
+            
+
+            rpc += "</" + yform.guide.command.rpc ">";
+            return rpc;
         }
 
         /*

@@ -104,9 +104,13 @@ jQuery(function ($) {
             title: "Ping Options",
             command: {
                 rpc: "ping",
+                execute: function (yform) {
+                    hideCommandForm(yform);
+                    var rpc = yform.buildRpc();
+                    runRpc(yform, rpc);
+                },
             },
             tabs: {
-                event: "mouseover",
             },
             fieldsets: [
                 {
@@ -348,21 +352,31 @@ jQuery(function ($) {
         var tname = "";
         var cname = "";
         var value = tgtHistory.value();
-        $(value.split(" ")).each(function (i, x) {
-            if (x != "") {
-                count += 1;
-                tset.push(x);
-                commmandWrapperAdd(x, command);
-                tgtHistory.markUsed(x);
-                tname += " " + x;
-                cname += "_" + x.replace("_", "__", "g");
-            }
-        });
 
-        tname = tname.substr(1);
-        cname = cname.substr(1);
-        if (cname && cname != "")
-            targetListMarkUsed(this, tname, cname);
+        $.dbgpr("commandSubmit: target [", target,
+                "] command [", command, "]");
+
+        if (value == "") {
+            $.dbgpr("submit: no target, but still working");
+            commmandWrapperAdd(undefined, command);
+
+        } else {
+            $(value.split(" ")).each(function (i, x) {
+                if (x != "") {
+                    count += 1;
+                    tset.push(x);
+                    commmandWrapperAdd(x, command);
+                    tgtHistory.markUsed(x);
+                    tname += " " + x;
+                    cname += "_" + x.replace("_", "__", "g");
+                }
+            });
+
+            tname = tname.substr(1);
+            cname = cname.substr(1);
+            if (cname && cname != "")
+                targetListMarkUsed(this, tname, cname);
+        }
 
         cmdHistory.markUsed(command);
         commandOutputTrim(count);
@@ -497,9 +511,11 @@ jQuery(function ($) {
 
         decorateIcons($newp);
 
-        $('.target-value', $newp).click(function () {
-            tgtHistory.select($(this).text());
-        });
+        if (target) {
+            $('.target-value', $newp).click(function () {
+                tgtHistory.select($(this).text());
+            });
+        }
 
         $('.command-value', $newp).click(function () {
             cmdHistory.select($(this).text());
@@ -625,6 +641,23 @@ jQuery(function ($) {
             $wrapper.toggleClass("keeper-active");
             $(this).toggleClass("ui-state-highlight");
         });
+    }
+
+    function hideCommandForm (yform) {
+        var $top = $(yform.form).parents("div.output-wrapper");
+        var $bar = $("div.output-header", $top);
+        $bar.append("button class='
+        
+        $('.icon-remove-section', $wrapper).text("Close").button({
+            text: false,
+            icons: { primary: 'ui-icon-closethick' },
+        }).click(function () {
+            divRemove($wrapper);
+        });
+
+    }
+
+    function runRpc (yform, rpc) {
     }
 
     cliInit();

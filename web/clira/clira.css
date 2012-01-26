@@ -438,56 +438,6 @@ input.text-entry {
 		startColorstr='#a0a0ff', endColorstr='#f0f0ff');
 }
 
-/*
- * No longer used but worth remembering...
- */
-div.aqua {
-    width: 155px;
-    height: 35px;
-    background: #cde;
-    border: 2px solid #ccc;
-    border-color: #8ba2c1 #5890bf #4f93ca #768fa5;
-    font: 600 16px/1 Lucida Sans, Verdana, sans-serif;
-    color: #fff;
-    text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
-    text-align: center;
-    vertical-align: middle;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    border-radius: 16px; -moz-border-radius: 16px; -webkit-border-radius: 16px;
-    box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-    -moz-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-    -webkit-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-}
-
-div.aqua:hover {
-    text-shadow: rgb(255, 255, 255) 0px 0px 5px;
-}
-
-
-.new-aqua {
-    width: 155px;
-    height: 35px;
-    background: #cde;
-    border: 2px solid #ccc;
-    border-color: #8ba2c1 #5890bf #4f93ca #768fa5;
-    font: 600 16px/1 Lucida Sans, Verdana, sans-serif;
-    color: #fff;
-    text-shadow: rgba(10, 10, 10, 0.5) 1px 2px 2px;
-    text-align: center;
-    vertical-align: middle;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    border-radius: 16px;
-    -moz-border-radius: 16px;
-    -webkit-border-radius: 16px;
-    box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-    -moz-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-    -webkit-box-shadow: 0 10px 16px rgba(66, 140, 240, 0.5), inset 0 -8px 12px 0 #6bf, inset 0 -8px 0 8px #48c, inset 0 -35px 15px -10px #7ad;
-}
-
-.new-aqua:hover {
-    text-shadow: rgb(255, 255, 255) 0px 0px 5px;
+.jquery-checkbox {
+    line-height: 24px;
 }
