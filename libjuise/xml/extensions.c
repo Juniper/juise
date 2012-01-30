@@ -229,6 +229,7 @@ ext_jcs_invoke (xmlXPathParserContext *ctxt, int nargs)
 {
     xsltTransformContextPtr tctxt;
     xmlXPathObjectPtr ret;
+    lx_nodeset_t *results;
 
     if (nargs != 1) {
 	LX_ERR("xnm:invoke: argument error (need exactly one)\n");
@@ -245,7 +246,7 @@ ext_jcs_invoke (xmlXPathParserContext *ctxt, int nargs)
      * Invoked with a simple string argument?  Handle it.
      */
     if (xop->stringval) {
-	lx_nodeset_t *results = ext_jcs_rpc(ctxt, NULL, xop->stringval);
+	results = ext_jcs_rpc(ctxt, NULL, xop->stringval);
 
 	xmlXPathFreeObject(xop);
 
@@ -283,18 +284,24 @@ ext_jcs_invoke (xmlXPathParserContext *ctxt, int nargs)
 	    if (nop->children == NULL)
 		continue;
 
-	    /*
-	     * Whiffle thru the children looking for an "rpc" node
-	     */
-	    for (cop = nop->children; cop; cop = cop->next) {
-		if (cop->type != XML_ELEMENT_NODE)
-		    continue;
+	    if (XSLT_IS_RES_TREE_FRAG(nop)) {
+		/*
+		 * Whiffle thru the children looking for an "rpc" node
+		 */
+		for (cop = nop->children; cop; cop = cop->next) {
+		    if (cop->type == XML_ELEMENT_NODE) {
+			nop = cop;
+			goto found;
+		    }
+		}
 
+	    } else {
+	    found:
 		/*
 		 * Okay, so now we've found the tag.  Do the RPC and
 		 * process the results.
 		 */
-		lx_nodeset_t *results = ext_jcs_rpc(ctxt, cop, NULL);
+		results = ext_jcs_rpc(ctxt, nop, NULL);
 		if (results == NULL) {
 		    xmlXPathFreeObject(xop);
 		    return;
@@ -600,6 +607,7 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
     xmlXPathObjectPtr ret;
     xmlChar *server = NULL;
     session_type_t stype = ST_DEFAULT; /* Default session */
+    lx_nodeset_t *results;
 
     if (nargs != 2) {
 	xmlXPathSetArityError(ctxt);
@@ -631,9 +639,8 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
      * Invoked with a simple string argument?  Handle it.
      */
     if (xop->stringval) {
-	lx_nodeset_t *results = 
-	    js_session_execute(ctxt, (char *) server, NULL,
-			       xop->stringval, stype);
+	results = js_session_execute(ctxt, (char *) server, NULL,
+				     xop->stringval, stype);
 
 	xmlXPathFreeObject(xop);
 	xmlXPathFreeObject(sop);
@@ -660,7 +667,7 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
 	lx_node_t *nop, *cop;
 
 	if (xop->nodesetval->nodeNr == 0) {
-	    LX_ERR("xnm:invoke: empty input nodeset\n");
+	    LX_ERR("xnm:execute: empty input nodeset\n");
 	    xmlXPathFreeObject(xop);
 	    xmlXPathFreeObject(sop);
 	    xmlFree(server);
@@ -675,21 +682,26 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
 	    if (nop->children == NULL)
 		continue;
 
-	    /*
-	     * Whiffle thru the children looking for an "rpc" node
-	     */
-	    for (cop = nop->children; cop; cop = cop->next) {
-		if (cop->type != XML_ELEMENT_NODE)
-		    continue;
+	    if (XSLT_IS_RES_TREE_FRAG(nop)) {
+		/*
+		 * Whiffle thru the children looking for an RPC node
+		 */
+		for (cop = nop->children; cop; cop = cop->next) {
+		    if (cop->type == XML_ELEMENT_NODE) {
+			nop = cop;
+			goto found;
+		    }
+		}
 
+	    } else {
+	    found:
 		/*
 		 * Okay, so now we've found the tag.  Do the RPC and
 		 * process the results.
 		 */
-		lx_nodeset_t *results;
 
 		results = js_session_execute(ctxt, (char *) server,
-					     cop, NULL, stype);
+					     nop, NULL, stype);
 		xmlXPathFreeObject(xop);
 		xmlXPathFreeObject(sop);
 		xmlFree(server);
@@ -713,7 +725,7 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
     xmlXPathFreeObject(sop);
     xmlFree(server);
 
-    LX_ERR("xnm:invoke: invalid argument\n");
+    LX_ERR("xnm:execute: invalid argument\n");
     return;
 }
 

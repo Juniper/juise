@@ -1,10 +1,14 @@
 version 1.1;
 
 ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns xutil extension = "http://xml.libslax.org/xutil";
+ns exslt = "http://exslt.org/common";
 
 param $target;
 param $command;
+param $rpc;
 param $form = "true";
+param $debug;
 
 output-method html {
     indent no;
@@ -52,6 +56,9 @@ match / {
 	    }
 	}
     } else {
+	if ($target && $rpc) {
+	    call make-rpc;
+	}
 	if ($target && $command) {
 	    call make-content;
 	}
@@ -66,5 +73,42 @@ template make-content {
 	copy-of $res;
     } else {
 	terminate "connection failure";
+    }
+}
+
+template make-rpc {
+    <div class="rpc-output"> {
+	var $xml = xutil:string-to-xml($rpc);
+	var $name = name($xml);
+	if ($debug) {
+	    <div> { expr "Target: " _ $target; }
+	    <div> { expr "RPC: " _ $rpc; }
+	    <div> { expr "Name: " _ $name; }
+	    <div> { expr "type: " _ exslt:object-type($xml); }
+	    <div> {
+		expr "RPC-as-XML: ";
+		copy-of $xml;
+	    }
+	}
+
+	var $conn = jcs:open($target);
+	if ($conn) {
+	    var $res = jcs:execute($conn, $xml);
+	    <div class=$name _ "-response"> {
+		copy-of $res;
+	    }
+	} else {
+	    terminate "connection failure";
+	}
+    }
+}
+
+match * {
+    mode "div";
+
+    <div class=name()> {
+	apply-templates {
+	    mode "div";
+	}
     }
 }

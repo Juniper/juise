@@ -340,6 +340,14 @@ div.output-header {
     padding: 4px;
 }
 
+div.output-header div.target-value {
+    margin-left: 4px;
+}
+
+div.output-header div.command-value {
+    margin-right: 4px;
+}
+
 div.output-header div.target-value, div.output-header div.command-value {
     font-weight: normal;
     font-size: 12px;

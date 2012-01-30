@@ -12,6 +12,9 @@
 jQuery(function ($) {
     var idgen = 1;
 
+    var css_files = { };
+    var js_files = { };
+
     $.yform = function (guide, selector, fields) {
         // Allow alternate method of arguments
         if (selector === undefined)
@@ -42,15 +45,24 @@ jQuery(function ($) {
         if (guide.title)
             $wrapper.attr("title", guide.title);
 
+        if (guide.css) {
+            addFile(css_files, guide.css, function (file) {
+                var $link = $("<link rel='stylesheet' type='text/css' "
+                    + "href='" + file + "'/>");
+
+                $link.appendTo($("html > head"));
+            });
+        }
+
         if (guide.preferences) {
             yform.dialog = {
                 autoOpen: false,
                 width: 600,
                 modal: true,
                 draggable: false,
-                position: 'top',
+                position: "top",
                 resizable: false,
-                show: 'blind',
+                show: "blind",
 
                 open: function () {
                     //
@@ -62,7 +74,7 @@ jQuery(function ($) {
                     // the "Apply" button.
                     //
                     yform.showing = true;
-                    $form.unbind('submit');
+                    $form.unbind("submit");
                     $form.submit(function (e) {
                         e.preventDefault();
                         $("button :last", $wrapper).click();
@@ -186,17 +198,8 @@ jQuery(function ($) {
                 buildFormData();
                 loadForm(yform.data);
 
-                $form
-                    .append("<button class='ui-yf-execute'>Ok</button>"
-                            + "<input type='submit' style='display: none'/>");
-                $form.unbind('submit');
-                $form.submit(function (e) {
-                    e.preventDefault();
-                    $.dbgpr("submit: redirecting...");
-                    $(".ui-yf-execute", $form).click();
-                    return false;
-                })
-                                  
+                $form.append("<button class='ui-yf-execute'>Ok</button>");
+
                 $(".ui-yf-execute", $form).button().click(function (event) {
                     event.preventDefault();
                     $.dbgpr("yform command execute button", $(this).text());
@@ -352,12 +355,36 @@ jQuery(function ($) {
         }
 
         yform.buildRpc = function () {
-            var rpc = "<" + yform.guide.command.rpc ">";
+            var rpc = "<" + yform.guide.command.rpc + ">";
 
-            
+            for (var f = 0; f < fields.length; f++) {
+                var info = fields[f];
+                var key = info.name;
+                var value;
 
-            rpc += "</" + yform.guide.command.rpc ">";
+                if (info.type == "boolean") {
+                    value = $("input[name=" + key + "]:checked", $form);
+                    value = (value && value.length != 0);
+                    if (value)
+                        rpc += "<" + key + "/>";
+                } else {
+                    value = $("input[name=" + key + "]", $form).val();
+                    if (value != "")
+                        rpc += "<" + key + ">" + value + "</" + key + ">";
+                }
+            }
+
+            rpc += "</" + yform.guide.command.rpc + ">";
             return rpc;
+        }
+
+        function addFile (list, name, func) {
+            if (list[name] === undefined) {
+                list[name] = 1;
+                func(name);
+            } else {
+                list[name] += 1;
+            }
         }
 
         /*

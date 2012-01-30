@@ -10,13 +10,16 @@
  */
 
 jQuery(function ($) {
-    decorateIcons($('#debug-container'));
+    decorateIcons($("#debug-container"));
     $.dbgpr("document is ready");
 
-    var $output = $('#output-top');
+    var $output = $("#output-top");
     var command_number = 0;
     var cmdHistory, tgtHistory;
     var prefs = { };            // Initial value (to handle early references)
+
+    var loadingMessage = "<img src='/icons/loading.png'>"
+        + "    ....loading...\n";
 
     var prefs_fields = [
         {
@@ -106,12 +109,16 @@ jQuery(function ($) {
                 rpc: "ping",
                 execute: function (yform) {
                     hideCommandForm(yform);
+                    var $out = yform.form.parents("div.output-content")
+                            .find("div.output-replace");
+                    $out.html(loadingMessage);
+
                     var rpc = yform.buildRpc();
-                    runRpc(yform, rpc);
+                    runRpc(yform, $out, rpc, tgtHistory.value());
                 },
             },
-            tabs: {
-            },
+            tabs: { },
+            css: "/clira/ping.css",
             fieldsets: [
                 {
                     legend: "Basic",
@@ -275,8 +282,8 @@ jQuery(function ($) {
     function cliInit () {
         cmdHistory = $.mruPulldown({
             name: "command-history",
-            top: $('#command-top'),
-            clearIcon: $('#command-clear'),
+            top: $("#command-top"),
+            clearIcon: $("#command-clear"),
             entryClass: "command-history-entry",
             click: function (me) {
                 if (tgtHistory)
@@ -286,22 +293,22 @@ jQuery(function ($) {
 
         tgtHistory = $.mruPulldown({
             name: "target-history",
-            top: $('#target-top'),
-            clearIcon: $('#target-clear'),
-            multiple: $('#target-history-form'),
-            history: $('#target-history'),
+            top: $("#target-top"),
+            clearIcon: $("#target-clear"),
+            multiple: $("#target-history-form"),
+            history: $("#target-history"),
             entryClass: "target-history-entry",
-            focusAfter: $('#command-input'),
+            focusAfter: $("#command-input"),
             click: function (me) {
                 if (cmdHistory)
                     cmdHistory.close();
             },
         });
 
-        $('#target-input-form').submit(commandSubmit);
-        $('#command-input-form').submit(commandSubmit);
+        $("#target-input-form").submit(commandSubmit);
+        $("#command-input-form").submit(commandSubmit);
 
-        $('#input-enter').text("Enter").button({
+        $("#input-enter").text("Enter").button({
             text: true,
         }).click(function (e) {
             commandSubmit(e);
@@ -338,7 +345,7 @@ jQuery(function ($) {
 
         var command = cmdHistory.value();
         if (command == "") {
-            $.dbgpr('submit; skipping since command value is empty');
+            $.dbgpr("submit; skipping since command value is empty");
             cmdHistory.focus();
             return false;
         }
@@ -385,9 +392,9 @@ jQuery(function ($) {
     }
 
     function targetListMarkUsed (form, target, cname) {
-        var $tset = $('#target-contents');
-        var id = 'target-is-' + cname;
-        var $target = $('#' + id, $tset);
+        var $tset = $("#target-contents");
+        var id = "target-is-" + cname;
+        var $target = $("#" + id, $tset);
 
         if ($target && $target.length > 0) {
             $target.remove();
@@ -395,13 +402,13 @@ jQuery(function ($) {
 
         } else {
 
-            var content = '<div id="' + id + '" class="target ' + id 
-                + ' target-info rounded buttonish green">'
+            var content = "<div id='" + id + "' class='target " + id 
+                + " target-info rounded buttonish green'>"
                 + target
-                + '</div>';
+                + "</div>";
 
-            var $target = jQuery(content);
-            $tset.prepend($target);
+            var $out = jQuery(content);
+            $tset.prepend($out);
             targetListTrim($tset);
         }
 
@@ -411,11 +418,11 @@ jQuery(function ($) {
             cmdHistory.focus();
         });
 
-        $('#target-contents-none').css({ display: "none" });
+        $("#target-contents-none").css({ display: "none" });
     }
 
     function targetListTrim ($tset) {
-        $('.target', $tset).each(function (index, target) {
+        $(".target", $tset).each(function (index, target) {
             var delta = $(target).position().top -
                         $(target).parent().position().top;
             if ( delta > prefs.max_target_position) {
@@ -428,45 +435,52 @@ jQuery(function ($) {
         var test;
         $.dbgpr("commmandWrapperAdd", target, command);
 
-        var content = '<div class="output-wrapper ui-widget '
-            +     'ui-widget-content ui-corner-all">'
-            + '<div class="output-header ui-state-default '
-            +     'ui-widget-header ui-corner-all">'
-            + '<button class="icon-remove-section"></button>'
-            + '<button class="icon-hide-section hidden"></button>'
-            + '<button class="icon-unhide-section"></button>'
-            + '<button class="keeper icon-keeper-section"></button>';
+        var content = "<div class='output-wrapper ui-widget "
+            +     "ui-widget-content ui-corner-all'>"
+            + "<div class='output-header ui-state-default "
+            +     "ui-widget-header ui-corner-all'>"
+            + "<button class='icon-remove-section'></button>"
+            + "<button class='icon-hide-section hidden'></button>"
+            + "<button class='icon-unhide-section'></button>"
+            + "<button class='keeper icon-keeper-section'></button>";
 
         if (target) {
-            content += '<div class="target-value rounded buttonish green">'
+            content += "<div class='target-value rounded buttonish green'>"
                 + target
-                + '</div><div class="label"> -> </div>';
+                + "</div><div class='label'> -> </div>";
         }
 
-        content += '<div class="command-value rounded blue">'
-                + command
-                + '</div><div class="command-number">'
-                + " (" + ++command_number + ")"
-                + '</div></div><div class="output-content can-hide" '
-                +    'style="white-space: pre-wrap">';
+        content += "<div class='command-value rounded blue'>"
+            + command
+            + "</div><div class='command-number'>"
+            + " (" + ++command_number + ")"
+            + "</div></div><div class='output-content can-hide'>"
 
-        if (prefs.live_action) {
-            content += '<img src="/icons/loading.png">';
-            content += "    ....loading...\n";
-
-        } else if (command.substring(0, 9) == "test form") {
+        if (command.substring(0, 9) == "test form") {
             test = command.substring(10);
             if (testForms[test]) {
                 content += "<div class='ui-yform'></div>";
             } else {
                 test = undefined;
             }
+            content += "<div class='output-replace' "
+                + "style='white-space: pre-wrap'></div>";
+
+        } else if (prefs.live_action) {
+            content += "<div class='output-replace' "
+                + "style='white-space: pre-wrap'>";
+                + loadingMessage;
+                + "</div>";
+
 
         } else {
-            content += "test-output\nmore\nand more and more\noutput\n";
+            content += "<div class='output-replace' "
+                + "style='white-space: pre-wrap'>"
+                + "test-output\nmore\nand more and more\noutput\n";
+                + "</div>";
         }
 
-        content += '</div>';
+        content += "</div>";
 
         var $newp = jQuery(content);
         $output.prepend($newp);
@@ -474,54 +488,63 @@ jQuery(function ($) {
             $newp.slideUp(0).slideDown(prefs.slide_speed);
         divUnhide($newp);
 
-        if (prefs.live_action) {
-            var $out = $(".output-content", $newp);
-            $out.slideUp(0).slideDown(prefs.slide_speed);
-
-            $out.load("/bin/cmd.slax",
-                      { target: target, command: command, form: "false" },
-                      function (text, status, http) {
-                          $.dbgpr("target", target);
-                          $.dbgpr("command", command);
-                          $.dbgpr("text", text);
-                          $.dbgpr("status", status);
-                          $.dbgpr("http", http);
-                          if (status == "error") {
-                              $(this).html('<div class="command-error">'
-                                           + 'An error occurred: '
-                                           + http.statusText
-                                           + '</div>');
-                          } else {
-                              var $xml = $($.parseXML(text));
-                              var $err = $xml.find("[nodeName='xnm:error']");
-                              if ($err[0])
-                                  $(this).html('<div class="command-error">'
-                                     + 'An error occurred: '
-                                     + htmlEscape($("message", $err).text())
-                                     + '</div>');
-                          }
-                          $out.slideDown(prefs.slide_speed);
-                      });
-        } else if (test) {
+        if (test) {
             var yd = $("div.ui-yform", $newp);
             var yf = $.yform(testForms[test], yd);
             yf.buildForm();
             yf.focus();
+        } else if (prefs.live_action) {
+            var $out = $("div.output-replace", $newp);
+            $out.slideUp(0).slideDown(prefs.slide_speed);
+
+            $out.load("/bin/cmd.slax",
+                         {
+                             target: target,
+                             command: command,
+                             form: "false"
+                         },
+                         function (text, status, http) {
+                             loadHttpReply(text, status, http,
+                                           $(this), $out);
+                         });
+
         }
 
         decorateIcons($newp);
 
         if (target) {
-            $('.target-value', $newp).click(function () {
+            $(".target-value", $newp).click(function () {
                 tgtHistory.select($(this).text());
             });
         }
 
-        $('.command-value', $newp).click(function () {
+        $(".command-value", $newp).click(function () {
             cmdHistory.select($(this).text());
         });
 
         return false;
+    }
+
+    function loadHttpReply (text, status, http, $this, $out) {
+        $.dbgpr("loadHttpReply: ", "target:", target,
+                "; status:", status, "; text:", text);
+        $.dbgpr("http", http);
+
+        if (status == "error") {
+            $this.html("<div class='command-error'>"
+                         + "An error occurred: "
+                         + http.statusText
+                         + "</div>");
+        } else {
+            var $xml = $($.parseXML(text));
+            var $err = $xml.find("[nodeName='xnm:error']");
+            if ($err[0])
+                $this.html("<div class='command-error'>"
+                             + "An error occurred: "
+                           + htmlEscape($("message", $err).text())
+                             + "</div>");
+        }
+        $out.slideDown(prefs.slide_speed);
     }
 
     function htmlEscape (val) {
@@ -565,19 +588,19 @@ jQuery(function ($) {
     }
 
     function divIsHidden ($wrapper) {
-        return $('.icon-hide-section', $wrapper).hasClass("hidden");
+        return $(".icon-hide-section", $wrapper).hasClass("hidden");
     }
 
     function divHide ($wrapper) {
-        $('.icon-unhide-section', $wrapper).removeClass("hidden");
-        $('.icon-hide-section', $wrapper).addClass("hidden");
-        $('.can-hide', $wrapper).slideUp(prefs.slide_speed);
+        $(".icon-unhide-section", $wrapper).removeClass("hidden");
+        $(".icon-hide-section", $wrapper).addClass("hidden");
+        $(".can-hide", $wrapper).slideUp(prefs.slide_speed);
     }
 
     function divUnhide ($wrapper) {
-        $('.icon-unhide-section', $wrapper).addClass("hidden");
-        $('.icon-hide-section', $wrapper).removeClass("hidden");
-        $('.can-hide', $wrapper).slideDown(prefs.slide_speed);
+        $(".icon-unhide-section", $wrapper).addClass("hidden");
+        $(".icon-hide-section", $wrapper).removeClass("hidden");
+        $(".can-hide", $wrapper).slideDown(prefs.slide_speed);
     }
 
     function prefsSetupConfirmExit () {
@@ -606,37 +629,37 @@ jQuery(function ($) {
      * Our dbgpr container decorations (which need some of our functions)
      */
     function decorateIcons ($wrapper) {
-        $('.icon-remove-section', $wrapper).text("Close").button({
+        $(".icon-remove-section", $wrapper).text("Close").button({
             text: false,
-            icons: { primary: 'ui-icon-closethick' },
+            icons: { primary: "ui-icon-closethick" },
         }).click(function () {
             divRemove($wrapper);
         });
 
-        $('.icon-hide-section', $wrapper).text("Hide").button({
+        $(".icon-hide-section", $wrapper).text("Hide").button({
             text: false,
-            icons: { primary: 'ui-icon-minusthick' },
+            icons: { primary: "ui-icon-minusthick" },
         }).click(function () {
             divHide($wrapper);
         });
 
-        $('.icon-unhide-section', $wrapper).text("Unhide").button({
+        $(".icon-unhide-section", $wrapper).text("Unhide").button({
             text: false,
-            icons: { primary: 'ui-icon-plusthick' },
+            icons: { primary: "ui-icon-plusthick" },
         }).click(function () {
             divUnhide($wrapper);
         }).addClass("hidden");
 
-        $('.icon-clear-section', $wrapper).text("Clear").button({
+        $(".icon-clear-section", $wrapper).text("Clear").button({
             text: false,
-            icons: { primary: 'ui-icon-trash' },
+            icons: { primary: "ui-icon-trash" },
         }).click(function () {
-            $('.can-hide', $wrapper).text("");
+            $(".can-hide", $wrapper).text("");
         });
 
-        $('.icon-keeper-section', $wrapper).text("Keep").button({
+        $(".icon-keeper-section", $wrapper).text("Keep").button({
             text: false,
-            icons: { primary: 'ui-icon-star' },
+            icons: { primary: "ui-icon-star" },
         }).click(function () {
             $wrapper.toggleClass("keeper-active");
             $(this).toggleClass("ui-state-highlight");
@@ -646,18 +669,51 @@ jQuery(function ($) {
     function hideCommandForm (yform) {
         var $top = $(yform.form).parents("div.output-wrapper");
         var $bar = $("div.output-header", $top);
-        $bar.append("button class='
-        
-        $('.icon-remove-section', $wrapper).text("Close").button({
-            text: false,
-            icons: { primary: 'ui-icon-closethick' },
-        }).click(function () {
-            divRemove($wrapper);
-        });
 
+        if ($("button.icon-show-form", $bar).length == 0) {
+            $bar.append("<button class='icon-show-form'/>"
+                        + "<button class='icon-hide-form'/>");
+
+            $(".icon-show-form", $bar).text("Show Form").button({
+                text: false,
+                icons: { primary: "ui-icon-circle-arrow-s" },
+            }).click(function () {
+                $(".icon-hide-form", $bar).removeClass("hidden");
+                $(".icon-show-form", $bar).addClass("hidden");
+                yform.form.slideDown(prefs.slide_speed);
+            });
+
+            $(".icon-hide-form", $bar).text("Hide Form").button({
+                text: false,
+                icons: { primary: "ui-icon-circle-arrow-n" },
+            }).addClass("hidden").click(function () {
+                $(".icon-show-form", $bar).removeClass("hidden");
+                $(".icon-hide-form", $bar).addClass("hidden");
+                yform.form.slideUp(prefs.slide_speed);
+            });
+        }
+
+        $(".icon-show-form", $bar).removeClass("hidden");
+        $(".icon-hide-form", $bar).addClass("hidden");
+        yform.form.slideUp(prefs.slide_speed);
     }
 
-    function runRpc (yform, rpc) {
+    function runRpc (yform, $out, rpc, target) {
+        $.dbgpr("runrpc:", rpc);
+        if (prefs.live_action) {
+            $out.slideUp(0).slideDown(prefs.slide_speed);
+            $out.load("/bin/cmd.slax",
+                         {
+                             target: target, // target is optional
+                             rpc: rpc,       // rpc is in string form
+                             form: "false",  // don't want form in reply
+                         },
+                         function (text, status, http) {
+                             loadHttpReply(text, status, http, $(this), $out);
+                         });
+        } else {
+            $out.text("RPC:\n" + rpc);
+        }
     }
 
     cliInit();

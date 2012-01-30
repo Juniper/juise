@@ -1,0 +1,113 @@
+div.ping-results div { display: inline-block; }
+div.ping-results div.probe-result { display: block; }
+div.ping-results div.probe-results-summary { display: block; }
+
+div.ping-results div.target-host:before { content: "PING " }
+
+div.ping-results div.target-ip:before { content: " (" }
+div.ping-results div.target-ip:after { content: ")" }
+
+div.ping-results div.packet-size:before { content: ": " }
+div.ping-results div.packet-size:after { content: " data bytes" }
+
+div.probe-result div.probe-index { display: none; }
+div.probe-result div.probe-success:before { content: " (success) "; }
+div.probe-result div.sequence-number:before { content: " icmp_seq="; }
+div.probe-result div.ip-address:before { content: " from "; }
+div.probe-result div.time-to-live:before { content: " ttl="; }
+div.probe-result div.response-size { float: left; }
+div.probe-result div.response-size:after { content: " bytes "; }
+div.probe-result div.rtt:before { content: " time="; }
+div.probe-result div.rtt:after { content: " usecs"; }
+
+div.probe-results-summary:before {
+    content: "--- ping statistics ---";
+   display: block;
+}
+div.probe-results-summary div.probes-sent:after { 
+    content: " packet transmitted,"; 
+}
+div.probe-results-summary div.responses-received:after { 
+    content: " packet received,"; 
+}
+div.probe-results-summary div.packet-loss:after { 
+    content: " packet loss; ";
+}
+div.probe-results-summary div.rtt-minimum:before { 
+    content: "round-trip min/avg/max/stddev = "; 
+}
+div.probe-results-summary div.rtt-maximum:before { content: "/"; }
+div.probe-results-summary div.rtt-average:before { content: "/"; }
+div.probe-results-summary div.rtt-stddev:before { content: "/"; }
+div.probe-results-summary div.rtt-stddev:after { content: " usecs"; }
+
+
+
+
+
+div.ping-response ping-results {
+    white-space: normal;
+}
+div.ping-response ping-results
+    probe-result { display: block; }
+div.ping-response ping-results
+    probe-results-summary { display: block; }
+
+div.ping-response ping-results
+    target-host:before { content: "PING " }
+
+div.ping-response ping-results
+    target-ip:before { content: " (" }
+div.ping-response ping-results
+    target-ip:after { content: ")" }
+div.ping-response ping-results
+    packet-size:before { content: ": " }
+div.ping-response ping-results
+    packet-size:after { content: " data bytes" }
+
+div.ping-response ping-results probe-result
+    probe-index { display: none; }
+div.ping-response ping-results probe-result
+    probe-success:before { content: " (success) "; }
+div.ping-response ping-results probe-result
+    sequence-number:before { content: " icmp_seq="; }
+div.ping-response ping-results probe-result
+    ip-address:before { content: " from "; }
+div.ping-response ping-results probe-result
+    time-to-live:before { content: " ttl="; }
+div.ping-response ping-results probe-result
+    response-size { float: left; }
+div.ping-response ping-results probe-result
+    response-size:after { content: " bytes "; }
+div.ping-response ping-results probe-result
+    rtt:before { content: " time="; }
+div.ping-response ping-results probe-result
+    rtt:after { content: " usecs"; }
+
+div.ping-response ping-results probe-results-summary:before {
+    content: "--- ping statistics ---";
+   display: block;
+}
+
+div.ping-response ping-results probe-results-summary
+     probes-sent:after { content: " packet transmitted,"; }
+div.ping-response ping-results probe-results-summary
+     responses-received:after { 
+    content: " packet received,"; 
+}
+div.ping-response ping-results probe-results-summary
+     packet-loss:after { 
+    content: " packet loss; ";
+}
+div.ping-response ping-results probe-results-summary
+     rtt-minimum:before { 
+    content: "round-trip min/avg/max/stddev = "; 
+}
+div.ping-response ping-results probe-results-summary
+     rtt-maximum:before { content: "/"; }
+div.ping-response ping-results probe-results-summary
+     rtt-average:before { content: "/"; }
+div.ping-response ping-results probe-results-summary
+     rtt-stddev:before { content: "/"; }
+div.ping-response ping-results probe-results-summary
+     rtt-stddev:after { content: " usecs"; }
