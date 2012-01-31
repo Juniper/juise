@@ -26,6 +26,7 @@ BASE_FILES = \
     jquery/jquery.js \
     jquery/jquery.min.js \
     jquery/jquery.mruPulldown.js \
+    bin/clira.slax \
     clira/clira.html \
     clira/clira.css \
     clira/clira.js \

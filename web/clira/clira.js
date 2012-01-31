@@ -407,8 +407,8 @@ jQuery(function ($) {
                 + target
                 + "</div>";
 
-            var $out = jQuery(content);
-            $tset.prepend($out);
+            $target = jQuery(content);
+            $tset.prepend($target);
             targetListTrim($tset);
         }
 
@@ -497,7 +497,7 @@ jQuery(function ($) {
             var $out = $("div.output-replace", $newp);
             $out.slideUp(0).slideDown(prefs.slide_speed);
 
-            $out.load("/bin/cmd.slax",
+            $out.load("/bin/clira.slax",
                          {
                              target: target,
                              command: command,
@@ -514,12 +514,16 @@ jQuery(function ($) {
 
         if (target) {
             $(".target-value", $newp).click(function () {
+                tgtHistory.close();
                 tgtHistory.select($(this).text());
+                cmdHistory.focus();
             });
         }
 
         $(".command-value", $newp).click(function () {
+            cmdHistory.close();
             cmdHistory.select($(this).text());
+            cmdHistory.focus();
         });
 
         return false;
