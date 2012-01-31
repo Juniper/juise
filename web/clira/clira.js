@@ -706,7 +706,7 @@ jQuery(function ($) {
         $.dbgpr("runrpc:", rpc);
         if (prefs.live_action) {
             $out.slideUp(0).slideDown(prefs.slide_speed);
-            $out.load("/bin/cmd.slax",
+            $out.load("/bin/clira.slax",
                          {
                              target: target, // target is optional
                              rpc: rpc,       // rpc is in string form
