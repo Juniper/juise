@@ -31,14 +31,14 @@ match / {
 		<script type="text/javascript">;
 	
 		<style type="text/css" title="currentStyle" media="screen"> {
-		    expr '@import url("/static/cli.css");';
+		    expr '@import url("/clira/clira.css");';
 		}
 	    }
 	    <body> {
 		<title> "JUNOS Commands in HTML";
 		<h1> "JUNOS Commands";
 
-		<form action="/bin/cmd.slax"> {
+		<form action="/clira/clira.slax"> {
 		    <input spellcheck="false" autocomplete="off"
 		    maxlength="2048" name="command" size="60" type="text"
 		    value=$command>;

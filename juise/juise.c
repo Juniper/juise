@@ -63,9 +63,10 @@ static int nbparams;
 
 int dump_all;
 
-int opt_debugger;
-int opt_indent;
-static int opt_load;
+int opt_debugger;		/* Invoke the debugger */
+int opt_indent;			/* Pretty-print XML output */
+static int opt_load;		/* Under-implemented */
+static int opt_local;		/* Run a local (server-based) script */
 char *opt_output_format;
 char *opt_username;
 
@@ -930,14 +931,12 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
     int len = 0;
     int i;
     lx_node_t *nodep, *paramp = NULL;
-    char *cp, *bp;
-    char buf[BUFSIZ];
-    struct line_s {		/* XXX: should be a slax_data_list_t */
-	struct line_s *li_next;
-	unsigned li_len;
-	char li_data[0];
-    } *lines, **lastp = &lines, *lp;
     const char *method = NULL;
+    char *cp;
+    char buf[BUFSIZ];
+    slax_data_list_t lines;
+
+    slaxDataListInit(&lines);
 
     nodep = xmlNewNode(NULL, (const xmlChar *) ELT_CGI);
     if (nodep == NULL)
@@ -970,52 +969,33 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	trace(trace_file, TRACE_ALL, "cgi: stdin: %s", buf);
 	i = strlen(buf);
 	len += i;
-	lp = malloc(i + sizeof(*lp));
-	if (lp == NULL)
-	    break;
-	lp->li_next = NULL;
-	lp->li_len = i;
-	memcpy(lp->li_data, buf, i);
-	*lastp = lp;
-	lastp = &lp->li_next;
+	slaxDataListAddLen(&lines, buf, i);
     }
 
     if (len) {
-	/* If we have a linked line, combine them into a single buffer */
-	if (lines->li_next) {
-	    bp = malloc(len);
+	slax_data_node_t *dnp;
+	char *bp;
 
-	    if (bp) {
-		cp = bp;
-		for (lp = lines; lp; lp = lp->li_next) {
-		    memcpy(cp, lp->li_data, lp->li_len);
-		    cp += lp->li_len;
-		}
-		*cp = '\0';
-	    }
-	} else {
-	    bp = lines->li_data;
-	}
-
+	bp = malloc(len + 1);
 	if (bp) {
+	    len = 0;
+	    SLAXDATALIST_FOREACH(dnp, &lines) {
+		memcpy(bp + len, dnp->dn_data, dnp->dn_len);
+		len += dnp->dn_len;
+	    }
+	    bp[len] = '\0';
+
 	    if (method && streq(method, "POST")) {
 		juise_add_node(nodep, ELT_CONTENTS, bp);
 	    } else {
 		parse_query_string(paramp, bp);
 	    }
 
-	    if (bp != lines->li_data)
-		free(bp);
-	}
-
-	for (lp = lines; lp; lp = lines) {
-	    lines = lp->li_next;
-	    free(lp);
+	    slaxDataListClean(&lines);
 	}
     }
 
     juise_make_param("cgi", "/op-script-input/cgi", FALSE);
-
 
     return do_run_op_common(scriptname, input, argv, nodep, JM_CGI);
 }
@@ -1024,6 +1004,115 @@ static int
 do_run_as_fastcgi (const char *scriptname UNUSED, const char *input UNUSED,
 		   char **argv UNUSED)
 {
+    return 0;
+}
+
+/*
+ * do_run_rpc is used to give REST-ish access to NETCONF RPCs.  The
+ * URL passed in has five parts:
+ *
+ *    '/' leader '/' target '/' operation ['@' attributes] '/' params
+ *
+ * leader: is anything before the second slash, typically "/rpc/"
+ * target: target device for the RPC
+ * operation: the RPC to invoke
+ * attributes: optional set of attributes for the operation
+ * params: optional set of param values, encoded as "name[=value]"
+ *     pairs separated by '/'
+ * In addition, parameter values can be encoded using the "?n=v" HTTP url
+ * or as POST variables.
+ *
+ * We build the RPC and let the libjuise functions to the raw RPC.
+ */
+static int
+do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
+	    char **argv UNUSED)
+{
+    char *cp, *uri, *target, *user = NULL, *pass = NULL;
+    char *operation, *attributes, *params;
+    lx_document_t *docp;
+    xmlXPathContextPtr ctxt;
+    xmlXPathParserContext *pctxt;
+    lx_nodeset_t *reply;
+    int i;
+
+    docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
+    ctxt = xmlXPathNewContext(docp);
+    pctxt = xmlXPathNewParserContext(NULL, ctxt);
+
+    uri = getenv("REQUEST_URI");
+    if (uri == NULL || *uri == '\0')
+	errx(1, "missing REQUEST_URI");
+
+    target = strchr(uri + 1, '/');
+    if (target == NULL || target[1] == '\0')
+	errx(1, "missing target");
+    *target++ = '\0';
+
+    cp = strchr(target, '@');
+    if (cp) {
+	if (cp == target)
+	    target += 1;
+	else {
+	    user = target;
+	    *cp++ = '\0';
+	    target = cp;
+	}
+    }
+
+    cp = strchr(target, ':');
+    if (cp) {
+	if (cp[1] != '\0') {
+	    *cp++ = '\0';
+	    pass = cp;
+	}
+    }
+
+    operation = strchr(target, '/');
+    if (operation == NULL || operation[0] == '\0')
+	errx(1, "missing operation");
+    *operation++ = '\0';
+
+    params = strchr(operation, '/');
+    attributes = strchr(operation, '@');
+    if (attributes && (params == NULL || attributes < params)) {
+	*attributes++ = '\0';
+    } else {
+	attributes = NULL;
+    }
+    if (params)
+	*params++ = '\0';
+
+    trace(trace_file, TRACE_ALL, "rpc: target [%s] op [%s] attr [%s] p [%s]",
+	  target, operation, attributes ?: "", params ?: "");
+
+    lx_node_t *rpc = xmlNewNode(NULL, (const xmlChar *) operation);
+    if (rpc == NULL)
+	errx(1, "op: out of memory");
+
+    js_session_t *jsp = js_session_open(target, user, pass, 0, 0, 0);
+    if (jsp == NULL)
+	errx(1, "could not open session to target");
+    
+    reply = js_session_execute(pctxt, target, rpc, NULL, ST_DEFAULT);
+    if (reply == NULL)
+	err(0, "rpc operation failed");
+
+    if (rpc)
+	xmlFreeNode(rpc);
+
+    xmlSaveCtxt *handle;
+    handle = xmlSaveToFd(fileno(stdout), NULL,
+			 XML_SAVE_FORMAT | XML_SAVE_NO_DECL);
+    if (handle) {
+	for (i = 0; i < reply->nodeNr; i++)
+	    xmlSaveTree(handle, reply->nodeTab[i]);
+	xmlSaveFlush(handle);
+	xmlSaveClose(handle);
+    }
+
+    js_session_close1(jsp);
+
     return 0;
 }
 
@@ -1155,21 +1244,12 @@ main (int argc UNUSED, char **argv, char **envp)
     cp = *argv;
     if (cp) {
 	static char strxmlmode[] = "xml-mode";
-	static char strcgi[] = ".cgi";
-	static char strfastcgi[] = ".fastcgi";
-
 	char *ep = cp + strlen(cp) + 1;
 
 	if (streq(strxmlmode, ep - sizeof(strxmlmode))) {
 	    func = do_run_server_on_stdin;
 	    skip_args = TRUE;
 	    jsio_set_default_session_type(ST_JUNOS_NETCONF);
-
-	} else if (streq(strcgi, ep - sizeof(strcgi))) {
-	    func = do_run_as_cgi;
-
-	} else if (streq(strfastcgi, ep - sizeof(strfastcgi))) {
-	    func = do_run_as_fastcgi;
 	}
     }
 
@@ -1189,6 +1269,9 @@ main (int argc UNUSED, char **argv, char **envp)
 		opt_commit_script = TRUE;
 		func = do_test_commit_script;
 
+	    } else if (streq(cp, "--cgi")) {
+		func = do_run_as_cgi;
+
 	    } else if (streq(cp, "--debug") || streq(cp, "-d")) {
 		opt_debugger = TRUE;
 
@@ -1197,6 +1280,9 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--directory") || streq(cp, "-D")) {
 		srv_set_juise_dir(*++argv);
+
+	    } else if (streq(cp, "--fastcgi")) {
+		func = do_run_as_fastcgi;
 
 	    } else if (streq(cp, "--include") || streq(cp, "-I")) {
 		slaxIncludeAdd(*++argv);
@@ -1212,6 +1298,9 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--load") || streq(cp, "-l")) {
 		opt_load = TRUE;
+
+	    } else if (streq(cp, "--local")) {
+		opt_local = TRUE;
 
 	    } else if (streq(cp, "--lib") || streq(cp, "-L")) {
 		slaxDynAdd(*++argv);
@@ -1245,6 +1334,9 @@ main (int argc UNUSED, char **argv, char **envp)
 		    return -1;
 		}
 		jsio_set_default_session_type(stype);
+
+	    } else if (streq(cp, "--rpc")) {
+		func = do_run_rpc;
 
 	    } else if (streq(cp, "--run-server") || streq(cp, "-R")) {
 		func = do_run_server_on_stdin;

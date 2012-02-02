@@ -181,7 +181,7 @@ jQuery(function ($) {
                 info.change(value, initial, prev);
         }
 
-        yform.buildForm = function () {
+        yform.buildForm = function (execute) {
             if (this.built) 
                 return;
             this.built = true;
@@ -203,7 +203,7 @@ jQuery(function ($) {
                 $(".ui-yf-execute", $form).button().click(function (event) {
                     event.preventDefault();
                     $.dbgpr("yform command execute button", $(this).text());
-                    yform.guide.command.execute(yform);
+                    execute(yform, yform.guide);
                 });
 
             } else {

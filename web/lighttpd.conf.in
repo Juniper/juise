@@ -13,7 +13,11 @@ server.modules = (
     "mod_fastcgi",
 )
 
-juise.assign = ( ".slax"  => "@prefix@/libexec/juise.cgi" )
+juise.assign = ( 
+    ".slax"  => "@prefix@/bin/juise --cgi",
+    "/rpc/"  => "@prefix@/bin/juise --rpc",
+    "/local/"  => "@prefix@/bin/juise --cgi --local",
+)
 
 debug.log-request-header = "enable"
 debug.log-response-header = "enable"

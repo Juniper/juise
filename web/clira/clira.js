@@ -107,15 +107,6 @@ jQuery(function ($) {
             title: "Ping Options",
             command: {
                 rpc: "ping",
-                execute: function (yform) {
-                    hideCommandForm(yform);
-                    var $out = yform.form.parents("div.output-content")
-                            .find("div.output-replace");
-                    $out.html(loadingMessage);
-
-                    var rpc = yform.buildRpc();
-                    runRpc(yform, $out, rpc, tgtHistory.value());
-                },
             },
             tabs: { },
             css: "/clira/ping.css",
@@ -468,10 +459,9 @@ jQuery(function ($) {
 
         } else if (prefs.live_action) {
             content += "<div class='output-replace' "
-                + "style='white-space: pre-wrap'>";
+                + "style='white-space: pre-wrap'>"
                 + loadingMessage;
                 + "</div>";
-
 
         } else {
             content += "<div class='output-replace' "
@@ -491,13 +481,23 @@ jQuery(function ($) {
         if (test) {
             var yd = $("div.ui-yform", $newp);
             var yf = $.yform(testForms[test], yd);
-            yf.buildForm();
+
+            yf.buildForm(function (yform, guide) {
+                hideCommandForm(yform);
+                var $out = yform.form.parents("div.output-content")
+                .find("div.output-replace");
+                $out.html(loadingMessage);
+
+                var rpc = yform.buildRpc();
+                runRpc(yform, $out, rpc, tgtHistory.value());
+            });
             yf.focus();
+
         } else if (prefs.live_action) {
             var $out = $("div.output-replace", $newp);
             $out.slideUp(0).slideDown(prefs.slide_speed);
 
-            $out.load("/bin/clira.slax",
+            $out.load("/clira/clira.slax",
                          {
                              target: target,
                              command: command,
@@ -706,7 +706,7 @@ jQuery(function ($) {
         $.dbgpr("runrpc:", rpc);
         if (prefs.live_action) {
             $out.slideUp(0).slideDown(prefs.slide_speed);
-            $out.load("/bin/clira.slax",
+            $out.load("/clira/clira.slax",
                          {
                              target: target, // target is optional
                              rpc: rpc,       // rpc is in string form

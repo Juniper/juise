@@ -225,8 +225,8 @@ parse_ipv4addr (const char *str, unsigned long ipflags,
     }
 
     /*
-     * Seperate address and prefix length (or mask) if such input is allowed.
-     * Only copy the string if we need to seperate.
+     * Separate address and prefix length (or mask) if such input is allowed.
+     * Only copy the string if we need to separate.
      */
     if (ipflags & PIF_LEN) {
 	cp = strchr(str, IP_DELIMITER_PREFIX);
@@ -395,8 +395,8 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
     }
 
     /*
-     * Seperate address and prefix length (or mask) if such input is allowed.
-     * Only copy the string if we need to seperate.
+     * Separate address and prefix length (or mask) if such input is allowed.
+     * Only copy the string if we need to separate.
      */
     if (ipflags & PIF_LEN) {
 	cp = strchr(str, IP_DELIMITER_PREFIX);

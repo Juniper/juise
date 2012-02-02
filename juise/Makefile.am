@@ -54,7 +54,7 @@ man_MANS = juise.1x
 
 EXTRA_DIST = juise.1x
 
-install-exec-hook:
+old-install-exec-hook:
 	mkdir -p ${libexecdir} ${bindir}
 	cd ${bindir} && fromdir= && todir= && \
 	    ( for file in xml-mode juise.cgi juise.fastcgi ; do \
