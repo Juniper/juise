@@ -77,31 +77,31 @@ typedef struct {
 typedef struct {
     array *cgi;
     unsigned short execute_x_only;
-} plugin_config;
+} mod_juise_plugin_config;
 
 typedef struct {
     PLUGIN_DATA;
     buffer_pid_t cgi_pid;
     buffer *tmp_buf;
     buffer *parse_response;
-    plugin_config **config_storage;
-    plugin_config conf;
-} plugin_data;
+    mod_juise_plugin_config **config_storage;
+    mod_juise_plugin_config conf;
+} mod_juise_plugin_data;
 
 typedef struct {
     pid_t pid;
     int fd;
     int fde_ndx; /* index into the fd-event buffer */
     connection *remote_conn;  /* dumb pointer */
-    plugin_data *plugin_data; /* dumb pointer */
+    mod_juise_plugin_data *plugin_data; /* dumb pointer */
     buffer *response;
     buffer *response_header;
-} handler_ctx;
+} mod_juise_handler_context;
 
-static handler_ctx *
-juise_handler_ctx_init (void)
+static mod_juise_handler_context *
+mod_juise_handler_ctx_init (void)
 {
-    handler_ctx *hctx = calloc(1, sizeof(*hctx));
+    mod_juise_handler_context *hctx = calloc(1, sizeof(*hctx));
 
     assert(hctx);
 
@@ -112,7 +112,7 @@ juise_handler_ctx_init (void)
 }
 
 static void
-juise_handler_ctx_free (handler_ctx *hctx)
+mod_juise_handler_ctx_free (mod_juise_handler_context *hctx)
 {
     buffer_free(hctx->response);
     buffer_free(hctx->response_header);
@@ -129,7 +129,7 @@ enum {
 
 INIT_FUNC(mod_juise_init)
 {
-    plugin_data *p;
+    mod_juise_plugin_data *p;
 
     p = calloc(1, sizeof(*p));
 
@@ -141,9 +141,9 @@ INIT_FUNC(mod_juise_init)
     return p;
 }
 
-FREE_FUNC(mod_juise_free)
+FREE_FUNC(mod_juise_cleanup)
 {
-    plugin_data *p = p_d;
+    mod_juise_plugin_data *p = p_d;
     buffer_pid_t *r = &p->cgi_pid;
 
     UNUSED(srv);
@@ -151,7 +151,7 @@ FREE_FUNC(mod_juise_free)
     if (p->config_storage) {
 	size_t i;
 	for (i = 0; i < srv->config_context->used; i++) {
-	    plugin_config *s = p->config_storage[i];
+	    mod_juise_plugin_config *s = p->config_storage[i];
 
 	    array_free(s->cgi);
 
@@ -173,7 +173,7 @@ FREE_FUNC(mod_juise_free)
 
 SETDEFAULTS_FUNC(mod_juise_set_defaults)
 {
-    plugin_data *p = p_d;
+    mod_juise_plugin_data *p = p_d;
     size_t i = 0;
 
     config_values_t cv[] = {
@@ -192,9 +192,9 @@ SETDEFAULTS_FUNC(mod_juise_set_defaults)
 			       sizeof(*p->config_storage));
 
     for (i = 0; i < srv->config_context->used; i++) {
-	plugin_config *s;
+	mod_juise_plugin_config *s;
 
-	s = calloc(1, sizeof(plugin_config));
+	s = calloc(1, sizeof(*s));
 	assert(s);
 
 	s->cgi = array_init();
@@ -215,7 +215,7 @@ SETDEFAULTS_FUNC(mod_juise_set_defaults)
 }
 
 static int
-juise_pid_add (server *srv, plugin_data *p, pid_t pid)
+mod_juise_pid_add (server *srv, mod_juise_plugin_data *p, pid_t pid)
 {
     int m = -1;
     size_t i;
@@ -242,7 +242,7 @@ juise_pid_add (server *srv, plugin_data *p, pid_t pid)
 }
 
 static int
-juise_pid_del (server *srv, plugin_data *p, pid_t pid)
+mod_juise_pid_del (server *srv, mod_juise_plugin_data *p, pid_t pid)
 {
     size_t i;
     buffer_pid_t *r = &(p->cgi_pid);
@@ -267,7 +267,7 @@ juise_pid_del (server *srv, plugin_data *p, pid_t pid)
 }
 
 static int
-juise_response_parse (server *srv, connection *con, plugin_data *p, buffer *in)
+mod_juise_response_parse (server *srv, connection *con, mod_juise_plugin_data *p, buffer *in)
 {
     char *ns;
     const char *s;
@@ -379,9 +379,9 @@ juise_response_parse (server *srv, connection *con, plugin_data *p, buffer *in)
 }
 
 static int
-juise_demux_response (server *srv, handler_ctx *hctx)
+mod_juise_demux_response (server *srv, mod_juise_handler_context *hctx)
 {
-    plugin_data *p = hctx->plugin_data;
+    mod_juise_plugin_data *p = hctx->plugin_data;
     connection *con = hctx->remote_conn;
 
     for (;;) {
@@ -530,7 +530,7 @@ juise_demux_response (server *srv, handler_ctx *hctx)
 		    hctx->response_header->used = i + 1; /* the string + \0 */
 					
 		    /* parse the response header */
-		    juise_response_parse(srv, con, p, hctx->response_header);
+		    mod_juise_response_parse(srv, con, p, hctx->response_header);
 
 		    /* enable chunked-transfer-encoding */
 		    if (con->request.http_version == HTTP_VERSION_1_1
@@ -563,11 +563,11 @@ juise_demux_response (server *srv, handler_ctx *hctx)
 }
 
 static handler_t
-juise_connection_close (server *srv, handler_ctx *hctx)
+mod_juise_connection_close (server *srv, mod_juise_handler_context *hctx)
 {
     int status;
     pid_t pid;
-    plugin_data *p;
+    mod_juise_plugin_data *p;
     connection  *con;
 
     if (hctx == NULL)
@@ -606,7 +606,7 @@ juise_connection_close (server *srv, handler_ctx *hctx)
     con->plugin_ctx[p->id] = NULL;
 
     /* is this a good idea ? */
-    juise_handler_ctx_free(hctx);
+    mod_juise_handler_ctx_free(hctx);
 
     /* if waitpid hasn't been called by response.c yet, do it here */
     if (pid) {
@@ -657,7 +657,7 @@ juise_connection_close (server *srv, handler_ctx *hctx)
 #endif
 		return HANDLER_GO_ON;
 	    } else {
-		LOGERR("sd", "cgi died, pid:", pid);
+		LOGERR("sdd", "cgi died, pid:", pid, status);
 		return HANDLER_GO_ON;
 	    }
 	}
@@ -666,24 +666,30 @@ juise_connection_close (server *srv, handler_ctx *hctx)
 	kill(pid, SIGTERM);
 
 	/* cgi-script is still alive, queue the PID for removal */
-	juise_pid_add(srv, p, pid);
+	mod_juise_pid_add(srv, p, pid);
     }
 #endif
     return HANDLER_GO_ON;
 }
 
 static handler_t
-juise_connection_close_callback (server *srv, connection *con, void *p_d)
+mod_juise_connection_reset (server *srv, connection *con, void *p_d)
 {
-    plugin_data *p = p_d;
+    handler_t rc;
+    mod_juise_plugin_data *p = p_d;
 
-    return juise_connection_close(srv, con->plugin_ctx[p->id]);
+    LOGERR("ss", "mod_juise: connection_reset: ", con->physical.path->ptr);
+
+    rc = mod_juise_connection_close(srv, con->plugin_ctx[p->id]);
+    LOGERR("s", "mod_juise: connection_reset: done");
+
+    return rc;
 }
 
 static handler_t
-juise_handle_fdevent (server *srv, void *ctx, int revents)
+mod_juise_handle_fdevent (server *srv, void *ctx, int revents)
 {
-    handler_ctx *hctx = ctx;
+    mod_juise_handler_context *hctx = ctx;
     connection  *con  = hctx->remote_conn;
 
     joblist_append(srv, con);
@@ -696,7 +702,7 @@ juise_handle_fdevent (server *srv, void *ctx, int revents)
     }
 
     if (revents & FDEVENT_IN) {
-	switch (juise_demux_response(srv, hctx)) {
+	switch (mod_juise_demux_response(srv, hctx)) {
 	case FDEVENT_HANDLED_NOT_FINISHED:
 	    break;
 
@@ -707,7 +713,7 @@ juise_handle_fdevent (server *srv, void *ctx, int revents)
 	    LOGERR("ddss", con->fd, hctx->fd,
 		   connection_get_state(con->state), "finished");
 #endif
-	    juise_connection_close(srv, hctx);
+	    mod_juise_connection_close(srv, hctx);
 
 	    /*
 	     * If we get a IN|HUP and have read everything don't exec
@@ -767,13 +773,13 @@ juise_handle_fdevent (server *srv, void *ctx, int revents)
 #endif
 
 	/* rtsigs didn't liked the close */
-	juise_connection_close(srv, hctx);
+	mod_juise_connection_close(srv, hctx);
 
     } else if (revents & FDEVENT_ERR) {
 	con->file_finished = 1;
 
 	/* kill all connections to the cgi process */
-	juise_connection_close(srv, hctx);
+	mod_juise_connection_close(srv, hctx);
 #if 1
 	LOGERR("s", "cgi-FDEVENT_ERR");
 #endif
@@ -784,7 +790,7 @@ juise_handle_fdevent (server *srv, void *ctx, int revents)
 }
 
 static int
-juise_env_add (char_array *env, const char *key,
+mod_juise_env_add (char_array *env, const char *key,
 	     size_t key_len, const char *val, size_t val_len)
 {
     char *dst;
@@ -812,8 +818,8 @@ juise_env_add (char_array *env, const char *key,
 }
 
 static int
-juise_create_env (server *srv, connection *con,
-		plugin_data *p, buffer *cgi_handler)
+mod_juise_create_env (server *srv, connection *con,
+		  mod_juise_plugin_data *p, buffer *cgi_handler)
 {
     pid_t pid;
 
@@ -824,12 +830,49 @@ juise_create_env (server *srv, connection *con,
     int to_cgi_fds[2];
     int from_cgi_fds[2];
     struct stat st;
+    char **argv;
+    int argc;
+    int i = 0;
+    char *sdup = NULL, *cp;
 
 #ifndef __WIN32
+    /* set up args */
+    argc = 32;
+    argv = malloc(sizeof(*argv) * argc);
+    i = 0;
+
+    if (cgi_handler->used > 1) {
+	sdup = cp = strdup(cgi_handler->ptr);
+	while (*cp) {
+	    argv[i++] = cp;
+	    if (i == argc - 2) /* Save two slots */
+		break;
+	    for (; *cp; cp++) {
+		if (*cp == '\\' && cp[1] != '\0')
+		    cp += 1;
+		else if (isspace((int) *cp)) {
+		    *cp++ = '\0';
+		    while (isspace((int) *cp))
+			cp += 1;
+		    break;
+		}
+	    }
+	}
+    }
+
+    if (con->physical.path->used > 1)
+	argv[i++] = con->physical.path->ptr;
+    argv[i] = NULL;
+    argc = i;
+
+    for (i = 0; i < argc; i++) {
+	LOGERR("ss", "juise: argv: ", argv[i]);
+    }
+
     if (cgi_handler->used > 1) {
 	/* stat the exec file */
-	if (stat(cgi_handler->ptr, &st) < 0) {
-	    LOGERR("sbss", "stat for cgi-handler", cgi_handler,
+	if (stat(argv[0], &st) < 0) {
+	    LOGERR("sbss", "stat for cgi-handler", argv[0],
 		   "failed:", strerror(errno));
 	    return -1;
 	}
@@ -852,9 +895,6 @@ juise_create_env (server *srv, connection *con,
     case 0:
 	{
 	    /* child */
-	    char **args;
-	    int argc;
-	    int i = 0;
 	    char buf[32];
 	    size_t n;
 	    char_array env;
@@ -882,10 +922,10 @@ juise_create_env (server *srv, connection *con,
 	    env.used = 0;
 
 	    if (buffer_is_empty(con->conf.server_tag)) {
-		juise_env_add(&env, CONST_STR_LEN("SERVER_SOFTWARE"),
+		mod_juise_env_add(&env, CONST_STR_LEN("SERVER_SOFTWARE"),
 			      CONST_STR_LEN(PACKAGE_DESC));
 	    } else {
-		juise_env_add(&env, CONST_STR_LEN("SERVER_SOFTWARE"),
+		mod_juise_env_add(&env, CONST_STR_LEN("SERVER_SOFTWARE"),
 			      CONST_BUF_LEN(con->conf.server_tag));
 	    }
 
@@ -895,7 +935,7 @@ juise_create_env (server *srv, connection *con,
 		if (colon)
 		    len = colon - con->server_name->ptr;
 
-		juise_env_add(&env, CONST_STR_LEN("SERVER_NAME"),
+		mod_juise_env_add(&env, CONST_STR_LEN("SERVER_NAME"),
 			      con->server_name->ptr, len);
 	    } else {
 #ifdef HAVE_IPV6
@@ -907,14 +947,14 @@ juise_create_env (server *srv, connection *con,
 #else
 		s = inet_ntoa(srv_sock->addr.ipv4.sin_addr);
 #endif
-		juise_env_add(&env, CONST_STR_LEN("SERVER_NAME"), s, strlen(s));
+		mod_juise_env_add(&env, CONST_STR_LEN("SERVER_NAME"), s, strlen(s));
 	    }
-	    juise_env_add(&env, CONST_STR_LEN("GATEWAY_INTERFACE"),
+	    mod_juise_env_add(&env, CONST_STR_LEN("GATEWAY_INTERFACE"),
 			  CONST_STR_LEN("CGI/1.1"));
 
 	    s = get_http_version_name(con->request.http_version);
 
-	    juise_env_add(&env, CONST_STR_LEN("SERVER_PROTOCOL"), s, strlen(s));
+	    mod_juise_env_add(&env, CONST_STR_LEN("SERVER_PROTOCOL"), s, strlen(s));
 
 	    LI_ltostr(buf,
 #ifdef HAVE_IPV6
@@ -925,7 +965,7 @@ juise_create_env (server *srv, connection *con,
 		      ntohs(srv_sock->addr.ipv4.sin_port)
 #endif
 		      );
-	    juise_env_add(&env, CONST_STR_LEN("SERVER_PORT"), buf, strlen(buf));
+	    mod_juise_env_add(&env, CONST_STR_LEN("SERVER_PORT"), buf, strlen(buf));
 
 	    switch (srv_sock->addr.plain.sa_family) {
 #ifdef HAVE_IPV6
@@ -949,23 +989,23 @@ juise_create_env (server *srv, connection *con,
 		s = "";
 		break;
 	    }
-	    juise_env_add(&env, CONST_STR_LEN("SERVER_ADDR"), s, strlen(s));
+	    mod_juise_env_add(&env, CONST_STR_LEN("SERVER_ADDR"), s, strlen(s));
 
 	    s = get_http_method_name(con->request.http_method);
-	    juise_env_add(&env, CONST_STR_LEN("REQUEST_METHOD"), s, strlen(s));
+	    mod_juise_env_add(&env, CONST_STR_LEN("REQUEST_METHOD"), s, strlen(s));
 
 	    if (!buffer_is_empty(con->request.pathinfo)) {
-		juise_env_add(&env, CONST_STR_LEN("PATH_INFO"),
+		mod_juise_env_add(&env, CONST_STR_LEN("PATH_INFO"),
 			      CONST_BUF_LEN(con->request.pathinfo));
 	    }
-	    juise_env_add(&env, CONST_STR_LEN("REDIRECT_STATUS"),
+	    mod_juise_env_add(&env, CONST_STR_LEN("REDIRECT_STATUS"),
 			  CONST_STR_LEN("200"));
 	    if (!buffer_is_empty(con->uri.query)) {
-		juise_env_add(&env, CONST_STR_LEN("QUERY_STRING"),
+		mod_juise_env_add(&env, CONST_STR_LEN("QUERY_STRING"),
 			      CONST_BUF_LEN(con->uri.query));
 	    }
 	    if (!buffer_is_empty(con->request.orig_uri)) {
-		juise_env_add(&env, CONST_STR_LEN("REQUEST_URI"),
+		mod_juise_env_add(&env, CONST_STR_LEN("REQUEST_URI"),
 			      CONST_BUF_LEN(con->request.orig_uri));
 	    }
 
@@ -992,7 +1032,7 @@ juise_create_env (server *srv, connection *con,
 		s = "";
 	    }
 
-	    juise_env_add(&env, CONST_STR_LEN("REMOTE_ADDR"), s, strlen(s));
+	    mod_juise_env_add(&env, CONST_STR_LEN("REMOTE_ADDR"), s, strlen(s));
 
 	    LI_ltostr(buf,
 #ifdef HAVE_IPV6
@@ -1003,41 +1043,41 @@ juise_create_env (server *srv, connection *con,
 		      ntohs(con->dst_addr.ipv4.sin_port)
 #endif
 		      );
-	    juise_env_add(&env, CONST_STR_LEN("REMOTE_PORT"), buf, strlen(buf));
+	    mod_juise_env_add(&env, CONST_STR_LEN("REMOTE_PORT"), buf, strlen(buf));
 
 	    if (!buffer_is_empty(con->authed_user)) {
-		juise_env_add(&env, CONST_STR_LEN("REMOTE_USER"),
+		mod_juise_env_add(&env, CONST_STR_LEN("REMOTE_USER"),
 			      CONST_BUF_LEN(con->authed_user));
 	    }
 
 #ifdef USE_OPENSSL
 	    if (srv_sock->is_ssl) {
-		juise_env_add(&env, CONST_STR_LEN("HTTPS"), CONST_STR_LEN("on"));
+		mod_juise_env_add(&env, CONST_STR_LEN("HTTPS"), CONST_STR_LEN("on"));
 	    }
 #endif
 
 	    /* request.content_length < SSIZE_MAX, see request.c */
 	    LI_ltostr(buf, con->request.content_length);
-	    juise_env_add(&env, CONST_STR_LEN("CONTENT_LENGTH"), buf, strlen(buf));
-	    juise_env_add(&env, CONST_STR_LEN("SCRIPT_FILENAME"),
+	    mod_juise_env_add(&env, CONST_STR_LEN("CONTENT_LENGTH"), buf, strlen(buf));
+	    mod_juise_env_add(&env, CONST_STR_LEN("SCRIPT_FILENAME"),
 			  CONST_BUF_LEN(con->physical.path));
-	    juise_env_add(&env, CONST_STR_LEN("SCRIPT_NAME"),
+	    mod_juise_env_add(&env, CONST_STR_LEN("SCRIPT_NAME"),
 			  CONST_BUF_LEN(con->uri.path));
-	    juise_env_add(&env, CONST_STR_LEN("DOCUMENT_ROOT"),
+	    mod_juise_env_add(&env, CONST_STR_LEN("DOCUMENT_ROOT"),
 			  CONST_BUF_LEN(con->physical.doc_root));
 
 	    /* for valgrind */
 	    if ((s = getenv("LD_PRELOAD")) != NULL) {
-		juise_env_add(&env, CONST_STR_LEN("LD_PRELOAD"), s, strlen(s));
+		mod_juise_env_add(&env, CONST_STR_LEN("LD_PRELOAD"), s, strlen(s));
 	    }
 
 	    if ((s = getenv("LD_LIBRARY_PATH")) != NULL) {
-		juise_env_add(&env, CONST_STR_LEN("LD_LIBRARY_PATH"), s, strlen(s));
+		mod_juise_env_add(&env, CONST_STR_LEN("LD_LIBRARY_PATH"), s, strlen(s));
 	    }
 #ifdef __CYGWIN__
 	    /* CYGWIN needs SYSTEMROOT */
 	    if ((s = getenv("SYSTEMROOT")) != NULL) {
-		juise_env_add(&env, CONST_STR_LEN("SYSTEMROOT"), s, strlen(s));
+		mod_juise_env_add(&env, CONST_STR_LEN("SYSTEMROOT"), s, strlen(s));
 	    }
 #endif
 
@@ -1056,12 +1096,11 @@ juise_create_env (server *srv, connection *con,
 		    NULL
 		};
 		const char **sp;
-		char *cp;
 
 		for (sp = vars ; *sp; sp++) {
 		    cp = getenv(*sp);
 		    if (cp) {
-			juise_env_add(&env, *sp, strlen(*sp), cp, strlen(cp));
+			mod_juise_env_add(&env, *sp, strlen(*sp), cp, strlen(cp));
 			LOGERR("sss", "juise: making env:", *sp, cp);
 		    }
 		}
@@ -1097,7 +1136,7 @@ juise_create_env (server *srv, connection *con,
 		    }
 		    p->tmp_buf->ptr[p->tmp_buf->used++] = '\0';
 
-		    juise_env_add(&env, CONST_BUF_LEN(p->tmp_buf),
+		    mod_juise_env_add(&env, CONST_BUF_LEN(p->tmp_buf),
 				  CONST_BUF_LEN(ds->value));
 		}
 	    }
@@ -1127,7 +1166,7 @@ juise_create_env (server *srv, connection *con,
 		    }
 		    p->tmp_buf->ptr[p->tmp_buf->used++] = '\0';
 
-		    juise_env_add(&env, CONST_BUF_LEN(p->tmp_buf),
+		    mod_juise_env_add(&env, CONST_BUF_LEN(p->tmp_buf),
 				  CONST_BUF_LEN(ds->value));
 		}
 	    }
@@ -1138,17 +1177,6 @@ juise_create_env (server *srv, connection *con,
 	    }
 
 	    env.ptr[env.used] = NULL;
-
-	    /* set up args */
-	    argc = 3;
-	    args = malloc(sizeof(*args) * argc);
-	    i = 0;
-
-	    if (cgi_handler->used > 1) {
-		args[i++] = cgi_handler->ptr;
-	    }
-	    args[i++] = con->physical.path->ptr;
-	    args[i  ] = NULL;
 
 	    /* search for the last / */
 	    if ((c = strrchr(con->physical.path->ptr, '/')) != NULL) {
@@ -1169,9 +1197,9 @@ juise_create_env (server *srv, connection *con,
 	    }
 
 	    /* exec the cgi */
-	    execve(args[0], args, env.ptr);
+	    execve(argv[0], argv, env.ptr);
 
-	    /* LOGERR("sss", "CGI failed:", strerror(errno), args[0]); */
+	    /* LOGERR("sss", "CGI failed:", strerror(errno), argv[0]); */
 
 	    /* */
 	    SEGFAULT();
@@ -1185,11 +1213,13 @@ juise_create_env (server *srv, connection *con,
 	close(from_cgi_fds[1]);
 	close(to_cgi_fds[0]);
 	close(to_cgi_fds[1]);
+	if (sdup)
+	    free(sdup);
 	return -1;
 
     default:
 	{
-	    handler_ctx *hctx;
+	    mod_juise_handler_context *hctx;
 	    /* father */
 
 	    close(from_cgi_fds[1]);
@@ -1220,6 +1250,8 @@ juise_create_env (server *srv, connection *con,
 
 				close(from_cgi_fds[0]);
 				close(to_cgi_fds[1]);
+				if (sdup)
+				    free(sdup);
 				return -1;
 			    }
 
@@ -1235,6 +1267,8 @@ juise_create_env (server *srv, connection *con,
 
 				close(from_cgi_fds[0]);
 				close(to_cgi_fds[1]);
+				if (sdup)
+				    free(sdup);
 				return -1;
 			    }
 
@@ -1308,7 +1342,7 @@ juise_create_env (server *srv, connection *con,
 	    con->mode = p->id;
 	    buffer_reset(con->physical.path);
 
-	    hctx = juise_handler_ctx_init();
+	    hctx = mod_juise_handler_ctx_init();
 
 	    hctx->remote_conn = con;
 	    hctx->plugin_data = p;
@@ -1318,7 +1352,7 @@ juise_create_env (server *srv, connection *con,
 
 	    con->plugin_ctx[p->id] = hctx;
 
-	    fdevent_register(srv->ev, hctx->fd, juise_handle_fdevent, hctx);
+	    fdevent_register(srv->ev, hctx->fd, mod_juise_handle_fdevent, hctx);
 	    fdevent_event_set(srv->ev, &(hctx->fde_ndx), hctx->fd, FDEVENT_IN);
 
 	    if (fdevent_fcntl_set(srv->ev, hctx->fd) == -1) {
@@ -1331,17 +1365,23 @@ juise_create_env (server *srv, connection *con,
 
 		close(hctx->fd);
 
-		juise_handler_ctx_free(hctx);
+		mod_juise_handler_ctx_free(hctx);
 
 		con->plugin_ctx[p->id] = NULL;
 
+		if (sdup)
+		    free(sdup);
 		return -1;
 	    }
 	}
     }
 
+    if (sdup)
+	free(sdup);
     return 0;
 #else
+    if (sdup)
+	free(sdup);
     return -1;
 #endif
 }
@@ -1349,10 +1389,10 @@ juise_create_env (server *srv, connection *con,
 #define PATCH(x) p->conf.x = s->x
 
 static int
-mod_juise_patch_connection (server *srv, connection *con, plugin_data *p)
+mod_juise_patch_connection (server *srv, connection *con, mod_juise_plugin_data *p)
 {
     size_t i, j;
-    plugin_config *s = p->config_storage[0];
+    mod_juise_plugin_config *s = p->config_storage[0];
 
     PATCH(cgi);
     PATCH(execute_x_only);
@@ -1383,12 +1423,15 @@ mod_juise_patch_connection (server *srv, connection *con, plugin_data *p)
 }
 #undef PATCH
 
-URIHANDLER_FUNC(juise_is_handled)
+URIHANDLER_FUNC(mod_juise_handle_subrequest_start)
 {
     size_t k, s_len;
-    plugin_data *p = p_d;
+    mod_juise_plugin_data *p = p_d;
     buffer *fn = con->physical.path;
+    buffer *uri = con->uri.path;
     stat_cache_entry *sce = NULL;
+
+    LOGERR("ss", "mod_juise: start: looking at ", fn->ptr);
 
     if (con->mode != DIRECT)
 	return HANDLER_GO_ON;
@@ -1420,27 +1463,75 @@ URIHANDLER_FUNC(juise_is_handled)
 	if (s_len < ct_len)
 	    continue;
 
-	if (strncmp(fn->ptr + s_len - ct_len, ds->key->ptr, ct_len) == 0) {
-	    if (juise_create_env(srv, con, p, ds->value)) {
-		con->mode = DIRECT;
-		con->http_status = 500;
+	if (ds->key->ptr[0] == '/') {
+	    if (strncmp(uri->ptr, ds->key->ptr, ct_len) == 0) {
+		if (mod_juise_create_env(srv, con, p, ds->value)) {
+		    con->mode = DIRECT;
+		    con->http_status = 500;
 
-		buffer_reset(con->physical.path);
-		return HANDLER_FINISHED;
+		    buffer_reset(con->physical.path);
+		    return HANDLER_FINISHED;
+		}
+		/* one handler is enough for the request */
+		break;
 	    }
-	    /* one handler is enough for the request */
-	    break;
+	} else {
+	    if (strncmp(fn->ptr + s_len - ct_len, ds->key->ptr, ct_len) == 0) {
+		if (mod_juise_create_env(srv, con, p, ds->value)) {
+		    con->mode = DIRECT;
+		    con->http_status = 500;
+
+		    buffer_reset(con->physical.path);
+		    return HANDLER_FINISHED;
+		}
+		/* one handler is enough for the request */
+		break;
+	    }
 	}
     }
 
     return HANDLER_GO_ON;
 }
 
-TRIGGER_FUNC(juise_trigger)
+URIHANDLER_FUNC(mod_juise_handle_physical)
 {
-    plugin_data *p = p_d;
+    size_t k, s_len;
+    mod_juise_plugin_data *p = p_d;
+    buffer *fn = con->physical.path;
+    buffer *uri = con->uri.path;
+
+    LOGERR("ss", "mod_juise: physical: fn ", fn->ptr);
+    LOGERR("ss", "mod_juise: physical: uri ", uri->ptr);
+
+    s_len = uri->used - 1;
+
+    mod_juise_patch_connection(srv, con, p);
+
+    for (k = 0; k < p->conf.cgi->used; k++) {
+	data_string *ds = (data_string *) p->conf.cgi->data[k];
+	size_t ct_len = ds->key->used - 1;
+
+	if (ds->key->used == 0)
+	    continue;
+	if (s_len < ct_len)
+	    continue;
+
+	if (ds->key->ptr[0] == '/') {
+	    if (strncmp(uri->ptr, ds->key->ptr, ct_len) == 0) {
+		buffer_copy_string(fn, "/Users/phil/work/root/bin/juise");
+		break;
+	    }
+	}
+    }
+    return HANDLER_GO_ON;
+}
+
+TRIGGER_FUNC(mod_juise_handle_trigger)
+{
+    mod_juise_plugin_data *p = p_d;
     size_t ndx;
     /* the trigger handle only cares about lonely PID which we have to wait for */
+
 #ifndef __WIN32
 
     for (ndx = 0; ndx < p->cgi_pid.used; ndx++) {
@@ -1479,7 +1570,7 @@ TRIGGER_FUNC(juise_trigger)
 		LOGERR("s", "cleaning up CGI: ended unexpectedly");
 	    }
 
-	    juise_pid_del(srv, p, p->cgi_pid.ptr[ndx]);
+	    mod_juise_pid_del(srv, p, p->cgi_pid.ptr[ndx]);
 
 	    /*
 	     * del modified the buffer structure
@@ -1501,8 +1592,10 @@ TRIGGER_FUNC(juise_trigger)
 SUBREQUEST_FUNC(mod_juise_handle_subrequest)
 {
     int status;
-    plugin_data *p = p_d;
-    handler_ctx *hctx = con->plugin_ctx[p->id];
+    mod_juise_plugin_data *p = p_d;
+    mod_juise_handler_context *hctx = con->plugin_ctx[p->id];
+
+    LOGERR("ss", "mod_juise: handle: ", con->physical.path->ptr);
 
     if (con->mode != p->id)
 	return HANDLER_GO_ON;
@@ -1555,7 +1648,7 @@ SUBREQUEST_FUNC(mod_juise_handle_subrequest)
 	    LOGERR("sds", "cgi close failed ", hctx->fd, strerror(errno));
 	}
 
-	juise_handler_ctx_free(hctx);
+	mod_juise_handler_ctx_free(hctx);
 
 	con->plugin_ctx[p->id] = NULL;
 
@@ -1590,7 +1683,7 @@ SUBREQUEST_FUNC(mod_juise_handle_subrequest)
 	    LOGERR("sds", "cgi close failed ", hctx->fd, strerror(errno));
 	}
 
-	juise_handler_ctx_free(hctx);
+	mod_juise_handler_ctx_free(hctx);
 
 	con->plugin_ctx[p->id] = NULL;
 	return HANDLER_FINISHED;
@@ -1607,16 +1700,17 @@ mod_juise_plugin_init (plugin *p)
     p->version = LIGHTTPD_VERSION_ID;
     p->name = buffer_init_string("juise");
 
-    p->connection_reset = juise_connection_close_callback;
-    p->handle_subrequest_start = juise_is_handled;
+    p->connection_reset = mod_juise_connection_reset;
+    p->handle_subrequest_start = mod_juise_handle_subrequest_start;
     p->handle_subrequest = mod_juise_handle_subrequest;
 #if 0
-    p->handle_fdevent = juise_handle_fdevent;
+    p->handle_fdevent = mod_juise_handle_fdevent;
 #endif
-    p->handle_trigger = juise_trigger;
+    p->handle_trigger = mod_juise_handle_trigger;
     p->init = mod_juise_init;
-    p->cleanup = mod_juise_free;
+    p->cleanup = mod_juise_cleanup;
     p->set_defaults = mod_juise_set_defaults;
+    p->handle_physical = mod_juise_handle_physical;
 
     p->data = NULL;
 

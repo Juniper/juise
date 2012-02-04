@@ -868,7 +868,7 @@ parse_query_string (lx_node_t *nodep, char *str)
     trace(trace_file, TRACE_ALL, "querystring: %p, (%u) '%s'",
 	  nodep, (unsigned) strlen(str), str);
 
-    for (cp = str; cp; cp = ap) {
+    for (cp = str; cp && *cp; cp = ap) {
 	ep = strchr(cp, '=');
 	if (ep == NULL)
 	    break;
@@ -1007,6 +1007,64 @@ do_run_as_fastcgi (const char *scriptname UNUSED, const char *input UNUSED,
     return 0;
 }
 
+static xmlNodePtr
+makeLeafNode (xmlNodePtr parent, const char *name, const char *value)
+{
+    char *uname, *uvalue;
+    xmlNodePtr childp, textp;
+
+    trace(trace_file, TRACE_ALL, "querystring: param: '%s' -> '%s'",
+	  name, value ?: "");
+
+    uname = xmlURIUnescapeString(name, 0, NULL);
+    childp = xmlNewNode(NULL, (const xmlChar *) uname);
+    if (childp == NULL)
+	errx(1, "could not build parameter: '%s'", name);
+    xmlAddChild(parent, childp);
+
+    xmlFreeAndEasy(uname); /* xmlURIUnescapeString allocated them */
+
+    if (value && *value) {
+	uvalue = xmlURIUnescapeString(value, 0, NULL);
+	textp = xmlNewText((const xmlChar *) uvalue);
+	if (textp == NULL)
+	    errx(1, "could not make node: text");
+
+	xmlAddChild(childp, textp);
+	xmlFreeAndEasy(uvalue);
+    }
+
+    return childp;
+}
+
+static void
+rpc_parse_query_string (lx_node_t *nodep, char *str)
+{
+    char *cp, *ap, *ep, *xp;
+
+    trace(trace_file, TRACE_ALL, "querystring: %p, (%u) '%s'",
+	  nodep, (unsigned) strlen(str), str);
+
+    for (cp = str; cp && *cp; cp = ap) {
+	ep = strchr(cp, '=');
+	if (ep == NULL)
+	    break;
+	*ep++ = '\0';
+
+	ap = strchr(ep, '&');
+	if (ap != NULL)
+	    *ap++ = '\0';
+
+	/* Pluses are really spaces; pluses are URL-escaped */
+	for (xp = ep; *xp; xp++)
+	    if (*xp == '+')
+		*xp = ' ';
+	
+	if (cp && ep)
+	    makeLeafNode(nodep, cp, ep);
+    }
+}
+
 /*
  * do_run_rpc is used to give REST-ish access to NETCONF RPCs.  The
  * URL passed in has five parts:
@@ -1035,6 +1093,11 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     xmlXPathParserContext *pctxt;
     lx_nodeset_t *reply;
     int i;
+    char buf[BUFSIZ];
+    xmlNodePtr rpc;
+    xmlAttrPtr attr;
+    slax_data_list_t lines;
+    int len = 0;
 
     docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
     ctxt = xmlXPathNewContext(docp);
@@ -1048,6 +1111,21 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     if (target == NULL || target[1] == '\0')
 	errx(1, "missing target");
     *target++ = '\0';
+
+    operation = strchr(target, '/');
+    if (operation == NULL || operation[0] == '\0')
+	errx(1, "missing operation");
+    *operation++ = '\0';
+
+    params = strchr(operation, '/');
+    attributes = strchr(operation, '@');
+    if (attributes && (params == NULL || attributes < params)) {
+	*attributes++ = '\0';
+    } else {
+	attributes = NULL;
+    }
+    if (params)
+	*params++ = '\0';
 
     cp = strchr(target, '@');
     if (cp) {
@@ -1068,27 +1146,75 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 	}
     }
 
-    operation = strchr(target, '/');
-    if (operation == NULL || operation[0] == '\0')
-	errx(1, "missing operation");
-    *operation++ = '\0';
-
-    params = strchr(operation, '/');
-    attributes = strchr(operation, '@');
-    if (attributes && (params == NULL || attributes < params)) {
-	*attributes++ = '\0';
-    } else {
-	attributes = NULL;
-    }
-    if (params)
-	*params++ = '\0';
-
     trace(trace_file, TRACE_ALL, "rpc: target [%s] op [%s] attr [%s] p [%s]",
 	  target, operation, attributes ?: "", params ?: "");
 
-    lx_node_t *rpc = xmlNewNode(NULL, (const xmlChar *) operation);
+    rpc = xmlNewNode(NULL, (const xmlChar *) operation);
     if (rpc == NULL)
 	errx(1, "op: out of memory");
+
+    /* If we have attributes, insert them onto the rpc node */
+    if (attributes) {
+	char *next;
+	for (; attributes && *attributes; attributes = next) {
+	    cp = strchr(attributes, '=');
+	    next = cp ? strchr(cp, '@') : NULL;
+	    if (cp)
+		*cp++ = '\0';
+	    if (next)
+		*next++ = '\0';
+	    attr = xmlNewProp(rpc, (const xmlChar *) attributes,
+			      (const xmlChar *) cp);
+	    if (attr == NULL)
+		errx(1, "could not build attribute: '%s'", attributes);
+	}
+    }
+
+    /* Populate the operation node with our parameter values */
+    if (params) {
+	char *next;
+
+	for (; params && *params; params = next) {
+	    cp = strchr(params, '=');
+	    next = cp ? strchr(cp, '/') : NULL;
+	    if (cp)
+		*cp++ = '\0';
+	    if (next)
+		*next++ = '\0';
+
+	    makeLeafNode(rpc, params, cp);
+	}
+    }
+
+
+    cp = getenv("QUERY_STRING");
+    if (cp)
+	rpc_parse_query_string(rpc, cp);
+
+    while (fgets(buf, sizeof(buf), stdin) != NULL) {
+	trace(trace_file, TRACE_ALL, "cgi: stdin: %s", buf);
+	i = strlen(buf);
+	len += i;
+	slaxDataListAddLen(&lines, buf, i);
+    }
+
+    if (len) {
+	slax_data_node_t *dnp;
+	char *bp;
+
+	bp = malloc(len + 1);
+	if (bp) {
+	    len = 0;
+	    SLAXDATALIST_FOREACH(dnp, &lines) {
+		memcpy(bp + len, dnp->dn_data, dnp->dn_len);
+		len += dnp->dn_len;
+	    }
+	    bp[len] = '\0';
+
+	    rpc_parse_query_string(rpc, bp);
+	    slaxDataListClean(&lines);
+	}
+    }
 
     js_session_t *jsp = js_session_open(target, user, pass, 0, 0, 0);
     if (jsp == NULL)
@@ -1111,6 +1237,7 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 	xmlSaveClose(handle);
     }
 
+    xmlXPathFreeNodeSet(reply);
     js_session_close1(jsp);
 
     return 0;
