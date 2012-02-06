@@ -422,8 +422,19 @@ jQuery(function ($) {
         });     
     }
 
+    function parseParams (cmdline) {
+        var argv = cmdline.split(" ");
+        var params = { };
+        for (var i = 0; i < argv.length; i += 2) {
+            params[argv[i]] = argv[i + 1];
+        }
+        return params;
+    }
+
     function commmandWrapperAdd (target, command) {
         var test;
+        var local;
+
         $.dbgpr("commmandWrapperAdd", target, command);
 
         var content = "<div class='output-wrapper ui-widget "
@@ -447,7 +458,7 @@ jQuery(function ($) {
             + " (" + ++command_number + ")"
             + "</div></div><div class='output-content can-hide'>"
 
-        if (command.substring(0, 9) == "test form") {
+        if (command.substring(0, 10) == "test form ") {
             test = command.substring(10);
             if (testForms[test]) {
                 content += "<div class='ui-yform'></div>";
@@ -456,6 +467,13 @@ jQuery(function ($) {
             }
             content += "<div class='output-replace' "
                 + "style='white-space: pre-wrap'></div>";
+
+        } else if (command.substring(0, 6) == "local ") {
+            local = command.substring(6);
+            content += "<div class='output-replace' "
+                + "style='white-space: pre-wrap'>"
+                + loadingMessage;
+                + "</div>";
 
         } else if (prefs.live_action) {
             content += "<div class='output-replace' "
@@ -492,6 +510,19 @@ jQuery(function ($) {
                 runRpc(yform, $out, rpc, tgtHistory.value());
             });
             yf.focus();
+
+        } else if (local) {
+            var $out = $("div.output-replace", $newp);
+            $out.slideUp(0).slideDown(prefs.slide_speed);
+
+            var params = parseParams("script " + local);
+            var name = params["script"];
+
+            $out.load("/local/" + name, params,
+                      function (text, status, http) {
+                          loadHttpReply(text, status, http,
+                                        $(this), $out);
+                      });
 
         } else if (prefs.live_action) {
             var $out = $("div.output-replace", $newp);

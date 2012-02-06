@@ -438,6 +438,12 @@ AC_ARG_WITH(web-dir,
         [JUISE_WEB_DIR=$JUISE_DIR/web]
 )
 
+AC_ARG_WITH(cgi-dir,
+        [  --with-cgi-dir=[DIR]           Specify location of cgi files],
+        [JUISE_CGI_DIR=$withval],
+        [JUISE_CGI_DIR=$JUISE_DIR/web/local]
+)
+
 JUISE_SRCDIR='${srcdir}'
 JUISE_LIBDIR='${libdir}'
 JUISE_INCLUDEDIR='${includedir}'
@@ -445,6 +451,7 @@ JUISE_LIBEXECDIR='${pkglibexecdir}'
 AC_SUBST(JUISE_DIR)
 AC_SUBST(JUISE_SCRIPT_DIR)
 AC_SUBST(JUISE_WEB_DIR)
+AC_SUBST(JUISE_CGI_DIR)
 AC_SUBST(JUISE_SRCDIR)
 AC_SUBST(JUISE_LIBDIR)
 AC_SUBST(JUISE_LIBEXECDIR)

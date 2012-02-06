@@ -165,9 +165,18 @@ is_filename_std (const char *filename)
 static lx_node_t *
 juise_add_node (lx_node_t *parent, const char *tag, const char *content)
 {
+    static char tag_ok[] =
+	"abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ-_";
     lx_node_t *nodep, *childp;
     
-    childp = xmlNewText((const xmlChar *) content);
+    if (strspn(tag, tag_ok) != strlen(tag)) {
+	trace(trace_file, TRACE_ALL,
+	      "add_node: invalid node name; skipping: '%s'/'%s'",
+	      tag, content ?: "");
+	return NULL;
+    }
+
+    childp = xmlNewText((const xmlChar *) content ?: (const xmlChar *) "");
     if (childp == NULL)
 	return NULL;
 
@@ -902,7 +911,7 @@ parse_query_string (lx_node_t *nodep, char *str)
 static int
 do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 {
-    const char *cgi_params[] = {
+    static const char *cgi_params[] = {
 	"CONTENT_LENGTH",	"content-length",
 	"DOCUMENT_ROOT",	"document-root",
 	"GATEWAY_INTERFACE",	"gateway-interface",
@@ -931,10 +940,11 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
     int len = 0;
     int i;
     lx_node_t *nodep, *paramp = NULL;
-    const char *method = NULL;
+    char *method = NULL, *uri = NULL;
     char *cp;
     char buf[BUFSIZ];
     slax_data_list_t lines;
+    char local_scriptname[MAXPATHLEN];
 
     slaxDataListInit(&lines);
 
@@ -948,11 +958,14 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	if (cp) {
 	    juise_make_param(cgi_params[i], cp, TRUE);
 	    juise_add_node(nodep, cgi_params[i + 1], cp);
+
 	    trace(trace_file, TRACE_ALL, "cgi: env: '%s' = '%s'",
 		  cgi_params[i], cp);
 
-	    if (streq("request-method", cgi_params[i]))
+	    if (streq("request-method", cgi_params[i + 1]))
 		method = cp;
+	    else if (streq("request-uri", cgi_params[i + 1]))
+		uri = cp;
 	}
     }
 
@@ -996,6 +1009,62 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
     }
 
     juise_make_param("cgi", "/op-script-input/cgi", FALSE);
+
+    if (opt_local) {
+	/*
+	 * Invoke local scripts.  The QUERY_STRING has the format
+	 *
+	 *    '/' leader '/' operation '/' params
+	 * leader: is anything before the second slash, typically "/rpc/"
+	 * operation: the script to invoke
+	 * params: optional set of param values, encoded as "name[=value]"
+	 *     pairs separated by '/'
+	 */
+	char *operation, *params;
+	if (uri == NULL)
+	    errx(1, "missing REQUEST_URI");
+
+	operation = strchr(uri + 1, '/');
+	if (operation == NULL || (operation[0] == '\0'))
+	    errx(1, "missing operation");
+	operation += 1;
+
+	params = strchr(operation, '/');
+	if (params)
+	    *params++ = '\0';
+
+	trace(trace_file, TRACE_ALL, "rpc: op [%s] p [%s]",
+	      operation, params ?: "");
+
+	snprintf(local_scriptname, sizeof(local_scriptname),
+		 "%s/%s.slax", JUISE_CGI_DIR, operation);
+	scriptname = local_scriptname;
+
+	/* Populate the operation node with our parameter values */
+	if (params) {
+	    char *next;
+
+	    for (; params && *params; params = next) {
+		cp = strchr(params, '=');
+		next = cp ? strchr(cp, '/') : NULL;
+		if (cp)
+		    *cp++ = '\0';
+		if (next)
+		    *next++ = '\0';
+
+		params = xmlURIUnescapeString(params, 0, NULL);
+		cp = xmlURIUnescapeString(cp, 0, NULL);
+
+		juise_make_param(params, cp, TRUE);
+		juise_add_node(paramp, params, cp);
+		trace(trace_file, TRACE_ALL, "cgi-local: env: '%s' = '%s'",
+		      params, cp);
+
+		xmlFreeAndEasy(params);
+		xmlFreeAndEasy(cp);
+	    }
+	}
+    }
 
     return do_run_op_common(scriptname, input, argv, nodep, JM_CGI);
 }
@@ -1110,7 +1179,7 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     target = strchr(uri + 1, '/');
     if (target == NULL || target[1] == '\0')
 	errx(1, "missing target");
-    *target++ = '\0';
+    target += 1;
 
     operation = strchr(target, '/');
     if (operation == NULL || operation[0] == '\0')
@@ -1216,6 +1285,11 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 	}
     }
 
+    if (user)
+	user = xmlURIUnescapeString(user, 0, NULL);
+    if (pass)
+	pass = xmlURIUnescapeString(pass, 0, NULL);
+
     js_session_t *jsp = js_session_open(target, user, pass, 0, 0, 0);
     if (jsp == NULL)
 	errx(1, "could not open session to target");
@@ -1239,6 +1313,9 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 
     xmlXPathFreeNodeSet(reply);
     js_session_close1(jsp);
+
+    xmlFreeAndEasy(user);
+    xmlFreeAndEasy(pass);
 
     return 0;
 }

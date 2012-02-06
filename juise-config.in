@@ -16,6 +16,9 @@ Known values for OPTION are:
   --exec-prefix=DIR	change libjuise exec prefix [default $exec_prefix]
   --libs		print library linking information
   --cflags		print pre-processor and compiler flags
+  --juise-dir           print JUISE_DIR
+  --juise-cgi-dir       print JUISE_CGI_DIR
+  --juise-web-dir       print JUISE_WEB_DIR
   --modules		module support enabled
   --help		display this help and exit
   --version		output version information
@@ -52,6 +55,21 @@ while test $# -gt 0; do
       exec_prefix=$optarg
       libdir=$exec_prefix/lib
       ;;
+
+    --juise-dir)
+        echo @JUISE_DIR@
+        exit 0
+        ;;
+
+    --juise-cgi-dir)
+       echo @JUISE_CGI_DIR@
+        exit 0
+        ;;
+
+    --juise-web-dir)
+        echo @JUISE_WEB_DIR@
+        exit 0
+        ;;
 
     --exec-prefix)
       echo $exec_prefix
