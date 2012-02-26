@@ -11,30 +11,42 @@
 
 JUISE is a environment for writing, debugging, and executing SLAX
 scripts.  This environment is tailored to the needs of JUNOS-oriented
-scripts, including op scripts, commit scripts, and event scripts.  In
-addition, there are tools to invoke scripts via web servers.
+scripts, including op scripts and commit scripts.
+
+In addition, there are tools to integrate scripts with web servers.
 
 * JUISE
 
-The JUISE project is the JUNOS User Interface Scripting Environment,
-which allows scripts to be written, debugged, and executed outside the
-normal JUNOS environment.  JUNOS-specific extension functions are
-available for scripts.
+The JUISE project (the JUNOS User Interface Scripting Environment)
+allows scripts to be written, debugged, and executed outside the
+normal JUNOS environment.  Users can develop scripts in their desktop
+environment, performing the code/test/debug cycle in a more natural
+way.  Tools for developers are available, including a debugger, a
+profiler, a call-flow tracing mechanism, and trace files.  
+The JUNOS-specific extension functions are available for scripts,
+allowing access to JUNOS XML data using the normal jcs:invoke and
+jcs:execute functions.  Commit scripts can be tested against a JUNOS
+device's configuration and the results of those script tested on that
+device.
 
 JUISE scripts are typically written in SLAX, an alternative syntax for
 XSLT.  For information about SLAX, refer to libslax.googlecode.com.
+Additional reference material is available under the "JUNOS
+Automation" section of http://junos.juniper.net.
 
-The JUISE software can be used to execute scripts independent of
-JUNOS, allowing the use of SLAX scripts in the off-box world.
+The JUISE software can be used to execute scripts independent of a
+JUNOS box, allowing the use of SLAX scripts in the off-box world.
+Scripts can communicate with zero or more devices, allowing a
+centralized manipulation of multiple devices.
 
-JUISE includes mechanisms that convert between SLAX and XSLT, making
-it suitable for plug-ins for environments like Eclipse.
+JUISE includes a rudimentary NETCONF server, allowing JUNOS devices to
+invoke RPCs to unix devices.  JUNOS devices can perform NETCONF or
+JUNOScript RPCs to a JUISE box, and invoke scripts or programs on that
+device. 
 
-JUISE includes a plug-in module for lighttpd, allowing the execution
-of scripts via HTTP.
-
-JUISE also include a rudimentary NETCONF server, allowing JUNOS
-devices to invoke RPCs to unix devices.
+JUISE includes "mod_juise", a plug-in module for lighttpd, allowing
+the execution of scripts via HTTP.  At this point, the portion of
+JUISE is completely experimental.
 
 ** Getting JUISE
 
@@ -50,14 +62,22 @@ Refer to the ./README file for building instructions.
 The "juise" command is the central program of the JUISE project.  It
 is used to test, format, convert, debug, and execute scripts.
 
+The "juise" command has four distinct usage patterns, which are
+discussed in this section.
+
+- op script mode
+- event script mode
+- server mode
+- cgi mode
+
 *** Syntax
 
-Usage: juise [@target] [options] [script] [param value]*
+Usage: juise [[user]@target] [options] [script] [param value]*
 
-The juise command is invoked with the name of the script to be run.  A
-set of options are used to tailor the execution of the script, and a
-set of name/value parameter pairs can be provided, as they are for the
-JUNOS "op" command.
+The juise command is normally invoked with the name of the script to
+be run, a set of options are used to tailor the execution of the
+script, and a set of name/value parameter pairs that are passed as
+parameters to the script, as they are for the JUNOS "op" command.
 
 A token containing an '@' will be taken as the default target of a
 jcs:open() call, allowing either "user@device" or "@device".
@@ -66,12 +86,13 @@ jcs:open() call, allowing either "user@device" or "@device".
 
 = --agent OR -A
 Enable forwarding of ssh-agent credentials, allowing remote ssh
-sessions to connect to the local ssh-agent process.
+sessions to connect to the local ssh-agent process for authentication
+information.  See "man ssh-agent(1)" for details.
 
-= --debug OR -d
-Start the libslax debugger, allowing the user to interactively debug
-script execution.  Refer to the documentation in the libslax
-distribution for more information (libslax.googlecode.com).
+= --debug OR -d Start the libslax debugger, allowing the user to
+interactively debug script execution.  Refer to the debugger
+documentation in the libslax distribution for more information
+(libslax.googlecode.com).
 
 = --directory <dir> OR -D <dir>
 Use the given directory as the location for server scripts.  This

@@ -639,7 +639,7 @@ uninstall-am: uninstall-libLTLIBRARIES
 	tags uninstall uninstall-am uninstall-libLTLIBRARIES
 
 
-include ${top_srcdir}/warnings.mk
+@JUISE_WARNINGS_TRUE@include ${top_srcdir}/warnings.mk
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

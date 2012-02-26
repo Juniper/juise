@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.3.2], [phil@juniper.net])
+AC_INIT([juise], [0.3.4], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT([])
 AC_DISABLE_SHARED
@@ -96,6 +96,14 @@ dnl define a function here for later use
 dnl
 AC_DEFUN([VERSION_TO_NUMBER],
 [`$1 | sed -e 's/lib.* //' | awk 'BEGIN { FS = "."; } { printf "%d", ([$]1 * 1000 + [$]2) * 1000 + [$]3;}'`])
+
+AC_MSG_CHECKING([whether to build with warnings])
+AC_ARG_ENABLE([warnings],
+    [  --enable-warnings    Turn on compiler warnings],
+    [JUISE_WARNINGS=$enableval],
+    [JUISE_WARNINGS=yes])
+AC_MSG_RESULT([$JUISE_WARNINGS])
+AM_CONDITIONAL([JUISE_WARNINGS], [test "$JUISE_WARNINGS" != "no"])
 
 AC_MSG_CHECKING([whether to build with debugging])
 AC_ARG_ENABLE([debug],
@@ -414,7 +422,7 @@ case $host_os in
 	;;
      cygwin*|CYGWIN*)
 	LDFLAGS=-no-undefined
-	SLAX_WARNINGS=no
+	JUISE_WARNINGS=no
 	;;
 esac
 
@@ -523,6 +531,7 @@ AC_MSG_NOTICE([summary of build options:
   lighttpd obj:     ${LIGHTTPD_OBJ}
   lighttpd modules: ${LIGHTTPD_MOD}
 
+  warnings:         ${JUISE_WARNINGS:-no}
   debug:            ${JUISE_DEBUG:-no}
   readline:         ${HAVE_READLINE:-no}
   libedit:          ${HAVE_LIBEDIT:-no}

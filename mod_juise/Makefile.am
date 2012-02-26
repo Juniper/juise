@@ -8,7 +8,9 @@
 # using the SOFTWARE, you agree to be bound by the terms of that
 # LICENSE.
 
+if JUISE_WARNINGS
 include ${top_srcdir}/warnings.mk
+endif
 
 #
 # This Makefile tells us how to build our lighttpd module mod_juise,

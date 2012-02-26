@@ -8,9 +8,11 @@
 # using the SOFTWARE, you agree to be bound by the terms of that
 # LICENSE.
 
-include ${top_srcdir}/warnings.mk
-
 juiseincdir = ${includedir}/libjuise
+
+if JUISE_WARNINGS
+include ${top_srcdir}/warnings.mk
+endif
 
 AM_CFLAGS = \
     -DLIBSLAX_XMLSOFT_NEED_PRIVATE \

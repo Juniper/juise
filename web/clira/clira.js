@@ -532,7 +532,7 @@ jQuery(function ($) {
                          {
                              target: target,
                              command: command,
-                             form: "false"
+                             form: "false",
                          },
                          function (text, status, http) {
                              loadHttpReply(text, status, http,

@@ -306,19 +306,18 @@ do_write_cgi_results (lx_document_t *res, xsltStylesheetPtr script)
 
 	for (nodep = lx_node_children(root); nodep;
 	     nodep = lx_node_next(nodep)) {
-	    if (nodep->type == XML_ELEMENT_NODE) {
+	    fflush(stdout);
+	    handle = xmlSaveToFd(fileno(stdout), NULL,
+				 XML_SAVE_FORMAT | XML_SAVE_NO_DECL);
+	    if (handle) {
+		xmlSaveTree(handle, nodep);
+		xmlSaveFlush(handle);
+		xmlSaveClose(handle);
 		fflush(stdout);
-		handle = xmlSaveToFd(fileno(stdout), NULL,
-				     XML_SAVE_FORMAT | XML_SAVE_NO_DECL);
-		if (handle) {
-		    xmlSaveTree(handle, nodep);
-		    xmlSaveFlush(handle);
-		    xmlSaveClose(handle);
-		    fflush(stdout);
-		    return 0;
-		}
 	    }
 	}
+
+	return 0;
     }
 
     xsltSaveResultToFile(stdout, res, script);
@@ -998,11 +997,10 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	    }
 	    bp[len] = '\0';
 
-	    if (method && streq(method, "POST")) {
+	    if (method && streq(method, "POST"))
 		juise_add_node(nodep, ELT_CONTENTS, bp);
-	    } else {
-		parse_query_string(paramp, bp);
-	    }
+
+	    parse_query_string(paramp, bp);
 
 	    slaxDataListClean(&lines);
 	}
@@ -1442,6 +1440,7 @@ main (int argc UNUSED, char **argv, char **envp)
     unsigned jsio_flags = 0;
     int opt_commit_script = FALSE;
     char *env_args = getenv("JUISE_OPTIONS");
+    unsigned ioflags = 0;
 
     slaxDataListInit(&plist);
 
@@ -1488,6 +1487,10 @@ main (int argc UNUSED, char **argv, char **envp)
 	    } else if (streq(cp, "--fastcgi")) {
 		func = do_run_as_fastcgi;
 
+	    } else if (streq(cp, "--help")) {
+		print_help();
+		return -1;
+
 	    } else if (streq(cp, "--include") || streq(cp, "-I")) {
 		slaxIncludeAdd(*++argv);
 
@@ -1511,6 +1514,9 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--no-randomize")) {
 		randomize = 0;
+
+	    } else if (streq(cp, "--no-tty")) {
+		ioflags |= SIF_NO_TTY;
 
 	    } else if (streq(cp, "--op") || streq(cp, "-O")) {
 		if (func)
@@ -1674,7 +1680,7 @@ main (int argc UNUSED, char **argv, char **envp)
     xmlInitParser();
     xsltInit();
     slaxEnable(SLAX_ENABLE);
-    slaxIoUseStdio();
+    slaxIoUseStdio(ioflags);
 
     if (logger)
 	slaxLogEnable(TRUE);
