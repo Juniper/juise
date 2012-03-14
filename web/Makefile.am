@@ -17,7 +17,6 @@ EXTRA_DIST = \
 
 BASE_FILES = \
     favicon.ico \
-    bin/cmd.slax \
     icons/loading.png \
     images/logo.png \
     jquery/jquery-ui.js \
@@ -26,10 +25,10 @@ BASE_FILES = \
     jquery/jquery.js \
     jquery/jquery.min.js \
     jquery/jquery.mruPulldown.js \
-    bin/clira.slax \
     clira/clira.html \
     clira/clira.css \
     clira/clira.js \
+    clira/clira.slax \
     static/drag-test.html
 
 THEME_BLACK_TIE = \

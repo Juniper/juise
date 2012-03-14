@@ -66,7 +66,7 @@ The "juise" command has four distinct usage patterns, which are
 discussed in this section.
 
 - op script mode
-- event script mode
+- commit script mode
 - server mode
 - cgi mode
 
@@ -167,6 +167,16 @@ process with "gdb" for additional debugging.
 The information passed to scripts depends on the mode in which the
 script operates.  This section describes the modes of juise that
 relate to JUNOS.
+
+**** Setting Up the Import Path
+
+JUNOS scripts typically import junos.xsl using the following
+statement:
+
+    import "../import/junos.xsl";
+
+
+
 
 **** Op Scripts
 

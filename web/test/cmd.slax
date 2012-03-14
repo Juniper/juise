@@ -1,0 +1,70 @@
+version 1.1;
+
+ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
+
+param $target;
+param $command;
+param $form = "true";
+
+output-method html {
+    indent no;
+}
+
+match / {
+    if ($form != "false") {
+	<html> {
+	    <head> {
+		<meta http-equiv="content-type"
+		    content="text/html; charset=iso-8859-1">;
+		<meta name="author" content="Phil Shafer">;
+		<title> {
+		    expr "JUNOS Commands";
+		    if ($target) {
+			expr " @ " _ $target;
+		    }
+		}
+
+		<script type="text/javascript">;
+	
+		<style type="text/css" title="currentStyle" media="screen"> {
+		    expr '@import url("/test/cli.css");';
+		}
+	    }
+	    <body> {
+		<title> "JUNOS Commands in HTML";
+		<h1> "JUNOS Commands";
+
+		<form action="/test/cmd.slax"> {
+		    <input spellcheck="false" autocomplete="off"
+		    maxlength="2048" name="command" size="60" type="text"
+		    value=$command>;
+
+		    <label> "@";
+		    <input spellcheck="false" autocomplete="off"
+		    maxlength="256" name="target" size="16" type="text"
+		    value=$target>;
+		    <input type="submit" value="OK">;
+		}
+
+		if ($target && $command) {
+		    call make-content;
+		}
+	    }
+	}
+    } else {
+	if ($target && $command) {
+	    call make-content;
+	}
+    }
+}
+
+template make-content {
+    var $conn = jcs:open($target);
+    if ($conn) {
+	var $rpc = <command format="html"> $command;
+        var $res = jcs:execute($conn, $rpc);
+	copy-of $res;
+    } else {
+	terminate "connection failure";
+    }
+}
