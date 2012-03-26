@@ -153,6 +153,8 @@ run_server (int fdin, int fdout, session_type_t stype)
 {
     static const char rpc_reply_open[] = "<rpc-reply>\n";
     static const char rpc_reply_close[] = "</rpc-reply>]]>]]>\n";
+    static const char rpc_error[]
+	= "<error><message>invalid rpc</message></error>";
     js_session_t *jsp;
     lx_document_t *rpc;
     const char *name;
@@ -174,7 +176,9 @@ run_server (int fdin, int fdout, session_type_t stype)
 	    if (write(fdout, rpc_reply_open, sizeof(rpc_reply_open) - 1) < 0)
 		trace(trace_file, TRACE_ALL, "error writing reply: %m");
 
-	    srv_run_script(jsp, name, rpc);
+	    if (srv_run_script(jsp, name, rpc)) {
+		write(fdout, rpc_error, sizeof(rpc_error) - 1);
+	    }
 	    if (write(fdout, rpc_reply_close, sizeof(rpc_reply_close) - 1) < 0)
 		trace(trace_file, TRACE_ALL, "error writing reply: %m");
 	}
