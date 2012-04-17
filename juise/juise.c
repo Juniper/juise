@@ -203,7 +203,7 @@ juise_build_op_input (lx_node_t *newp)
 
     docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
     if (docp == NULL)
-	return NULL;
+	goto fail;
 
     docp->standalone = 1;
 
@@ -269,6 +269,10 @@ juise_build_op_input (lx_node_t *newp)
 	docp->dict = ctxt->dict;
 	xmlDictReference(docp->dict);
     }
+
+ fail:
+    if (ctxt)
+	xmlFreeParserCtxt(ctxt);
 
     return docp;
 }
@@ -414,6 +418,8 @@ do_run_op_common (const char *scriptname, const char *input,
 	    err(1, "file open failed for '%s'", input);
 
 	indoc = slaxLoadFile(input, infile, NULL, FALSE);
+	if (indoc == NULL)
+	    errx(1, "unable to read input document: %s", input);
 
 	if (infile != stdin)
 	    fclose(infile);
