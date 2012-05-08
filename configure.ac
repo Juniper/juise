@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.3.7], [phil@juniper.net])
+AC_INIT([juise], [0.3.8], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT([])
 AC_DISABLE_SHARED
@@ -498,6 +498,7 @@ AC_CONFIG_FILES([
   doc/Makefile
   juise-askpass/Makefile
   mod_juise/Makefile
+  mixer/Makefile
   extensions/Makefile
   web/Makefile
   web/lighttpd.conf

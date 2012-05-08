@@ -40,6 +40,7 @@ noinst_HEADERS = \
     io/dbgpr.h \
     io/fbuf.h \
     io/filecopy.h \
+    io/jtrace.h \
     io/logging.h \
     io/pid_lock.h \
     io/rotate_log.h \
@@ -67,6 +68,7 @@ libjuise_la_SOURCES = \
     string/strdupf.c \
     time/timestr.c \
     io/fbuf.c \
+    io/jtrace.c \
     io/trace.c \
     io/logging.c \
     io/rotate_log.c \

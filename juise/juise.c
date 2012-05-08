@@ -47,6 +47,7 @@
 #include <libjuise/time/timestr.h>
 #include <libjuise/xml/libxml.h>
 #include <libjuise/io/trace.h>
+#include <libjuise/io/jtrace.h>
 #include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 #include <libjuise/xml/juisenames.h>
@@ -69,53 +70,6 @@ static int opt_load;		/* Under-implemented */
 static int opt_local;		/* Run a local (server-based) script */
 char *opt_output_format;
 char *opt_username;
-
-static void
-juise_trace (void *vfp, lx_node_t *nodep, const char *fmt, ...)
-{
-    trace_file_t *tp = vfp;
-    FILE *fp = tp ? trace_fileptr(tp) : stderr;
-    va_list vap;
-
-    va_start(vap, fmt);
-
-    if (nodep) {
-	xmlSaveCtxt *handle;
-
-	fprintf(fp, "XML Content (%d)\n", nodep->type);
-	fflush(fp);
-	handle = xmlSaveToFd(fileno(fp), NULL,
-			     XML_SAVE_FORMAT | XML_SAVE_NO_DECL);
-	if (handle) {
-	    xmlSaveTree(handle, nodep);
-	    xmlSaveFlush(handle);
-	    xmlSaveClose(handle);
-	    fflush(fp);
-	}
-
-    } else if (tp) {
-	tracev(tp, TRACE_ALL, fmt, vap);
-    } else {
-	vfprintf(fp, fmt, vap);
-    }
-
-    va_end(vap);
-}
-
-static void
-juise_log (void *vfp, const char *fmt, va_list vap)
-{
-    trace_file_t *tp = vfp;
-    FILE *fp = tp ? trace_fileptr(tp) : stderr;
-
-    if (tp) {
-	tracev(tp, TRACE_ALL, fmt, vap);
-    } else {
-	vfprintf(fp, fmt, vap);
-	fprintf(stderr, "\n");
-	fflush(stderr);
-    }
-}
 
 static void
 juise_make_param (const char *pname, const char *pvalue, int quoted_string)
@@ -154,12 +108,6 @@ juise_make_param (const char *pname, const char *pvalue, int quoted_string)
     slaxDataListAddNul(&plist, pvalue);
 
     trace(trace_file, TRACE_ALL, "param: '%s' -> '%s'", pname, pvalue);
-}
-
-static inline int
-is_filename_std (const char *filename)
-{
-    return (filename == NULL || (filename[0] == '-' && filename[1] == '\0'));
 }
 
 static lx_node_t *
@@ -417,7 +365,7 @@ do_run_op_common (const char *scriptname, const char *input,
 	if (infile == NULL)
 	    err(1, "file open failed for '%s'", input);
 
-	indoc = slaxLoadFile(input, infile, NULL, FALSE);
+	indoc = xmlReadFile(input, NULL, XSLT_PARSE_OPTIONS);
 	if (indoc == NULL)
 	    errx(1, "unable to read input document: %s", input);
 
@@ -1431,7 +1379,7 @@ main (int argc UNUSED, char **argv, char **envp)
 {
     char **save_argv = argv;
     char *cp;
-    const char *script = NULL, *trace_file_name = NULL;
+    const char *script = NULL, *opt_trace_file_name = NULL;
     int (*func)(const char *, const char *, char **) = NULL;
     FILE *trace_fp = NULL;
     int randomize = 1;
@@ -1564,7 +1512,7 @@ main (int argc UNUSED, char **argv, char **envp)
 		target = *++argv;
 
 	    } else if (streq(cp, "--trace") || streq(cp, "-t")) {
-		trace_file_name = *++argv;
+		opt_trace_file_name = *++argv;
 
 	    } else if (streq(cp, "--user") || streq(cp, "-u")) {
 		opt_username = *++argv;
@@ -1642,24 +1590,13 @@ main (int argc UNUSED, char **argv, char **envp)
     if (cp)
 	slaxIncludeAddPath(cp);
 
-    if (trace_file_name == NULL)
-	trace_file_name = getenv("JUISE_TRACE_FILE");
+    if (opt_trace_file_name == NULL)
+	opt_trace_file_name = getenv("JUISE_TRACE_FILE");
 
-    if (trace_file_name) {
+    if (opt_trace_file_name) {
 	dump_all = 1;
 
-	if (is_filename_std(trace_file_name)) {
-	    slaxTraceEnable(juise_trace, NULL);
-	    slaxLogEnableCallback(juise_log, NULL);
-	} else {
-	    trace_file = trace_file_open(NULL, trace_file_name,
-					 1000000, 10);
-	    if (trace_file == NULL || trace_fileptr(trace_file) == NULL)
-		errx(1, "could not open trace file: %s", trace_file_name);
-		
-	    slaxTraceEnable(juise_trace, trace_file);
-	    slaxLogEnableCallback(juise_log, trace_file);
-	}
+	juise_trace_init(opt_trace_file_name, &trace_file);
 
 	if (dump_all) {
 	    for (i = 0; save_argv[i]; i++)
