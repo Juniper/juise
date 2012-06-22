@@ -6,3 +6,8 @@ Nit: canonicalize "-" vs "_" in filenames.
 
 New: need -C mode for commit scripts, also --configuration XXX to
 allow pre-fetched config data.
+
+New: os:* extension library
+- os:exit()
+- os:chmod()
+- os:stat()

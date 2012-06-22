@@ -177,7 +177,7 @@ run_server (int fdin, int fdout, session_type_t stype)
 		trace(trace_file, TRACE_ALL, "error writing reply: %m");
 
 	    if (srv_run_script(jsp, name, rpc)) {
-		write(fdout, rpc_error, sizeof(rpc_error) - 1);
+		(void) write(fdout, rpc_error, sizeof(rpc_error) - 1);
 	    }
 	    if (write(fdout, rpc_reply_close, sizeof(rpc_reply_close) - 1) < 0)
 		trace(trace_file, TRACE_ALL, "error writing reply: %m");

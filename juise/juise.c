@@ -70,6 +70,7 @@ static int opt_load;		/* Under-implemented */
 static int opt_local;		/* Run a local (server-based) script */
 char *opt_output_format;
 char *opt_username;
+char *opt_target;
 
 static void
 juise_make_param (const char *pname, const char *pvalue, int quoted_string)
@@ -188,6 +189,9 @@ juise_build_op_input (lx_node_t *newp)
 	if (childp == NULL)
 	    break;
 	xmlAddChild(nodep, childp);
+
+	if (opt_target)
+	    juise_add_node(childp, ELT_HOST_NAME, opt_target);
 
 	if (opt_username)
 	    juise_add_node(childp, ELT_USER, opt_username);
@@ -1384,7 +1388,6 @@ main (int argc UNUSED, char **argv, char **envp)
     FILE *trace_fp = NULL;
     int randomize = 1;
     int logger = FALSE;
-    char *target = NULL;
     int ssh_agent_forwarding = FALSE;
     session_type_t stype;
     int skip_args = FALSE;
@@ -1509,7 +1512,7 @@ main (int argc UNUSED, char **argv, char **envp)
 		script = *++argv;
 
 	    } else if (streq(cp, "--target") || streq(cp, "-T")) {
-		target = *++argv;
+		opt_target = *++argv;
 
 	    } else if (streq(cp, "--trace") || streq(cp, "-t")) {
 		opt_trace_file_name = *++argv;
@@ -1553,12 +1556,13 @@ main (int argc UNUSED, char **argv, char **envp)
 	for ( ; *argv; argv++) {
 	    cp = *argv;
 
-	    if (target == NULL && *cp == '@') {
-		target = cp + 1;
+	    if (opt_target == NULL && *cp == '@') {
+		opt_target = cp + 1;
 
-	    } else if (target == NULL && (target = strchr(cp, '@')) != NULL) {
+	    } else if (opt_target == NULL
+		       && (opt_target = strchr(cp, '@')) != NULL) {
 		opt_username = cp;
-		*target++ = '\0';
+		*opt_target++ = '\0';
 
 	    } else if (script == NULL) {
 		script = cp;
@@ -1643,8 +1647,8 @@ main (int argc UNUSED, char **argv, char **envp)
 
     jsio_init(jsio_flags);
 
-    if (target)
-	jsio_set_default_server(target);
+    if (opt_target)
+	jsio_set_default_server(opt_target);
     else if (opt_commit_script)
 	errx(1, "target must be specified for commit script mode");
 
