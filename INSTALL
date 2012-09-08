@@ -4,19 +4,42 @@
 
 * Instructions for building juise
 
-** Building lighttpd
+** Dependencies
 
-You'll need to download source for lighttpd and build it, but you'll
-need to make an distinct "build" subdirectory.
+juise depends on the following software packages:
 
-tar zxf lighttpd-src.1.4.28.tgz
-cd lighttpd-src.1.4.28
-mkdir build
-cd build
-../configure --with-your-own-options
+- libxml2
+  - home: http://www.xmlsoft.org/index.html
+  - download information: http://www.xmlsoft.org/downloads.html
 
+- libxslt
+  - home: http://xmlsoft.org/XSLT/
+  - download information: http://xmlsoft.org/XSLT/downloads.html
 
-Then pass these directories to juise's configure script.
+- libcurl (optional)
+  - home: http://xmlsoft.org/XSLT/downloads.html
+  - download information: http://curl.haxx.se/download.html
+
+- libedit (optional)
+  - note: libreadline can also be used optionally
+  - home: http://www.thrysoee.dk/editline/
+
+- lighttpd (optional)
+  - home: http://www.lighttpd.net/
+  - download information: http://www.lighttpd.net/download
+  - note: You'll need to download source for lighttpd and build it,
+    but you'll need to make an distinct "build" subdirectory.
+        tar zxf lighttpd-src.1.4.28.tgz
+        cd lighttpd-src.1.4.28
+        mkdir build
+        cd build
+        ../configure --with-your-own-options
+    Then pass these directories to juise's configure script.
+
+If you are fortunate, these libraries are already part of your
+installed software base.  If not, you can either install pre-built
+packages of these libraries (if your OS supports it), or build the
+libraries from scratch.
 
 ** Cygwin
 

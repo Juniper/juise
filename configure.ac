@@ -10,8 +10,7 @@
 
 AC_PREREQ(2.2)
 AC_INIT([juise], [0.3.10], [phil@juniper.net])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
-LT_INIT([])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 AC_DISABLE_SHARED
 
 case $prefix in
@@ -32,8 +31,12 @@ LIBXSLT_REQUIRED_VERSION=1.1.26
 LIBSLAX_REQUIRED_VERSION=0.10.0
 
 AC_PROG_CC
+AM_PROG_AR
 AC_PROG_INSTALL
 AC_CONFIG_MACRO_DIR([m4])
+
+# Must be after AM_PROG_AR
+LT_INIT([])
 
 AC_PATH_PROG(BASENAME, basename, /usr/bin/basename)
 AC_PATH_PROG(CAT, cat, /bin/cat)
@@ -354,6 +357,31 @@ AC_SUBST(SLAX_EXTDIR)
 AC_SUBST(SLAX_LIBDIR)
 
 #
+# ---- handle libssh2 (which does not have a libssh2-config)
+#
+
+AC_ARG_WITH(libssh2-prefix,
+        [  --with-libssh2-prefix=[PFX]           Specify location of libssh2 config],
+        LIBSSH2_PREFIX=$withval,
+        LIBSSH2_PREFIX=$prefix
+)
+
+AC_ARG_WITH(libssh2-include-prefix,
+        [  --with-libssh2-include-prefix=[PFX]   Specify location of libssh2 headers],
+        LIBSSH2_CFLAGS="-I$withval",
+        LIBSSH2_CFLAGS="-I$LIBSSH2_PREFIX/include",
+)
+
+AC_ARG_WITH(libssh2-libs-prefix,
+        [  --with-libssh2-libs-prefix=[PFX]      Specify location of libssh2 libs],
+        LIBSSH2_LIBS="-L$withval -lssh2",
+        LIBSSH2_LIBS="-L$LIBSSH2_PREFIX/lib -lssh2"
+)
+
+AC_SUBST(LIBSSH2_CFLAGS)
+AC_SUBST(LIBSSH2_LIBS)
+
+#
 # ---- end of noise
 #
 
@@ -499,6 +527,7 @@ AC_CONFIG_FILES([
   juise-askpass/Makefile
   mod_juise/Makefile
   extensions/Makefile
+  mixer/Makefile
   web/Makefile
   web/lighttpd.conf
 ])
@@ -520,11 +549,12 @@ AC_MSG_NOTICE([summary of build options:
   libxslt version:  ${XSLTVERS}
   libxslt cflags:   ${LIBXSLT_CFLAGS}
   libxslt libs:     ${LIBXSLT_LIBS}
-  libslax version:  ${SLAXVERS}
   libslax cflags:   ${LIBSLAX_CFLAGS}
   libslax libs:     ${LIBSLAX_LIBS}
   libslax libdir:   ${SLAX_LIBDIR}
   libslax extdir:   ${SLAX_EXTDIR}
+  libssh2 cflags:   ${LIBSSH2_CFLAGS}
+  libssh2 libs:     ${LIBSSH2_LIBS}
   libpcre cflags:   ${PCRE_CFLAGS}
   libpcre libs:     ${PCRE_LIB}
   lighttpd src:     ${LIGHTTPD_SRC}

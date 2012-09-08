@@ -16,16 +16,19 @@ AM_CFLAGS = \
     -DLIBSLAX_XMLSOFT_NEED_PRIVATE \
     -I${top_srcdir} \
     -I${top_srcdir}/libjuise \
+    -Ilibssh2 \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
     ${LIBXML_CFLAGS} \
+    ${LIBSSH2_CFLAGS} \
     ${WARNINGS}
 
 LIBS = \
     ${LIBSLAX_LIBS} \
     ${LIBXSLT_LIBS} \
     -lexslt \
-    ${LIBXML_LIBS}
+    ${LIBXML_LIBS} \
+    ${LIBSSH2_LIBS}
 
 noinst_HEADERS = \
     local.h
@@ -39,11 +42,7 @@ AM_CFLAGS +=
 bin_PROGRAMS = mixer
 
 mixer_SOURCES = \
-  afunix.c \
-  channel.c \
-  mixer.c \
-  session.c \
-  websocket.c
+  mixer.c
 
 mixer_LDADD = ../libjuise/libjuise.la
 mixer_LDFLAGS = -static
