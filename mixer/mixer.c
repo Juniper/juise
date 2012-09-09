@@ -33,6 +33,8 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 
+#include <libslax/slax.h>
+
 #include <libssh2.h>
 
 #include <libjuise/common/aux_types.h>
@@ -172,6 +174,7 @@ typedef int (*mx_type_prep_func_t)(MX_TYPE_PREP_ARGS);
 typedef int (*mx_type_poller_func_t)(MX_TYPE_POLLER_ARGS);
 
 #define MX_TYPE_SPAWN_ARGS \
+    mx_sock_listener_t *mslp UNUSED, \
     int sock UNUSED, struct sockaddr_in *sin UNUSED, socklen_t sinlen UNUSED
 typedef mx_sock_t *(*mx_type_spawn_func_t)(MX_TYPE_SPAWN_ARGS);
 
@@ -200,6 +203,10 @@ mx_type_info_t mx_type_info[MST_MAX + 1];
 static const char *remote_desthost = "localhost"; /* resolved by the server */
 static unsigned int remote_destport = 22;
 
+static mx_channel_t *
+mx_channel_create (const char *target, mx_sock_t *forwarder);
+
+
 #define MX_LOG(_fmt...) \
     do { if (opt_debug || opt_verbose) mx_log(_fmt); } while (0)
 
@@ -224,6 +231,19 @@ mx_log (const char *fmt, ...)
     va_start(vap, fmt);
     vfprintf(stderr, cfmt, vap);
     va_end(vap);
+}
+
+static void
+mx_log_callback (void *opaque UNUSED, const char *fmt, va_list vap)
+{
+    int len = strlen(fmt);
+    char *cfmt = alloca(len + 2);
+
+    memcpy(cfmt, fmt, len);
+    cfmt[len] = '\n';
+    cfmt[len + 1] = '\0';
+
+    vfprintf(stderr, cfmt, vap);
 }
 
 static const char *
@@ -579,6 +599,14 @@ mx_forwarder_spawn (MX_TYPE_SPAWN_ARGS)
 
     msfp->msf_rbufp = mx_buffer_create(0);
 
+    mx_channel_t *mcp;
+    mcp = mx_channel_create(mslp->msl_target, &msfp->msf_base);
+    if (mcp == NULL) {
+	mx_log("could not open channel");
+	/* XXX close msfp */
+	return NULL;
+    }
+
     return &msfp->msf_base;
 }
 
@@ -614,8 +642,8 @@ mx_listener_accept (mx_sock_listener_t *listener)
     assert(mx_mti_number(listener->msl_spawns)->mti_spawn);
 
     mx_sock_t *msp;
-    msp = mx_mti_number(listener->msl_spawns)->mti_spawn(sock, &sin, sinlen);
-
+    msp = mx_mti_number(listener->msl_spawns)->mti_spawn(listener, sock,
+							 &sin, sinlen);
     if (msp == NULL)
 	return NULL;
 
@@ -966,7 +994,6 @@ mx_listener_poller (MX_TYPE_POLLER_ARGS)
     mx_sock_listener_t *mslp = mx_sock(msp, MST_LISTENER);
     const char *shost;
     unsigned int sport;
-    mx_channel_t *mcp;
 
     if (pollp && pollp->revents & POLLIN) {
 	mx_sock_t *newp = mx_listener_accept(mslp);
@@ -980,14 +1007,6 @@ mx_listener_poller (MX_TYPE_POLLER_ARGS)
 
 	mx_log("new connection from %s here to remote %s:%d",
 	       mx_sock_sin(newp), remote_desthost, remote_destport);
-
-	const char *target = mslp->msl_target;
-
-	mcp = mx_channel_create(target, newp);
-	if (mcp == NULL) {
-	    mx_log("could not open channel");
-	    mx_sock_close(newp);
-	}
     }
 
     return FALSE;
@@ -1459,6 +1478,84 @@ mx_websocket_print (MX_TYPE_PRINT_ARGS)
 	   mbp->mb_start, mbp->mb_len);
 }
 
+static int
+mx_websocket_prep (MX_TYPE_PREP_ARGS)
+{
+    mx_sock_websocket_t *mswp = mx_sock(msp, MST_WEBSOCKET);
+    mx_buffer_t *mbp = mswp->msw_rbufp;
+
+    /*
+     * If we have buffered data, we need to poll for output on
+     * the channels' session.
+     */
+    if (mbp->mb_len) {
+	DBG_POLL("S%u websocket has data", msp->ms_id);
+	return FALSE;
+
+    } else {
+	pollp->fd = msp->ms_sock;
+	pollp->events = POLLIN;
+	DBG_POLL("S%u blocking pollin for fd %d", msp->ms_id, pollp->fd);
+    }
+
+    return TRUE;
+}
+
+static int
+mx_websocket_poller (MX_TYPE_POLLER_ARGS)
+{
+    mx_sock_websocket_t *mswp = mx_sock(msp, MST_WEBSOCKET);
+    mx_buffer_t *mbp = mswp->msw_rbufp;
+    int len;
+
+    if (pollp && pollp->revents & POLLIN) {
+
+	if (mbp->mb_len == 0) {
+	    mbp->mb_start = mbp->mb_len = 0;
+
+	    len = recv(msp->ms_sock, mbp->mb_data, mbp->mb_size, 0);
+	    if (len < 0) {
+		if (errno != EWOULDBLOCK) {
+		    mx_log("S%u: read error: %s", msp->ms_id, strerror(errno));
+		    msp->ms_state = MSS_FAILED;
+		    return TRUE;
+		}
+
+	    } else if (len == 0) {
+		mx_log("S%u: disconnect (%s)", msp->ms_id, mx_sock_sin(msp));
+		return TRUE;
+	    } else {
+		mbp->mb_len = len;
+	    }
+
+	    slaxMemDump("wsread: ", mbp->mb_data, mbp->mb_len, ">", 0);
+	    mbp->mb_start = mbp->mb_len = 0;
+	}
+    }
+
+    return FALSE;
+}
+
+static mx_sock_t *
+mx_websocket_spawn (MX_TYPE_SPAWN_ARGS)
+{
+    mx_sock_websocket_t *mswp = malloc(sizeof(*mswp));
+
+    if (mswp == NULL)
+	return NULL;
+
+    bzero(mswp, sizeof(*mswp));
+    mswp->msw_base.ms_id = ++mx_sock_id;
+    mswp->msw_base.ms_type = MST_WEBSOCKET;
+    mswp->msw_base.ms_sock = sock;
+    mswp->msw_base.ms_sin = *sin;
+
+    mswp->msw_rbufp = mx_buffer_create(0);
+
+    return &mswp->msw_base;
+}
+
+
 static void
 mx_websocket_init (void)
 {
@@ -1466,11 +1563,10 @@ mx_websocket_init (void)
     mti_type: MST_WEBSOCKET,
     mti_name: "websocket",
     mti_print: mx_websocket_print,
-
-#if 0
     mti_prep: mx_websocket_prep,
     mti_poller: mx_websocket_poller,
     mti_spawn: mx_websocket_spawn,
+#if 0
     mti_write: mx_websocket_write,
     mti_set_channel: mx_websocket_set_channel,
 #endif
@@ -1534,6 +1630,11 @@ main (int argc UNUSED, char **argv UNUSED)
 	}
     }
 
+    slaxLogEnableCallback(mx_log_callback, NULL);
+
+    if (opt_verbose)
+	slaxLogEnable(TRUE);
+
     if (opt_home == NULL)
 	opt_home = getenv("HOME");
 
@@ -1564,6 +1665,10 @@ main (int argc UNUSED, char **argv UNUSED)
     }
 
     if (mx_listener(3333, MST_LISTENER, MST_FORWARDER, "bob") == NULL) {
+	mx_log("initial listen failed");
+    }
+
+    if (mx_listener(8000, MST_LISTENER, MST_WEBSOCKET, "carl") == NULL) {
 	mx_log("initial listen failed");
     }
 
