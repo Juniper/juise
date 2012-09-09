@@ -54,11 +54,10 @@
 #define MST_LISTENER	1	/* Listen for incoming connections */
 #define MST_FORWARDER	2	/* Forward data to/from an ssh channel */
 #define MST_SESSION	3	/* An ssh session */
-#define MST_SHELL	4	/* Debug console shell */
-#define MST_WS_LISTENER	5	/* Websocket listener */
-#define MST_WS_CLIENT	6	/* Client (browser) */
+#define MST_CONSOLE	4	/* Debug console shell */
+#define MST_WEBSOCKET	5	/* Websocket client (in a browser) */
 
-#define MST_MAX		6	/* max(MST_*) */
+#define MST_MAX		5	/* max(MST_*) */
 
 static unsigned mx_sock_id;   /* Monotonically increasing ID number */
 static unsigned mx_channel_id; /* Monotonically increasing ID number */
@@ -112,7 +111,7 @@ typedef struct mx_channel_s {
     unsigned mc_id;
     struct mx_sock_session_s *mc_session; /* Session for this channel */
     LIBSSH2_CHANNEL *mc_channel; /* Our libssh2 channel */
-    struct mx_sock_forwarder_s *mc_forwarder; /* Our forwarder */
+    struct mx_sock_s *mc_forwarder; /* Our forwarder */
     mx_buffer_t *mc_rbufp;	/* Read buffer */
 } mx_channel_t;
 
@@ -122,8 +121,6 @@ typedef struct mx_sock_s {
     mx_type_t ms_type;		/* MST_* type */
     unsigned ms_sock;		/* Underlaying sock */
     unsigned ms_state;		/* Type-specific state */
-    poll_event_t ms_events;	/* poll() events to look for */
-    poll_event_t ms_revents;	/* Returns poll() events */
     struct sockaddr_in ms_sin;	/* Address of peer */
 } mx_sock_t;
 
@@ -154,6 +151,11 @@ typedef struct mx_sock_session_s {
     mx_channel_list_t mss_channels; /* Set of channels */
 } mx_sock_session_t;
 
+typedef struct mx_sock_websocket_s {
+    mx_sock_t msw_base;
+    mx_buffer_t *msw_rbufp;	   /* Read buffer */
+} mx_sock_websocket_t;
+
 mx_sock_list_t mx_sock_list;	/* List of all sockets */
 int mx_sock_count;		/* Number of mx_sock_t in mx_sock_list */
 
@@ -173,6 +175,15 @@ typedef int (*mx_type_poller_func_t)(MX_TYPE_POLLER_ARGS);
     int sock UNUSED, struct sockaddr_in *sin UNUSED, socklen_t sinlen UNUSED
 typedef mx_sock_t *(*mx_type_spawn_func_t)(MX_TYPE_SPAWN_ARGS);
 
+#define MX_TYPE_WRITE_ARGS \
+    mx_sock_t *msp UNUSED, mx_buffer_t *mbp UNUSED
+typedef int (*mx_type_write_func_t)(MX_TYPE_WRITE_ARGS);
+
+#define MX_TYPE_SET_CHANNEL_ARGS \
+    mx_sock_t *msp UNUSED, mx_sock_session_t *mssp UNUSED, \
+	mx_channel_t *mcp UNUSED
+typedef void (*mx_type_set_channel_func_t)(MX_TYPE_SET_CHANNEL_ARGS);
+
 typedef struct mx_type_info_s {
     mx_type_t mti_type;		/* MST_* */
     const char *mti_name;	/* Printable name */
@@ -180,6 +191,8 @@ typedef struct mx_type_info_s {
     mx_type_prep_func_t mti_prep; /* Prepare for poll() data */
     mx_type_poller_func_t mti_poller; /* Process poll() data */
     mx_type_spawn_func_t mti_spawn; /* Spawn a new sock from a listener */
+    mx_type_write_func_t mti_write; /* Write a buffer of data */
+    mx_type_set_channel_func_t mti_set_channel; /* Set session/channel */
 } mx_type_info_t;
 
 mx_type_info_t mx_type_info[MST_MAX + 1];
@@ -195,6 +208,9 @@ static unsigned int remote_destport = 22;
 #define DBG_POLL(_fmt...) DBG_FLAG(DBG_FLAG_POLL, _fmt)
 
 static void
+#ifdef HAVE_PRINTFLIKE
+__printflike(1, 2)
+#endif /* HAVE_PRINTFLIKE */
 mx_log (const char *fmt, ...)
 {
     va_list vap;
@@ -228,7 +244,7 @@ mx_sock_sin (mx_sock_t *msp)
 }
 
 static mx_sock_t *
-mx_shell_start (void)
+mx_console_start (void)
 {
     mx_sock_t *msp = malloc(sizeof(*msp));
     if (msp == NULL)
@@ -236,8 +252,7 @@ mx_shell_start (void)
 
     bzero(msp, sizeof(*msp));
     msp->ms_id = ++mx_sock_id;
-    msp->ms_type = MST_SHELL;
-    msp->ms_events = POLLIN;
+    msp->ms_type = MST_CONSOLE;
     msp->ms_sock = 0;		/* fileno(stdin) */
 
     TAILQ_INSERT_HEAD(&mx_sock_list, msp, ms_link);
@@ -258,7 +273,7 @@ mx_shell_start (void)
  * @bug needs to handle escapes and quotes
  */
 static int
-mx_shell_split_args (char *buf, const char **args, int maxargs)
+mx_console_split_args (char *buf, const char **args, int maxargs)
 {
     static const char wsp[] = " \t\n\r";
     int i;
@@ -366,7 +381,7 @@ mx_forwarder_print (MX_TYPE_PRINT_ARGS)
     mx_sock_forwarder_t *msfp = mx_sock(msp, MST_FORWARDER);
     mx_buffer_t *mbp = msfp->msf_rbufp;
 
-    mx_log("%*s%ssession S%u, channel C%u to %s, rb %u/%u",
+    mx_log("%*s%ssession S%u, channel C%u to %s, rb %lu/%lu",
 	   indent, "", prefix,
 	   msfp->msf_session->mss_base.ms_id, msfp->msf_channel->mc_id,
 	   msfp->msf_session->mss_target,
@@ -390,17 +405,17 @@ mx_session_print (MX_TYPE_PRINT_ARGS)
 	libssh2_channel_window_read_ex(mcp->mc_channel,
 				       &read_avail, NULL);
 
-	mx_log("%*sC%u: S%u, channel %p, forwarder S%u, rb %u/%u, avail %u",
+	mx_log("%*sC%u: S%u, channel %p, forwarder S%u, rb %lu/%lu, avail %lu",
 	       indent + INDENT, "",
 	       mcp->mc_id, mcp->mc_session->mss_base.ms_id,
-	       mcp->mc_channel, mcp->mc_forwarder->msf_base.ms_id,
+	       mcp->mc_channel, mcp->mc_forwarder->ms_id,
 	       mbp->mb_start, mbp->mb_len, read_avail);
 
     }
 }
 
 static void
-mx_shell_list (const char **argv UNUSED)
+mx_console_list (const char **argv UNUSED)
 {
     mx_sock_t *msp;
     const char *shost = NULL;
@@ -453,7 +468,7 @@ mx_debug_parse_flag (const char *cp)
 }
 
 static int
-mx_shell_poller (MX_TYPE_POLLER_ARGS)
+mx_console_poller (MX_TYPE_POLLER_ARGS)
 {
     if (pollp && pollp->revents & POLLIN) {
 	char buf[BUFSIZ];
@@ -461,14 +476,14 @@ mx_shell_poller (MX_TYPE_POLLER_ARGS)
 	if (fgets(buf, sizeof(buf), stdin)) {
 	    const char *argv[MAXARGS], *cp;
 
-	    mx_shell_split_args(buf, argv, MAXARGS);
+	    mx_console_split_args(buf, argv, MAXARGS);
 	    cp = argv[0];
 	    if (cp && *cp) {
 		if (strabbrev("quit", cp)) {
 		    exit(1);
 
 		} else if (strabbrev("list", cp) || strabbrev("ls", cp)) {
-		    mx_shell_list(argv);
+		    mx_console_list(argv);
 
 		} else if (strabbrev("don", cp)) {
 		    opt_debug |= mx_debug_parse_flag(argv[1]);
@@ -534,7 +549,6 @@ mx_listener (unsigned port, mx_type_t type, int spawns, const char *target)
     mslp->msl_base.ms_id = ++mx_sock_id;
     mslp->msl_base.ms_type = type;
     mslp->msl_base.ms_sock = sock;
-    mslp->msl_base.ms_events = POLLIN;
     mslp->msl_port = port;
     mslp->msl_spawns = spawns;
     mslp->msl_target = strdup(target);
@@ -544,7 +558,7 @@ mx_listener (unsigned port, mx_type_t type, int spawns, const char *target)
 
     MX_LOG("S%u new listener, fd %u, spawns %s, port %s:%d...",
 	   mslp->msl_base.ms_id, mslp->msl_base.ms_sock,
-	   mx_sock_type(&mslp->msl_base),
+	   mx_sock_type_number(mslp->msl_spawns),
 	   inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
 
     return &mslp->msl_base;
@@ -560,7 +574,6 @@ mx_forwarder_spawn (MX_TYPE_SPAWN_ARGS)
     bzero(msfp, sizeof(*msfp));
     msfp->msf_base.ms_id = ++mx_sock_id;
     msfp->msf_base.ms_type = MST_FORWARDER;
-    msfp->msf_base.ms_events = POLLIN;
     msfp->msf_base.ms_sock = sock;
     msfp->msf_base.ms_sin = *sin;
 
@@ -628,7 +641,6 @@ mx_session (LIBSSH2_SESSION *session, int sock, const char *target)
     mssp->mss_base.ms_id = ++mx_sock_id;
     mssp->mss_base.ms_type = MST_SESSION;
     mssp->mss_base.ms_sock = sock;
-    mssp->mss_base.ms_events = POLLIN;
 
     mssp->mss_session = session;
     mssp->mss_target = strdup(target);
@@ -831,16 +843,15 @@ mx_channel (mx_sock_t *forwarder, mx_sock_session_t *session)
     mcp->mc_channel = channel;
     mcp->mc_rbufp = mx_buffer_create(0);
 
-    mx_sock_forwarder_t *msfp = mx_sock(forwarder, MST_FORWARDER);
-    msfp->msf_channel = mcp;
-    msfp->msf_session = session;
-    mcp->mc_forwarder = msfp;
+    assert(mx_mti(forwarder)->mti_set_channel);
+    mx_mti(forwarder)->mti_set_channel(forwarder, session, mcp);
+    mcp->mc_forwarder = forwarder;
 
     TAILQ_INSERT_HEAD(&session->mss_channels, mcp, mc_link);
 
     MX_LOG("C%u: new channel, S%u, channel %p, forwarder S%u",
 	   mcp->mc_id, mcp->mc_session->mss_base.ms_id,
-	   mcp->mc_channel, mcp->mc_forwarder->msf_base.ms_id);
+	   mcp->mc_channel, mcp->mc_forwarder->ms_id);
 
     return mcp;
 }
@@ -873,8 +884,11 @@ mx_channel_close (mx_channel_t *mcp)
     if (mcp == NULL)
 	return;
 
-    if (mcp->mc_forwarder)
-	mcp->mc_forwarder->msf_channel = NULL;
+    if (mcp->mc_forwarder) {
+	mx_sock_t *msp = mcp->mc_forwarder;
+	assert(mx_mti(msp)->mti_set_channel);
+	mx_mti(msp)->mti_set_channel(msp, NULL, NULL);
+    }
 
     libssh2_channel_free(mcp->mc_channel);
     free(mcp);
@@ -1081,8 +1095,9 @@ mx_forwarder_poller (MX_TYPE_POLLER_ARGS)
 }
 
 static int
-mx_forwarder_write (mx_sock_forwarder_t *msfp, mx_buffer_t *mbp)
+mx_forwarder_write (MX_TYPE_WRITE_ARGS)
 {
+    mx_sock_forwarder_t *msfp = mx_sock(msp, MST_FORWARDER);
     int rc;
     unsigned len = mbp->mb_len;
 
@@ -1104,6 +1119,15 @@ mx_forwarder_write (mx_sock_forwarder_t *msfp, mx_buffer_t *mbp)
 
     mbp->mb_start = mbp->mb_len = 0; /* Reset */
     return FALSE;
+}
+
+static void
+mx_forwarder_set_channel (MX_TYPE_SET_CHANNEL_ARGS)
+{
+    mx_sock_forwarder_t *msfp = mx_sock(msp, MST_FORWARDER);
+
+    msfp->msf_session = mssp;
+    msfp->msf_channel = mcp;
 }
 
 static int
@@ -1128,8 +1152,9 @@ mx_sock_isreadable (int sock)
 }
 
 static int
-mx_forwarder_is_buf (mx_sock_forwarder_t *msfp, int flags UNUSED)
+mx_forwarder_is_buf (mx_sock_t *msp, int flags UNUSED)
 {
+    mx_sock_forwarder_t *msfp = mx_sock(msp, MST_FORWARDER);
     return (msfp->msf_rbufp->mb_len != 0);
 }
 
@@ -1221,7 +1246,8 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
 	     * If the write call would block (returns TRUE), then
 	     * we move on.
 	     */
-	    if (mx_forwarder_write(mcp->mc_forwarder, mbp))
+	    assert(mx_mti(mcp->mc_forwarder)->mti_write);
+	    if (mx_mti(mcp->mc_forwarder)->mti_write(mcp->mc_forwarder, mbp))
 		break;
 	}
 
@@ -1267,7 +1293,7 @@ main_loop (void)
 		}
 	    } else {
 		mx_pollfd[nfd].fd = msp->ms_sock;
-		mx_pollfd[nfd].events = msp->ms_events;
+		mx_pollfd[nfd].events = POLLIN;
 		mx_pollfd[nfd].revents = 0;
 		mx_poll_owner[mindex] = &mx_pollfd[nfd];
 		nfd += 1;
@@ -1389,6 +1415,8 @@ mx_forwarder_init (void)
     mti_prep: mx_forwarder_prep,
     mti_poller: mx_forwarder_poller,
     mti_spawn: mx_forwarder_spawn,
+    mti_write: mx_forwarder_write,
+    mti_set_channel: mx_forwarder_set_channel,
     };
 
     mx_type_info_register(MX_TYPE_INFO_VERSION, &mti);
@@ -1409,12 +1437,43 @@ mx_session_init (void)
 }
 
 static void
-mx_shell_init (void)
+mx_console_init (void)
 {
     static mx_type_info_t mti = {
-    mti_type: MST_SHELL,
-    mti_name: "shell",
-    mti_poller: mx_shell_poller,
+    mti_type: MST_CONSOLE,
+    mti_name: "console",
+    mti_poller: mx_console_poller,
+    };
+
+    mx_type_info_register(MX_TYPE_INFO_VERSION, &mti);
+}
+
+static void
+mx_websocket_print (MX_TYPE_PRINT_ARGS)
+{
+    mx_sock_websocket_t *mswp = mx_sock(msp, MST_WEBSOCKET);
+    mx_buffer_t *mbp = mswp->msw_rbufp;
+
+    mx_log("%*s%srb %lu/%lu",
+	   indent, "", prefix,
+	   mbp->mb_start, mbp->mb_len);
+}
+
+static void
+mx_websocket_init (void)
+{
+    static mx_type_info_t mti = {
+    mti_type: MST_WEBSOCKET,
+    mti_name: "websocket",
+    mti_print: mx_websocket_print,
+
+#if 0
+    mti_prep: mx_websocket_prep,
+    mti_poller: mx_websocket_poller,
+    mti_spawn: mx_websocket_spawn,
+    mti_write: mx_websocket_write,
+    mti_set_channel: mx_websocket_set_channel,
+#endif
     };
 
     mx_type_info_register(MX_TYPE_INFO_VERSION, &mti);
@@ -1426,7 +1485,8 @@ mx_type_info_init (void)
     mx_listener_init();
     mx_forwarder_init();
     mx_session_init();
-    mx_shell_init();
+    mx_console_init();
+    mx_websocket_init();
 }
 
 int
@@ -1434,7 +1494,7 @@ main (int argc UNUSED, char **argv UNUSED)
 {
     char *cp;
     int rc;
-    int opt_getpass = FALSE, opt_shell = FALSE;
+    int opt_getpass = FALSE, opt_console = FALSE;
     char *opt_home = NULL;
 
     for (argv++; *argv; argv++) {
@@ -1448,8 +1508,8 @@ main (int argc UNUSED, char **argv UNUSED)
 	} else if (streq(cp, "--password")) {
 	    opt_password = *++argv;
 
-	} else if (streq(cp, "--shell") || streq(cp, "-s")) {
-	    opt_shell = TRUE;
+	} else if (streq(cp, "--console") || streq(cp, "-c")) {
+	    opt_console = TRUE;
 
 	} else if (streq(cp, "--user") || streq(cp, "-u")) {
 	    opt_user = *++argv;
@@ -1496,8 +1556,8 @@ main (int argc UNUSED, char **argv UNUSED)
         return 1;
     }
 
-    if (opt_shell)
-	mx_shell_start();
+    if (opt_console)
+	mx_console_start();
 
     if (mx_listener(2222, MST_LISTENER, MST_FORWARDER, "alice") == NULL) {
 	mx_log("initial listen failed");
