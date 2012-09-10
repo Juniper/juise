@@ -68,3 +68,11 @@ xml_parse_attributes (const char **cpp, unsigned max, char *attrs)
     return rc;
 }
 
+const char *
+xml_get_attribute (const char **cpp, const char *name)
+{
+    for (; *cpp; cpp += 2)
+	if (streq(*cpp, name)) return cpp[ 1 ];
+
+    return NULL;
+}

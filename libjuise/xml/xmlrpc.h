@@ -144,8 +144,6 @@ boolean xml_input_match2(void *peer, int type_to_match, int *typep,
 #define XIMF_ALLOW_NOOP		(1<<7) /* Return NOOPs */
 #define XIMF_PRESERVE_WS	(1<<8) /* Preserve whitespaces */
 
-const char *xml_get_attribute (const char **cpp, const char *name);
-
 /* Flags for xml_send*(): */
 #define XSF_ESCAPE	(1<<0)	/* Escape content before sending */
 #define XSF_EMPTY	(1<<1)	/* Empty open tag (insert trailing slash) */

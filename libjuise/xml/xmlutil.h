@@ -86,6 +86,7 @@ boolean xml_unescape(char *buf, size_t size, const char *str,
 		     boolean attribute);
 size_t  xml_escaped_size(const char *buf, boolean attribute, unsigned flags);
 boolean xml_parse_attributes (const char **cpp, unsigned max, char *attrs);
+const char *xml_get_attribute (const char **cpp, const char *name);
 
 #endif /* __JNX_XMLUTIL_H__ */
 
