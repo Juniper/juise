@@ -63,6 +63,7 @@ typedef struct fbuf_s {
 #define FBF_EOF_PENDING (1<<7)  /* Eof seen while looking ahead for abort */
 #define FBF_DATA        (1<<8)  /* Get data one line at a time */
 #define FBF_UNGETTED    (1<<9)  /* An unget operation has been performed */
+#define FBF_STRING	(1<<10)	/* Input is a static string (no read) */
 
 /*
  * fbuf_eof: return non-zere if the file buffer contains buffered data.
@@ -255,5 +256,10 @@ fbuf_set_size_limit (fbuf_t *fbp, int size_limit)
     fbp->fb_size_limit = size_limit;
 }
 
-#endif /* __JNX_FBUF_H__ */
+fbuf_t *
+fbuf_from_string (char *data, int len);
 
+fbuf_t *
+fbuf_from_const_string (const char *const_data, int len);
+
+#endif /* __JNX_FBUF_H__ */

@@ -180,7 +180,7 @@ boolean xml_put_namespace (void *peer, const char *name, int type,
 boolean xml_forward_error (void *dst, void *src, int flags);
 
 boolean xml_input_rpc (void *peer, void *error_peer,
-               int flags, int *typep, char **tagp,
+               unsigned flags, int *typep, char **tagp,
                char **restp, char **datap, const char *rpctag,
 	       const char *rpcminor, const char *fmt, ...);
 

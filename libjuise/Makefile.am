@@ -74,7 +74,10 @@ libjuise_la_SOURCES = \
     io/rotate_log.c \
     xml/extensions.c \
     xml/jsio.c \
-    xml/libxml.c
+    xml/libxml.c \
+    xml/xmlrpc.c \
+    xml/xml_parse_attributes.c \
+    xml/xml_unescape.c
 
 LIBS = \
     ${LIBSLAX_LIBS} \

@@ -1447,6 +1447,44 @@ fbuf_trace_tagged (fbuf_t *fbp, FILE *fp, const char *tag)
     return FALSE;
 }
 
+fbuf_t *
+fbuf_from_string (char *data, int len)
+{
+    fbuf_t *fbp;
+
+    fbp = calloc(1, sizeof(*fbp));
+    if (fbp == NULL)
+	return NULL;
+
+    fbp->fb_fd = -1;
+    fbp->fb_flags = FBF_EOF | FBF_STRING;
+
+    fbp->fb_buf = fbp->fb_ptr = data;
+    fbp->fb_size = fbp->fb_size_limit = len;
+
+    return fbp;
+}
+
+fbuf_t *
+fbuf_from_const_string (const char *const_data, int len)
+{
+    char *data = malloc(len + 1);
+    fbuf_t *fbp;
+
+    if (data == NULL)
+	return NULL;
+
+    memcpy(data, const_data, len);
+    data[len] = '\0';
+
+    fbp = fbuf_from_string(data, len);
+
+    if (fbp == NULL)
+	free(data);
+
+    return fbp;
+}
+
 #ifdef UNIT_TEST
 #include <termios.h>
 

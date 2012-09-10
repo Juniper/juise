@@ -39,6 +39,7 @@
 
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
+#include <libjuise/xml/xmlutil.h>
 
 #ifndef INADDR_NONE
 #define INADDR_NONE (in_addr_t)-1
@@ -46,8 +47,9 @@
 
 #define LOCALHOST_ADDRESS "127.0.0.1"
 
-#define MAXPOLL		10000	/* Largest number of open sockets to poll() */
-#define MAXARGS		10	/* Max number of args to carve up */
+#define MAX_POLL	10000	/* Largest number of open sockets to poll() */
+#define MAX_ARGS	10	/* Max number of args to carve up */
+#define MAX_XML_ATTR	10	/* Max number of attributes on rpc tag */
 #define INDENT 		4	/* Indentation increment */
 #define BUFFER_DEFAULT_SIZE (4*1024)
 #define POLL_TIMEOUT	30000	/* Poll() timeout */
@@ -63,8 +65,8 @@
 
 static unsigned mx_sock_id;   /* Monotonically increasing ID number */
 static unsigned mx_channel_id; /* Monotonically increasing ID number */
-static struct pollfd mx_pollfd[MAXPOLL];
-static struct pollfd *mx_poll_owner[MAXPOLL];
+static struct pollfd mx_pollfd[MAX_POLL];
+static struct pollfd *mx_poll_owner[MAX_POLL];
 
 static const char keydir[] = ".ssh";
 static const char keybase1[] = "id_dsa.pub";
@@ -288,18 +290,18 @@ mx_console_start (void)
  * Split the input given by users into tokens
  * @buf buffer to split
  * @args array for args
- * @maxargs length of args
+ * @max_args length of args
  * @return number of args
  * @bug needs to handle escapes and quotes
  */
 static int
-mx_console_split_args (char *buf, const char **args, int maxargs)
+mx_console_split_args (char *buf, const char **args, int max_args)
 {
     static const char wsp[] = " \t\n\r";
     int i;
     char *s;
 
-    for (i = 0; (s = strsep(&buf, wsp)) && i < maxargs - 1; i++) {
+    for (i = 0; (s = strsep(&buf, wsp)) && i < max_args - 1; i++) {
 	args[i] = s;
 
 	if (buf)
@@ -494,9 +496,9 @@ mx_console_poller (MX_TYPE_POLLER_ARGS)
 	char buf[BUFSIZ];
 
 	if (fgets(buf, sizeof(buf), stdin)) {
-	    const char *argv[MAXARGS], *cp;
+	    const char *argv[MAX_ARGS], *cp;
 
-	    mx_console_split_args(buf, argv, MAXARGS);
+	    mx_console_split_args(buf, argv, MAX_ARGS);
 	    cp = argv[0];
 	    if (cp && *cp) {
 		if (strabbrev("quit", cp)) {
@@ -1296,7 +1298,7 @@ main_loop (void)
 	int mindex = -1;
 	int timeout = POLL_TIMEOUT;
 
-	assert(mx_sock_count < MAXPOLL);
+	assert(mx_sock_count < MAX_POLL);
 
 	bzero(&mx_pollfd, sizeof(mx_pollfd[0]) * mx_sock_count);
 	bzero(&mx_poll_owner, sizeof(mx_poll_owner[0]) * mx_sock_count);
@@ -1468,6 +1470,62 @@ mx_console_init (void)
 }
 
 static void
+mx_websocket_parse_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
+{
+    char *cp = mbp->mb_data, *ep = mbp->mb_data + mbp->mb_len;
+    char *tag, *base;
+
+    for (; cp < ep; cp++) {
+	if (*cp == '<')
+	    break;
+	if (!isspace((int) *cp)) {
+	    mx_log("S%u parse request fails (%c)", mswp->msw_base.ms_id, *cp);
+	    goto fatal;
+	}
+    }
+    if (cp >= ep)
+	goto fatal;
+
+    base = ++cp;
+    for (; cp < ep; cp++) {
+	if (*cp == '>')
+	    break;
+    }
+    if (cp >= ep)
+	goto fatal;
+
+    if (cp[-1] == '/')
+	cp -= 1;
+
+    tag = alloca(cp - base);
+    memcpy(tag, base, cp - base);
+    tag[cp - base] = '\0';
+    ep = tag + (cp - base);
+    cp = tag;
+
+    for (; cp < ep && !isspace((int) *cp); cp++)
+	continue;
+
+    if (*cp != '\0')
+	*cp++ = '\0';
+
+    mx_log("S%u websocket request tag '%s', rest '%s'",
+	   mswp->msw_base.ms_id, tag, cp);
+
+    const char *cpp[MAX_XML_ATTR];
+    if (xml_parse_attributes(cpp, MAX_XML_ATTR, cp)) {
+	mx_log("S%u websocket request ('%s') with broken attributes ('%s')",
+	       mswp->msw_base.ms_id, tag, cp);
+	goto fatal;
+    }
+
+    return;
+
+ fatal:
+    mswp->msw_base.ms_state = MSS_FAILED;
+}
+
+static void
 mx_websocket_print (MX_TYPE_PRINT_ARGS)
 {
     mx_sock_websocket_t *mswp = mx_sock(msp, MST_WEBSOCKET);
@@ -1515,20 +1573,24 @@ mx_websocket_poller (MX_TYPE_POLLER_ARGS)
 
 	    len = recv(msp->ms_sock, mbp->mb_data, mbp->mb_size, 0);
 	    if (len < 0) {
-		if (errno != EWOULDBLOCK) {
-		    mx_log("S%u: read error: %s", msp->ms_id, strerror(errno));
-		    msp->ms_state = MSS_FAILED;
-		    return TRUE;
-		}
+		if (errno == EWOULDBLOCK)
+		    return FALSE;
 
-	    } else if (len == 0) {
-		mx_log("S%u: disconnect (%s)", msp->ms_id, mx_sock_sin(msp));
+		mx_log("S%u: read error: %s", msp->ms_id, strerror(errno));
+		msp->ms_state = MSS_FAILED;
 		return TRUE;
-	    } else {
-		mbp->mb_len = len;
 	    }
 
+	    if (len == 0) {
+		mx_log("S%u: disconnect (%s)", msp->ms_id, mx_sock_sin(msp));
+		return TRUE;
+	    }
+
+	    mbp->mb_len = len;
 	    slaxMemDump("wsread: ", mbp->mb_data, mbp->mb_len, ">", 0);
+
+	    mx_websocket_parse_request(mswp, mbp);
+
 	    mbp->mb_start = mbp->mb_len = 0;
 	}
     }

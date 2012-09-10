@@ -10,7 +10,7 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libjuise juise juise-askpass extensions doc
+SUBDIRS = libjuise juise mixer juise-askpass extensions doc
 
 if HAVE_LIGHTTPD
 SUBDIRS += mod_juise web
