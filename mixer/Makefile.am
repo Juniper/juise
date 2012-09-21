@@ -42,7 +42,16 @@ AM_CFLAGS +=
 bin_PROGRAMS = mixer
 
 mixer_SOURCES = \
-  mixer.c
+    channel.c \
+    console.c \
+    debug.c \
+    forwarder.c \
+    listener.c \
+    mixer.c \
+    mtypes.c \
+    request.c \
+    session.c \
+    websocket.c
 
 mixer_LDADD = ../libjuise/libjuise.la
 mixer_LDFLAGS = -static

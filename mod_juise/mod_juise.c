@@ -662,7 +662,6 @@ mod_juise_connection_close (server *srv, mod_juise_handler_context *hctx)
 	    }
 	}
 
-
 	kill(pid, SIGTERM);
 
 	/* cgi-script is still alive, queue the PID for removal */

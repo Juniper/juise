@@ -104,7 +104,8 @@ srv_run_script (js_session_t *jsp, const char *scriptname,
     scriptfile = open_script(scriptname, full_name, sizeof(full_name));
     if (scriptfile == NULL) {
 	trace(trace_file, TRACE_ALL,
-	      "file open failed for script '%s'", scriptname);
+	      "file open failed for script '%s' (%s)",
+	      scriptname, juise_dir ?: JUISE_SCRIPT_DIR);
 	return TRUE;
     }
 
