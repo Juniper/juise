@@ -21,6 +21,34 @@ static unsigned mx_channel_id; /* Monotonically increasing ID number */
 const char mx_netconf_marker[] = NETCONF_MARKER;
 unsigned mx_netconf_marker_len = sizeof(mx_netconf_marker) - 1;
 
+static int
+mx_channel_read (mx_channel_t *mcp, char *buf, unsigned long bufsiz)
+{
+    int len;
+
+    len = libssh2_channel_read(mcp->mc_channel, buf, bufsiz);
+
+    DBG_POLL("C%u read %d", mcp->mc_id, len);
+    if (len > 0)
+	slaxMemDump("chread: ", buf, len, ">", 0);
+
+    return len;
+}
+
+static int
+mx_channel_write (mx_channel_t *mcp, const char *buf, unsigned long bufsiz)
+{
+    int len;
+
+    len = libssh2_channel_write(mcp->mc_channel, buf, bufsiz);
+
+    DBG_POLL("C%u write %d", mcp->mc_id, len);
+    if (len > 0)
+	slaxMemDump("chwrite: ", buf, len, ">", 0);
+
+    return len;
+}
+
 mx_channel_t *
 mx_channel_create (mx_sock_session_t *session,
 		   mx_sock_t *client, LIBSSH2_CHANNEL *channel)
@@ -90,7 +118,7 @@ mx_channel_netconf_send_hello (mx_channel_t *mcp)
 	"</hello>\n" NETCONF_MARKER ">\n";
     int len, hlen = sizeof(hello) - 1;
 
-    len = libssh2_channel_write(mcp->mc_channel, hello, hlen);
+    len = mx_channel_write(mcp, hello, hlen);
     mx_log("C%u sent hello (%d)%s", mcp->mc_id, len,
 	   (len == hlen) ? " complete" : " short");
 
@@ -198,8 +226,7 @@ mx_channel_netconf_read_hello (mx_channel_t *mcp)
 	    mbp = newp;
 	}
 
-	len = libssh2_channel_read(mcp->mc_channel,
-				   mbp->mb_data + mbp->mb_start + mbp->mb_len,
+	len = mx_channel_read(mcp, mbp->mb_data + mbp->mb_start + mbp->mb_len,
 			       mbp->mb_size - (mbp->mb_start + mbp->mb_len));
 
 	if (libssh2_channel_eof(mcp->mc_channel)) {
@@ -218,10 +245,8 @@ mx_channel_netconf_read_hello (mx_channel_t *mcp)
 #endif
 	}
 
-	if (len < 0) {
-	    mx_log("C%u libssh2_channel_read: %d", mcp->mc_id, (int) len);
+	if (len < 0)
 	    return TRUE;
-	}
 
 	mbp->mb_len += len;
 	DBG_POLL("C%u read %d", mcp->mc_id, len);
@@ -255,7 +280,7 @@ mx_channel_netconf (mx_sock_session_t *mssp, mx_sock_t *client, int xml_mode)
 	TAILQ_REMOVE(&mssp->mss_released, mcp, mc_link);
 	TAILQ_INSERT_HEAD(&mssp->mss_channels, mcp, mc_link);
 
-	mcp->mc_state = MSS_RPC_READY;
+	mcp->mc_state = MSS_RPC_INITIAL;
 	mcp->mc_client = client;
 	if (mx_mti(client)->mti_set_channel)
 	    mx_mti(client)->mti_set_channel(client, mcp->mc_session, mcp);
@@ -332,22 +357,19 @@ mx_channel_close (mx_channel_t *mcp)
     free(mcp);
 }
 
-void
-mx_channel_write (mx_channel_t *mcp, mx_buffer_t *mbp)
+int
+mx_channel_write_buffer (mx_channel_t *mcp, mx_buffer_t *mbp)
 {
     int len = mbp->mb_len, rc;
 
     do {
-	rc = libssh2_channel_write(mcp->mc_channel,
-				   mbp->mb_data + mbp->mb_start,
-				   len);
+	rc = mx_channel_write(mcp, mbp->mb_data + mbp->mb_start, len);
 	if (rc < 0) {
 	    if (rc == LIBSSH2_ERROR_EAGAIN)
-		return;
+		return rc;
 
-	    mx_log("C%u: libssh2_channel_write: %d", mcp->mc_id, rc);
 	    /* XXX recovery/close? */
-	    return;
+	    return rc;
 	}
 
 	mbp->mb_start += rc;
@@ -355,6 +377,8 @@ mx_channel_write (mx_channel_t *mcp, mx_buffer_t *mbp)
     } while (mbp->mb_start < (unsigned) len);
 
     mbp->mb_start = mbp->mb_len = 0; /* Reset */
+
+    return len;
 }
 
 static int
@@ -384,8 +408,8 @@ mx_channel_netconf_detect_marker (mx_channel_t *mcp UNUSED,
 
 	    mx_log("C%u netconf marker found at beginning (%lu/%lu)",
 		   mcp->mc_id, mcp->mc_marker_seen, mbp->mb_len);
-	    mcp->mc_state = MSS_RPC_COMPLETE;
-	    mbp->mb_start = mbp->mb_len = 0;
+	    mcf_set_seen_eoframe(mcp);
+	    mx_buffer_reset(mbp);
 	    return TRUE;
 	}
     }
@@ -417,13 +441,12 @@ mx_channel_netconf_detect_marker (mx_channel_t *mcp UNUSED,
 
     if (ep - cp == mx_netconf_marker_len) {
 	mx_log("C%u netconf marker found", mcp->mc_id);
-	mcp->mc_state = MSS_RPC_COMPLETE;
+	mcf_set_seen_eoframe(mcp);
 	return TRUE;
     }
 
     mx_log("C%u netconf marker partial found (%ld/%lu)",
 	   mcp->mc_id, ep - cp, mbp->mb_len);
-    mcp->mc_state = MSS_RPC_WORKING;
     mcp->mc_marker_seen = ep - cp;
     return FALSE;
 }
@@ -441,6 +464,7 @@ mx_channel_release (mx_channel_t *mcp)
     if (client && mx_mti(client)->mti_set_channel)
 	mx_mti(client)->mti_set_channel(client, NULL, NULL);
     mcp->mc_client = NULL;
+    mcp->mc_request = NULL;
 
     TAILQ_REMOVE(&session->mss_channels, mcp, mc_link);
     TAILQ_INSERT_HEAD(&session->mss_released, mcp, mc_link);
@@ -469,20 +493,17 @@ mx_channel_handle_input (mx_channel_t *mcp)
 
     if (mbp->mb_len == 0) { /* Nothing buffered */
 	mbp->mb_start = 0;
-	len = libssh2_channel_read(mcp->mc_channel,
-				   mbp->mb_data, mbp->mb_size);
+	len = mx_channel_read(mcp, mbp->mb_data, mbp->mb_size);
 	if (len == LIBSSH2_ERROR_EAGAIN) {
 	    /* Nothing to read, nothing to write; move on */
 	    DBG_POLL("C%u is drained", mcp->mc_id);
 	    return TRUE;
 
 	} else if (len < 0) {
-	    mx_log("libssh2_channel_read: %d", (int) len);
 	    return TRUE;
 
 	} else {
 	    mbp->mb_len = len;
-	    DBG_POLL("C%u read %d", mcp->mc_id, len);
 	}
     }
 
@@ -493,14 +514,27 @@ mx_channel_handle_input (mx_channel_t *mcp)
      * we move on.
      */
     if (mcp->mc_client == NULL
-	    || mx_mti(mcp->mc_client)->mti_write(mcp->mc_client, mbp))
+	    || mx_mti(mcp->mc_client)->mti_write(mcp->mc_client, mcp, mbp))
 	return TRUE;
+
+    /*
+     * If we're in IDLE/INIT state and we're seen the end-of-frame
+     * marker, then the RPC is complete.
+     */
+    if (mcf_is_seen_eoframe(mcp) && (mcp->mc_state == MSS_RPC_INITIAL
+				     || mcp->mc_state == MSS_RPC_IDLE)) {
+	mcp->mc_state = MSS_RPC_COMPLETE;
+	mcf_clear_seen_eoframe(mcp);
+    }
 
     if (mcp->mc_state == MSS_RPC_COMPLETE && !mcf_is_hold_channel(mcp)) {
 	/*
 	 * The RPC is complete, so we can detach the channel from the
 	 * websocket, allowing us to reuse it.
 	 */
+	if (mcp->mc_client && mx_mti(mcp->mc_client)->mti_write_complete)
+	    mx_mti(mcp->mc_client)->mti_write_complete(mcp->mc_client, mcp);
+	
 	mx_channel_release(mcp);
     }
 

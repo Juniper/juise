@@ -26,8 +26,8 @@ mx_channel_handle_input (mx_channel_t *mcp);
 void
 mx_channel_close (mx_channel_t *mcp);
 
-void
-mx_channel_write (mx_channel_t *mcp, mx_buffer_t *mbp);
+int
+mx_channel_write_buffer (mx_channel_t *mcp, mx_buffer_t *mbp);
 
 int
 mx_channel_sock (mx_channel_t *mcp);

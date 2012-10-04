@@ -8,9 +8,10 @@
 # using the SOFTWARE, you agree to be bound by the terms of that
 # LICENSE.
 
-if JUISE_WARNINGS
-include ${top_srcdir}/warnings.mk
+if JUISE_WARNINGS_HIGH
+JUISE_WARNINGS = HIGH
 endif
+include ${top_srcdir}/warnings.mk
 
 AM_CFLAGS = \
     -I${top_srcdir} \

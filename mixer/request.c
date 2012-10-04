@@ -16,6 +16,7 @@
 #include "netconf.h"
 
 static unsigned mx_request_id; /* Monotonically increasing ID number */
+static mx_request_list_t mx_request_list; /* List of outstanding requests */
 
 char mx_netconf_tag_open_rpc[] = "<rpc format=\"html\">";
 unsigned mx_netconf_tag_open_rpc_len = sizeof(mx_netconf_tag_open_rpc) - 1;
@@ -24,7 +25,7 @@ unsigned  mx_netconf_tag_close_rpc_len = sizeof(mx_netconf_tag_close_rpc) - 1;
 
 mx_request_t *
 mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp UNUSED,
-		     const char *tag, const char **attrs)
+		   mx_muxid_t muxid, const char *tag, const char **attrs)
 {
     mx_request_t *mrp;
     char *cp;
@@ -35,11 +36,14 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp UNUSED,
 
     mrp->mr_id = ++mx_request_id;
 
-    mrp->mr_muxid = nstrdup(xml_get_attribute(attrs, "muxid"));
+    mrp->mr_state = MSS_NORMAL;
+    mrp->mr_muxid = muxid;
     mrp->mr_name = strdup(tag);
+    mrp->mr_client = &mswp->msw_base;
     mrp->mr_target = nstrdup(xml_get_attribute(attrs, "target"));
     mrp->mr_user = nstrdup(xml_get_attribute(attrs, "user"));
     mrp->mr_password = nstrdup(xml_get_attribute(attrs, "password"));
+    mrp->mr_rpc = mbp;
 
     if (mrp->mr_user == NULL && mrp->mr_target) {
 	cp = index(mrp->mr_target, '@');
@@ -50,7 +54,9 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp UNUSED,
 	}
     }
 
-    mx_log("R%u request %s '%s' from S%u, target %s, user %s",
+    TAILQ_INSERT_HEAD(&mx_request_list, mrp, mr_link);
+
+    mx_log("R%u request %s %lu from S%u, target %s, user %s",
 	   mrp->mr_id, mrp->mr_name, mrp->mr_muxid,
 	   mswp->msw_base.ms_id, mrp->mr_target, mrp->mr_user);
 
@@ -145,23 +151,22 @@ mx_netconf_insert_framing (mx_buffer_t *mbp)
 }
 
 static int
-mx_request_rpc_send (mx_sock_websocket_t *mswp, mx_buffer_t *mbp,
+mx_request_rpc_send (mx_sock_t *msp, mx_buffer_t *mbp,
 		     mx_request_t *mrp, mx_channel_t *mcp)
 {
     mx_log("R%u S%u/C%u sending rpc %.*s",
-	   mrp->mr_id, mswp->msw_base.ms_id, mcp->mc_id,
+	   mrp->mr_id, msp->ms_id, mcp->mc_id,
 	   (int) mbp->mb_len, mbp->mb_data + mbp->mb_start);
 
     ssize_t len;
-    ssize_t blen = 0;
 
     mx_buffer_t *newp = mx_netconf_insert_framing(mbp);
 
-    len = libssh2_channel_write(mcp->mc_channel,
-				newp->mb_data + newp->mb_start,
-				newp->mb_len + blen);
+    mcp->mc_request = mrp;
+    mcp->mc_state = MSS_RPC_INITIAL;
+    len = mx_channel_write_buffer(mcp, newp);
     mx_log("R%u S%u/C%u send rpc, len %d",
-	   mrp->mr_id, mswp->msw_base.ms_id, mcp->mc_id, (int) len);
+	   mrp->mr_id, msp->ms_id, mcp->mc_id, (int) len);
 
     if (newp != mbp)
 	mx_buffer_free(newp);
@@ -170,14 +175,13 @@ mx_request_rpc_send (mx_sock_websocket_t *mswp, mx_buffer_t *mbp,
 }
 
 int
-mx_request_start_rpc (mx_sock_websocket_t *mswp, mx_buffer_t *mbp,
-		      mx_request_t *mrp)
+mx_request_start_rpc (mx_sock_websocket_t *mswp, mx_request_t *mrp)
 {
-    mx_log("R%u %s '%s' on S%u, target '%s'",
+    mx_log("R%u %s %lu on S%u, target '%s'",
 	   mrp->mr_id, mrp->mr_name, mrp->mr_muxid,
 	   mswp->msw_base.ms_id, mrp->mr_target);
 
-    mx_sock_session_t *mssp = mx_session(&mswp->msw_base, mrp);
+    mx_sock_session_t *mssp = mx_session(mrp);
     if (mssp == NULL) {
 	/* XXX send failure message */
 	return TRUE;
@@ -190,19 +194,19 @@ mx_request_start_rpc (mx_sock_websocket_t *mswp, mx_buffer_t *mbp,
     if (mcp) {
 	mx_log("C%u running R%u '%s' target '%s'",
 	       mcp->mc_id, mrp->mr_id, mrp->mr_name, mrp->mr_target);
-	mx_request_rpc_send(mswp, mbp, mrp, mcp);
+	mx_request_rpc_send(&mswp->msw_base, mrp->mr_rpc, mrp, mcp);
     }
 
     return TRUE;
 }
 
 mx_request_t *
-mx_request_find (mx_sock_websocket_t *mswp, const char *muxid)
+mx_request_find (mx_muxid_t muxid)
 {
     mx_request_t *mrp;
 
-    TAILQ_FOREACH(mrp, &mswp->msw_requests, mr_link) {
-	if (streq(mrp->mr_muxid, muxid))
+    TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
+	if (mrp->mr_muxid == muxid)
 	    return mrp;
     }
 
@@ -210,13 +214,65 @@ mx_request_find (mx_sock_websocket_t *mswp, const char *muxid)
 }
 
 void
+mx_request_print (mx_request_t *mrp, int indent, const char *prefix)
+{
+    mx_log("%*s%sR%u: muxid %lu, name %s, target %s, user %s, dest %s:%u",
+	   indent, "", prefix, mrp->mr_id, mrp->mr_muxid,
+	   mrp->mr_name ?: "", mrp->mr_target ?: "", mrp->mr_user ?: "",
+	   mrp->mr_desthost ?: "", mrp->mr_destport);
+    mx_log("%*s%sclient S%u, session S%u C%u", indent + INDENT, "", prefix,
+	   mrp->mr_client ? mrp->mr_client->ms_id : 0,
+	   mrp->mr_session ? mrp->mr_session->mss_base.ms_id : 0,
+	   mrp->mr_channel ? mrp->mr_channel->mc_id : 0);
+}	
+
+void
 mx_request_free (mx_request_t *mrp)
 {
-    if (mrp->mr_muxid) free(mrp->mr_muxid);
     if (mrp->mr_name) free(mrp->mr_name);
     if (mrp->mr_target) free(mrp->mr_target);
     if (mrp->mr_user) free(mrp->mr_user);
     if (mrp->mr_password) free(mrp->mr_password);
+    if (mrp->mr_rpc) mx_buffer_free(mrp->mr_rpc);
 
     free(mrp);
+}
+
+void
+mx_request_release_session (mx_sock_session_t *session)
+{
+    mx_request_t *mrp;
+
+    TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
+	if (mrp->mr_session == session) {
+	    mx_log("R%u session released R%u, C%u",
+		   mrp->mr_id, mrp->mr_session->mss_base.ms_id,
+		   mrp->mr_channel ? mrp->mr_channel->mc_id : 0);
+	    mrp->mr_state = MSS_FAILED;
+	    mrp->mr_session = NULL;
+	    mrp->mr_channel = NULL;
+	}
+    }
+}
+
+void
+mx_request_restart_rpc (mx_request_t *mrp)
+{
+    mx_channel_t *mcp;
+
+    mcp = mx_channel_netconf(mrp->mr_session, mrp->mr_client, TRUE);
+    if (mcp == NULL)
+	return;
+
+    mx_log("C%u running R%u '%s' target '%s'",
+	   mcp->mc_id, mrp->mr_id, mrp->mr_name, mrp->mr_target);
+
+    mx_buffer_t *mbp = mrp->mr_rpc;
+    mx_request_rpc_send(mrp->mr_client, mbp, mrp, mcp);
+}
+
+void
+mx_request_init (void)
+{
+    TAILQ_INIT(&mx_request_list);
 }

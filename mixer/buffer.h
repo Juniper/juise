@@ -9,14 +9,11 @@
  * LICENSE.
  */
 
-#define MX_OP_RPC	"rpc"
-#define MX_OP_REPLY	"reply"
-#define MX_OP_COMPLETE	"complete"
-#define MX_OP_HOSTKEY	"hostkey"
-#define MX_OP_PASSWD	"password"
+mx_buffer_t *
+mx_buffer_create (unsigned size);
 
 void
-mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp);
+mx_buffer_free (mx_buffer_t *mbp);
 
 void
-mx_websocket_init (void);
+mx_buffer_reset (mx_buffer_t *mbp);

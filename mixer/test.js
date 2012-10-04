@@ -2,39 +2,63 @@
 
 jQuery(function ($) {
     $.dbgpr("working");
-    var ws;
 
-    if (0) {
-        ws = new WebSocket("ws://127.0.0.1:3000/chat");
-        if (ws.readyState == ws.CLOSED) {
-            $.dbgpr("ws failed");
-        } else if (ws.readyState != ws.CLOSED) {
-            ws.send("Hello");
-            ws.onmessage = function (msg) {
-                $.dbgpr("received [" + msg + "]");
-            }
+    var muxer = $.Muxer({
+        url: "ws://127.0.0.1:3000/chat",
+        onopen: function (event) {
+            $.dbgpr("test: opened WebSocket");
+        },
+        onreply: function (event, data) {
+            $.dbgpr("test: onreply: " + data);
+        },
+        oncomplete: function (event) {
+            $.dbgpr("test: complete");
+        },
+        onclose: function (event) {
+            $.dbgpr("test: closed WebSocket");
         }
-    }
+    });
+    muxer.open();
 
     $.doSend = function (clear) {
-        var msg = $("#sendmsg").val();
+        var target = $("#target").val();
+        if (target == undefined)
+            return;
+
+        var msg = $("#message").val();
         if (!msg.length) {
             return;
         }
-        ws.send(msg);
-        if (clear)
-            $("#sendmsg").val("");
-    }
+        var full = [ ];
 
-    ws = new WebSocket("ws://127.0.0.1:3000/chat");
-    ws.onopen = function (event) {
-        $.dbgpr("opened WebSocket");
-    }
-    ws.onmessage = function (msg) {
-        $("#content").append(msg.data);
-    }
-    ws.onclose = function (event) {
-        $.dbgpr("closed WebSocket");
+        muxer.rpc({
+            target: target,
+            payload: msg,
+            onreply: function (data) {
+                $.dbgpr("rpc: reply: full.length " + full.length
+                        + ", data.length " + data.length);
+                full.push(data);
+                // Turns out that if we continually pass on incoming
+                // data, firefox becomes overwhelmed with the work
+                // of rendering it into html.  We cheat here by
+                // rendering the first piece, and then letting the
+                // rest wait until the RPC is complete.  Ideally, there
+                // should also be a timer to render what we've got if
+                // the output RPC stalls.
+                if (full.length == 1)
+                    $("#content").html(data);
+                var $x = full.join("");
+            },
+            oncomplete: function () {
+                $.dbgpr("rpc: complete");
+                $("#content").html(full.join(""));
+            },
+            onhostkey: function (data) {
+                muxer.hostkey(this, "yes");
+            },
+        });
+
+        if (clear)
+            $("#message").val("");
     }
 })
-

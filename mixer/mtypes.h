@@ -9,6 +9,7 @@
  * LICENSE.
  */
 
+/* Types of sockets (for ms_type) */
 #define MST_NONE	0	/* None/unknown */
 #define MST_LISTENER	1	/* Listen for incoming connections */
 #define MST_FORWARDER	2	/* Forward data to/from an ssh channel */
@@ -17,6 +18,23 @@
 #define MST_WEBSOCKET	5	/* Websocket client (in a browser) */
 
 #define MST_MAX		5	/* max(MST_*) */
+
+/* State values (for ms_state) */
+#define MSS_NORMAL	0	/* Normal/okay/ignore */
+#define MSS_FAILED	1	/* Failed; needs to be closed */
+#define MSS_INPUT	2	/* Needs to read input */
+#define MSS_OUTPUT	3	/* Needs to write output */
+#define MSS_HOSTKEY	4	/* Asking about hostkey */
+#define MSS_PASSPHRASE	5	/* Asking about passphrase */
+#define MSS_PASSWORD	6	/* Asking about password */
+#define MSS_ESTABLISHED	7	/* Connection is established */
+#define MSS_RPC_INITIAL	8	/* Ready for a fresh RPC */
+#define MSS_RPC_IDLE	9	/* RPC in progress, but doing nothing */
+#define MSS_RPC_READ_RPC 10	/* Reading <rpc> from client (websock) */
+#define MSS_RPC_WRITE_RPC 11	/* Writing <rpc> to server (JUNOS) */
+#define MSS_RPC_READ_REPLY 12	/* Reading <rpc-reply from server */
+#define MSS_RPC_WRITE_REPLY 13	/* Writing <rpc-reply> to client (ws) */
+#define MSS_RPC_COMPLETE 14	/* Reply is complete (end-of-frame seen) */
 
 #define DEFINE_BIT_FUNCTIONS(_test, _set, _clear, _type, _field, _bit)	\
     static inline unsigned _test (_type *ptr) { \
@@ -62,18 +80,27 @@ typedef struct mx_channel_s {
     mx_offset_t mc_marker_seen;	/* Number of bytes of end-of-frame seen */
     struct mx_sock_session_s *mc_session; /* Session for this channel */
     LIBSSH2_CHANNEL *mc_channel; /* Our libssh2 channel */
+    struct mx_request_s *mc_request;	 /* Current request (in progress) */
     struct mx_sock_s *mc_client; /* Our client (peer) socket */
     mx_buffer_t *mc_rbufp;	/* Read buffer */
 } mx_channel_t;
 
 #define MCF_HOLD_CHANNEL	(1<<0) /* Hold the channel after rpc complete */
+#define MCF_SEEN_EOFRAME	(1<<1) /* Have seen the end-of-frame marker */
+
 DEFINE_BIT_FUNCTIONS(mcf_is_hold_channel, mcf_set_hold_channel,
 		     mcf_clear_hold_channel, mx_channel_t,
 		     mc_flags, MCF_HOLD_CHANNEL);
 
+DEFINE_BIT_FUNCTIONS(mcf_is_seen_eoframe, mcf_set_seen_eoframe,
+		     mcf_clear_seen_eoframe, mx_channel_t,
+		     mc_flags, MCF_SEEN_EOFRAME);
+
 struct mx_request_s;
 typedef TAILQ_ENTRY(mx_request_s) mx_request_link_t;
 typedef TAILQ_HEAD(mx_request_list_s, mx_request_s) mx_request_list_t;
+
+typedef unsigned long mx_muxid_t;
 
 /*
  * An request is an active request from a WebSocket client.  We need
@@ -85,13 +112,18 @@ typedef TAILQ_HEAD(mx_request_list_s, mx_request_s) mx_request_list_t;
 typedef struct mx_request_s {
     mx_request_link_t mr_link;
     unsigned mr_id;		/* Request ID (our ID) */
-    char *mr_muxid;		/* Muxer ID (client's ID) */
+    unsigned mr_state;		/* State of this request */
+    mx_muxid_t mr_muxid;	/* Muxer ID (client's ID) */
     char *mr_name;		/* Request name (tag) */
     char *mr_target;		/* Target hostname */
     char *mr_user;		/* User/login name */
     char *mr_password;		/* Password (if needed) */
     char *mr_desthost;		/* Destination host */
     unsigned mr_destport;	/* Destination port */
+    struct mx_sock_s *mr_client; /* Our client websocket */
+    struct mx_sock_session_s *mr_session; /* Our SSH session */
+    struct mx_channel_s *mr_channel; /* Our SSH channel */
+    mx_buffer_t *mr_rpc;	     /* The RPC we're attempting */
 } mx_request_t;
 
 typedef struct mx_sock_s {
@@ -102,19 +134,6 @@ typedef struct mx_sock_s {
     unsigned ms_state;		/* Type-specific state */
     struct sockaddr_in ms_sin;	/* Address of peer */
 } mx_sock_t;
-
-/* Values for ms_state */
-#define MSS_NORMAL	0	/* Normal/okay/ignore */
-#define MSS_FAILED	1	/* Failed; needs to be closed */
-#define MSS_INPUT	2	/* Needs to read input */
-#define MSS_OUTPUT	3	/* Needs to write output */
-#define MSS_HOSTKEY	4	/* Asking about hostkey */
-#define MSS_PASSPHRASE	5	/* Asking about passphrase */
-#define MSS_PASSWORD	6	/* Asking about password */
-#define MSS_ESTABLISHED	7	/* Connection is established */
-#define MSS_RPC_READY	8	/* RPC is being handled */
-#define MSS_RPC_WORKING 9	/* RPC is being handled */
-#define MSS_RPC_COMPLETE 10	/* RPC is being finished */
 
 typedef struct mx_sock_listener_s {
     mx_sock_t msl_base;		/* Base sock info */
@@ -142,7 +161,6 @@ typedef struct mx_sock_session_s {
 typedef struct mx_sock_websocket_s {
     mx_sock_t msw_base;
     mx_buffer_t *msw_rbufp;	   /* Read buffer */
-    mx_request_list_t msw_requests; /* List of requests on this websocket */
 } mx_sock_websocket_t;
 
 typedef struct mx_password_s {
@@ -173,8 +191,12 @@ typedef int (*mx_type_poller_func_t)(MX_TYPE_POLLER_ARGS);
 typedef mx_sock_t *(*mx_type_spawn_func_t)(MX_TYPE_SPAWN_ARGS);
 
 #define MX_TYPE_WRITE_ARGS \
-    mx_sock_t *msp UNUSED, mx_buffer_t *mbp UNUSED
+    mx_sock_t *msp UNUSED,  mx_channel_t *mcp UNUSED, mx_buffer_t *mbp UNUSED
 typedef int (*mx_type_write_func_t)(MX_TYPE_WRITE_ARGS);
+
+#define MX_TYPE_WRITE_COMPLETE_ARGS \
+    mx_sock_t *msp UNUSED, mx_channel_t *mcp UNUSED
+typedef int (*mx_type_write_complete_func_t)(MX_TYPE_WRITE_COMPLETE_ARGS);
 
 #define MX_TYPE_SET_CHANNEL_ARGS \
     mx_sock_t *msp UNUSED, mx_sock_session_t *mssp UNUSED, \
@@ -183,7 +205,7 @@ typedef void (*mx_type_set_channel_func_t)(MX_TYPE_SET_CHANNEL_ARGS);
 
 #define MX_TYPE_CHECK_HOSTKEY_ARGS \
     mx_sock_session_t *mssp UNUSED, mx_sock_t *client UNUSED, \
-	mx_request_t *mrp UNUSED
+	mx_request_t *mrp UNUSED, const char *info UNUSED
 typedef int (*mx_type_check_hostkey_func_t)(MX_TYPE_CHECK_HOSTKEY_ARGS);
 
 #define MX_TYPE_CLOSE_ARGS \
@@ -202,6 +224,7 @@ typedef struct mx_type_info_s {
     mx_type_poller_func_t mti_poller; /* Process poll() data */
     mx_type_spawn_func_t mti_spawn; /* Spawn a new sock from a listener */
     mx_type_write_func_t mti_write; /* Write a buffer of data */
+    mx_type_write_complete_func_t mti_write_complete; /* Finish a write */
     mx_type_set_channel_func_t mti_set_channel; /* Set session/channel */
     mx_type_close_func_t mti_close; /* Close the socket */
     mx_type_check_hostkey_func_t mti_check_hostkey; /* Check the hostkey */

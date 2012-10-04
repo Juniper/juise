@@ -300,6 +300,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+@JUISE_WARNINGS_HIGH_TRUE@JUISE_WARNINGS = HIGH
 AM_CFLAGS = -I${top_srcdir} -I${top_srcdir}/libjuise ${LIBSLAX_CFLAGS} \
 	${LIBXSLT_CFLAGS} ${LIBXML_CFLAGS} ${WARNINGS} $(am__append_1) \
 	-DJUISE_DIR=\"${JUISE_DIR}\"
@@ -647,8 +648,7 @@ uninstall-am: uninstall-pkglibexecPROGRAMS
 	pdf pdf-am ps ps-am tags uninstall uninstall-am \
 	uninstall-pkglibexecPROGRAMS
 
-
-@JUISE_WARNINGS_TRUE@include ${top_srcdir}/warnings.mk
+include ${top_srcdir}/warnings.mk
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

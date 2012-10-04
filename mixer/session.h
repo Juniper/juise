@@ -14,19 +14,21 @@ mx_session_create (LIBSSH2_SESSION *session, int sock, const char *target)
     ;
 
 int
-mx_session_check_hostkey (mx_sock_session_t *session,
-			  mx_sock_t *client UNUSED, mx_request_t *mrp);
+mx_session_check_hostkey (mx_sock_session_t *session, mx_request_t *mrp);
 
 int
-mx_session_check_auth (mx_sock_session_t *session, mx_sock_t *client UNUSED,
-		       const char *user, const char *password);
+mx_session_check_auth (mx_sock_session_t *session, mx_request_t *mrp);
 
 mx_sock_session_t *
-mx_session_open (mx_sock_t *client, mx_request_t *mrp);
+mx_session_open (mx_request_t *mrp);
 
 mx_sock_session_t *
-mx_session (mx_sock_t *client, mx_request_t *mrp);
+mx_session (mx_request_t *mrp);
 
 void
 mx_session_init (void);
 
+int
+mx_session_approve_hostkey (mx_sock_session_t *mswp,
+			    mx_request_t *mrp,
+			    const char *response, unsigned len);

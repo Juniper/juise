@@ -10,9 +10,10 @@
 
 juiseincdir = ${includedir}/libjuise
 
-if JUISE_WARNINGS
-include ${top_srcdir}/warnings.mk
+if JUISE_WARNINGS_HIGH
+JUISE_WARNINGS = HIGH
 endif
+include ${top_srcdir}/warnings.mk
 
 AM_CFLAGS = \
     -DLIBSLAX_XMLSOFT_NEED_PRIVATE \

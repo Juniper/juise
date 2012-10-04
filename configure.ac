@@ -1,7 +1,7 @@
 #
 # $Id$
 #
-# Copyright 2011, Juniper Networks, Inc.
+# Copyright 2011-2012, Juniper Networks, Inc.
 # All rights reserved.
 # This SOFTWARE is licensed under the LICENSE provided in the
 # ../Copyright file. By downloading, installing, copying, or otherwise
@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.3.11], [phil@juniper.net])
+AC_INIT([juise], [0.3.12], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 AC_DISABLE_SHARED
 
@@ -102,15 +102,23 @@ AC_DEFUN([VERSION_TO_NUMBER],
 
 AC_MSG_CHECKING([whether to build with warnings])
 AC_ARG_ENABLE([warnings],
-    [  --enable-warnings    Turn on compiler warnings],
+    [  --enable-warnings     Turn on compiler warnings],
     [JUISE_WARNINGS=$enableval],
-    [JUISE_WARNINGS=yes])
+    [JUISE_WARNINGS=no])
 AC_MSG_RESULT([$JUISE_WARNINGS])
-AM_CONDITIONAL([JUISE_WARNINGS], [test "$JUISE_WARNINGS" != "no"])
+AM_CONDITIONAL([JUISE_WARNINGS_HIGH], [test "$JUISE_WARNINGS" != "no"])
+
+AC_MSG_CHECKING([whether to build mixer])
+AC_ARG_ENABLE([mixer],
+    [  --enable-mixer        Build the mixer binary],
+    [NEED_MIXER=$enableval],
+    [NEED_MIXER=no])
+AC_MSG_RESULT([$NEED_MIXER])
+AM_CONDITIONAL([NEED_MIXER], [test "$NEED_MIXER" != "no"])
 
 AC_MSG_CHECKING([whether to build with debugging])
 AC_ARG_ENABLE([debug],
-    [  --enable-debug    Turn on debugging],
+    [  --enable-debug        Turn on debugging],
     [JUISE_DEBUG=$enable_debug],
     [JUISE_DEBUG=no])
 AC_MSG_RESULT([$JUISE_DEBUG])
@@ -450,7 +458,6 @@ case $host_os in
 	;;
      cygwin*|CYGWIN*)
 	LDFLAGS=-no-undefined
-	JUISE_WARNINGS=no
 	;;
 esac
 
@@ -566,4 +573,5 @@ AC_MSG_NOTICE([summary of build options:
   readline:         ${HAVE_READLINE:-no}
   libedit:          ${HAVE_LIBEDIT:-no}
   printf-like:      ${HAVE_PRINTFLIKE:-no}
+  build mixer:      ${NEED_MIXER:-no}
 ])

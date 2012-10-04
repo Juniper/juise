@@ -81,33 +81,6 @@ mx_password_save (const char *target, const char *user, const char *password)
     return mpp;
 }
 
-mx_buffer_t *
-mx_buffer_create (unsigned size)
-{
-    if (size == 0)
-	size = BUFFER_DEFAULT_SIZE;
-
-    mx_buffer_t *mbp = malloc(sizeof(*mbp) + size);
-    if (mbp == NULL)
-	return NULL;
-
-    bzero(mbp, sizeof(*mbp));
-    mbp->mb_size = size;
-
-    return mbp;
-}
-
-void
-mx_buffer_free (mx_buffer_t *mbp)
-{
-    mx_buffer_t *next;
-    do {
-	next = mbp->mb_next;
-	free(mbp);
-	mbp = next;
-    } while (next);
-}
-
 void
 mx_nonblocking (int sock)
 {

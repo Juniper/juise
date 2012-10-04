@@ -8,9 +8,10 @@
 # using the SOFTWARE, you agree to be bound by the terms of that
 # LICENSE.
 
-if JUISE_WARNINGS
-include ${top_srcdir}/warnings.mk
+if JUISE_WARNINGS_HIGH
+JUISE_WARNINGS = HIGH
 endif
+include ${top_srcdir}/warnings.mk
 
 AM_CFLAGS = \
     -DLIBSLAX_XMLSOFT_NEED_PRIVATE \
@@ -31,7 +32,18 @@ LIBS = \
     ${LIBSSH2_LIBS}
 
 noinst_HEADERS = \
-    local.h
+    buffer.h \
+    channel.h \
+    console.h \
+    debug.h \
+    forwarder.h \
+    listener.h \
+    local.h \
+    mtypes.h \
+    netconf.h \
+    request.h \
+    session.h \
+    websocket.h
 
 if JUISE_DEBUG
 AM_CFLAGS += -g -DJUISE_DEBUG
@@ -42,6 +54,7 @@ AM_CFLAGS +=
 bin_PROGRAMS = mixer
 
 mixer_SOURCES = \
+    buffer.c \
     channel.c \
     console.c \
     debug.c \

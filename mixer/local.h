@@ -39,6 +39,7 @@
 
 #include "debug.h"
 #include "mtypes.h"
+#include "buffer.h"
 
 #ifndef INADDR_NONE
 #define INADDR_NONE (in_addr_t)-1
@@ -77,12 +78,6 @@ mx_password (const char *target, const char *user);
 
 mx_password_t *
 mx_password_save (const char *target, const char *user, const char *password);
-
-mx_buffer_t *
-mx_buffer_create (unsigned size);
-
-void
-mx_buffer_free (mx_buffer_t *mbp);
 
 void
 mx_nonblocking (int sock);

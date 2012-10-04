@@ -42,7 +42,10 @@ mx_forwarder_spawn (MX_TYPE_SPAWN_ARGS)
 
     msfp->msf_rbufp = mx_buffer_create(0);
 
-    mx_sock_session_t *mssp = mx_session(&msfp->msf_base, mslp->msl_request);
+    /* XXX msl_request needs to move into the forwarder */
+    mslp->msl_request->mr_client = &msfp->msf_base;
+
+    mx_sock_session_t *mssp = mx_session(mslp->msl_request);
     if (mssp == NULL) {
 	mx_log("S%u could not open session", msfp->msf_base.ms_id);
 	/* XXX fail nicely */
@@ -130,7 +133,7 @@ mx_forwarder_poller (MX_TYPE_POLLER_ARGS)
     }
 
     if (mbp->mb_len)
-	mx_channel_write(msfp->msf_channel, mbp);
+	mx_channel_write_buffer(msfp->msf_channel, mbp);
 
     return FALSE;
 }

@@ -10,16 +10,20 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libjuise juise mixer juise-askpass extensions doc
+SUBDIRS = libjuise juise juise-askpass extensions doc
+
+if NEED_MIXER
+SUBDIRS += mixer
+endif
 
 if HAVE_LIGHTTPD
 SUBDIRS += mod_juise web
 endif
 
 bin_SCRIPTS=juise-config
-dist_doc_DATA = Copyright README INSTALL
+dist_doc_DATA = Copyright
 
-EXTRA_DIST = juise-config.in warnings.mk
+EXTRA_DIST = juise-config.in warnings.mk README INSTALL
 
 .PHONY: test tests
 
