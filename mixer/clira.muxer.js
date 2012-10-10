@@ -189,6 +189,10 @@ jQuery(function ($) {
     }
 
     function muxerSendMessage (message) {
+        var dlen = message.length; // MX_HEADER_SIZE;
+        $.dbgpr("wssend: " + message.length
+                + ":: " + message.substring(0, dlen));
+
         if (this.isOpen()) {
             this.ws.send(message);
         } else {
@@ -203,10 +207,22 @@ jQuery(function ($) {
         $.dbgpr("error: " + error);
     }
 
-    function muxerHostkey (options, answer) {
-        var message = makeMessage("hostkey", options.muxid, "", answer);
+    function muxerSimpleOp (muxer, options, answer, attrs, op) {
+        var message = makeMessage(op, options.muxid, attrs, answer);
 
-        this.sendMessage(message);
+        muxer.sendMessage(message);
+    }
+
+    function muxerHostkey (options, answer) {
+        muxerSimpleOp(this, options, answer, "", "hostkey");
+    }
+
+    function muxerPsPhrase (options, answer) {
+        muxerSimpleOp(this, options, answer, "", "psphrase");
+    }
+
+    function muxerPsWord (options, answer) {
+        muxerSimpleOp(this, options, answer, "", "psword");
     }
 
     //
@@ -235,6 +251,8 @@ jQuery(function ($) {
     Muxer.prototype.onerror = muxerError;
     Muxer.prototype.onmessage = muxerMessage;
     Muxer.prototype.hostkey = muxerHostkey;
+    Muxer.prototype.psphrase = muxerPsPhrase;
+    Muxer.prototype.psword = muxerPsWord;
     Muxer.prototype.sendMessage = muxerSendMessage;
 
     Muxer.prototype.isOpen = function () {

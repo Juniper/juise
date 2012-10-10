@@ -12,6 +12,7 @@
 #include "local.h"
 #include "debug.h"
 #include "console.h"
+#include "request.h"
 
 mx_sock_t *
 mx_console_start (void)
@@ -95,6 +96,8 @@ mx_console_list (const char **argv UNUSED)
 
 	i += 1;
     }
+
+    mx_request_print_all(0, "");
 }
 
 static int

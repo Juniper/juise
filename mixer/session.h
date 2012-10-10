@@ -29,6 +29,4 @@ void
 mx_session_init (void);
 
 int
-mx_session_approve_hostkey (mx_sock_session_t *mswp,
-			    mx_request_t *mrp,
-			    const char *response, unsigned len);
+mx_session_approve_hostkey (mx_sock_session_t *mswp, mx_request_t *mrp);

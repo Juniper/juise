@@ -36,6 +36,7 @@ const char *opt_user;
 const char *opt_password;
 const char *opt_desthost = "localhost";
 unsigned opt_destport = 22;
+int opt_no_agent;
 
 static int opt_login;
 static int opt_fork;
@@ -47,9 +48,15 @@ mx_password_find (const char *target, const char *user)
 {
     mx_password_t *mpp;
 
-    for (mpp = mx_saved_passwords; mpp; mpp = mpp->mp_next)
-	if (streq(target, mpp->mp_target) && streq(user, mpp->mp_user))
+    for (mpp = mx_saved_passwords; mpp; mpp = mpp->mp_next) {
+	if (!streq(target, mpp->mp_target))
+	    continue;
+	if ((user == NULL && mpp->mp_user == NULL)
+	    || streq(user, mpp->mp_user)) {
+	    mpp->mp_laststamp = time(NULL);
 	    return mpp;
+	}
+    }
 
     return NULL;
 }
@@ -57,13 +64,9 @@ mx_password_find (const char *target, const char *user)
 const char *
 mx_password (const char *target, const char *user)
 {
-    mx_password_t *mpp;
+    mx_password_t *mpp = mx_password_find(target, user);
 
-    for (mpp = mx_saved_passwords; mpp; mpp = mpp->mp_next)
-	if (streq(target, mpp->mp_target) && streq(user, mpp->mp_user))
-	    return mpp->mp_password;
-
-    return NULL;
+    return mpp ? mpp->mp_password : NULL;
 }
 
 mx_password_t *
@@ -280,6 +283,9 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--prompt-for-password") || streq(cp, "-p")) {
 	    opt_getpass = TRUE;
+
+	} else if (streq(cp, "--no-agent")) {
+	    opt_no_agent = TRUE;
 
 	} else if (streq(cp, "--user") || streq(cp, "-u")) {
 	    opt_user = *++argv;

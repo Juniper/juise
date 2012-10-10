@@ -72,6 +72,26 @@ strntoul (const char *buf, size_t bufsiz)
     return val;
 }
 
+static int
+mx_websocket_test_hostkey (mx_sock_session_t *mswp UNUSED,
+			      mx_request_t *mrp UNUSED, mx_buffer_t *mbp)
+{
+    const char *response = mbp->mb_data + mbp->mb_start;
+    unsigned len = mbp->mb_len;
+    int rc;
+
+    if (response && *response && len == 3 && memcmp(response, "yes", 3) == 0) {
+	rc = TRUE;
+    } else {
+	rc = FALSE;
+    }
+
+    if (rc)
+	mx_session_approve_hostkey(mswp, mrp);
+
+    return rc;
+}
+
 void
 mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 {
@@ -152,14 +172,18 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 		return;
 	    }
 
-	    if (mx_session_approve_hostkey(mrp->mr_session, mrp,
-					   mbp->mb_data + mbp->mb_start,
-					   mbp->mb_len))
-		goto fatal;
+	    if (!mx_websocket_test_hostkey(mrp->mr_session, mrp, mbp)) {
+		mx_log("R%u hostkey was declined; closing request",
+		       mrp->mr_id);
+		mx_buffer_reset(mbp);
+		mx_request_release(mrp);
+		return;
+	    }
+
+	    mx_buffer_reset(mbp);
 
 	    if (mx_session_check_auth(mrp->mr_session, mrp)) {
 		mx_log("R%u waiting for check auth", mrp->mr_id);
-		mrp->mr_state = MSS_PASSWORD;
 		return;
 	    }
 
@@ -168,6 +192,59 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	} else {
 	    mx_log("S%u muxid %lu not found (ignored)",
 		   mswp->msw_base.ms_id, muxid);
+	    mx_buffer_reset(mbp);
+	}
+
+    } else if (streq(operation, MX_OP_PASSPHRASE)) {
+	mx_request_t *mrp = mx_request_find(muxid);
+	if (mrp) {
+	    if (mrp->mr_state != MSS_PASSPHRASE) {
+		mx_log("R%u in wrong state (%u)", mrp->mr_id, mrp->mr_state);
+		mx_buffer_reset(mbp);
+		return;
+	    }
+
+	    mrp->mr_passphrase = strndup(mbp->mb_data + mbp->mb_start,
+					 mbp->mb_len);
+	    mx_buffer_reset(mbp);
+
+	    if (mx_session_check_auth(mrp->mr_session, mrp)) {
+		mx_log("R%u waiting for check auth", mrp->mr_id);
+		return;
+	    }
+
+	    mx_request_restart_rpc(mrp);
+
+	} else {
+	    mx_log("S%u muxid %lu not found (ignored)",
+		   mswp->msw_base.ms_id, muxid);
+	    mx_buffer_reset(mbp);
+	}
+
+    } else if (streq(operation, MX_OP_PASSWORD)) {
+	mx_request_t *mrp = mx_request_find(muxid);
+	if (mrp) {
+	    if (mrp->mr_state != MSS_PASSWORD) {
+		mx_log("R%u in wrong state (%u)", mrp->mr_id, mrp->mr_state);
+		mx_buffer_reset(mbp);
+		return;
+	    }
+
+	    mrp->mr_password = strndup(mbp->mb_data + mbp->mb_start,
+					 mbp->mb_len);
+	    mx_buffer_reset(mbp);
+
+	    if (mx_session_check_auth(mrp->mr_session, mrp)) {
+		mx_log("R%u waiting for check auth", mrp->mr_id);
+		return;
+	    }
+
+	    mx_request_restart_rpc(mrp);
+
+	} else {
+	    mx_log("S%u muxid %lu not found (ignored)",
+		   mswp->msw_base.ms_id, muxid);
+	    mx_buffer_reset(mbp);
 	}
 #if 0
     } else if (streq(operation, "command")) {
@@ -178,7 +255,6 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	mx_log("S%u websocket: unknown request '%s'",
 	       mswp->msw_base.ms_id, operation);
 	mx_buffer_reset(mbp);
-	mbp->mb_start = mbp->mb_len = 0;
     }
 
     return;
@@ -209,8 +285,12 @@ mx_websocket_prep (MX_TYPE_PREP_ARGS)
      * the channels' session.
      */
     if (mbp && mbp->mb_len) {
-	DBG_POLL("S%u websocket has data", msp->ms_id);
-	return FALSE;
+	DBG_POLL("S%u websocket has data; state %u",
+		 msp->ms_id, msp->ms_state);
+	if (msp->ms_state == MSS_RPC_WRITE_RPC
+	        || msp->ms_state == MSS_RPC_READ_REPLY)
+	    return FALSE;
+	return TRUE;
 
     } else {
 	pollp->fd = msp->ms_sock;
@@ -319,9 +399,11 @@ mx_websocket_header_build (mx_header_t *mhp, int len, const char *operation,
 }
 
 static int
-mx_websocket_check_hostkey (MX_TYPE_CHECK_HOSTKEY_ARGS)
+mx_websocket_send_simple (mx_sock_session_t *mssp, mx_sock_t *client,
+			  mx_request_t *mrp, const char *info,
+			  const char *opname, const char *title)
 {
-    mx_log("S%u checking hostkey: [%s]", client->ms_id, info);
+    mx_log("S%u %s: [%s]", client->ms_id, title, info);
 
     int ilen = strlen(info);
     int len = sizeof(mx_header_t) + 1 + ilen;
@@ -329,7 +411,7 @@ mx_websocket_check_hostkey (MX_TYPE_CHECK_HOSTKEY_ARGS)
 
     mx_muxid_t muxid = mrp->mr_muxid;
     mx_header_t *mhp = (mx_header_t *) buf;
-    mx_websocket_header_build(mhp, len, MX_OP_HOSTKEY, muxid);
+    mx_websocket_header_build(mhp, len, opname, muxid);
     buf[sizeof(*mhp)] = '\n';
     memcpy(buf + sizeof(*mhp) + 1, info, ilen + 1);
 
@@ -341,6 +423,27 @@ mx_websocket_check_hostkey (MX_TYPE_CHECK_HOSTKEY_ARGS)
     }
 
     return TRUE;
+}
+
+static int
+mx_websocket_check_hostkey (MX_TYPE_CHECK_HOSTKEY_ARGS)
+{
+    return mx_websocket_send_simple(mssp, client, mrp, info,
+				    MX_OP_HOSTKEY, "checking hostkey");
+}
+
+static int
+mx_websocket_get_passphrase (MX_TYPE_GET_PASSPHRASE_ARGS)
+{
+    return mx_websocket_send_simple(mssp, client, mrp, info,
+				    MX_OP_PASSPHRASE, "get passphrase");
+}
+
+static int
+mx_websocket_get_password (MX_TYPE_GET_PASSWORD_ARGS)
+{
+    return mx_websocket_send_simple(mssp, client, mrp, info,
+				    MX_OP_PASSWORD, "get password");
 }
 
 static int
@@ -426,6 +529,11 @@ mx_websocket_write_complete (MX_TYPE_WRITE_COMPLETE_ARGS)
 		   msp->ms_id, rc, len);
     }
 
+    if (mcp->mc_request) {
+	mx_log("C%u complete R%u", mcp->mc_id, mcp->mc_request->mr_id);
+	mx_request_release(mcp->mc_request);
+    }
+
     return FALSE;
 }
 
@@ -440,6 +548,8 @@ mx_websocket_init (void)
     mti_poller: mx_websocket_poller,
     mti_spawn: mx_websocket_spawn,
     mti_check_hostkey: mx_websocket_check_hostkey,
+    mti_get_passphrase: mx_websocket_get_passphrase,
+    mti_get_password: mx_websocket_get_password,
     mti_write: mx_websocket_write,
     mti_write_complete: mx_websocket_write_complete,
 #if 0

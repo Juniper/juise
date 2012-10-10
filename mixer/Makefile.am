@@ -43,6 +43,7 @@ noinst_HEADERS = \
     netconf.h \
     request.h \
     session.h \
+    util.h \
     websocket.h
 
 if JUISE_DEBUG
@@ -64,6 +65,7 @@ mixer_SOURCES = \
     mtypes.c \
     request.c \
     session.c \
+    util.c \
     websocket.c
 
 mixer_LDADD = ../libjuise/libjuise.la

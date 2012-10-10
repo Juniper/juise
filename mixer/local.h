@@ -63,6 +63,7 @@ extern const char *opt_user;
 extern const char *opt_password;
 extern const char *opt_desthost;
 extern unsigned opt_destport;
+extern int opt_no_agent;
 
 static inline char *
 nstrdup (const char *str)

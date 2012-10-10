@@ -33,3 +33,12 @@ mx_request_release_session (mx_sock_session_t *session);
 
 void
 mx_request_restart_rpc (mx_request_t *mrp);
+
+void
+mx_request_set_state (mx_request_t *mrp, unsigned state);
+
+void
+mx_request_release (mx_request_t *mrp);
+
+void
+mx_request_print_all (int indent, const char *prefix);

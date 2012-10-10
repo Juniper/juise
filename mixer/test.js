@@ -1,6 +1,8 @@
 
 
 jQuery(function ($) {
+    var id_generator = 1;
+
     $.dbgpr("working");
 
     var muxer = $.Muxer({
@@ -21,6 +23,7 @@ jQuery(function ($) {
     muxer.open();
 
     $.doSend = function (clear) {
+        $.dbgpr("doSend: enter");
         var target = $("#target").val();
         if (target == undefined)
             return;
@@ -30,6 +33,11 @@ jQuery(function ($) {
             return;
         }
         var full = [ ];
+
+        var id = id_generator++;
+        var content = "<div id='" + id + "' class='test-output'></div>";
+        var $div = $(content);
+        $("#content").prepend($div);
 
         muxer.rpc({
             target: target,
@@ -46,19 +54,78 @@ jQuery(function ($) {
                 // should also be a timer to render what we've got if
                 // the output RPC stalls.
                 if (full.length == 1)
-                    $("#content").html(data);
+                    $div.html(data);
                 var $x = full.join("");
             },
             oncomplete: function () {
                 $.dbgpr("rpc: complete");
-                $("#content").html(full.join(""));
+                $div.html(full.join(""));
             },
             onhostkey: function (data) {
-                muxer.hostkey(this, "yes");
+                var self = this;
+                promptForHostKey($div, data, function (response) {
+                    muxer.hostkey(self, response);
+                });
+            },
+            onpsphrase: function (data) {
+                var self = this;
+                promptForSecret($div, data, function (response) {
+                    muxer.psphrase(self, response);
+                });
+            },
+            onpsword: function (data) {
+                var self = this;
+                promptForSecret($div, data, function (response) {
+                    muxer.psword(self, response);
+                });
             },
         });
 
         if (clear)
             $("#message").val("");
+        $.dbgpr("doSend: exit");
+    }
+
+    function promptForHostKey ($parent, prompt, onclick) {
+        var content = "<div class='muxer-prompt'>"
+            + "<div class='muxer-message'>" + prompt + "</div>"
+            + "<div class='muxer-buttons'>" 
+            +   "<button class='accept'/>"
+            +   "<button class='decline'/>"
+            + "</div></div>";
+
+        var $div = $(content);
+        $parent.append($div);
+        $(".accept", $div).text("Accept").button({}).click(function () {
+            onclick("yes");
+            $div.remove();
+        });
+        $(".decline", $div).text("Decline").button({}).click(function () {
+            onclick("no");
+            $div.remove();
+        });
+    }
+
+    function promptForSecret ($parent, prompt, onclick) {
+        var content = "<div class='muxer-prompt'>"
+            + "<div class='muxer-message'>" + prompt + "</div>"
+            + "<input name='value' type='password' class='value'></input>'"
+            + "<div class='muxer-buttons'>" 
+            +   "<button class='enter'/>"
+            +   "<button class='cancel'/>"
+            + "</div></div>";
+
+        var $div = $(content);
+        $parent.append($div);
+        $(".enter", $div).text("Enter").button({}).click(function () {
+            var val = $(".value", $div).val();
+            onclick(val);
+            $div.remove();
+        });
+        $(".cancel", $div).text("Cancel").button({}).click(function () {
+            var val = $(".value", $div).val();
+            onclick(val);
+            $div.remove();
+        });
     }
 })

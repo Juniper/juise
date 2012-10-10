@@ -82,7 +82,8 @@ PROGRAMS = $(bin_PROGRAMS)
 am_mixer_OBJECTS = buffer.$(OBJEXT) channel.$(OBJEXT) \
 	console.$(OBJEXT) debug.$(OBJEXT) forwarder.$(OBJEXT) \
 	listener.$(OBJEXT) mixer.$(OBJEXT) mtypes.$(OBJEXT) \
-	request.$(OBJEXT) session.$(OBJEXT) websocket.$(OBJEXT)
+	request.$(OBJEXT) session.$(OBJEXT) util.$(OBJEXT) \
+	websocket.$(OBJEXT)
 mixer_OBJECTS = $(am_mixer_OBJECTS)
 mixer_DEPENDENCIES = ../libjuise/libjuise.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -325,6 +326,7 @@ noinst_HEADERS = \
     netconf.h \
     request.h \
     session.h \
+    util.h \
     websocket.h
 
 mixer_SOURCES = \
@@ -338,6 +340,7 @@ mixer_SOURCES = \
     mtypes.c \
     request.c \
     session.c \
+    util.c \
     websocket.c
 
 mixer_LDADD = ../libjuise/libjuise.la
@@ -442,6 +445,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mtypes.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/request.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/session.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/websocket.Po@am__quote@
 
 .c.o:

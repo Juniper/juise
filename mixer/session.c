@@ -10,9 +10,13 @@
  */
 
 #include "local.h"
+#include "util.h"
 #include "session.h"
 #include "channel.h"
 #include "forwarder.h"
+#include "request.h"
+
+static char *mx_session_passphrase; /* Passphrase for private key */
 
 static void
 mx_session_print (MX_TYPE_PRINT_ARGS)
@@ -24,12 +28,14 @@ mx_session_print (MX_TYPE_PRINT_ARGS)
 	   mssp->mss_target,
 	   mssp->mss_session);
 
-    mx_log("%*s%sChannels in use:", indent, "", prefix);
+    mx_log("%*s%sChannels in use:%s", indent, "", prefix,
+	   TAILQ_EMPTY(&mssp->mss_channels) ? " none" : "");
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
 	mx_channel_print(mcp, indent, prefix);
     }
 
-    mx_log("%*s%sChannels released:", indent, "", prefix);
+    mx_log("%*s%sChannels released:%s", indent, "", prefix,
+	   TAILQ_EMPTY(&mssp->mss_released) ? " none" : "");
     TAILQ_FOREACH(mcp, &mssp->mss_released, mc_link) {
 	mx_channel_print(mcp, indent, prefix);
     }
@@ -74,17 +80,21 @@ mx_session_check_hostkey (mx_sock_session_t *session, mx_request_t *mrp)
     mx_sock_t *client = mrp->mr_client;
     const char *fingerprint;
     int i;
-    char buf[1024], *bp = buf, *ep = buf + sizeof(buf);
+    char buf[BUFSIZ], *bp = buf, *ep = buf + sizeof(buf);
 
     /* XXX insert checks for known hosts here */
 
+
     fingerprint = libssh2_hostkey_hash(session->mss_session,
 				       LIBSSH2_HOSTKEY_HASH_SHA1);
-    bp += snprintf(bp, ep - bp, "Fingerprint: ");
+    bp += snprintf_safe(bp, ep - bp, "Host key for '%s' is unknown\n",
+			mrp->mr_target);
+    bp += snprintf_safe(bp, ep - bp, "    The key's fingerprint is '");
     for (i = 0; i < 20; i++)
-        bp += snprintf(bp, ep - bp, "%02X ", (unsigned char) fingerprint[i]);
-    *bp++ = '\n';
-    *bp++ = '\0';
+        bp += snprintf_safe(bp, ep - bp, "%02X ",
+			    (unsigned char) fingerprint[i]);
+    bp += snprintf_safe(bp, ep - bp, "'\n");
+    bp += snprintf_safe(bp, ep - bp, "Do you want to accept this host key?");
 
     mx_log("S%u hostkey check [%s]", session->mss_base.ms_id, buf);
 
@@ -94,16 +104,168 @@ mx_session_check_hostkey (mx_sock_session_t *session, mx_request_t *mrp)
     return FALSE;
 }
 
-int
-mx_session_approve_hostkey (mx_sock_session_t *mswp UNUSED,
-			    mx_request_t *mrp UNUSED, const char *response,
-			    unsigned len)
+static int
+mx_session_check_agent (mx_sock_session_t *session, mx_request_t *mrp UNUSED,
+			const char *user)
 {
-    if (response && *response && len == 3 && memcmp(response, "yes", 3)) {
-	return TRUE;
-    } else {
+    LIBSSH2_AGENT *agent = NULL;
+    struct libssh2_agent_publickey *identity, *prev_identity = NULL;
+    int rc;
+
+    /* Connect to the ssh-agent */
+    agent = libssh2_agent_init(session->mss_session);
+    if (!agent) {
+	mx_log("failure initializing ssh-agent support");
 	return FALSE;
     }
+
+    if (libssh2_agent_connect(agent)) {
+	mx_log("failure connecting to ssh-agent");
+	return FALSE;
+    }
+
+    if (libssh2_agent_list_identities(agent)) {
+	mx_log("failure requesting identities to ssh-agent");
+	return FALSE;
+    }
+
+    for (;;) {
+	rc = libssh2_agent_get_identity(agent, &identity, prev_identity);
+	if (rc == 1)	/* 1 -> end of list of identities */
+	    break;
+
+	if (rc < 0) {
+	    mx_log("Failure obtaining identity from ssh-agent");
+	    break;
+	}
+
+	if (libssh2_agent_userauth(agent, user, identity) == 0) {
+	    mx_log("S%u ssh auth username %s, public key %s succeeded",
+		   session->mss_base.ms_id, user, identity->comment);
+	    /* Rah!!  We're authenticated now */
+	    return TRUE;
+	}
+
+	mx_log("S%u ssh auth username %s, public key %s failed",
+	       session->mss_base.ms_id, user, identity->comment);
+
+	prev_identity = identity;
+    }
+
+    return FALSE;
+}
+
+static int
+mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
+			  const char *user)
+{
+    mx_sock_t *msp = mrp->mr_client;
+    const char *passphrase = mrp->mr_passphrase;
+
+    if (passphrase && *passphrase == '\0') {
+	mx_log("R%u null passphrase", mrp->mr_id);
+	mx_request_set_state(mrp, MSS_PASSWORD);
+	return FALSE;
+    }
+
+    if (passphrase && *passphrase) {
+	if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
+						keyfile1, keyfile2,
+						passphrase)) {
+	    mx_log("R%u Authentication by new public key failed", mrp->mr_id);
+	} else {
+	    mx_log("R%u Authentication by new public key succeeded",
+		   mrp->mr_id);
+	    if (mx_session_passphrase)
+		free(mx_session_passphrase);
+	    mx_session_passphrase = strdup(passphrase);
+	    goto success;
+	}
+    }
+
+    if (mx_session_passphrase && *mx_session_passphrase) {
+	if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
+						keyfile1, keyfile2,
+						mx_session_passphrase)) {
+	    mx_log("R%u Authentication by existing public key failed",
+		   mrp->mr_id);
+	} else {
+	    mx_log("R%u Authentication by existing public key succeeded",
+		   mrp->mr_id);
+	    goto success;
+	}
+    }
+
+    if (exists(keyfile1) && exists(keyfile2)) {
+	char buf[BUFSIZ], *bp = buf, *ep = buf + sizeof(buf);
+
+	if (passphrase)
+	    bp += snprintf_safe(bp, ep - bp, "Invalid passphrase\n");
+
+	bp += snprintf_safe(bp, ep - bp,
+		 "Enter passphrase for keyfile %s:", keyfile1);
+
+	mx_request_set_state(mrp, MSS_PASSPHRASE);
+	if (mx_mti(msp)->mti_get_passphrase
+	        && mx_mti(msp)->mti_get_passphrase(session, msp, mrp, buf)) {
+	    return TRUE;
+	}
+    }
+
+    return FALSE;
+
+ success:
+    mx_request_set_state(mrp, MSS_ESTABLISHED);
+    return FALSE;
+}
+
+static int
+mx_session_check_password (mx_sock_session_t *session, mx_request_t *mrp,
+			  const char *user)
+{
+    mx_sock_t *msp = mrp->mr_client;
+    const char *password = mrp->mr_password;
+
+    if (password && *password == '\0') {
+	mx_log("R%u null password", mrp->mr_id);
+	mx_request_set_state(mrp, MSS_FAILED);
+	return FALSE;
+    }
+
+    if (password == NULL)
+	password = mx_password(session->mss_target, user);
+
+    if (password && *password) {
+        if (libssh2_userauth_password(session->mss_session, user, password)) {
+	    session->mss_pwfail += 1;
+            mx_log("S%u authentication by password failed (%u)",
+		   session->mss_base.ms_id, session->mss_pwfail);
+	    if (session->mss_pwfail > MAX_PWFAIL)
+		return FALSE;
+        } else {
+	    mx_log("S%u ssh auth username %s, password succeeded",
+		   session->mss_base.ms_id, user);
+	    /* We're authenticated now */
+	    mx_request_set_state(mrp, MSS_ESTABLISHED);
+	    mx_password_save(mrp->mr_target, user, password);
+	    return FALSE;
+	}
+    }
+
+    char buf[BUFSIZ], *bp = buf, *ep = buf + sizeof(buf);
+
+    if (password)
+	bp += snprintf_safe(bp, ep - bp, "Invalid password\n");
+
+    bp += snprintf_safe(bp, ep - bp, "Enter password:");
+
+    mx_request_set_state(mrp, MSS_PASSWORD);
+
+    if (mx_mti(msp)->mti_get_password
+	    && mx_mti(msp)->mti_get_password(session, msp, mrp, buf))
+	return TRUE;
+
+    return FALSE;
 }
 
 int
@@ -111,7 +273,7 @@ mx_session_check_auth (mx_sock_session_t *session, mx_request_t *mrp)
 {
     const char *user = mrp->mr_user ?: opt_user ?: getlogin();
     const char *password = mrp->mr_password;
-    int rc, auth_publickey = FALSE, auth_password = FALSE;
+    int auth_publickey = FALSE, auth_password = FALSE;
     char *userauthlist;
 
     /* check what authentication methods are available */
@@ -126,101 +288,48 @@ mx_session_check_auth (mx_sock_session_t *session, mx_request_t *mrp)
 	    auth_publickey = TRUE;
     }
 
-    LIBSSH2_AGENT *agent = NULL;
-    struct libssh2_agent_publickey *identity, *prev_identity = NULL;
-
-    mrp->mr_state = MSS_PASSWORD;
+    mx_request_set_state(mrp, MSS_PASSWORD);
 
     if (auth_publickey) {
-	if (password == NULL || *password == '\0')
-	    password = mx_password(session->mss_target, user);
+	if (!opt_no_agent && mx_session_check_agent(session, mrp, user))
+	    goto success;
 
-	if (password && *password) {
+	if (mx_session_check_keyfile(session, mrp, user))
+	    return TRUE;
 
-	    if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
-						    keyfile1, keyfile2,
-						    password)) {
-		mx_log("authentication by public key failed");
-	    } else {
-		mx_log("Authentication by public key succeeded");
-		return FALSE;
-	    }
-	}
-
-	/* Connect to the ssh-agent */
-	agent = libssh2_agent_init(session->mss_session);
-	if (!agent) {
-	    mx_log("failure initializing ssh-agent support");
-	    goto try_next;
-	}
-
-	if (libssh2_agent_connect(agent)) {
-	    mx_log("failure connecting to ssh-agent");
-	    goto try_next;
-	}
-
-	if (libssh2_agent_list_identities(agent)) {
-	    mx_log("failure requesting identities to ssh-agent");
-	    goto try_next;
-	}
-
-	for (;;) {
-	    rc = libssh2_agent_get_identity(agent, &identity, prev_identity);
-	    if (rc == 1)	/* 1 -> end of list of identities */
-		break;
-
-	    if (rc < 0) {
-		mx_log("Failure obtaining identity from ssh-agent");
-		break;
-	    }
-
-	    if (libssh2_agent_userauth(agent, user, identity) == 0) {
-		mx_log("S%u ssh auth username %s, public key %s succeeded",
-		       session->mss_base.ms_id, user, identity->comment);
-		/* Rah!!  We're authenticated now */
-		return FALSE;
-	    }
-
-	    mx_log("S%u ssh auth username %s, public key %s failed",
-		   session->mss_base.ms_id, user, identity->comment);
-
-	    prev_identity = identity;
-	}
+	if (mrp->mr_state == MSS_ESTABLISHED)
+	    goto success;
     }
-	
- try_next:
-    if (auth_password) {
+
+    if (auth_password && (mrp->mr_state != MSS_ESTABLISHED)) {
 	if (password == NULL || *password == '\0')
 	    password = mx_password(session->mss_target, user);
 
-	if (password == NULL || *password == '\0') {
-	    mx_log("S%u no password for target '%s', user '%s'",
-		   session->mss_base.ms_id, session->mss_target, user);
-	    /* XXX send 'password' action to client */
+	mx_request_set_state(mrp, MSS_PASSWORD);
+	if (mx_session_check_password(session, mrp, user))
 	    return TRUE;
-	}
 
-        if (libssh2_userauth_password(session->mss_session, user, password)) {
-	    session->mss_pwfail += 1;
-            mx_log("S%u authentication by password failed (%u)",
-		   session->mss_base.ms_id, session->mss_pwfail);
-	    if (session->mss_pwfail > MAX_PWFAIL)
-		goto failure;
-	    return TRUE;
-        }
-
-	mx_log("S%u ssh auth username %s, password succeeded",
-	       session->mss_base.ms_id, user);
-	/* We're authenticated now */
-	return FALSE;
+	if (mrp->mr_state == MSS_ESTABLISHED)
+	    goto success;
     }
 
     mx_log("S%u no supported authentication methods found",
 	   session->mss_base.ms_id);
 
- failure:
-    mrp->mr_state = MSS_FAILED;
+    mx_request_set_state(mrp, MSS_FAILED);
     return TRUE;
+
+ success:
+    mx_log("R%u auth'd session is established; S%u",
+	   mrp->mr_id, session->mss_base.ms_id);
+    mx_request_set_state(mrp, MSS_ESTABLISHED);
+    return FALSE;
+}
+
+int
+mx_session_approve_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp) {
+    mx_log("R%u host key is approved S%u", mrp->mr_id, mssp->mss_base.ms_id);
+    return FALSE;
 }
 
 mx_sock_session_t *
@@ -275,18 +384,17 @@ mx_session_open (mx_request_t *mrp)
     mrp->mr_session = mssp;
 
     if (mx_session_check_hostkey(mssp, mrp)) {
-	mssp->mss_base.ms_state = mrp->mr_state = MSS_HOSTKEY;
+	mx_request_set_state(mrp, MSS_HOSTKEY);
 	mx_log("S%u R%u waiting for hostkey check; client S%u",
 	       mssp->mss_base.ms_id, mrp->mr_id, mrp->mr_client->ms_id);
 	return mssp;
     }
 
     if (mx_session_check_auth(mssp, mrp)) {
-	mssp->mss_base.ms_state = mrp->mr_state = MSS_PASSWORD;
-	mx_log("S%u R%u waiting for password; client S%u",
+	mx_log("S%u R%u waiting for auth; client S%u",
 	       mssp->mss_base.ms_id, mrp->mr_id, mrp->mr_client->ms_id);
     } else
-	mssp->mss_base.ms_state = mrp->mr_state = MSS_ESTABLISHED;
+	mx_request_set_state(mrp, MSS_ESTABLISHED);
 
     return mssp;
 }

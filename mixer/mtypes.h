@@ -118,6 +118,8 @@ typedef struct mx_request_s {
     char *mr_target;		/* Target hostname */
     char *mr_user;		/* User/login name */
     char *mr_password;		/* Password (if needed) */
+    char *mr_passphrase;	/* Passphrase (if needed) */
+    char *mr_hostkey;		/* Response from hostkey question */
     char *mr_desthost;		/* Destination host */
     unsigned mr_destport;	/* Destination port */
     struct mx_sock_s *mr_client; /* Our client websocket */
@@ -168,6 +170,7 @@ typedef struct mx_password_s {
     char *mp_target;		   /* Key: Target hostname */
     char *mp_user;		   /* Key: Username */
     char *mp_password;		   /* Saved password */
+    time_t mp_laststamp;	   /* Last time this password was used */
 } mx_password_t;
 
 mx_sock_list_t mx_sock_list;	/* List of all sockets */
@@ -203,14 +206,24 @@ typedef int (*mx_type_write_complete_func_t)(MX_TYPE_WRITE_COMPLETE_ARGS);
 	mx_channel_t *mcp UNUSED
 typedef void (*mx_type_set_channel_func_t)(MX_TYPE_SET_CHANNEL_ARGS);
 
+#define MX_TYPE_CLOSE_ARGS \
+    mx_sock_t *msp UNUSED
+typedef void (*mx_type_close_func_t)(MX_TYPE_CLOSE_ARGS);
+
 #define MX_TYPE_CHECK_HOSTKEY_ARGS \
     mx_sock_session_t *mssp UNUSED, mx_sock_t *client UNUSED, \
 	mx_request_t *mrp UNUSED, const char *info UNUSED
 typedef int (*mx_type_check_hostkey_func_t)(MX_TYPE_CHECK_HOSTKEY_ARGS);
 
-#define MX_TYPE_CLOSE_ARGS \
-    mx_sock_t *msp UNUSED
-typedef void (*mx_type_close_func_t)(MX_TYPE_CLOSE_ARGS);
+#define MX_TYPE_GET_PASSPHRASE_ARGS \
+    mx_sock_session_t *mssp UNUSED, mx_sock_t *client UNUSED, \
+	mx_request_t *mrp UNUSED, const char *info UNUSED
+typedef int (*mx_type_get_passphrase_func_t)(MX_TYPE_GET_PASSPHRASE_ARGS);
+
+#define MX_TYPE_GET_PASSWORD_ARGS \
+    mx_sock_session_t *mssp UNUSED, mx_sock_t *client UNUSED, \
+	mx_request_t *mrp UNUSED, const char *info UNUSED
+typedef int (*mx_type_get_password_func_t)(MX_TYPE_GET_PASSWORD_ARGS);
 
 #define MX_TYPE_IS_BUF_ARGS \
     mx_sock_t *msp UNUSED, short flags UNUSED
@@ -228,6 +241,8 @@ typedef struct mx_type_info_s {
     mx_type_set_channel_func_t mti_set_channel; /* Set session/channel */
     mx_type_close_func_t mti_close; /* Close the socket */
     mx_type_check_hostkey_func_t mti_check_hostkey; /* Check the hostkey */
+    mx_type_get_passphrase_func_t mti_get_passphrase; /* Get a passphrase */
+    mx_type_get_password_func_t mti_get_password; /* Get a password */
     mx_type_is_buf_func_t mti_is_buf; /* Has buffered i/o */
 } mx_type_info_t;
 

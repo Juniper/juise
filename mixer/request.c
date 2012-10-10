@@ -43,6 +43,8 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp UNUSED,
     mrp->mr_target = nstrdup(xml_get_attribute(attrs, "target"));
     mrp->mr_user = nstrdup(xml_get_attribute(attrs, "user"));
     mrp->mr_password = nstrdup(xml_get_attribute(attrs, "password"));
+    mrp->mr_passphrase = nstrdup(xml_get_attribute(attrs, "passphrase"));
+    mrp->mr_hostkey = nstrdup(xml_get_attribute(attrs, "hostkey"));
     mrp->mr_rpc = mbp;
 
     if (mrp->mr_user == NULL && mrp->mr_target) {
@@ -214,6 +216,20 @@ mx_request_find (mx_muxid_t muxid)
 }
 
 void
+mx_request_set_state (mx_request_t *mrp, unsigned state)
+{
+    mx_log("R%u state change: %d -> %d (S%u)",
+	   mrp->mr_id, mrp->mr_state, state,
+	   mrp->mr_session ? mrp->mr_session->mss_base.ms_id : 0);
+
+    mrp->mr_state = state;
+    if (mrp->mr_client)
+	mrp->mr_client->ms_state = state;
+    if (mrp->mr_session)
+	mrp->mr_session->mss_base.ms_state = state;
+}
+
+void
 mx_request_print (mx_request_t *mrp, int indent, const char *prefix)
 {
     mx_log("%*s%sR%u: muxid %lu, name %s, target %s, user %s, dest %s:%u",
@@ -227,15 +243,45 @@ mx_request_print (mx_request_t *mrp, int indent, const char *prefix)
 }	
 
 void
+mx_request_print_all (int indent, const char *prefix)
+{
+    mx_request_t *mrp;
+
+    mx_log("%*s%sList of all outstanding requests:%s",
+	   indent, "", prefix ?: "",
+	   TAILQ_EMPTY(&mx_request_list) ? " none" : "");
+
+    TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
+	mx_request_print(mrp, indent, prefix);
+    }
+}
+
+void
 mx_request_free (mx_request_t *mrp)
 {
+    TAILQ_REMOVE(&mx_request_list, mrp, mr_link);
+
     if (mrp->mr_name) free(mrp->mr_name);
     if (mrp->mr_target) free(mrp->mr_target);
     if (mrp->mr_user) free(mrp->mr_user);
     if (mrp->mr_password) free(mrp->mr_password);
+    if (mrp->mr_passphrase) free(mrp->mr_passphrase);
+    if (mrp->mr_hostkey) free(mrp->mr_hostkey);
+    if (mrp->mr_hostkey) free(mrp->mr_hostkey);
     if (mrp->mr_rpc) mx_buffer_free(mrp->mr_rpc);
 
     free(mrp);
+}
+
+void
+mx_request_release (mx_request_t *mrp)
+{
+    /* Reset the state of the client and session, as needed */
+    unsigned state = (mrp->mr_state >= MSS_ESTABLISHED)
+	? MSS_ESTABLISHED : MSS_NORMAL;
+
+    mx_request_set_state(mrp, state);
+    mx_request_free(mrp);
 }
 
 void
@@ -260,6 +306,9 @@ mx_request_restart_rpc (mx_request_t *mrp)
 {
     mx_channel_t *mcp;
 
+    /* If we're not already recorded as established, do it now */
+    mx_request_set_state(mrp, MSS_ESTABLISHED);
+
     mcp = mx_channel_netconf(mrp->mr_session, mrp->mr_client, TRUE);
     if (mcp == NULL)
 	return;
@@ -267,6 +316,10 @@ mx_request_restart_rpc (mx_request_t *mrp)
     mx_log("C%u running R%u '%s' target '%s'",
 	   mcp->mc_id, mrp->mr_id, mrp->mr_name, mrp->mr_target);
 
+    /*
+     * When the RPC stalled (for hostkey or password), we recorded
+     * the RPC contents in mr_rpc.
+     */
     mx_buffer_t *mbp = mrp->mr_rpc;
     mx_request_rpc_send(mrp->mr_client, mbp, mrp, mcp);
 }
