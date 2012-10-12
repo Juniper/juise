@@ -1,4 +1,5 @@
 JUNOS.FILES
+ar-lib
 configure
 Makefile.in
 depcomp
