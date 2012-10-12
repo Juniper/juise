@@ -33,7 +33,7 @@
 #include <libxml/globals.h>
 #endif
 
-#include "config.h"
+#include "juiseconfig.h"
 #include <libslax/slax.h>
 #include <libslax/slaxconfig.h>
 
@@ -44,7 +44,6 @@
 #include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 #include <libjuise/xml/juisenames.h>
-#include <libjuise/juiseconfig.h>
 
 #include "juise.h"
 

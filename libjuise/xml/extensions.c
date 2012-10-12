@@ -41,7 +41,7 @@
 #include <libslax/slax.h>
 #include <libslax/xmlsoft.h>
 
-#include "config.h"
+#include "juiseconfig.h"
 #include <libjuise/time/time_const.h>
 #include <libjuise/io/pid_lock.h>
 #include <libjuise/io/trace.h>

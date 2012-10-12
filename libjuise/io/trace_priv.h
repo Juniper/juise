@@ -15,7 +15,7 @@
 #ifndef __JNX_TRACE_PRIV_H__
 #define __JNX_TRACE_PRIV_H__
 
-#include "config.h"
+#include "juiseconfig.h"
 
 #ifdef HAVE_STDINT_H
 #include <stdint.h>

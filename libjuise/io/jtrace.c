@@ -35,7 +35,7 @@
 #include <libexslt/exslt.h>
 #include <libxslt/xsltutils.h>
 
-#include "config.h"
+#include "juiseconfig.h"
 #include <libslax/slax.h>
 #include <libslax/slaxconfig.h>
 #include <libslax/slaxdata.h>
@@ -49,7 +49,6 @@
 #include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 #include <libjuise/xml/juisenames.h>
-#include <libjuise/juiseconfig.h>
 
 static trace_file_t *juise_trace_file;
 

@@ -14,7 +14,16 @@
  * See lighttpd/COPYING for additional info (a newbsd copyright).
  */
 
-#include "config.h"
+#include "libjuise/juiseconfig.h"
+
+/* We need to undefine the autoheader-based #defines */
+#undef PACKAGE
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+#undef VERSION
 
 /* These include files are from lighttpd */
 #include "server.h"
@@ -593,7 +602,7 @@ mod_juise_connection_close (server *srv, mod_juise_handler_context *hctx)
 	fdevent_unregister(srv->ev, hctx->fd);
 
 	if (close(hctx->fd)) {
-	    LOGERR("sds", "cgi close failed ",
+	    LOGERR("sds", "juise close failed ",
 			    hctx->fd, strerror(errno));
 	}
 
@@ -657,7 +666,7 @@ mod_juise_connection_close (server *srv, mod_juise_handler_context *hctx)
 #endif
 		return HANDLER_GO_ON;
 	    } else {
-		LOGERR("sdd", "cgi died, pid:", pid, status);
+		LOGERR("sdd", "juise died, pid:", pid, status);
 		return HANDLER_GO_ON;
 	    }
 	}
@@ -780,7 +789,7 @@ mod_juise_handle_fdevent (server *srv, void *ctx, int revents)
 	/* kill all connections to the cgi process */
 	mod_juise_connection_close(srv, hctx);
 #if 1
-	LOGERR("s", "cgi-FDEVENT_ERR");
+	LOGERR("s", "juise-FDEVENT_ERR");
 #endif
 	return HANDLER_ERROR;
     }
@@ -1360,7 +1369,7 @@ mod_juise_create_env (server *srv, connection *con,
 		fdevent_event_del(srv->ev, &(hctx->fde_ndx), hctx->fd);
 		fdevent_unregister(srv->ev, hctx->fd);
 
-		LOGERR("sd", "cgi close:", hctx->fd);
+		LOGERR("sd", "juise close:", hctx->fd);
 
 		close(hctx->fd);
 
@@ -1644,7 +1653,7 @@ SUBREQUEST_FUNC(mod_juise_handle_subrequest)
 	fdevent_unregister(srv->ev, hctx->fd);
 
 	if (close(hctx->fd)) {
-	    LOGERR("sds", "cgi close failed ", hctx->fd, strerror(errno));
+	    LOGERR("sds", "juise close failed ", hctx->fd, strerror(errno));
 	}
 
 	mod_juise_handler_ctx_free(hctx);
@@ -1670,7 +1679,7 @@ SUBREQUEST_FUNC(mod_juise_handle_subrequest)
 	 * cgi proc died, and we didn't get any data yet - send error
 	 * message and close cgi con
 	 */
-	LOGERR("s", "cgi died ?");
+	LOGERR("s", "juise died ?");
 
 	con->http_status = 500;
 	con->mode = DIRECT;
@@ -1679,7 +1688,7 @@ SUBREQUEST_FUNC(mod_juise_handle_subrequest)
 	fdevent_unregister(srv->ev, hctx->fd);
 
 	if (close(hctx->fd)) {
-	    LOGERR("sds", "cgi close failed ", hctx->fd, strerror(errno));
+	    LOGERR("sds", "juise close failed ", hctx->fd, strerror(errno));
 	}
 
 	mod_juise_handler_ctx_free(hctx);

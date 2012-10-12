@@ -27,7 +27,7 @@
 #include <assert.h>
 #include <stdarg.h>
 
-#include "config.h"
+#include "juiseconfig.h"
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/common/bits.h>

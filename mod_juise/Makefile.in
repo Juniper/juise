@@ -72,7 +72,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/config.h
+CONFIG_HEADER = $(top_builddir)/libjuise/juiseconfig.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -126,7 +126,7 @@ AM_V_at = $(am__v_at_@AM_V@)
 am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/libjuise
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -329,7 +329,7 @@ top_srcdir = @top_srcdir@
 #
 # For example, we need our mod_juise.c needs lighttpd's <server.h>,
 # but that needs lighttpd's "config.h", so we need to avoid finding
-# our own "config.h".  Having included that file, we need to make sure
+# our own "juiseconfig.h".  Having included that file, we need to make sure
 # our CFLAGS and LIBS are identical to lighttpd.  If not, our
 # structure references will not align with the rest of lighttpd and
 # some criminally bizarre results will occur.
@@ -355,7 +355,8 @@ LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 W1 = $(subst -Wmissing-prototypes,,${WARNINGS})
 W2 = $(subst -Wstrict-prototypes,,${W1})
 MYWARNINGS = ${W2}
-AM_CFLAGS = -I${LIGHTTPD_OBJ} -I${LIGHTTPD_SRC}/src ${PCRE_CFLAGS} \
+AM_CFLAGS = -I${top_srcdir} -I${top_srcdir}/libjuise -I.. \
+	-I${LIGHTTPD_OBJ} -I${LIGHTTPD_SRC}/src ${PCRE_CFLAGS} \
 	${MYWARNINGS} $(am__append_1) -DJUISE_DIR=\"${JUISE_DIR}\" \
 	-DJUISE_SCRIPT_DIR=\"${JUISE_SCRIPT_DIR}\"
 OLD_CFLAGS = \

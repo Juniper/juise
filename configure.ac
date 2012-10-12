@@ -50,6 +50,8 @@ AC_PATH_PROG(SED, sed, /bin/sed)
 
 AC_PATH_PROG(PATH_SSH, ssh, /usr/bin/ssh)
 AC_PATH_PROG(PATH_GZIP, gzip, /usr/bin/gzip)
+AC_DEFINE_UNQUOTED(PATH_SSH, ["$PATH_SSH"], [Path to SSH binary])
+AC_DEFINE_UNQUOTED(PATH_GZIP, ["$PATH_GZIP"], [Path to GZIP binary])
 
 AC_PROG_LN_S
 
@@ -523,11 +525,19 @@ AC_SUBST(LIBJUISE_VERSION)
 AC_SUBST(LIBJUISE_VERSION_NUMBER)
 AC_SUBST(LIBJUISE_VERSION_EXTRA)
 
-AC_CONFIG_HEADERS([config.h])
+AC_DEFINE_UNQUOTED(LIBJUISE_VERSION, ["$LIBJUISE_VERSION"],
+    [Version number as dotted value])
+AC_DEFINE_UNQUOTED(LIBJUISE_VERSION_NUMBER, [$LIBJUISE_VERSION_NUMBER],
+    [Version number as a number])
+AC_DEFINE_UNQUOTED(LIBJUISE_VERSION_STRING, ["$LIBJUISE_VERSION_NUMBER"],
+    [Version number as string])
+AC_DEFINE_UNQUOTED(LIBJUISE_VERSION_EXTRA, ["$LIBJUISE_VERSION_EXTRA"],
+    [Version number extra information])
+
+AC_CONFIG_HEADERS([libjuise/juiseconfig.h])
 AC_CONFIG_FILES([
   Makefile
   juise-config
-  libjuise/juiseconfig.h
   libjuise/Makefile
   juise/Makefile
   doc/Makefile

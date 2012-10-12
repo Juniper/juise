@@ -15,7 +15,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "config.h"
+#include "juiseconfig.h"
 #include <libjuise/string/strextra.h>
 
 /*

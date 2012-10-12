@@ -21,8 +21,7 @@
 #include <arpa/inet.h>
 #include <limits.h>
 
-#include "config.h"
-
+#include "juiseconfig.h"
 #include <libjuise/io/logging.h>
 #include <libjuise/data/parse_ip.h>
 #include <libjuise/string/strextra.h>

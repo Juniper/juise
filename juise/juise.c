@@ -37,12 +37,12 @@
 #include <libexslt/exslt.h>
 #include <libxslt/xsltutils.h>
 
-#include "config.h"
 #include <libslax/slax.h>
 #include <libslax/slaxconfig.h>
 #include <libslax/slaxdata.h>
 #include <libslax/xmlsoft.h>
 
+#include "juiseconfig.h"
 #include <libjuise/string/strextra.h>
 #include <libjuise/time/timestr.h>
 #include <libjuise/xml/libxml.h>
@@ -51,7 +51,6 @@
 #include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 #include <libjuise/xml/juisenames.h>
-#include <libjuise/juiseconfig.h>
 
 #include "juise.h"
 

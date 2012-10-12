@@ -11,8 +11,6 @@
  * Redirect prompt requests to grandparent process
  */
 
-#include "config.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -23,7 +21,7 @@
 #include <string.h>
 #include <sys/uio.h>
 
-#include <libjuise/juiseconfig.h>
+#include "juiseconfig.h"
 #include <libjuise/string/strextra.h>
 #include <libjuise/io/trace.h>
 

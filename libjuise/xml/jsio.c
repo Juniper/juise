@@ -32,7 +32,7 @@
 #include <libxml/xmlsave.h>
 #include <libxslt/extensions.h>
 
-#include "config.h"
+#include "juiseconfig.h"
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/common/allocadup.h>
@@ -49,7 +49,6 @@
 #include <libjuise/xml/libxml.h>
 #include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
-#include <libjuise/juiseconfig.h>
 
 #include <libslax/slax.h>
 #include <libslax/xmlsoft.h>

@@ -22,9 +22,7 @@
 #include <stdarg.h>
 #include <sys/queue.h>
 
-#include <libjuise/juiseconfig.h>
-#include "config.h"
-
+#include "juiseconfig.h"
 #include <libjuise/io/fbuf.h>
 #include <libjuise/time/timestr.h>
 #include <libjuise/common/aux_types.h>

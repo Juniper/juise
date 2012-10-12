@@ -14,7 +14,7 @@
 #include <sys/types.h>
 #include <string.h>
 
-#include "config.h"
+#include "juiseconfig.h"
 #include <libjuise/string/strextra.h>
 
 /*
@@ -37,4 +37,3 @@ strndup (const char *str, size_t count)
 	return cp;
     }
 }
-

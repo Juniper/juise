@@ -13,8 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
-
+#include "juiseconfig.h"
 #include <libjuise/string/strextra.h>
 #include <libjuise/xml/xmlutil.h>
 

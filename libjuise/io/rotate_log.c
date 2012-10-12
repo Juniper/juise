@@ -23,12 +23,12 @@
 #include <signal.h>
 #include <sys/signal.h>
 
+#include "juiseconfig.h"
 #include <libjuise/env/env.h>
 #include <libjuise/env/env_paths.h>
 #include <libjuise/io/logging.h>
 #include <libjuise/io/trace.h>
 #include <libjuise/io/rotate_log.h>
-#include <libjuise/juiseconfig.h>
 
 void
 rotate_log (const char *log_file, unsigned max_files, unsigned flags)

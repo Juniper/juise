@@ -23,7 +23,7 @@ include ${top_srcdir}/warnings.mk
 #
 # For example, we need our mod_juise.c needs lighttpd's <server.h>,
 # but that needs lighttpd's "config.h", so we need to avoid finding
-# our own "config.h".  Having included that file, we need to make sure
+# our own "juiseconfig.h".  Having included that file, we need to make sure
 # our CFLAGS and LIBS are identical to lighttpd.  If not, our
 # structure references will not align with the rest of lighttpd and
 # some criminally bizarre results will occur.
@@ -34,6 +34,7 @@ include ${top_srcdir}/warnings.mk
 # does not make this easy.
 #
 MY_DEFAULT_INCLUDES = -I. -I$(srcdir)
+
 COMPILE = $(CC) $(DEFS) $(MY_DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
         $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -49,6 +50,9 @@ W2 = $(subst -Wstrict-prototypes,,${W1})
 MYWARNINGS = ${W2}
 
 AM_CFLAGS = \
+    -I${top_srcdir} \
+    -I${top_srcdir}/libjuise \
+    -I.. \
     -I${LIGHTTPD_OBJ} \
     -I${LIGHTTPD_SRC}/src \
     ${PCRE_CFLAGS} \

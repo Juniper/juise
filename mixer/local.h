@@ -9,8 +9,6 @@
  * LICENSE.
  */
 
-#include "config.h"
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -33,6 +31,7 @@
 
 #include <libssh2.h>
 
+#include "juiseconfig.h"
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/xml/xmlutil.h>

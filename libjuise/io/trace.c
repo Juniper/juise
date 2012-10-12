@@ -30,6 +30,7 @@
 #include <stdbool.h>
 #include <regex.h>
 
+#include "juiseconfig.h"
 #include <libjuise/io/logging.h>
 #include <libjuise/io/trace_priv.h>
 #include <libjuise/io/trace.h>
@@ -37,7 +38,6 @@
 #include <libjuise/io/rotate_log.h>
 #include <regex.h>
 
-#include "config.h"
 #ifdef HAVE_SYS_STATFS_H
 #include <sys/statfs.h>
 #endif /* HAVE_SYS_STATFS_H */
