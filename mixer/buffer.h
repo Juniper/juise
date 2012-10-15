@@ -12,6 +12,9 @@
 mx_buffer_t *
 mx_buffer_create (unsigned size);
 
+mx_buffer_t *
+mx_buffer_copy (mx_buffer_t *base, int len);
+
 void
 mx_buffer_free (mx_buffer_t *mbp);
 

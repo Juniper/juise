@@ -28,6 +28,19 @@ mx_buffer_create (unsigned size)
     return mbp;
 }
 
+mx_buffer_t *
+mx_buffer_copy (mx_buffer_t *base, int len)
+{
+    mx_buffer_t *mbp = mx_buffer_create(len);
+
+    if (mbp) {
+	memcpy(mbp->mb_data, base->mb_data + base->mb_start, len);
+	mbp->mb_len = len;
+    }
+
+    return mbp;
+}
+
 void
 mx_buffer_reset (mx_buffer_t *mbp)
 {

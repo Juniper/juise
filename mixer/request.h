@@ -10,7 +10,7 @@
  */
 
 mx_request_t *
-mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp,
+mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
 		   mx_muxid_t muxid, const char *tag, const char **attr);
 
 int
@@ -30,6 +30,9 @@ mx_request_init (void);
 
 void
 mx_request_release_session (mx_sock_session_t *session);
+
+void
+mx_request_release_client (mx_sock_t *client);
 
 void
 mx_request_restart_rpc (mx_request_t *mrp);

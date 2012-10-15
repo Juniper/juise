@@ -24,7 +24,7 @@ char mx_netconf_tag_close_rpc[] = "</rpc>";
 unsigned  mx_netconf_tag_close_rpc_len = sizeof(mx_netconf_tag_close_rpc) - 1;
 
 mx_request_t *
-mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp UNUSED,
+mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
 		   mx_muxid_t muxid, const char *tag, const char **attrs)
 {
     mx_request_t *mrp;
@@ -45,7 +45,7 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp UNUSED,
     mrp->mr_password = nstrdup(xml_get_attribute(attrs, "password"));
     mrp->mr_passphrase = nstrdup(xml_get_attribute(attrs, "passphrase"));
     mrp->mr_hostkey = nstrdup(xml_get_attribute(attrs, "hostkey"));
-    mrp->mr_rpc = mbp;
+    mrp->mr_rpc = mx_buffer_copy(mbp, len);
 
     if (mrp->mr_user == NULL && mrp->mr_target) {
 	cp = index(mrp->mr_target, '@');
@@ -291,12 +291,34 @@ mx_request_release_session (mx_sock_session_t *session)
 
     TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
 	if (mrp->mr_session == session) {
-	    mx_log("R%u session released R%u, C%u",
+	    mx_log("R%u session released S%u, C%u",
 		   mrp->mr_id, mrp->mr_session->mss_base.ms_id,
 		   mrp->mr_channel ? mrp->mr_channel->mc_id : 0);
 	    mrp->mr_state = MSS_FAILED;
 	    mrp->mr_session = NULL;
 	    mrp->mr_channel = NULL;
+	    mrp->mr_client = NULL;
+	}
+    }
+}
+
+void
+mx_request_release_client (mx_sock_t *client)
+{
+    mx_request_t *mrp;
+
+    TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
+	if (mrp->mr_client == client) {
+	    mx_log("R%u client released S%u, C%u",
+		   mrp->mr_id, mrp->mr_client->ms_id,
+		   mrp->mr_channel ? mrp->mr_channel->mc_id : 0);
+	    if (mrp->mr_state == MSS_ESTABLISHED)
+		mx_channel_release(mrp->mr_channel);
+
+	    mrp->mr_state = MSS_FAILED;
+	    mrp->mr_session = NULL;
+	    mrp->mr_channel = NULL;
+	    mrp->mr_client = NULL;
 	}
     }
 }

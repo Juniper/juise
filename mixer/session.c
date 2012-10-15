@@ -460,9 +460,10 @@ static void
 mx_session_close (mx_sock_t *msp)
 {
     mx_sock_session_t *mssp = mx_sock(msp, MST_SESSION);
-
     mx_channel_t *mcp;
     LIBSSH2_SESSION *session = mssp->mss_session;
+
+    mx_request_release_session(mssp);
 
     for (;;) {
 	mcp = TAILQ_FIRST(&mssp->mss_channels);
@@ -474,6 +475,7 @@ mx_session_close (mx_sock_t *msp)
 
     libssh2_session_disconnect(session, "Client disconnecting");
     libssh2_session_free(session);
+    mssp->mss_session = NULL;
 
     free(mssp->mss_target);
     free(mssp->mss_canonname);

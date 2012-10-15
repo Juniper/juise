@@ -11,7 +11,8 @@
  */
 
 jQuery(function ($) {
-    var mx_muxid = 0;
+    var mx_id = 0;              // Identify the muxer instance
+    var mx_muxid = 0;           // Identify the muxer operation
     var MX_HEADER_SIZE = 31;
     var MX_HEADER_SIZE1 = 32;
     var MX_DUMP_SIZE = 80;
@@ -42,16 +43,22 @@ jQuery(function ($) {
     }
 
     function muxerOpen () {
+        $.dbgpr("muxer: open " + this.id);
+
         var muxer = this;       // In the callback, this == the websocket
-        if (muxer.isOpen())
+        if (muxer.opening)
             return;
+        muxer.opening = true;
 
         muxer.ws = new WebSocket(muxer.url);
         muxer.ws.onopen = function (event) {
             $.dbgpr("muxer: WebSocket is now open");
-            if (muxer.onopensend) {
-                muxer.onopensend();
-                muxer.onopensend = undefined;
+            if (muxer.pendingMessages) {
+                $.dbgpr("muxer: sending pending messages ("
+                        + muxer.pendingMessages.length + ")");
+                while (muxer.pendingMessages.length > 0) {
+                    muxer.ws.send(muxer.pendingMessages.shift());
+                }
             }
 
             if (muxer.onopen)
@@ -83,12 +90,19 @@ jQuery(function ($) {
 
             muxer.onmessage();
         }
+
+        muxer.ws.onerror = function (event) {
+            $.dbgpr("muxer: ws.onerror (" + event.data + ")");
+            muxer.close()
+        }
     }
 
     function muxerClose () {
-        if (this.isOpen())
+        $.dbgpr("muxer: closing " + this.id);
+        if (this.opening)
             this.ws.close();
         this.ws = undefined;
+        muxer.opening = false;
     }
 
     function muxerMessage () {
@@ -162,7 +176,7 @@ jQuery(function ($) {
         if (payload == undefined)
             payload = "";
 
-        var len = attrs.length + payload.length + MX_HEADER_SIZE - 1;
+        var len = attrs.length + payload.length + MX_HEADER_SIZE;
         var header = "#01." + pad(len, MX_HEADER_FIELD, '0', '') + "."
 	    + pad(op, MX_HEADER_FIELD, '', ' ') + "."
             + pad(muxid, MX_HEADER_FIELD, '0', '') + ".";
@@ -202,14 +216,12 @@ jQuery(function ($) {
         $.dbgpr("wssend: " + message.length
                 + ":: " + message.substring(0, dlen));
 
-        if (this.isOpen()) {
+        if (this.opening && this.isOpen()) {
             this.ws.send(message);
         } else {
-            var msg = message;
-            this.onopensend = function () {
-                this.ws.send(msg);
-            }
-            this.open();
+            if (this.pendingMessages == undefined)
+                this.pendingMessages = [ ];
+            this.pendingMessages.push(message);
         }
     }
 
@@ -254,6 +266,7 @@ jQuery(function ($) {
         $.extend(this, MuxerOptions);
         $.extend(this, options);
         this.muxMap = [ ];
+        this.id = ++mx_id;
     }
 
     Muxer.prototype.rpc = muxerRpc;
@@ -268,6 +281,10 @@ jQuery(function ($) {
 
     Muxer.prototype.isOpen = function () {
         return (this.ws != undefined && this.ws.readyState == WebSocket.OPEN)
+    }
+
+    Muxer.prototype.isOpening = function () {
+        return this.opening;
     }
 
     $.Muxer = function (options) {

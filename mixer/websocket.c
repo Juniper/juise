@@ -95,168 +95,157 @@ mx_websocket_test_hostkey (mx_sock_session_t *mswp UNUSED,
 void
 mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 {
-    char *cp = mbp->mb_data + mbp->mb_start;
-    char *ep = mbp->mb_data + mbp->mb_start + mbp->mb_len;
     char *trailer;
-    mx_header_t *mhp = (mx_header_t *) cp;
+    mx_header_t *mhp;
 
-    if (mhp->mh_pound != '#' || mhp->mh_version[0] != MX_HEADER_VERSION_0
-	|| mhp->mh_version[1] != MX_HEADER_VERSION_1
-	|| mhp->mh_dot1 != '.' || mhp->mh_dot2 != '.'
-	|| mhp->mh_dot3 != '.' || mhp->mh_dot4 != '.') {
-	mx_log("S%u parse request fails (%c)", mswp->msw_base.ms_id, *cp);
-	goto fatal;
-    }
+    while (mbp->mb_len > sizeof(*mhp)) {
+	char *cp = mbp->mb_data + mbp->mb_start;
+	char *ep = mbp->mb_data + mbp->mb_start + mbp->mb_len;
+	mhp = (mx_header_t *) cp;
 
-    unsigned long len = strntoul(mhp->mh_len, sizeof(mhp->mh_len));
-    mx_muxid_t muxid = strntoul(mhp->mh_muxid, sizeof(mhp->mh_muxid));
-    char *operation = mhp->mh_operation;
-    for (cp = operation + sizeof(mhp->mh_operation) - 1; cp >= operation; cp--)
-	if (*cp != ' ')
-	    break;
-    *++cp = '\0';
-    mx_log("S%u incoming request '%s', muxid %lu, len %lu", 
-	   mswp->msw_base.ms_id, operation, muxid, len);
-
-    if (len < mbp->mb_len) {
-	/* XXX Handle short read */
-    }
-
-    trailer = cp = mhp->mh_trailer;
-    for (; cp < ep; cp++) {
-	if (*cp == '\n')
-	    break;
-    }
-    if (cp >= ep)
-	goto fatal;
-    *cp++ = '\0';		/* Skip over '\n' */
-
-    /*
-     * Mark the header data as consumed.  The rest of the payload
-     * may be used during the request.
-     */
-    int delta = cp - mbp->mb_data;
-    mbp->mb_start = delta; 
-    mbp->mb_len -= delta;
-
-    mx_log("S%u websocket request op '%s', rest '%s'",
-	   mswp->msw_base.ms_id, operation, trailer);
-
-    const char *attrs[MAX_XML_ATTR];
-    if (*trailer == '\0') {
-	attrs[0] = NULL;
-    } else if (xml_parse_attributes(attrs, MAX_XML_ATTR, trailer)) {
-	mx_log("S%u websocket request ('%s') with broken attributes ('%s')",
-	       mswp->msw_base.ms_id, operation, trailer);
-	goto fatal;
-    }
-
-    if (streq(operation, MX_OP_RPC)) {
-	/* Build an request instance */
-	mx_request_t *mrp = mx_request_create(mswp, mbp, muxid,
-					      operation, attrs);
-
-	if (mrp == NULL)
+	if (mhp->mh_pound != '#' || mhp->mh_version[0] != MX_HEADER_VERSION_0
+	    || mhp->mh_version[1] != MX_HEADER_VERSION_1
+	    || mhp->mh_dot1 != '.' || mhp->mh_dot2 != '.'
+	    || mhp->mh_dot3 != '.' || mhp->mh_dot4 != '.') {
+	    mx_log("S%u parse request fails (%c)", mswp->msw_base.ms_id, *cp);
 	    goto fatal;
-
-	mswp->msw_rbufp = NULL;	/* Buffer is now owned by the request */
-
-	mx_request_start_rpc(mswp, mrp);
-
-    } else if (streq(operation, MX_OP_HOSTKEY)) {
-	mx_request_t *mrp = mx_request_find(muxid);
-	if (mrp) {
-	    if (mrp->mr_state != MSS_HOSTKEY) {
-		mx_log("R%u in wrong state", mrp->mr_id);
-		mx_buffer_reset(mbp);
-		return;
-	    }
-
-	    if (!mx_websocket_test_hostkey(mrp->mr_session, mrp, mbp)) {
-		mx_log("R%u hostkey was declined; closing request",
-		       mrp->mr_id);
-		mx_buffer_reset(mbp);
-		mx_request_release(mrp);
-		return;
-	    }
-
-	    mx_buffer_reset(mbp);
-
-	    if (mx_session_check_auth(mrp->mr_session, mrp)) {
-		mx_log("R%u waiting for check auth", mrp->mr_id);
-		return;
-	    }
-
-	    mx_request_restart_rpc(mrp);
-
-	} else {
-	    mx_log("S%u muxid %lu not found (ignored)",
-		   mswp->msw_base.ms_id, muxid);
-	    mx_buffer_reset(mbp);
 	}
 
-    } else if (streq(operation, MX_OP_PASSPHRASE)) {
-	mx_request_t *mrp = mx_request_find(muxid);
-	if (mrp) {
-	    if (mrp->mr_state != MSS_PASSPHRASE) {
-		mx_log("R%u in wrong state (%u)", mrp->mr_id, mrp->mr_state);
-		mx_buffer_reset(mbp);
-		return;
-	    }
+	unsigned long len = strntoul(mhp->mh_len, sizeof(mhp->mh_len));
+	mx_muxid_t muxid = strntoul(mhp->mh_muxid, sizeof(mhp->mh_muxid));
+	char *operation = mhp->mh_operation;
+	for (cp = operation + sizeof(mhp->mh_operation) - 1;
+	     	cp >= operation; cp--)
+	    if (*cp != ' ')
+		break;
+	*++cp = '\0';
+	mx_log("S%u incoming request '%s', muxid %lu, len %lu", 
+	       mswp->msw_base.ms_id, operation, muxid, len);
 
-	    mrp->mr_passphrase = strndup(mbp->mb_data + mbp->mb_start,
-					 mbp->mb_len);
-	    mx_buffer_reset(mbp);
-
-	    if (mx_session_check_auth(mrp->mr_session, mrp)) {
-		mx_log("R%u waiting for check auth", mrp->mr_id);
-		return;
-	    }
-
-	    mx_request_restart_rpc(mrp);
-
-	} else {
-	    mx_log("S%u muxid %lu not found (ignored)",
-		   mswp->msw_base.ms_id, muxid);
-	    mx_buffer_reset(mbp);
+	if (mbp->mb_len < len) {
+	    mx_log("S%u short read (%lu/%lu)", mswp->msw_base.ms_id,
+		   len, mbp->mb_len);
+	    break;
 	}
 
-    } else if (streq(operation, MX_OP_PASSWORD)) {
-	mx_request_t *mrp = mx_request_find(muxid);
-	if (mrp) {
-	    if (mrp->mr_state != MSS_PASSWORD) {
-		mx_log("R%u in wrong state (%u)", mrp->mr_id, mrp->mr_state);
-		mx_buffer_reset(mbp);
-		return;
-	    }
-
-	    mrp->mr_password = strndup(mbp->mb_data + mbp->mb_start,
-					 mbp->mb_len);
-	    mx_buffer_reset(mbp);
-
-	    if (mx_session_check_auth(mrp->mr_session, mrp)) {
-		mx_log("R%u waiting for check auth", mrp->mr_id);
-		return;
-	    }
-
-	    mx_request_restart_rpc(mrp);
-
-	} else {
-	    mx_log("S%u muxid %lu not found (ignored)",
-		   mswp->msw_base.ms_id, muxid);
-	    mx_buffer_reset(mbp);
+	trailer = cp = mhp->mh_trailer;
+	for (; cp < ep; cp++) {
+	    if (*cp == '\n')
+		break;
 	}
+	if (cp >= ep)
+	    goto fatal;
+	*cp++ = '\0';		/* Skip over '\n' */
+
+	/*
+	 * Mark the header data as consumed.  The rest of the payload
+	 * may be used during the request.
+	 */
+	int delta = cp - (mbp->mb_data + mbp->mb_start);
+	mbp->mb_start += delta; 
+	mbp->mb_len -= delta;
+	len -= delta;
+
+	mx_log("S%u websocket request op '%s', rest '%s'",
+	       mswp->msw_base.ms_id, operation, trailer);
+
+	const char *attrs[MAX_XML_ATTR];
+	if (*trailer == '\0') {
+	    attrs[0] = NULL;
+	} else if (xml_parse_attributes(attrs, MAX_XML_ATTR, trailer)) {
+	    mx_log("S%u websocket request ('%s') w/ broken attributes ('%s')",
+		   mswp->msw_base.ms_id, operation, trailer);
+	    goto fatal;
+	}
+
+	if (streq(operation, MX_OP_RPC)) {
+	    /* Build an request instance */
+	    mx_request_t *mrp = mx_request_create(mswp, mbp, len, muxid,
+						  operation, attrs);
+	    if (mrp == NULL)
+		goto fatal;
+
+	    mx_request_start_rpc(mswp, mrp);
+
+	} else if (streq(operation, MX_OP_HOSTKEY)) {
+	    mx_request_t *mrp = mx_request_find(muxid);
+	    if (mrp) {
+		if (mrp->mr_state != MSS_HOSTKEY) {
+		    mx_log("R%u in wrong state", mrp->mr_id);
+		} else if (!mx_websocket_test_hostkey(mrp->mr_session,
+						      mrp, mbp)) {
+		    mx_log("R%u hostkey was declined; closing request",
+			   mrp->mr_id);
+		    mx_request_release(mrp);
+		} else if (mx_session_check_auth(mrp->mr_session, mrp)) {
+		    mx_log("R%u waiting for check auth", mrp->mr_id);
+		} else {
+		    mx_request_restart_rpc(mrp);
+		}
+
+	    } else {
+		mx_log("S%u muxid %lu not found (ignored)",
+		       mswp->msw_base.ms_id, muxid);
+	    }
+
+	} else if (streq(operation, MX_OP_PASSPHRASE)) {
+	    mx_request_t *mrp = mx_request_find(muxid);
+	    if (mrp) {
+		if (mrp->mr_state != MSS_PASSPHRASE) {
+		    mx_log("R%u in wrong state (%u)",
+			   mrp->mr_id, mrp->mr_state);
+		} else {
+		    mrp->mr_passphrase = strndup(mbp->mb_data + mbp->mb_start,
+						 mbp->mb_len);
+
+		    if (mx_session_check_auth(mrp->mr_session, mrp)) {
+			mx_log("R%u waiting for check auth", mrp->mr_id);
+		    } else {
+			mx_request_restart_rpc(mrp);
+		    }
+		}
+	    } else {
+		mx_log("S%u muxid %lu not found (ignored)",
+		       mswp->msw_base.ms_id, muxid);
+	    }
+
+	} else if (streq(operation, MX_OP_PASSWORD)) {
+	    mx_request_t *mrp = mx_request_find(muxid);
+	    if (mrp) {
+		if (mrp->mr_state != MSS_PASSWORD) {
+		    mx_log("R%u in wrong state (%u)", mrp->mr_id, mrp->mr_state);
+		} else {
+		    mrp->mr_password = strndup(mbp->mb_data + mbp->mb_start,
+					       mbp->mb_len);
+
+		    if (mx_session_check_auth(mrp->mr_session, mrp)) {
+			mx_log("R%u waiting for check auth", mrp->mr_id);
+		    } else {
+			mx_request_restart_rpc(mrp);
+		    }
+		}
+	    } else {
+		mx_log("S%u muxid %lu not found (ignored)",
+		       mswp->msw_base.ms_id, muxid);
+	    }
 #if 0
-    } else if (streq(operation, "command")) {
-    } else if (streq(operation, "password")) {
-    } else if (streq(operation, "unknown-host")) {
+	} else if (streq(operation, "command")) {
+	} else if (streq(operation, "password")) {
+	} else if (streq(operation, "unknown-host")) {
 #endif
-    } else {
-	mx_log("S%u websocket: unknown request '%s'",
-	       mswp->msw_base.ms_id, operation);
-	mx_buffer_reset(mbp);
+	} else {
+	    mx_log("S%u websocket: unknown request '%s'",
+		   mswp->msw_base.ms_id, operation);
+	}
+
+	/* Move past this message and look at the next one */
+	mbp->mb_start += len;
+	mbp->mb_len -= len;
     }
 
+    /* If the buffer is empty, reset the start */
+    if (mbp->mb_len == 0)
+	mbp->mb_start = 0;
     return;
 
  fatal:
@@ -308,34 +297,31 @@ mx_websocket_poller (MX_TYPE_POLLER_ARGS)
     mx_buffer_t *mbp = mswp->msw_rbufp;
     int len;
 
-    if (mbp == NULL)
-	mswp->msw_rbufp = mbp = mx_buffer_create(0);
-
     if (pollp && pollp->revents & POLLIN) {
 
-	if (mbp->mb_len == 0) {
-	    mbp->mb_start = mbp->mb_len = 0;
+	if (mbp->mb_len == 0)
+	    mbp->mb_start = 0;
 
-	    len = recv(msp->ms_sock, mbp->mb_data, mbp->mb_size, 0);
-	    if (len < 0) {
-		if (errno == EWOULDBLOCK)
-		    return FALSE;
+	int size = mbp->mb_size - (mbp->mb_start + mbp->mb_len);
+	len = recv(msp->ms_sock, mbp->mb_data + mbp->mb_start, size, 0);
+	if (len < 0) {
+	    if (errno == EWOULDBLOCK)
+		return FALSE;
 
-		mx_log("S%u: read error: %s", msp->ms_id, strerror(errno));
-		msp->ms_state = MSS_FAILED;
-		return TRUE;
-	    }
-
-	    if (len == 0) {
-		mx_log("S%u: disconnect (%s)", msp->ms_id, mx_sock_sin(msp));
-		return TRUE;
-	    }
-
-	    mbp->mb_len = len;
-	    slaxMemDump("wsread: ", mbp->mb_data, mbp->mb_len, ">", 0);
-
-	    mx_websocket_handle_request(mswp, mbp);
+	    mx_log("S%u: read error: %s", msp->ms_id, strerror(errno));
+	    msp->ms_state = MSS_FAILED;
+	    return TRUE;
 	}
+
+	if (len == 0) {
+	    mx_log("S%u: disconnect (%s)", msp->ms_id, mx_sock_sin(msp));
+	    return TRUE;
+	}
+
+	mbp->mb_len = len;
+	slaxMemDump("wsread: ", mbp->mb_data, mbp->mb_len, ">", 0);
+
+	mx_websocket_handle_request(mswp, mbp);
     }
 
     return FALSE;

@@ -354,6 +354,7 @@ mx_channel_close (mx_channel_t *mcp)
     }
 
     libssh2_channel_free(mcp->mc_channel);
+    mcp->mc_channel = NULL;
     free(mcp);
 }
 
@@ -451,7 +452,7 @@ mx_channel_netconf_detect_marker (mx_channel_t *mcp UNUSED,
     return FALSE;
 }
 
-static void
+void
 mx_channel_release (mx_channel_t *mcp)
 {
     mx_sock_t *client = mcp->mc_client;

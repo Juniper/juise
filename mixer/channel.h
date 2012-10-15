@@ -37,3 +37,6 @@ mx_channel_has_buffered (mx_channel_t *mcp);
 
 void
 mx_channel_print (mx_channel_t *mcp, int indent, const char *prefix);
+
+void
+mx_channel_release (mx_channel_t *mcp);
