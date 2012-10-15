@@ -11,6 +11,7 @@ server.modules = (
     "mod_cgi",
     "mod_juise",
     "mod_fastcgi",
+    "mod_websocket",
 )
 
 juise.assign = ( 
@@ -57,3 +58,7 @@ expire.url = ( "/static/images/" => "access 1 hours" )
 #)
 #
 #url.rewrite = ( "^/$" => "/status" )
+
+websocket.server = (
+    "/mixer" =>    ( "host" => "127.0.0.1", "port" => "8000" ),
+)

@@ -115,7 +115,7 @@ mx_channel_netconf_send_hello (mx_channel_t *mcp)
 	  "<capabilities>\n"
 	  "<capability>urn:ietf:params:netconf:base:1.0</capability>\n"
 	  "</capabilities>"
-	"</hello>\n" NETCONF_MARKER ">\n";
+	"</hello>\n" NETCONF_MARKER "\n";
     int len, hlen = sizeof(hello) - 1;
 
     len = mx_channel_write(mcp, hello, hlen);
@@ -349,8 +349,8 @@ mx_channel_close (mx_channel_t *mcp)
 
     if (mcp->mc_client) {
 	mx_sock_t *msp = mcp->mc_client;
-	assert(mx_mti(msp)->mti_set_channel);
-	mx_mti(msp)->mti_set_channel(msp, NULL, NULL);
+	if (mx_mti(msp)->mti_set_channel)
+	    mx_mti(msp)->mti_set_channel(msp, NULL, NULL);
     }
 
     libssh2_channel_free(mcp->mc_channel);
@@ -497,6 +497,10 @@ mx_channel_handle_input (mx_channel_t *mcp)
 	if (len == LIBSSH2_ERROR_EAGAIN) {
 	    /* Nothing to read, nothing to write; move on */
 	    DBG_POLL("C%u is drained", mcp->mc_id);
+	    return TRUE;
+
+	} else if (libssh2_channel_eof(mcp->mc_channel)) {
+	    DBG_POLL("C%u is at eof", mcp->mc_id);
 	    return TRUE;
 
 	} else if (len < 0) {

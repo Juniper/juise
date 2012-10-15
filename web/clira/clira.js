@@ -14,6 +14,7 @@ jQuery(function ($) {
     $.dbgpr("document is ready");
 
     var $output = $("#output-top");
+    var muxer;
     var command_number = 0;
     var cmdHistory, tgtHistory;
     var prefs = { };            // Initial value (to handle early references)
@@ -83,10 +84,26 @@ jQuery(function ($) {
         },
         {
             name: "live_action",
-            def: false,
+            def: true,
             type: "boolean",
             label: "Live",
             title: "Interact with real devices",
+        },
+        {
+            name: "muxer",
+            def: true,
+            type: "boolean",
+            label: "Muxer",
+            title: "Use the Muxer API",
+            change: prefsChangeMuxer,
+        },
+        {
+            name: "mixer",
+            def: "ws://127.0.0.1:3000/mixer",
+            type: "string",
+            label: "Mixer Location",
+            title: "Address of the Mixer server",
+            change: prefsChangeMuxer,
         },
     ];
 
@@ -528,7 +545,59 @@ jQuery(function ($) {
             var $out = $("div.output-replace", $newp);
             $out.slideUp(0).slideDown(prefs.slide_speed);
 
-            $out.load("/clira/clira.slax",
+            if (prefs.muxer) {
+                if (muxer == undefined)
+                    openMuxer();
+
+                var full = [ ];
+
+                muxer.rpc({
+                    div: $out,
+                    target: target,
+                    payload: "<command format='html'>"
+                        + command + "</command>",
+                    onreply: function (data) {
+                        $.dbgpr("rpc: reply: full.length " + full.length
+                                + ", data.length " + data.length);
+                        full.push(data);
+
+                        // Turns out that if we continually pass on incoming
+                        // data, firefox becomes overwhelmed with the work
+                        // of rendering it into html.  We cheat here by
+                        // rendering the first piece, and then letting the
+                        // rest wait until the RPC is complete.  Ideally, there
+                        // should also be a timer to render what we've got if
+                        // the output RPC stalls.
+                        if (full.length <= 2)
+                            $out.html(data);
+                        var $x = full.join("");
+                    },
+                    oncomplete: function () {
+                        $.dbgpr("rpc: complete");
+                        $out.html(full.join(""));
+                    },
+                    onhostkey: function (data) {
+                        var self = this;
+                        promptForHostKey($out, data, function (response) {
+                            muxer.hostkey(self, response);
+                        });
+                    },
+                    onpsphrase: function (data) {
+                        var self = this;
+                        promptForSecret($out, data, function (response) {
+                            muxer.psphrase(self, response);
+                        });
+                    },
+                    onpsword: function (data) {
+                        var self = this;
+                        promptForSecret($out, data, function (response) {
+                            muxer.psword(self, response);
+                        });
+                    },
+                });
+
+            } else {
+                $out.load("/clira/clira.slax",
                          {
                              target: target,
                              command: command,
@@ -538,7 +607,7 @@ jQuery(function ($) {
                              loadHttpReply(text, status, http,
                                            $(this), $out);
                          });
-
+            }
         }
 
         decorateIcons($newp);
@@ -559,6 +628,72 @@ jQuery(function ($) {
 
         return false;
     }
+
+    function openMuxer () {
+        if (muxer)
+            muxer.close();
+
+        muxer = $.Muxer({
+            url: prefs.mixer,
+            onopen: function (event) {
+                $.dbgpr("clira: opened WebSocket");
+            },
+            onreply: function (event, data) {
+                $.dbgpr("clira: onreply: " + data);
+            },
+            oncomplete: function (event) {
+                $.dbgpr("clira: complete");
+            },
+            onclose: function (event) {
+                $.dbgpr("clira: closed WebSocket");
+            }
+        });
+        muxer.open();
+    }
+
+    function promptForHostKey ($parent, prompt, onclick) {
+        var content = "<div class='muxer-prompt'>"
+            + "<div class='muxer-message'>" + prompt + "</div>"
+            + "<div class='muxer-buttons'>" 
+            +   "<button class='accept'/>"
+            +   "<button class='decline'/>"
+            + "</div></div>";
+
+        var $div = $(content);
+        $parent.append($div);
+        $(".accept", $div).text("Accept").button({}).click(function () {
+            onclick("yes");
+            $div.remove();
+        });
+        $(".decline", $div).text("Decline").button({}).click(function () {
+            onclick("no");
+            $div.remove();
+        });
+    }
+
+    function promptForSecret ($parent, prompt, onclick) {
+        var content = "<div class='muxer-prompt'>"
+            + "<div class='muxer-message'>" + prompt + "</div>"
+            + "<input name='value' type='password' class='value'></input>'"
+            + "<div class='muxer-buttons'>" 
+            +   "<button class='enter'/>"
+            +   "<button class='cancel'/>"
+            + "</div></div>";
+
+        var $div = $(content);
+        $parent.append($div);
+        $(".enter", $div).text("Enter").button({}).click(function () {
+            var val = $(".value", $div).val();
+            onclick(val);
+            $div.remove();
+        });
+        $(".cancel", $div).text("Cancel").button({}).click(function () {
+            var val = $(".value", $div).val();
+            onclick(val);
+            $div.remove();
+        });
+    }
+
 
     function loadHttpReply (text, status, http, $this, $out) {
         $.dbgpr("loadHttpReply: ", "target:", target,
@@ -658,6 +793,16 @@ jQuery(function ($) {
             attr = attr.replace(prev, value, "g");
             $this.attr("href", attr);
         });
+    }
+
+    function prefsChangeMuxer (value, initial, prev) {
+        if (initial)
+            return;
+
+        if (muxer) {
+            muxer.close();
+            muxer = undefined;
+        }
     }
 
     /*

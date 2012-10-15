@@ -154,6 +154,7 @@ typedef struct mx_sock_forwarder_s {
 typedef struct mx_sock_session_s {
     mx_sock_t mss_base;
     char *mss_target;		  /* Remote host name (target) */
+    char *mss_canonname;	  /* Canonical name (from getaddrinfo) */
     LIBSSH2_SESSION *mss_session; /* libssh2 info */
     mx_channel_list_t mss_channels; /* Set of channels */
     mx_channel_list_t mss_released; /* Set of channels free to use */

@@ -85,6 +85,12 @@ jQuery(function ($) {
         }
     }
 
+    function muxerClose () {
+        if (this.isOpen())
+            this.ws.close();
+        this.ws = undefined;
+    }
+
     function muxerMessage () {
         $.dbgpr("muxer: message [" + this.data.length + "] ["
                 + escape(this.data.substring(1, MX_HEADER_SIZE1)) + "] ["
@@ -175,6 +181,9 @@ jQuery(function ($) {
         var attrs = "target=\"" + options.target + "\"";
         var muxid = ++mx_muxid;
         var payload = options.payload;
+        if (payload == undefined && options.command)
+            payload = "<command>" + options.command + "</command>";
+
         var op = options.op;
         if (op == undefined)
             op = "rpc";
@@ -196,8 +205,9 @@ jQuery(function ($) {
         if (this.isOpen()) {
             this.ws.send(message);
         } else {
+            var msg = message;
             this.onopensend = function () {
-                this.ws.send(message);
+                this.ws.send(msg);
             }
             this.open();
         }
@@ -248,6 +258,7 @@ jQuery(function ($) {
 
     Muxer.prototype.rpc = muxerRpc;
     Muxer.prototype.open = muxerOpen;
+    Muxer.prototype.close = muxerClose;
     Muxer.prototype.onerror = muxerError;
     Muxer.prototype.onmessage = muxerMessage;
     Muxer.prototype.hostkey = muxerHostkey;

@@ -9,6 +9,8 @@
  * LICENSE.
  */
 
+#include <netdb.h>
+
 #include "local.h"
 #include "util.h"
 #include "session.h"
@@ -24,9 +26,9 @@ mx_session_print (MX_TYPE_PRINT_ARGS)
     mx_sock_session_t *mssp = mx_sock(msp, MST_SESSION);
     mx_channel_t *mcp;
 
-    mx_log("%*s%starget %s, session %p", indent, "", prefix,
-	   mssp->mss_target,
-	   mssp->mss_session);
+    mx_log("%*s%starget %s, session %p (%s)", indent, "", prefix,
+	   mssp->mss_target, mssp->mss_session,
+	   mssp->mss_canonname ?: "???");
 
     mx_log("%*s%sChannels in use:%s", indent, "", prefix,
 	   TAILQ_EMPTY(&mssp->mss_channels) ? " none" : "");
@@ -42,7 +44,8 @@ mx_session_print (MX_TYPE_PRINT_ARGS)
 }
 
 mx_sock_session_t *
-mx_session_create (LIBSSH2_SESSION *session, int sock, const char *target)
+mx_session_create (LIBSSH2_SESSION *session, int sock,
+		   const char *target, const char *canonname)
 {
     mx_sock_session_t *mssp = malloc(sizeof(*mssp));
     if (mssp == NULL)
@@ -55,15 +58,18 @@ mx_session_create (LIBSSH2_SESSION *session, int sock, const char *target)
 
     mssp->mss_session = session;
     mssp->mss_target = strdup(target);
+    if (canonname)
+	mssp->mss_canonname = strdup(canonname);
     TAILQ_INIT(&mssp->mss_channels);
     TAILQ_INIT(&mssp->mss_released);
 
     TAILQ_INSERT_HEAD(&mx_sock_list, &mssp->mss_base, ms_link);
     mx_sock_count += 1;
 
-    MX_LOG("S%u new %s, fd %u, target %s",
+    MX_LOG("S%u new %s, fd %u, target %s/%s",
 	   mssp->mss_base.ms_id, mx_sock_type(&mssp->mss_base),
-	   mssp->mss_base.ms_sock, mssp->mss_target);
+	   mssp->mss_base.ms_sock, mssp->mss_target,
+	   mssp->mss_canonname ?: "");
 
     return mssp;
 }
@@ -337,27 +343,43 @@ mx_session_open (mx_request_t *mrp)
 {
     int rc, sock = -1;
     mx_sock_session_t *mssp;
-    struct sockaddr_in sin;
     LIBSSH2_SESSION *session;
+    struct addrinfo *res, *aip;
 
-    /* Connect to SSH server */
-    sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    sin.sin_family = AF_INET;
-    if (INADDR_NONE == (sin.sin_addr.s_addr = inet_addr(LOCALHOST_ADDRESS))) {
-        mx_log("session: inet_addr: %s", strerror(errno));
-        return NULL;
+    mx_log("R%u session open to %s", mrp->mr_id, mrp->mr_target);
+    rc = getaddrinfo(mrp->mr_target, "ssh", NULL, &res);
+    if (rc) {
+	mx_log("R%u invalid hostname: '%s': %s", mrp->mr_id, mrp->mr_target,
+	       gai_strerror(rc));
+	return NULL;
     }
 
-    sin.sin_port = htons(22);
-    if (connect(sock, (struct sockaddr*) &sin, sizeof(struct sockaddr_in))) {
-        mx_log("failed to connect");
-        return NULL;
+    for (aip = res; aip; aip = aip->ai_next) {
+	/* Connect to SSH server */
+	sock = socket(aip->ai_family, SOCK_STREAM, IPPROTO_TCP);
+	if (sock < 0)
+	    continue;
+
+	mx_log("R%u attempting connection to %s/%s",
+	       mrp->mr_id, mrp->mr_target, aip->ai_canonname ?: "???");
+
+	if (connect(sock, aip->ai_addr, aip->ai_addrlen)) {
+	    mx_log("R%u failed to connect to target '%s'/'%s'",
+		   mrp->mr_id, mrp->mr_target, aip->ai_canonname ?: "???");
+	} else
+	    break;
+
+	close(sock);
     }
+
+    mx_log("R%u connected to %s/%s",
+	   mrp->mr_id, mrp->mr_target, aip->ai_canonname ?: "???");
 
     /* Create a session instance */
     session = libssh2_session_init();
     if (!session) {
         mx_log("could not initialize SSH session");
+	freeaddrinfo(res);
         return NULL;
     }
 
@@ -367,6 +389,7 @@ mx_session_open (mx_request_t *mrp)
     rc = libssh2_session_handshake(session, sock);
     if (rc) {
         mx_log("error when starting up SSH session: %d", rc);
+	freeaddrinfo(res);
         return NULL;
     }
 
@@ -375,11 +398,14 @@ mx_session_open (mx_request_t *mrp)
      * still have problems.  If we don't make it thru, we use the
      * ms_state to record our current state.
      */
-    mssp = mx_session_create(session, sock, mrp->mr_target);
+    mssp = mx_session_create(session, sock, mrp->mr_target, aip->ai_canonname);
     if (mssp == NULL) {
 	mx_log("mx session failed");
+	freeaddrinfo(res);
 	return NULL;
     }
+
+    freeaddrinfo(res);
 
     mrp->mr_session = mssp;
 
@@ -411,6 +437,8 @@ mx_session_find (const char *target)
 
 	mssp = mx_sock(msp, MST_SESSION);
 	if (streq(target, mssp->mss_target))
+	    return mssp;
+	if (mssp->mss_canonname && streq(target, mssp->mss_canonname))
 	    return mssp;
     }
 
@@ -448,6 +476,7 @@ mx_session_close (mx_sock_t *msp)
     libssh2_session_free(session);
 
     free(mssp->mss_target);
+    free(mssp->mss_canonname);
 }
 
 static int

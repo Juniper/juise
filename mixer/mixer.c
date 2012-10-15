@@ -260,6 +260,7 @@ main (int argc UNUSED, char **argv UNUSED)
     int rc;
     int opt_getpass = FALSE, opt_console = FALSE;
     char *opt_home = NULL;
+    unsigned opt_port = 8000;
 
     for (argv++; *argv; argv++) {
 	cp = *argv;
@@ -280,6 +281,9 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--password")) {
 	    opt_password = *++argv;
+
+	} else if (streq(cp, "--port")) {
+	    opt_port = atoi(*++argv);
 
 	} else if (streq(cp, "--prompt-for-password") || streq(cp, "-p")) {
 	    opt_getpass = TRUE;
@@ -345,6 +349,7 @@ main (int argc UNUSED, char **argv UNUSED)
     if (opt_console)
 	mx_console_start();
 
+#if 0
     if (mx_listener(2222, MST_LISTENER, MST_FORWARDER, "alice") == NULL) {
 	mx_log("initial listen failed");
     }
@@ -352,8 +357,9 @@ main (int argc UNUSED, char **argv UNUSED)
     if (mx_listener(3333, MST_LISTENER, MST_FORWARDER, "bob") == NULL) {
 	mx_log("initial listen failed");
     }
+#endif
 
-    if (mx_listener(8000, MST_LISTENER, MST_WEBSOCKET, "carl") == NULL) {
+    if (mx_listener(opt_port, MST_LISTENER, MST_WEBSOCKET, "carl") == NULL) {
 	mx_log("initial listen failed");
     }
 
