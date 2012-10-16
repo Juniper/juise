@@ -19,7 +19,7 @@ AM_CFLAGS = \
     -DLIBSLAX_XMLSOFT_NEED_PRIVATE \
     -DJUISE_LIBEXECDIR=\"${JUISE_LIBEXECDIR}\" \
     -I${top_srcdir} \
-    -I${top_objdir} \
+    -I${top_builddir} \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
     ${LIBXML_CFLAGS} \
