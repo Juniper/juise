@@ -328,6 +328,7 @@ jQuery(function ($) {
         var prefs_form = $.yform(prefs_options, "#prefs-dialog", prefs_fields);
         prefs = prefs_form.getData();
 
+        $("#juise").button();
         $("#prefs").button().click(function (event) {
             $.dbgpr("prefsEdit:", event.type);
             if (prefs_form.shown()) {
@@ -570,7 +571,6 @@ jQuery(function ($) {
                         // the output RPC stalls.
                         if (full.length <= 2)
                             $out.html(data);
-                        var $x = full.join("");
                     },
                     oncomplete: function () {
                         $.dbgpr("rpc: complete");

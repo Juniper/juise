@@ -142,16 +142,16 @@ div#debug-log {
 }
 
 div#header {
-    width: 95%;
-    height: 60px;
-    padding: 10px;
-    padding-left: 30px;
-    margin-bottom: 4px;
+    width: 100%;
+    height: 30px;
+;    padding: 10px;
+;    padding-left: 30px;
+;    margin-bottom: 4px;
 }
 
 div#header-logo {
     display: table-cell;
-    background: url(/images/logo.png) no-repeat;
+#    background: url(/images/logo.png) no-repeat;
     height: 60px;
     width: 200px;
 }

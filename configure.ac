@@ -29,6 +29,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
 LIBSLAX_REQUIRED_VERSION=0.10.0
+LIBSSH2_REQUIRED_VERSION=1.4.2
 
 AC_PROG_CC
 AM_PROG_AR
@@ -211,14 +212,14 @@ dnl
 
 if ${XML_CONFIG} --libs > /dev/null 2>&1
 then
-	XMLVERS=`$XML_CONFIG --version`
-	if test VERSION_TO_NUMBER(echo $XMLVERS) -ge VERSION_TO_NUMBER(echo $LIBXML_REQUIRED_VERSION)
+	LIBXML_VERSION=`$XML_CONFIG --version`
+	if test VERSION_TO_NUMBER(echo $LIBXML_VERSION) -ge VERSION_TO_NUMBER(echo $LIBXML_REQUIRED_VERSION)
 	then
 		LIBXML_LIBS="$LIBXML_LIBS `$XML_CONFIG --libs`"
 		LIBXML_CFLAGS="$LIBXML_CFLAGS `$XML_CONFIG --cflags`"
-		AC_MSG_RESULT($XMLVERS found)
+		AC_MSG_RESULT($LIBXML_VERSION found)
 	else
-		AC_MSG_ERROR(Version $XMLVERS found. You need at least libxml2 $LIBXML_REQUIRED_VERSION for this version of libxslt)
+		AC_MSG_ERROR(Version $LIBXML_VERSION found. You need at least libxml2 $LIBXML_REQUIRED_VERSION for this version of libxslt)
 	fi
 else
 	AC_MSG_ERROR([Could not find libxml2 anywhere, check ftp://xmlsoft.org/.])
@@ -278,14 +279,14 @@ dnl
 
 if ${XSLT_CONFIG} --libs > /dev/null 2>&1
 then
-	XSLTVERS=`$XSLT_CONFIG --version`
-	if test VERSION_TO_NUMBER(echo $XSLTVERS) -ge VERSION_TO_NUMBER(echo $LIBXSLT_REQUIRED_VERSION)
+	LIBXSLT_VERSION=`$XSLT_CONFIG --version`
+	if test VERSION_TO_NUMBER(echo $LIBXSLT_VERSION) -ge VERSION_TO_NUMBER(echo $LIBXSLT_REQUIRED_VERSION)
 	then
 		LIBXSLT_LIBS="$LIBXSLT_LIBS `$XSLT_CONFIG --libs`"
 		LIBXSLT_CFLAGS="$LIBXSLT_CFLAGS `$XSLT_CONFIG --cflags`"
-		AC_MSG_RESULT($XSLTVERS found)
+		AC_MSG_RESULT($LIBXSLT_VERSION found)
 	else
-		AC_MSG_ERROR(Version $XSLTVERS found. You need at least libxslt $LIBXSLT_REQUIRED_VERSION for this version of libxslt)
+		AC_MSG_ERROR(Version $LIBXSLT_VERSION found. You need at least libxslt $LIBXSLT_REQUIRED_VERSION for this version of libxslt)
 	fi
 else
 	AC_MSG_ERROR([Could not find libxslt anywhere, check ftp://xmlsoft.org/.])
@@ -345,16 +346,16 @@ dnl
 
 if ${SLAX_CONFIG} --libs > /dev/null 2>&1
 then
-	SLAXVERS=`$SLAX_CONFIG --version`
-	if test VERSION_TO_NUMBER(echo $SLAXVERS) -ge VERSION_TO_NUMBER(echo $LIBSLAX_REQUIRED_VERSION)
+	LIBSLAX_VERSION=`$SLAX_CONFIG --version`
+	if test VERSION_TO_NUMBER(echo $LIBSLAX_VERSION) -ge VERSION_TO_NUMBER(echo $LIBSLAX_REQUIRED_VERSION)
 	then
 		LIBSLAX_LIBS="$LIBSLAX_LIBS `$SLAX_CONFIG --libs`"
 		LIBSLAX_CFLAGS="$LIBSLAX_CFLAGS `$SLAX_CONFIG --cflags`"
 		SLAX_EXTDIR="`$SLAX_CONFIG --extdir`"
 		SLAX_LIBDIR="`$SLAX_CONFIG --libdir`"
-		AC_MSG_RESULT($SLAXVERS found)
+		AC_MSG_RESULT($LIBSLAX_VERSION found)
 	else
-		AC_MSG_ERROR(Version $SLAXVERS found. You need at least libslax $LIBSLAX_REQUIRED_VERSION for this version of juise)
+		AC_MSG_ERROR(Version $LIBSLAX_VERSION found. You need at least libslax $LIBSLAX_REQUIRED_VERSION for this version of juise)
 	fi
 else
 	AC_MSG_ERROR([Could not find libslax anywhere, check http://code.google.com/p/libslax.])
@@ -378,15 +379,30 @@ AC_ARG_WITH(libssh2-prefix,
 
 AC_ARG_WITH(libssh2-include-prefix,
         [  --with-libssh2-include-prefix=[PFX]   Specify location of libssh2 headers],
-        LIBSSH2_CFLAGS="-I$withval",
-        LIBSSH2_CFLAGS="-I$LIBSSH2_PREFIX/include",
+        LIBSSH2_INCLUDE="$withval",
+        LIBSSH2_INCLUDE="$LIBSSH2_PREFIX/include",
 )
+LIBSSH2_CFLAGS=-I$LIBSSH2_INCLUDE
 
 AC_ARG_WITH(libssh2-libs-prefix,
         [  --with-libssh2-libs-prefix=[PFX]      Specify location of libssh2 libs],
         LIBSSH2_LIBS="-L$withval -lssh2",
         LIBSSH2_LIBS="-L$LIBSSH2_PREFIX/lib -lssh2"
 )
+
+if test -f $LIBSSH2_INCLUDE/libssh2.h
+then
+        LIBSSH2_VERSION=`grep 'LIBSSH2_VERSION ' $LIBSSH2_INCLUDE/libssh2.h | awk -F'"' '{print $2}'`
+
+        if test VERSION_TO_NUMBER(echo $LIBSSH2_VERSION) -ge VERSION_TO_NUMBER(echo $LIBSSH2_REQUIRED_VERSION)
+        then
+                AC_MSG_RESULT($LIBSSH2_VERSION found)
+        else
+                AC_MSG_ERROR(Version $LIBSSH2_VERSION found. You need at least libslax $LIBSSH2_REQUIRED_VERSION for this version of juise)
+        fi
+else
+	AC_MSG_ERROR([Could not find libssh2 anywhere, check http://www.libssh2.org/.])
+fi
 
 AC_SUBST(LIBSSH2_CFLAGS)
 AC_SUBST(LIBSSH2_LIBS)
@@ -560,16 +576,18 @@ AC_MSG_NOTICE([summary of build options:
   compiler flags:   ${CFLAGS}
   library types:    Shared=${enable_shared}, Static=${enable_static}
 
-  libxml version:   ${XMLVERS}
+  libxml version:   ${LIBXML_VERSION}
   libxslt cflags:   ${LIBXSLT_CFLAGS}
   libxml libs:      ${LIBXML_LIBS}
-  libxslt version:  ${XSLTVERS}
+  libxslt version:  ${LIBXSLT_VERSION}
   libxslt cflags:   ${LIBXSLT_CFLAGS}
   libxslt libs:     ${LIBXSLT_LIBS}
+  libslax version:  ${LIBSLAX_VERSION}
   libslax cflags:   ${LIBSLAX_CFLAGS}
   libslax libs:     ${LIBSLAX_LIBS}
   libslax libdir:   ${SLAX_LIBDIR}
   libslax extdir:   ${SLAX_EXTDIR}
+  libssh2 version:  ${LIBSSH2_VERSION}
   libssh2 cflags:   ${LIBSSH2_CFLAGS}
   libssh2 libs:     ${LIBSSH2_LIBS}
   libpcre cflags:   ${PCRE_CFLAGS}
