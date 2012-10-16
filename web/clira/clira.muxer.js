@@ -69,6 +69,8 @@ jQuery(function ($) {
             $.dbgpr("muxer: WebSocket is now closed: " + event.reason);
             if (muxer.onclose)
                 muxer.onclose(event);
+            muxer.ws = undefined;
+            muxer.opening = false;
         }
 
         muxer.ws.onmessage = function (event) {

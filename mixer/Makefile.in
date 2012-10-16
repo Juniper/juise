@@ -311,9 +311,9 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 @JUISE_WARNINGS_HIGH_TRUE@JUISE_WARNINGS = HIGH
 AM_CFLAGS = -DLIBSLAX_XMLSOFT_NEED_PRIVATE -I${top_srcdir} \
-	-I${top_srcdir}/libjuise -Ilibssh2 ${LIBSLAX_CFLAGS} \
-	${LIBXSLT_CFLAGS} ${LIBXML_CFLAGS} ${LIBSSH2_CFLAGS} \
-	${WARNINGS} $(am__append_1)
+	-I${top_srcdir}/libjuise -I${top_builddir}/libjuise \
+	${LIBSLAX_CFLAGS} ${LIBXSLT_CFLAGS} ${LIBXML_CFLAGS} \
+	${LIBSSH2_CFLAGS} ${WARNINGS} $(am__append_1)
 noinst_HEADERS = \
     buffer.h \
     channel.h \

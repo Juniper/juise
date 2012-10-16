@@ -344,10 +344,26 @@ mx_session_open (mx_request_t *mrp)
     int rc, sock = -1;
     mx_sock_session_t *mssp;
     LIBSSH2_SESSION *session;
-    struct addrinfo *res, *aip;
+    struct addrinfo hints, *res, *aip;
+    char *service, service_ssh[4] = {'s', 's', 'h', '\0'};
+    size_t tlen = strlen(mrp->mr_target) + 1;
+    char target[tlen];
+    
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_CANONNAME;
 
-    mx_log("R%u session open to %s", mrp->mr_id, mrp->mr_target);
-    rc = getaddrinfo(mrp->mr_target, "ssh", NULL, &res);
+    memcpy(target, mrp->mr_target, tlen);
+    mx_log("R%u session open to %s", mrp->mr_id, target);
+
+    service = strchr(target, ':');
+    if (service)
+	*service++ = '\0';
+    else
+	service = service_ssh;
+
+    rc = getaddrinfo(target, service, &hints, &res);
     if (rc) {
 	mx_log("R%u invalid hostname: '%s': %s", mrp->mr_id, mrp->mr_target,
 	       gai_strerror(rc));
@@ -355,25 +371,32 @@ mx_session_open (mx_request_t *mrp)
     }
 
     for (aip = res; aip; aip = aip->ai_next) {
+	char hn[NI_MAXHOST], sn[NI_MAXSERV];
+	if (getnameinfo(aip->ai_addr, aip->ai_addrlen, hn, sizeof(hn),
+		sn, sizeof(sn), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+	    mx_log("R%u connecting to '%s': %s%s%s%s", mrp->mr_id, hn, sn,
+		   aip->ai_canonname ? " (" :"",
+		   aip->ai_canonname ?: "", aip->ai_canonname ? ")" : "");
+	} else {
+	    strncpy(hn, target, sizeof(hn));
+	    strncpy(sn, service, sizeof(sn));
+	}
+
 	/* Connect to SSH server */
-	sock = socket(aip->ai_family, SOCK_STREAM, IPPROTO_TCP);
+	sock = socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
 	if (sock < 0)
 	    continue;
 
-	mx_log("R%u attempting connection to %s/%s",
-	       mrp->mr_id, mrp->mr_target, aip->ai_canonname ?: "???");
-
 	if (connect(sock, aip->ai_addr, aip->ai_addrlen)) {
-	    mx_log("R%u failed to connect to target '%s'/'%s'",
-		   mrp->mr_id, mrp->mr_target, aip->ai_canonname ?: "???");
+	    mx_log("R%u failed to connect to target '%s' '%s'",
+		   mrp->mr_id, hn, sn);
 	} else
 	    break;
 
 	close(sock);
     }
 
-    mx_log("R%u connected to %s/%s",
-	   mrp->mr_id, mrp->mr_target, aip->ai_canonname ?: "???");
+    mx_log("R%u connected to %s", mrp->mr_id, mrp->mr_target);
 
     /* Create a session instance */
     session = libssh2_session_init();

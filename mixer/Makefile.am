@@ -17,7 +17,7 @@ AM_CFLAGS = \
     -DLIBSLAX_XMLSOFT_NEED_PRIVATE \
     -I${top_srcdir} \
     -I${top_srcdir}/libjuise \
-    -Ilibssh2 \
+    -I${top_builddir}/libjuise \
     ${LIBSLAX_CFLAGS} \
     ${LIBXSLT_CFLAGS} \
     ${LIBXML_CFLAGS} \
