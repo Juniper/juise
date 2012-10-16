@@ -174,6 +174,21 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
 	return FALSE;
     }
 
+    if (mx_session_passphrase == NULL && passphrase == NULL) {
+	/*
+	 * We got here with no passphrase; must be the initial attempt.
+	 * Try to decrypt with no (empty) passphrase.
+	 */
+	if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
+						keyfile1, keyfile2, NULL)) {
+	    /* Ignore failure */
+	} else {
+	    mx_log("R%u Authentication by empty public key succeeded",
+		   mrp->mr_id);
+	    goto success;
+	}
+    }
+
     if (passphrase && *passphrase) {
 	if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
 						keyfile1, keyfile2,
