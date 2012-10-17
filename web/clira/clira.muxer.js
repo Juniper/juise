@@ -71,6 +71,7 @@ jQuery(function ($) {
                 muxer.onclose(event);
             muxer.ws = undefined;
             muxer.opening = false;
+            muxer.muxMap = [ ];
         }
 
         muxer.ws.onmessage = function (event) {
@@ -218,9 +219,14 @@ jQuery(function ($) {
         $.dbgpr("wssend: " + message.length
                 + ":: " + message.substring(0, dlen));
 
-        if (this.opening && this.isOpen()) {
+        if (this.isOpen()) {
             this.ws.send(message);
         } else {
+            if (this.opening == false) {
+                $.dbgpr("muxer: send forces open");
+                this.open();
+            }
+
             if (this.pendingMessages == undefined)
                 this.pendingMessages = [ ];
             this.pendingMessages.push(message);
@@ -259,11 +265,7 @@ jQuery(function ($) {
     // options include:
     // 
     //
-    var MuxerOptions = {
-        //rpc: muxerRpc,
-        //open: muxerOpen,
-        //onerror: muxerError,
-    }
+    var MuxerOptions = { }
     function Muxer (options) {
         $.extend(this, MuxerOptions);
         $.extend(this, options);
