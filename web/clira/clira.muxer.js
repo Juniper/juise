@@ -49,10 +49,12 @@ jQuery(function ($) {
         if (muxer.opening)
             return;
         muxer.opening = true;
+        muxer.opened = false;
 
         muxer.ws = new WebSocket(muxer.url);
         muxer.ws.onopen = function (event) {
             $.dbgpr("muxer: WebSocket is now open");
+            muxer.opened = true;
             if (muxer.pendingMessages) {
                 $.dbgpr("muxer: sending pending messages ("
                         + muxer.pendingMessages.length + ")");
@@ -66,12 +68,7 @@ jQuery(function ($) {
         }
 
         muxer.ws.onclose = function (event) {
-            $.dbgpr("muxer: WebSocket is now closed: " + event.reason);
-            if (muxer.onclose)
-                muxer.onclose(event);
-            muxer.ws = undefined;
-            muxer.opening = false;
-            muxer.muxMap = [ ];
+            forceClose(event, muxer)
         }
 
         muxer.ws.onmessage = function (event) {
@@ -95,9 +92,37 @@ jQuery(function ($) {
         }
 
         muxer.ws.onerror = function (event) {
-            $.dbgpr("muxer: ws.onerror (" + event.data + ")");
-            muxer.close()
+            $.dbgpr("muxer: ws.onerror");
+            muxer.ws.close();
         }
+    }
+
+    function forceClose (event, muxer) {
+        $.dbgpr("muxer: WebSocket is now closed: " + event.reason);
+
+        var message;
+        if (muxer.opening) {
+            if (muxer.opened) {
+                message = "connection failure";
+            } else {
+                message = "cannot establish connection";
+            }
+        } else {
+            message = "unknown failure";
+        }
+        message += " for CLIRA (" + event.target.url + ")";
+
+        if (muxer.onclose)
+            muxer.onclose(event, message);
+
+        for (var i = 0; i < muxer.muxMap.length; i++) {
+            if (muxer.muxMap[i] && muxer.muxMap[i].onclose)
+                muxer.muxMap[i].onclose(event, message);
+        }
+
+        muxer.ws = undefined;
+        muxer.opening = muxer.opened = false;
+        muxer.muxMap = [ ];
     }
 
     function muxerClose () {
@@ -105,7 +130,7 @@ jQuery(function ($) {
         if (this.opening)
             this.ws.close();
         this.ws = undefined;
-        muxer.opening = false;
+        muxer.opening = muxer.opened = false;
     }
 
     function muxerMessage () {
@@ -146,17 +171,18 @@ jQuery(function ($) {
             }
 
             var rest = data.substring(data.indexOf("\n") + 1);
+            var attr = data.substring(MX_HEADER_SIZE, data.indexOf("\n"));
             var mux = this.muxMap[muxid];
             if (mux) {
                 var tag = "on" + op;
                 if (mux[tag]) {
-                    mux[tag].call(mux, rest);
+                    mux[tag].call(mux, rest, attr);
                 } else {
                     $.dbgpr("muxer: unhandled message: [" + tag + "]");
                 }
 
                 // "complete" is the last state, so we release the rpc
-                if (op == "complete")
+                if (op == "complete" || op == "error")
                     this.muxMap[muxid] = undefined;
             }
 
@@ -234,7 +260,7 @@ jQuery(function ($) {
     }
 
     function muxerError (error) {
-        $.dbgpr("error: " + error);
+        $.dbgpr("muxer: error: " + error);
     }
 
     function muxerSimpleOp (muxer, options, answer, attrs, op) {

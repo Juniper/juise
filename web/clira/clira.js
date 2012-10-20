@@ -594,6 +594,24 @@ jQuery(function ($) {
                             muxer.psword(self, response);
                         });
                     },
+                    onclose: function (event, message) {
+                        $.dbgpr("muxer: rpc onclose");
+                        if (full.length == 0) {
+                            if (message == undefined || message.length == 0)
+                                message = "internal failure (websocket)";
+                            $out.html("<div class='ui-error'>" + message
+                                      + "</div>");
+                        }
+                    },
+                    onerror: function (message) {
+                        $.dbgpr("muxer: rpc onerror");
+                        if (full.length == 0) {
+                            if (message == undefined || message.length == 0)
+                                message = "internal failure (websocket)";
+                            $out.html("<div class='ui-error'>" + message
+                                      + "</div>");
+                        }
+                    },
                 });
 
             } else {
@@ -636,7 +654,7 @@ jQuery(function ($) {
         muxer = $.Muxer({
             url: prefs.mixer,
             onopen: function (event) {
-                $.dbgpr("clira: opened WebSocket");
+                $.dbgpr("clira: WebSocket has opened");
             },
             onreply: function (event, data) {
                 $.dbgpr("clira: onreply: " + data);
@@ -645,7 +663,8 @@ jQuery(function ($) {
                 $.dbgpr("clira: complete");
             },
             onclose: function (event) {
-                $.dbgpr("clira: closed WebSocket");
+                $.dbgpr("clira: WebSocket has closed");
+                muxer.failed = true;
             }
         });
         muxer.open();
@@ -693,7 +712,6 @@ jQuery(function ($) {
             $div.remove();
         });
     }
-
 
     function loadHttpReply (text, status, http, $this, $out) {
         $.dbgpr("loadHttpReply: ", "target:", target,

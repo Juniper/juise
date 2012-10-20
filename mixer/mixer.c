@@ -20,6 +20,7 @@
 #include "session.h"
 #include "console.h"
 #include "websocket.h"
+#include "request.h"
 
 unsigned mx_sock_id;   /* Monotonically increasing ID number */
 
@@ -214,6 +215,10 @@ main_loop (void)
 	    if (msp->ms_state == MSS_FAILED)
 		goto failure;
 	}
+
+	/* Look thru the requests to see what's failing */
+	mx_request_check_health();
+
 	continue;
 
     failure:

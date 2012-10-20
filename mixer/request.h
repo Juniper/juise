@@ -45,3 +45,9 @@ mx_request_release (mx_request_t *mrp);
 
 void
 mx_request_print_all (int indent, const char *prefix);
+
+void
+mx_request_error (mx_request_t *mrp, const char *fmt, ...);
+
+void
+mx_request_check_health (void);

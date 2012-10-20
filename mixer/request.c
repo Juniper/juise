@@ -347,6 +347,42 @@ mx_request_restart_rpc (mx_request_t *mrp)
 }
 
 void
+mx_request_error (mx_request_t *mrp, const char *fmt, ...)
+{
+    va_list vap;
+    int bufsiz = BUFSIZ, rc;
+    char buf[bufsiz], *bp = buf;
+
+    va_start(vap, fmt);
+
+    rc = vsnprintf(bp, bufsiz, fmt, vap);
+    if (rc > bufsiz) {
+	bufsiz = rc;
+	bp = alloca(bufsiz);
+	rc = vsnprintf(bp, bufsiz, fmt, vap);
+    }
+
+    mx_sock_t *client = mrp->mr_client;
+    if (client && mx_mti(client)->mti_error)
+	mx_mti(client)->mti_error(client, mrp, bp);
+
+    va_end(vap);
+}
+
+void
+mx_request_check_health (void)
+{
+    mx_request_t *mrp, *next;
+
+    TAILQ_FOREACH_SAFE(mrp, &mx_request_list, mr_link, next) {
+	if (mrp->mr_state == MSS_ERROR) /* Errors aren't fatal */
+	    mrp->mr_state = MSS_RPC_COMPLETE;
+	if (mrp->mr_state == MSS_FAILED || mrp->mr_state == MSS_RPC_COMPLETE)
+	    mx_request_release(mrp);
+    }
+}
+
+void
 mx_request_init (void)
 {
     TAILQ_INIT(&mx_request_list);

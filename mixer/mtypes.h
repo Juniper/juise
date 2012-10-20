@@ -22,19 +22,20 @@
 /* State values (for ms_state) */
 #define MSS_NORMAL	0	/* Normal/okay/ignore */
 #define MSS_FAILED	1	/* Failed; needs to be closed */
-#define MSS_INPUT	2	/* Needs to read input */
-#define MSS_OUTPUT	3	/* Needs to write output */
-#define MSS_HOSTKEY	4	/* Asking about hostkey */
-#define MSS_PASSPHRASE	5	/* Asking about passphrase */
-#define MSS_PASSWORD	6	/* Asking about password */
-#define MSS_ESTABLISHED	7	/* Connection is established */
-#define MSS_RPC_INITIAL	8	/* Ready for a fresh RPC */
-#define MSS_RPC_IDLE	9	/* RPC in progress, but doing nothing */
-#define MSS_RPC_READ_RPC 10	/* Reading <rpc> from client (websock) */
-#define MSS_RPC_WRITE_RPC 11	/* Writing <rpc> to server (JUNOS) */
-#define MSS_RPC_READ_REPLY 12	/* Reading <rpc-reply from server */
-#define MSS_RPC_WRITE_REPLY 13	/* Writing <rpc-reply> to client (ws) */
-#define MSS_RPC_COMPLETE 14	/* Reply is complete (end-of-frame seen) */
+#define MSS_ERROR	2	/* Errors that complete RPC but aren't fatal */
+#define MSS_INPUT	3	/* Needs to read input */
+#define MSS_OUTPUT	4	/* Needs to write output */
+#define MSS_HOSTKEY	5	/* Asking about hostkey */
+#define MSS_PASSPHRASE	6	/* Asking about passphrase */
+#define MSS_PASSWORD	7	/* Asking about password */
+#define MSS_ESTABLISHED	8	/* Connection is established */
+#define MSS_RPC_INITIAL	9	/* Ready for a fresh RPC */
+#define MSS_RPC_IDLE	10	/* RPC in progress, but doing nothing */
+#define MSS_RPC_READ_RPC 11	/* Reading <rpc> from client (websock) */
+#define MSS_RPC_WRITE_RPC 12	/* Writing <rpc> to server (JUNOS) */
+#define MSS_RPC_READ_REPLY 13	/* Reading <rpc-reply from server */
+#define MSS_RPC_WRITE_REPLY 14	/* Writing <rpc-reply> to client (ws) */
+#define MSS_RPC_COMPLETE 15	/* Reply is complete (end-of-frame seen) */
 
 #define DEFINE_BIT_FUNCTIONS(_test, _set, _clear, _type, _field, _bit)	\
     static inline unsigned _test (_type *ptr) { \
@@ -212,23 +213,24 @@ typedef void (*mx_type_set_channel_func_t)(MX_TYPE_SET_CHANNEL_ARGS);
 typedef void (*mx_type_close_func_t)(MX_TYPE_CLOSE_ARGS);
 
 #define MX_TYPE_CHECK_HOSTKEY_ARGS \
-    mx_sock_session_t *mssp UNUSED, mx_sock_t *client UNUSED, \
-	mx_request_t *mrp UNUSED, const char *info UNUSED
+    mx_sock_t *client UNUSED, mx_request_t *mrp UNUSED, const char *info UNUSED
 typedef int (*mx_type_check_hostkey_func_t)(MX_TYPE_CHECK_HOSTKEY_ARGS);
 
 #define MX_TYPE_GET_PASSPHRASE_ARGS \
-    mx_sock_session_t *mssp UNUSED, mx_sock_t *client UNUSED, \
-	mx_request_t *mrp UNUSED, const char *info UNUSED
+    mx_sock_t *client UNUSED, mx_request_t *mrp UNUSED, const char *info UNUSED
 typedef int (*mx_type_get_passphrase_func_t)(MX_TYPE_GET_PASSPHRASE_ARGS);
 
 #define MX_TYPE_GET_PASSWORD_ARGS \
-    mx_sock_session_t *mssp UNUSED, mx_sock_t *client UNUSED, \
-	mx_request_t *mrp UNUSED, const char *info UNUSED
+    mx_sock_t *client UNUSED, mx_request_t *mrp UNUSED, const char *info UNUSED
 typedef int (*mx_type_get_password_func_t)(MX_TYPE_GET_PASSWORD_ARGS);
 
 #define MX_TYPE_IS_BUF_ARGS \
     mx_sock_t *msp UNUSED, short flags UNUSED
 typedef int (*mx_type_is_buf_func_t)(MX_TYPE_IS_BUF_ARGS);
+
+#define MX_TYPE_ERROR_ARGS \
+    mx_sock_t *msp UNUSED, mx_request_t *mrp UNUSED, const char *message UNUSED
+typedef void (*mx_type_error_func_t)(MX_TYPE_ERROR_ARGS);
 
 typedef struct mx_type_info_s {
     mx_type_t mti_type;		/* MST_* */
@@ -245,6 +247,7 @@ typedef struct mx_type_info_s {
     mx_type_get_passphrase_func_t mti_get_passphrase; /* Get a passphrase */
     mx_type_get_password_func_t mti_get_password; /* Get a password */
     mx_type_is_buf_func_t mti_is_buf; /* Has buffered i/o */
+    mx_type_error_func_t mti_error; /* Report error to client */
 } mx_type_info_t;
 
 extern mx_type_info_t mx_type_info[MST_MAX + 1];

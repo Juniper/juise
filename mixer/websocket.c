@@ -385,7 +385,7 @@ mx_websocket_header_build (mx_header_t *mhp, int len, const char *operation,
 }
 
 static int
-mx_websocket_send_simple (mx_sock_session_t *mssp, mx_sock_t *client,
+mx_websocket_send_simple (mx_sock_t *client,
 			  mx_request_t *mrp, const char *info,
 			  const char *opname, const char *title)
 {
@@ -405,7 +405,7 @@ mx_websocket_send_simple (mx_sock_session_t *mssp, mx_sock_t *client,
     if (rc > 0) {
 	if (rc != len)
 	    mx_log("S%u complete very short write (%d/%d)",
-		   mssp->mss_base.ms_id, rc, len);
+		   client->ms_id, rc, len);
     }
 
     return TRUE;
@@ -414,21 +414,21 @@ mx_websocket_send_simple (mx_sock_session_t *mssp, mx_sock_t *client,
 static int
 mx_websocket_check_hostkey (MX_TYPE_CHECK_HOSTKEY_ARGS)
 {
-    return mx_websocket_send_simple(mssp, client, mrp, info,
+    return mx_websocket_send_simple(client, mrp, info,
 				    MX_OP_HOSTKEY, "checking hostkey");
 }
 
 static int
 mx_websocket_get_passphrase (MX_TYPE_GET_PASSPHRASE_ARGS)
 {
-    return mx_websocket_send_simple(mssp, client, mrp, info,
+    return mx_websocket_send_simple(client, mrp, info,
 				    MX_OP_PASSPHRASE, "get passphrase");
 }
 
 static int
 mx_websocket_get_password (MX_TYPE_GET_PASSWORD_ARGS)
 {
-    return mx_websocket_send_simple(mssp, client, mrp, info,
+    return mx_websocket_send_simple(client, mrp, info,
 				    MX_OP_PASSWORD, "get password");
 }
 
@@ -523,6 +523,16 @@ mx_websocket_write_complete (MX_TYPE_WRITE_COMPLETE_ARGS)
     return FALSE;
 }
 
+static void
+mx_websocket_error (MX_TYPE_ERROR_ARGS)
+{
+    mx_log("S%u R%u (%d) error: %s", msp->ms_id, mrp->mr_id,
+	   mrp->mr_state, message);
+
+    mx_websocket_send_simple(msp, mrp, message, MX_OP_ERROR, "error");
+    mx_request_set_state(mrp, MSS_ERROR);
+}
+
 void
 mx_websocket_init (void)
 {
@@ -538,6 +548,7 @@ mx_websocket_init (void)
     mti_get_password: mx_websocket_get_password,
     mti_write: mx_websocket_write,
     mti_write_complete: mx_websocket_write_complete,
+    mti_error: mx_websocket_error,
 #if 0
     mti_set_channel: mx_websocket_set_channel,
 #endif

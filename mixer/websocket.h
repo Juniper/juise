@@ -9,12 +9,13 @@
  * LICENSE.
  */
 
-#define MX_OP_RPC	"rpc"
-#define MX_OP_REPLY	"reply"
 #define MX_OP_COMPLETE	"complete"
+#define MX_OP_ERROR	"error"
 #define MX_OP_HOSTKEY	"hostkey"
 #define MX_OP_PASSPHRASE "psphrase"
 #define MX_OP_PASSWORD	"psword"
+#define MX_OP_REPLY	"reply"
+#define MX_OP_RPC	"rpc"
 
 void
 mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp);

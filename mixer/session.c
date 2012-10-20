@@ -105,7 +105,7 @@ mx_session_check_hostkey (mx_sock_session_t *session, mx_request_t *mrp)
     mx_log("S%u hostkey check [%s]", session->mss_base.ms_id, buf);
 
     if (client && mx_mti(client)->mti_check_hostkey)
-	return mx_mti(client)->mti_check_hostkey(session, client, mrp, buf);
+	return mx_mti(client)->mti_check_hostkey(client, mrp, buf);
 
     return FALSE;
 }
@@ -228,7 +228,7 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
 
 	mx_request_set_state(mrp, MSS_PASSPHRASE);
 	if (mx_mti(msp)->mti_get_passphrase
-	        && mx_mti(msp)->mti_get_passphrase(session, msp, mrp, buf)) {
+	        && mx_mti(msp)->mti_get_passphrase(msp, mrp, buf)) {
 	    return TRUE;
 	}
     }
@@ -283,7 +283,7 @@ mx_session_check_password (mx_sock_session_t *session, mx_request_t *mrp,
     mx_request_set_state(mrp, MSS_PASSWORD);
 
     if (mx_mti(msp)->mti_get_password
-	    && mx_mti(msp)->mti_get_password(session, msp, mrp, buf))
+	    && mx_mti(msp)->mti_get_password(msp, mrp, buf))
 	return TRUE;
 
     return FALSE;
@@ -382,6 +382,7 @@ mx_session_open (mx_request_t *mrp)
     if (rc) {
 	mx_log("R%u invalid hostname: '%s': %s", mrp->mr_id, mrp->mr_target,
 	       gai_strerror(rc));
+	mx_request_error(mrp, "invalid hostname: %s", mrp->mr_target);
 	return NULL;
     }
 
@@ -409,6 +410,13 @@ mx_session_open (mx_request_t *mrp)
 	    break;
 
 	close(sock);
+    }
+
+    if (aip == NULL) {
+        mx_log("R%u could not open SSH session connection", mrp->mr_id);
+	mx_request_error(mrp, "could not open connection: %s", mrp->mr_target);
+	freeaddrinfo(res);
+        return NULL;
     }
 
     mx_log("R%u connected to %s", mrp->mr_id, mrp->mr_target);
