@@ -681,14 +681,16 @@ jQuery(function ($) {
             + "</div></div>";
 
         var $div = $(content);
-        $parent.append($div);
+        $parent.html($div);
         $(".accept", $div).text("Accept").button({}).click(function () {
             onclick("yes");
             $div.remove();
+            $parent.html(loadingMessage);
         });
         $(".decline", $div).text("Decline").button({}).click(function () {
             onclick("no");
             $div.remove();
+            $parent.html(loadingMessage);
         });
     }
 
@@ -702,16 +704,18 @@ jQuery(function ($) {
             + "</div></div>";
 
         var $div = $(content);
-        $parent.append($div);
+        $parent.html($div);
         $(".enter", $div).text("Enter").button({}).click(function () {
             var val = $(".value", $div).val();
             onclick(val);
             $div.remove();
+            $parent.html(loadingMessage);
         });
         $(".cancel", $div).text("Cancel").button({}).click(function () {
             var val = $(".value", $div).val();
             onclick(val);
             $div.remove();
+            $parent.html(loadingMessage);
         });
     }
 
