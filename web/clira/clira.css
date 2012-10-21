@@ -73,7 +73,7 @@ div.muxer-prompt {
     padding: 2em;
 }
 
-div.muxer-message {
+div.muxer-message, div.muxer-prompt form {
     white-space: pre;
     display: inline-block;
 }

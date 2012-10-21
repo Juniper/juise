@@ -672,6 +672,12 @@ jQuery(function ($) {
         muxer.open();
     }
 
+    function restoreReplaceDiv ($div) {
+        cmdHistory.focus();
+        $div.parent().html(loadingMessage);
+        $div.remove();
+    }
+
     function promptForHostKey ($parent, prompt, onclick) {
         var content = "<div class='muxer-prompt ui-state-highlight'>"
             + "<div class='muxer-message'>" + prompt + "</div>"
@@ -682,22 +688,23 @@ jQuery(function ($) {
 
         var $div = $(content);
         $parent.html($div);
-        $(".accept", $div).text("Accept").button({}).click(function () {
+        $(".accept", $div).text("Accept").button({}).focus().click(function () {
             onclick("yes");
-            $div.remove();
-            $parent.html(loadingMessage);
+            restoreReplaceDiv($div);
         });
         $(".decline", $div).text("Decline").button({}).click(function () {
             onclick("no");
-            $div.remove();
-            $parent.html(loadingMessage);
+            restoreReplaceDiv($div);
         });
     }
 
     function promptForSecret ($parent, prompt, onclick) {
         var content = "<div class='muxer-prompt ui-state-highlight'>"
             + "<div class='muxer-message'>" + prompt + "</div>"
-            + "<input name='value' type='password' class='value'></input>"
+            + "<form action='#' class='form'>"
+            +   "<input name='value' type='password' class='value'></input>"
+            +   "<input type='submit' class='submit' hidden='yes'></input>"
+            + "</form>"
             + "<div class='muxer-buttons'>" 
             +   "<button class='enter'/>"
             +   "<button class='cancel'/>"
@@ -705,11 +712,15 @@ jQuery(function ($) {
 
         var $div = $(content);
         $parent.html($div);
+        $(".form", $div).submit( function () {
+            var val = $(".value", $div).val();
+            onclick(val);
+            restoreReplaceDiv($div);
+        }).children("input.value").focus();
         $(".enter", $div).text("Enter").button({}).click(function () {
             var val = $(".value", $div).val();
             onclick(val);
-            $div.remove();
-            $parent.html(loadingMessage);
+            restoreReplaceDiv($div);
         });
         $(".cancel", $div).text("Cancel").button({}).click(function () {
             var val = $(".value", $div).val();
