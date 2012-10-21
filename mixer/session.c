@@ -93,7 +93,7 @@ mx_session_check_hostkey (mx_sock_session_t *session, mx_request_t *mrp)
 
     fingerprint = libssh2_hostkey_hash(session->mss_session,
 				       LIBSSH2_HOSTKEY_HASH_SHA1);
-    bp += snprintf_safe(bp, ep - bp, "Host key for '%s' is unknown\n",
+    bp += snprintf_safe(bp, ep - bp, "Host key for '%s' is not known\n",
 			mrp->mr_target);
     bp += snprintf_safe(bp, ep - bp, "    The key's fingerprint is '");
     for (i = 0; i < 20; i++)

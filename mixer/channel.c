@@ -29,8 +29,14 @@ mx_channel_read (mx_channel_t *mcp, char *buf, unsigned long bufsiz)
     len = libssh2_channel_read(mcp->mc_channel, buf, bufsiz);
 
     DBG_POLL("C%u read %d", mcp->mc_id, len);
-    if (len > 0)
+    if (len > 0) {
 	slaxMemDump("chread: ", buf, len, ">", 0);
+    } else {
+	if (len == LIBSSH2_ERROR_SOCKET_RECV) {
+	    if (mcp->mc_session)
+		mcp->mc_session->mss_base.ms_state = MSS_FAILED;
+	}
+    }
 
     return len;
 }

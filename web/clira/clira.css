@@ -53,15 +53,15 @@ div.data {
 
 div.line {
     border: 1px solid #ffd0d0;
-    display: table;
+    display: block;
 }
 
 div.indented {
-    display: table-cell;
+    display: inline;
 }
 
 div.indent {
-    display: table-cell;
+    display: inline;
 }
 
 div.item {
@@ -69,9 +69,23 @@ div.item {
     white-space: pre;
 }
 
+div.muxer-prompt {
+    padding: 2em;
+}
+
+div.muxer-message {
+    white-space: pre;
+    display: inline-block;
+}
+
+div.muxer-buttons {
+    display: inline-block;
+    padding: 20px;
+}
+
 div.text, div.decoration, div.data, div.header, div.pad, div.item {
     font-family: monospace;
-    display: inline-block;
+    display: inline;
     vertical-align: middle;
     white-space: pre-wrap;
     /* border: 1px solid orange; */
@@ -144,9 +158,19 @@ div#debug-log {
 div#header {
     width: 100%;
     height: 30px;
-;    padding: 10px;
-;    padding-left: 30px;
-;    margin-bottom: 4px;
+/*    padding: 10px; */
+/*    padding-left: 30px; */
+/*    margin-bottom: 4px; */
+}
+
+div.ui-state-error {
+    margin: 1em;
+    padding: 1em;
+/*    padding: 0 .7em; */
+}
+span.ui-icon-alert {
+    float: left; 
+    margin-right: .3em;
 }
 
 div#header-logo {
@@ -379,7 +403,7 @@ div.command-number {
 }
 
 div.output-content {
-    padding: 3px 8px;
+    padding: 0;
     font-family: monospace;
     font-size: 12px;
 }

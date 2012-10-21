@@ -483,25 +483,21 @@ jQuery(function ($) {
             } else {
                 test = undefined;
             }
-            content += "<div class='output-replace' "
-                + "style='white-space: pre-wrap'></div>";
+            content += "<div class='output-replace'></div>";
 
         } else if (command.substring(0, 6) == "local ") {
             local = command.substring(6);
-            content += "<div class='output-replace' "
-                + "style='white-space: pre-wrap'>"
+            content += "<div class='output-replace'>"
                 + loadingMessage;
                 + "</div>";
 
         } else if (prefs.live_action) {
-            content += "<div class='output-replace' "
-                + "style='white-space: pre-wrap'>"
+            content += "<div class='output-replace'>"
                 + loadingMessage;
                 + "</div>";
 
         } else {
-            content += "<div class='output-replace' "
-                + "style='white-space: pre-wrap'>"
+            content += "<div class='output-replace'>"
                 + "test-output\nmore\nand more and more\noutput\n";
                 + "</div>";
         }
@@ -597,19 +593,15 @@ jQuery(function ($) {
                     onclose: function (event, message) {
                         $.dbgpr("muxer: rpc onclose");
                         if (full.length == 0) {
-                            if (message == undefined || message.length == 0)
-                                message = "internal failure (websocket)";
-                            $out.html("<div class='ui-error'>" + message
-                                      + "</div>");
+                            makeAlert($out, message,
+                                      "internal failure (websocket)");
                         }
                     },
                     onerror: function (message) {
                         $.dbgpr("muxer: rpc onerror");
                         if (full.length == 0) {
-                            if (message == undefined || message.length == 0)
-                                message = "internal failure (websocket)";
-                            $out.html("<div class='ui-error'>" + message
-                                      + "</div>");
+                            makeAlert($out, message,
+                                      "internal failure (websocket)");
                         }
                     },
                 });
@@ -647,6 +639,16 @@ jQuery(function ($) {
         return false;
     }
 
+    function makeAlert ($div, message, defmessage) {
+        if (message == undefined || message.length == 0)
+            message = defmessage;
+	var content = '<div class="ui-state-error ui-corner-all">'
+	    + '<span><span class="ui-icon ui-icon-alert">'
+            + '</span>';
+        content += '<strong>Error:</strong>' + message + '</span></div>';
+        $div.html(content);
+    }
+
     function openMuxer () {
         if (muxer)
             muxer.close();
@@ -671,7 +673,7 @@ jQuery(function ($) {
     }
 
     function promptForHostKey ($parent, prompt, onclick) {
-        var content = "<div class='muxer-prompt'>"
+        var content = "<div class='muxer-prompt ui-state-highlight'>"
             + "<div class='muxer-message'>" + prompt + "</div>"
             + "<div class='muxer-buttons'>" 
             +   "<button class='accept'/>"
@@ -691,9 +693,9 @@ jQuery(function ($) {
     }
 
     function promptForSecret ($parent, prompt, onclick) {
-        var content = "<div class='muxer-prompt'>"
+        var content = "<div class='muxer-prompt ui-state-highlight'>"
             + "<div class='muxer-message'>" + prompt + "</div>"
-            + "<input name='value' type='password' class='value'></input>'"
+            + "<input name='value' type='password' class='value'></input>"
             + "<div class='muxer-buttons'>" 
             +   "<button class='enter'/>"
             +   "<button class='cancel'/>"
