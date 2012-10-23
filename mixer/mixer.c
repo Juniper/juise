@@ -14,6 +14,25 @@
  * can use the WebSockets format.
  */
 
+/*
+ * Mixer using mx_sock_t as a base type around which specific types
+ * are created.  Each type is identified by the ms_id (MST_*) value,
+ * which is also used as the index into the mx_type_info table, where
+ * type-specific function handle the details of each socket type.
+ *
+ * MST_LISTENER: listens for an incoming connection and spawns a second
+ * type of socket.
+ *
+ * MST_FORWARDER: forwards content from a local socket over a ssh
+ * channel.
+ *
+ * MST_SESSION: an SSH session, wrapping the libssh2 connection.
+ *
+ * MST_CONSOLE: a debug console.
+ *
+ * MST_WEBSOCKET: a WebSocket connection to a browser.
+ */
+
 #include "local.h"
 #include "listener.h"
 #include "forwarder.h"
@@ -31,13 +50,15 @@ static const char keydir[] = ".ssh";
 static const char keybase1[] = "id_dsa.pub";
 static const char keybase2[] = "id_dsa";
 
+/* Filenames of SSH private and public key files (in ~/.ssh/) */
 char keyfile1[MAXPATHLEN], keyfile2[MAXPATHLEN];
 
-const char *opt_user;
+const char *opt_user;		/* User name (if not getlogin()) */
 const char *opt_password;
 const char *opt_desthost = "localhost";
 unsigned opt_destport = 22;
 int opt_no_agent;
+int opt_no_known_hosts;
 
 static int opt_login;
 static int opt_fork;
@@ -119,6 +140,20 @@ mx_sock_close (mx_sock_t *msp)
     free(msp);
 }
 
+/*
+ * main_loop: event loop for mixer
+ *
+ * libssh2 lacks a select() or poll() compatible interface.  There
+ * are deprecated functions (libssh2_poll_channel_read and libssh2_poll())
+ * and some googlework shows there are known bugs in them.
+ *
+ * So we roll our own.  There are two parts, the prep function and the
+ * poller.  The prep function sets up a poll() data structures before
+ * we call poll().  The poller function processes whatever data the is
+ * present.  Each socket type can define their own prep and poller
+ * functions.  If the prep function returns TRUE, it should fill in
+ * the poll struct and the timeout value.
+ */
 static void
 main_loop (void)
 {
@@ -295,6 +330,9 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--no-agent")) {
 	    opt_no_agent = TRUE;
+
+	} else if (streq(cp, "--no-known-hosts")) {
+	    opt_no_known_hosts = TRUE;
 
 	} else if (streq(cp, "--user") || streq(cp, "-u")) {
 	    opt_user = *++argv;
