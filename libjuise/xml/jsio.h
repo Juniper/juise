@@ -77,14 +77,21 @@ typedef struct js_session_s {
 #define JSS_DEAD	5	/* Bad news all around */
 #define JSS_DISCARD	6	/* Discard xml declaration */
 
+typedef struct js_session_opts_s {
+    char *jso_server;		/* Server name */
+    char *jso_username;		/* User name */
+    char *jso_passphrase;	/* Passphrase */
+    session_type_t jso_stype;	/* Session type */
+    uint jso_port;		/* Port number */
+    uint jso_timeout;		/* Session timeout */
+    uint jso_connect_timeout;	/* Connect timeout */
+} js_session_opts_t;
+
 /*
  * Opens a JUNOScript session for the give host_name, username, passphrase
  */
 js_session_t *
-js_session_open (const char *host_name, const char *username, 
-		 const char *passphrase, int flags,
-		 uint port, session_type_t stype);
-
+js_session_open (js_session_opts_t *jsop, int flags);
 
 /*
  * Execute the give RPC in the given host_name's JUNOScript session.
@@ -190,7 +197,7 @@ void
 jsio_set_default_user (const char *user);
 
 void
-jsio_set_ssh_options (const char *opts);
+jsio_add_ssh_options (const char *opts);
 
 void
 jsio_init (unsigned flags);

@@ -195,7 +195,7 @@ ext_jcs_rpc (xmlXPathParserContext *ctxt, lx_node_t *rpc_node,
     js_session_t *jsp;
     lx_nodeset_t *results = NULL;
 
-    jsp = js_session_open(NULL, NULL, NULL, 0, 0, 0);
+    jsp = js_session_open(NULL, 0);
     if (jsp == NULL)
 	return NULL;
 
@@ -327,14 +327,14 @@ ext_jcs_invoke (xmlXPathParserContext *ctxt, int nargs)
  * function
  */
 static void 
-ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username, 
-			xmlChar **passphrase, session_type_t *stype, uint *port)
+ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, js_session_opts_t *jsop)
 {
     lx_node_t *nop, *cop;
     const char *value, *key;
     int i;
 
-    *stype = ST_DEFAULT;    /* Default session */
+    if (jsop->jso_stype == 0)
+	jsop->jso_stype = ST_DEFAULT;    /* Default session */
 
     for (i = 0; i < nodeset->nodeNr; i++) {
 	nop = nodeset->nodeTab[i];
@@ -351,24 +351,27 @@ ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, xmlChar **username,
 		continue;
 	    value = xmlNodeValue(cop);
 
-	    if (streq(key, "username")) {
-		*username = xmlStrdup((const xmlChar *) value);
-		continue;
-	    } 
+	    if (streq(key, "connection-timeout")) {
+		jsop->jso_connect_timeout = atoi(value);
 
-	    if (streq(key, "port")) {
-		*port = atoi(value);
-		continue;
-	    } 
+	    } else if (streq(key,  "method")) {
+		jsop->jso_stype = jsio_session_type(value);
 
-	    if (streq(key, "passphrase") || streq(key, "password")) {
-		*passphrase = xmlStrdup((const xmlChar *) value);
-		continue;
-	    } 
-	    
-	    if (streq(key,  "method")) {
-		*stype = jsio_session_type(value);
-		continue;
+	    } else if (streq(key, "passphrase") || streq(key, "password")) {
+		jsop->jso_passphrase = xmlStrdup2(value);
+
+	    } else if (streq(key, "port")) {
+		jsop->jso_port = atoi(value);
+
+	    } else if (streq(key, "target")) {
+		jsop->jso_server = xmlStrdup2(value);
+
+	    } else if (streq(key, "timeout")) {
+		jsop->jso_timeout = atoi(value);
+
+	    } else if (streq(key, "username")) {
+		jsop->jso_username = xmlStrdup2(value);
+
 	    }
 	}
     }
@@ -418,6 +421,26 @@ ext_jcs_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
     }
 }
 
+static void
+jsopts_free (js_session_opts_t *jsop)
+{
+    if (jsop) {
+	if (jsop->jso_server) {
+	    xmlFree(jsop->jso_server);
+	    jsop->jso_server = NULL;
+	}
+	if (jsop->jso_username) {
+	    xmlFree(jsop->jso_username);
+	    jsop->jso_username = NULL;
+	}
+	if (jsop->jso_passphrase) {
+	    xmlFree(jsop->jso_passphrase);
+	    jsop->jso_passphrase = NULL;
+	}
+    }
+}
+
+
 /*
  * Usage:
  *    var $connection = jcs:open();  
@@ -454,42 +477,40 @@ ext_jcs_open (xmlXPathParserContext *ctxt, int nargs)
     xsltTransformContextPtr tctxt;
     xmlXPathObjectPtr ret;
     xmlDocPtr container;
-    xmlChar *server = NULL;
-    xmlChar *passphrase = NULL;
-    xmlChar *username = NULL;
     js_session_t *jsp = NULL;
     xmlNode *nodep, *serverp, *methodp;
     xmlXPathObject *xop = NULL;
-    session_type_t stype = ST_DEFAULT; /* Default session */
     const char *sname = "junoscript";
-    uint port = DEFAULT_NETCONF_PORT;
+    js_session_opts_t jso;
+
+    bzero(&jso, sizeof(jso));
+    jso.jso_stype = ST_DEFAULT; /* Default session */
 
     if (nargs == 0) {
-	server = NULL;
+	jso.jso_server = NULL;
 
     } else if (nargs == 1) {
-	server =  xmlXPathPopString(ctxt);
+	jso.jso_server =  (char *) xmlXPathPopString(ctxt);
 
     } else if (nargs == 2) {
 	xop = valuePop(ctxt);
-	server = xmlXPathPopString(ctxt);
+	jso.jso_server = (char *) xmlXPathPopString(ctxt);
 
 	if (!xop->nodesetval || !xop->nodesetval->nodeNr) {
 	    LX_ERR("jcs:open invalid second parameter\n");
 	    xmlXPathFreeObject(xop);
-	    xmlFree(server);
+	    jsopts_free(&jso);
 	    valuePush(ctxt, xmlXPathNewNodeSet(NULL));
 	    return;
 	}
 
-	ext_jcs_extract_second_arg(xop->nodesetval, &username, &passphrase, 
-			       &stype, &port);
+	ext_jcs_extract_second_arg(xop->nodesetval, &jso);
 	xmlXPathFreeObject(xop);
 
     } else if (nargs == 3) {
-	passphrase = xmlXPathPopString(ctxt);
-	username = xmlXPathPopString(ctxt);
-	server = xmlXPathPopString(ctxt);
+	jso.jso_passphrase = (char *) xmlXPathPopString(ctxt);
+	jso.jso_username = (char *) xmlXPathPopString(ctxt);
+	jso.jso_server = (char *) xmlXPathPopString(ctxt);
 
     } else {
 	/* Error: too many args */
@@ -497,42 +518,41 @@ ext_jcs_open (xmlXPathParserContext *ctxt, int nargs)
 	return;
     }
 
-    jsp = js_session_open((const char *) server, (const char *) username,
-			  (const char *) passphrase, 0, 0, stype);
+    /* NETCONF needs a default port */
+    if (jso.jso_stype == ST_NETCONF && jso.jso_port == 0)
+	jso.jso_port = DEFAULT_NETCONF_PORT;
+
+    jsp = js_session_open(&jso, 0);
     if (jsp == NULL) {
 	trace(trace_file, TRACE_ALL,
 	      "Error in creating the session with \"%s\" server",
-	      (char *) server ?: "local");
+	      (char *) jso.jso_server ?: "local");
 
-	xmlFreeAndEasy(passphrase);
-	xmlFreeAndEasy(username);
-
+	jsopts_free(&jso);
 	valuePush(ctxt, xmlXPathNewNodeSet(NULL));
 	return;
     }
-	
+
     /*
      * Create session cookie
      */
     nodep = xmlNewNode(NULL, (const xmlChar *) "cookie");
 
-    if (!server)
-	server = xmlStrdup((const xmlChar *) "");
+    if (jso.jso_server == NULL)
+	jso.jso_server = xmlStrdup2("");
 
     serverp = ext_jcs_make_text_node(NULL, (const xmlChar *) "server",
-				 server, xmlStrlen(server));
+	    (xmlChar *) jso.jso_server, xmlStrlen((xmlChar *) jso.jso_server));
     xmlAddChild(nodep, serverp);
 
-    sname = jsio_session_type_name(stype);
+    sname = jsio_session_type_name(jso.jso_stype);
     methodp = ext_jcs_make_text_node(NULL, (const xmlChar *) "method",
-				 (const xmlChar *) sname, strlen(sname));
+				     (const xmlChar *) sname, strlen(sname));
 
     xmlAddSibling(serverp, methodp);
     xmlAddChild(nodep, methodp);
 
-    xmlFreeAndEasy(passphrase);
-    xmlFreeAndEasy(username);
-    xmlFreeAndEasy(server);
+    jsopts_free(&jso);
 
     /*
      * Create a Result Value Tree container, and register it with RVT garbage 
@@ -548,7 +568,6 @@ ext_jcs_open (xmlXPathParserContext *ctxt, int nargs)
     slaxSetPreserveFlag(tctxt, ret);
 
     valuePush(ctxt, ret);
-    return;
 }
 
 /*

@@ -76,7 +76,6 @@ static char *js_default_server;
 static char *js_default_user;
 static session_type_t js_default_stype = ST_JUNOSCRIPT;
 
-static char *js_options;
 static unsigned jsio_flags;
 static char js_netconf_ns_attr[] = "xmlns=\"" XNM_NETCONF_NS "\"";
 static int js_max = 345;	/* Max read buffer size */
@@ -1390,65 +1389,84 @@ jsio_set_default_user (const char *user)
     js_default_user = user ? strdup(user) : NULL;
 }
 
+#define JSIO_SSH_OPTIONS_MAX 16
+static int jsio_ssh_options_count;
+static char *jsio_ssh_options[JSIO_SSH_OPTIONS_MAX];
 
 void
-jsio_set_ssh_options (const char *opts)
+jsio_add_ssh_options (const char *opts)
 {
-    if (js_options) {
-	free(js_options);
-	js_options = NULL;
-    }
-
-    if (opts)
-	js_options = strdup(opts);
+    if (opts && jsio_ssh_options_count < JSIO_SSH_OPTIONS_MAX)
+	jsio_ssh_options[jsio_ssh_options_count++] = strdup(opts);
 }
 
 /*
  * Opens a JUNOScript session for the give host_name, username, passphrase
  */
 js_session_t *
-js_session_open (const char *host_name, const char *username,
-		 const char *passphrase, int flags,
-		 uint port, session_type_t stype)
+js_session_open (js_session_opts_t *jsop, int flags)
 {
     js_session_t *jsp;
-    int max_argc = 15, argc = 0;
+    int max_argc = JSIO_SSH_OPTIONS_MAX * 2, argc = 0;
     char *argv[max_argc];
     char *port_str = NULL;
+    char *timeout_str = NULL;
+    int i;
+    js_session_opts_t jso;
+
+    if (jsop == NULL) {		/* "Make life easier" */
+	bzero(&jso, sizeof(jso));
+	jsop = &jso;
+    }
 
     js_initialize();
 
-    if (stype == ST_DEFAULT)
-	stype = js_default_stype;
+    if (jsop->jso_stype == ST_DEFAULT)
+	jsop->jso_stype = js_default_stype;
 
     if (flags & JSF_JUNOS_NETCONF)
-	stype = ST_JUNOS_NETCONF;
+	jsop->jso_stype = ST_JUNOS_NETCONF;
 
-    if (host_name == NULL || *host_name == '\0') {
-	host_name = js_default_server;
-	if (host_name == NULL || *host_name == '\0')
+    if (jsop->jso_server == NULL || *jsop->jso_server == '\0') {
+	jsop->jso_server = js_default_server;
+	if (jsop->jso_server == NULL || *jsop->jso_server == '\0')
 	    return NULL;
     }
 
-    if (username == NULL || *username == '\0')
-	username = js_default_user;
+    if (jsop->jso_username == NULL || *jsop->jso_username == '\0')
+	jsop->jso_username = js_default_user;
 
     /*
      * Check whether the junoscript session already exists for the given 
      * hostname, if so then return that.
      */
-    if ((jsp = js_session_find(host_name, stype)))
+    jsp = js_session_find(jsop->jso_server, jsop->jso_stype);
+    if (jsp)
 	return jsp;
 
     argv[argc++] = ALLOCADUP(PATH_SSH);
     argv[argc++] = ALLOCADUP("-aqTx");
+    argv[argc++] = ALLOCADUP("-oTCPKeepAlive=yes");
+
+    if (jsop->jso_timeout) {
+	timeout_str = strdupf("-oServerAliveInterval=%u", jsop->jso_timeout);
+	argv[argc++] = timeout_str;
+    }
+
+    for (i = 0; i < jsio_ssh_options_count; i++)
+	argv[argc++] = jsio_ssh_options[i];
+
+    if (jsop->jso_port) {
+	port_str = strdupf("-p%u", jsop->jso_port);
+	argv[argc++] = port_str;
+    }
 
     /*
      * If username is passed use that username
      */
-    if (username) {
+    if (jsop->jso_username) {
 	argv[argc++] = ALLOCADUP("-l");
-	argv[argc++] = ALLOCADUP(username);
+	argv[argc++] = ALLOCADUP(jsop->jso_username);
     } else {
 	/*
 	 * When username is not passed, ssh takes it from
@@ -1465,14 +1483,12 @@ js_session_open (const char *host_name, const char *username,
 	}
     }
 
-    argv[argc++] = ALLOCADUP(host_name);
+    argv[argc++] = ALLOCADUP(jsop->jso_server);
 
-    if (stype == ST_NETCONF) {
-	port_str = strdupf("-p%u", port);
-	argv[argc++] = port_str;
+    if (jsop->jso_stype == ST_NETCONF) {
 	argv[argc++] = ALLOCADUP("-s");
 	argv[argc++] = ALLOCADUP("netconf");
-    } else if (stype == ST_JUNOS_NETCONF) {
+    } else if (jsop->jso_stype == ST_JUNOS_NETCONF) {
 	argv[argc++] = ALLOCADUP("xml-mode");
 	argv[argc++] = ALLOCADUP("netconf");
 	argv[argc++] = ALLOCADUP("need-trailer");
@@ -1485,15 +1501,15 @@ js_session_open (const char *host_name, const char *username,
 
     INSIST(argc < max_argc);
 
-    jsp = js_session_create(host_name, argv, flags, stype);
+    jsp = js_session_create(jsop->jso_server, argv, flags, jsop->jso_stype);
 
     if (jsp == NULL)
 	return NULL;
 
-    if (passphrase)
-	jsp->js_passphrase = strdup(passphrase);
+    if (jsop->jso_passphrase)
+	jsp->js_passphrase = strdup(jsop->jso_passphrase);
 
-    if (stype == ST_JUNOSCRIPT) {
+    if (jsop->jso_stype == ST_JUNOSCRIPT) {
 	if (js_session_init(jsp)) {
 	    js_session_terminate(jsp);
 	    return NULL;
@@ -1507,6 +1523,8 @@ js_session_open (const char *host_name, const char *username,
 
     if (port_str)
 	free(port_str);
+    if (timeout_str)
+	free(timeout_str);
 
     /*
      * Add the session details to patricia tree

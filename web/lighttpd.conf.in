@@ -16,8 +16,13 @@ server.modules = (
 
 juise.assign = ( 
     ".slax"  => "@prefix@/bin/juise --cgi",
+    ".xhtml"  => "@prefix@/bin/juise --xml",
     "/rpc/"  => "@prefix@/bin/juise --rpc",
     "/local/"  => "@prefix@/bin/juise --cgi --local",
+)
+
+url.rewrite-once = (
+  "^/ubiquity/chrome/locale/(.*)" => "/ubiquity/chrome/locale/en-US/$1",
 )
 
 debug.log-request-header = "enable"
@@ -26,7 +31,8 @@ debug.log-file-not-found = "enable"
 debug.log-request-handling = "enable"
 
 mimetype.assign = (
-  ".html" => "text/html", 
+  ".html" => "text/html",
+  ".xhtml" => "application/xhtml+xml",
   ".txt" => "text/plain",
   ".css" => "text/css",
   ".jpg" => "image/jpeg",

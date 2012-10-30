@@ -397,6 +397,26 @@ do_run_op (const char *scriptname, const char *input, char **argv)
     return do_run_op_common(scriptname, input, argv, NULL, JM_NONE);
 }
 
+static int
+do_emit_xml (const char *scriptname, const char *input, char **argv)
+{
+    xmlDocPtr docp;
+
+    input = scriptname ?: input ?: *argv ? *argv++ : "/dev/stdin";
+
+    docp = xmlReadFile(input, NULL, XSLT_PARSE_OPTIONS);
+    if (docp == NULL) {
+	errx(1, "cannot parse file: '%s'", input);
+        return -1;
+    }
+
+    slaxDumpToFd(fileno(stdout), docp, 0);
+
+    xmlFreeDoc(docp);
+
+    return 0;
+}
+
 static lx_node_t *
 juise_build_get_configuration_rpc (lx_document_t **docpp, int post,
 				   const char *format)
@@ -702,7 +722,7 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
     ctxt = xmlXPathNewContext(docp);
     pctxt = xmlXPathNewParserContext(NULL, ctxt);
 
-    jsp = js_session_open(NULL, NULL, NULL, 0, 0, 0);
+    jsp = js_session_open(NULL, 0);
     if (jsp == NULL)
 	errx(1, "could not open session to target");
     
@@ -1245,7 +1265,13 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     if (pass)
 	pass = xmlURIUnescapeString(pass, 0, NULL);
 
-    js_session_t *jsp = js_session_open(target, user, pass, 0, 0, 0);
+    js_session_opts_t jso;
+    bzero(&jso, sizeof(jso));
+    jso.jso_server = target;
+    jso.jso_username = user;
+    jso.jso_passphrase = pass;
+
+    js_session_t *jsp = js_session_open(&jso, 0);
     if (jsp == NULL)
 	errx(1, "could not open session to target");
     
@@ -1390,7 +1416,7 @@ main (int argc UNUSED, char **argv, char **envp)
     int ssh_agent_forwarding = FALSE;
     session_type_t stype;
     int skip_args = FALSE;
-    int waiting = 0;
+    int opt_waiting = 0;
     int i;
     char *input = NULL;
     unsigned jsio_flags = 0;
@@ -1507,8 +1533,11 @@ main (int argc UNUSED, char **argv, char **envp)
 	    } else if (streq(cp, "--run-server") || streq(cp, "-R")) {
 		func = do_run_server_on_stdin;
 
-	    } else if (streq(cp, "--script") || streq(cp, "-S")) {
+	    } else if (streq(cp, "--script") || streq(cp, "-s")) {
 		script = *++argv;
+
+	    } else if (streq(cp, "--ssh-options") || streq(cp, "-S")) {
+		jsio_add_ssh_options(*++argv);
 
 	    } else if (streq(cp, "--target") || streq(cp, "-T")) {
 		opt_target = *++argv;
@@ -1527,7 +1556,10 @@ main (int argc UNUSED, char **argv, char **envp)
 		exit(0);
 
 	    } else if (streq(cp, "--wait")) {
-		waiting = atoi(*++argv);
+		opt_waiting = atoi(*++argv);
+
+	    } else if (streq(cp, "--xml")) {
+		func = do_emit_xml;
 
 	    } else {
 		fprintf(stderr, "invalid option: %s\n", cp);
@@ -1610,16 +1642,16 @@ main (int argc UNUSED, char **argv, char **envp)
 	}
     }
 
-    if (!waiting) {
+    if (!opt_waiting) {
 	cp = getenv("JUISE_WAIT");
 	if (cp)
-	    waiting = atoi(cp);
+	    opt_waiting = atoi(cp);
     }
 
     /* Waiting allows 'gdb' to attach to a spawned process */
-    if (waiting) {
-	trace(trace_file, TRACE_ALL, "waiting %d seconds", waiting);
-	sleep(waiting);
+    if (opt_waiting) {
+	trace(trace_file, TRACE_ALL, "waiting %d seconds", opt_waiting);
+	sleep(opt_waiting);
     }
 
     /*
@@ -1655,7 +1687,7 @@ main (int argc UNUSED, char **argv, char **envp)
 	jsio_set_default_user(opt_username);
 
     if (ssh_agent_forwarding)
-	jsio_set_ssh_options("-A");
+	jsio_add_ssh_options("-A");
 
     func(script, input, argv);
 
