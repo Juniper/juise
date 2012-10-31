@@ -1,0 +1,115 @@
+body {
+  background-color: #ddd;
+  padding: 0px;
+  margin: 0px;
+  font-family: sans-serif;
+}
+
+h1, h2, h3, .large {
+  color: #333;
+}
+
+h2 {
+  font-variant: small-caps;
+}
+
+#main {
+  margin: 0 auto;
+  width: 800px;
+  background-color: #fff;
+  padding: 30px;
+}
+      
+#border { 
+  border: 1px black solid;
+overflow-x: auto;
+}
+
+#border * {
+  display: inline-block
+}
+
+input.input {
+  border: none;
+  width: auto;
+  font-size: 0.9em;
+  width: 100%;
+}
+
+#parseinfo, #envinfo {
+  max-height: 400px;
+  overflow:auto;
+}
+
+.verb {
+  border-bottom: 2px blue solid;
+}
+
+.prefix {
+  border-bottom: 2px orange solid;
+  font-weight: bold;
+}
+
+.argument {
+  border-bottom: 2px orange solid;
+}
+
+.object {
+  border-bottom: 2px black solid;
+}
+
+.inactive, .needarg {
+  color: gray;
+}
+
+#scoredParses {
+  border: none;
+}
+
+.toggle {
+  text-decoration: underline;
+}
+
+.warning {
+  border: 1px red solid;
+  background-color: #ddd;
+  padding: 10px;
+}
+
+#parsetree {
+  overflow: auto;
+  width: 10000px;
+}
+
+.treeleaf {
+  vertical-align: top;
+  display: inline-block;
+  padding: 5px;
+  margin: 5px;
+  padding-left: 20px;
+  border: 1px gray solid;
+}
+
+.treewrap > .children {
+  margin-left: 10px;
+  display: inline-block;
+}
+
+.badge {
+  border: 2px #ccc solid;
+  width: 1em;
+  text-align: center;
+  -moz-border-radius: .7em;
+  z-index: 2;
+  position: absolute;
+  background-color: #ccc;
+}
+
+.badge.winner {
+  border: 2px yellow solid;
+  background-color: yellow;
+}
+
+.badge.winner.badge9 {
+  border: 2px red solid;
+}

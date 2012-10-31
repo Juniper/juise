@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html [
+  <!ENTITY % htmlDTD PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+    %htmlDTD;
+  <!ENTITY % directionDTD SYSTEM "chrome://global/locale/global.dtd">
+    %directionDTD;
+  <!ENTITY % ubiquitydevDTD SYSTEM "chrome://ubiquity/locale/devubiquity.dtd">
+    %ubiquitydevDTD;
+  <!ENTITY % ubiquityinternalDTD SYSTEM "chrome://ubiquity/content/internal.dtd">
+    %ubiquityinternalDTD;
+]>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <title>Ubiquity Parser 2 Playpen</title>
+
+  <!-- base href="chrome://ubiquity/content/ubiquity.xul" -->
+
+  <link rel="stylesheet" type="text/css" media="all" href="playpen.css" />
+  <link rel="icon" type="image/x-icon" id="favicon" href="chrome://ubiquity/skin/icons/favicon.ico" />
+
+  <script type="text/javascript;version=1.8" src="jquery.js"></script>
+  <script type="text/javascript;version=1.8" src="parser.js"></script>
+  <script type="text/javascript;version=1.8" src="playpen.js"></script>
+
+</head>
+<body dir="ltr">
+
+<div id="main">
+
+  <h1>Ubiquity Parser 2 Playpen</h1>
+
+  <p>This is a parser testing and optimization playpen for the upcoming Ubiquity parser.</p>
+
+  <div class="warning" id="parser2" style="display:none">You're not using Parser 2! The nountype tuner currently only works with Parser 2. Please <a href="chrome://ubiquity/content/settings.xhtml">turn on Parser 2 (aka Next Generation Parser)</a>, restart Firefox, and try again.</div>
+  <div class="warning" id="gubiquity" style="display:none"><code>gUbiquity</code>
+ was not loaded properly. Most likely this means you loaded this page at
+ the same time that you loaded the window, and this page loaded before 
+the window chrome, in which case you can just reload this page and it 
+should work. Otherwise, there may actually be a problem with some code.</div>
+
+  <h2>Settings</h2>
+
+  <div id="languages"></div>
+
+  <div>
+    <label for="maxSuggestions">max suggestions:</label>
+    <input id="maxSuggestions" value="5" size="2" />
+    <input type="checkbox" name="displayparseinfo" id="displayparseinfo" />
+    <label title="this will slow things down considerably" for="displayparseinfo">display parse info</label>
+    <input type="checkbox" name="displayparsetree" id="displayparsetree" />
+    <label title="this will *not* affect performance" for="displayparsetree">display parse lineage</label>
+    <input type="checkbox" name="autoparse" id="autoparse" />
+    <label title="this will slow things down considerably" for="autoparse">automatically parse on update</label>
+    
+    <br />
+
+    <label for="gu-sync" title="uses the same parser as the current Ubiquity instance">
+      <input type="checkbox" id="gu-sync" checked="checked" />sync with <code>gUbiquity</code>
+    </label>
+
+    <input type="checkbox" name="flushcache" id="flushcache" checked="checked" />
+    <label for="flushcache">flush cache on parse (necessary for accurate timings)</label>
+  </div>
+
+  <div id="border">
+    <input id="root" class="input" />
+  </div>
+		
+  <input type="button" id="run" value="run!" /><input id="times" size="4" name="times" value="1" /> times 
+		
+  <br />
+
+  <label for="selection">selection text (for anaphora substitution):</label>
+  <input id="selection" name="selection" />
+
+  <div>
+    <h2 class="toggle">Environment info <small>(click me to toggle)</small></h2>
+
+    <div class="envinfo" style="display:none;">
+
+      <div>
+        <h2 class="toggle">Active semantic roles:</h2>
+        <ul id="roles"><li><code>goal</code>: "to"</li><li><code>source</code>: "from"</li><li><code>location</code>: "near"</li><li><code>location</code>: "on"</li><li><code>location</code>: "at"</li><li><code>location</code>: "in"</li><li><code>time</code>: "at"</li><li><code>time</code>: "on"</li><li><code>instrument</code>: "with"</li><li><code>instrument</code>: "using"</li><li><code>format</code>: "in"</li><li><code>modifier</code>: "of"</li><li><code>modifier</code>: "for"</li><li><code>alias</code>: "as"</li><li><code>alias</code>: "named"</li></ul>
+        <p><small>(overlapping roles with the same delimiters indicate synonymous delimiters)</small></p>
+      </div>
+
+      <div>
+        <h2 class="toggle">Active noun types:</h2>
+        <ul id="nountypes"><li><code>#noun_type_tab</code>: {label: <code>title or URL</code>, name: <code>tab</code>}</li><li><code>#noun_arb_text</code>: {label: <code>?</code>, name: <code>arb_text</code>}</li><li><code>#noun_type_number</code>: {label: <code>number</code>, name: <code>number</code>}</li><li><code>#noun_type_percentage</code>: {label: <code>percentage</code>, name: <code>percentage</code>}</li><li><code>#noun_type_tag</code>: {label: <code>tag1[,tag2 ...]</code>, name: <code>tag</code>}</li><li><code>#noun_type_bookmarklet</code>: {label: <code>title</code>, name: <code>bookmarklet</code>}</li><li><code>#noun_type_livemark</code>: {label: <code>title</code>, name: <code>livemark</code>}</li><li><code>#noun_type_extension</code>: {label: <code>name</code>, name: <code>extension</code>}</li><li><code>#noun_type_twitter_user</code>: {label: <code>user</code>, name: <code>twitter_user</code>}</li><li><code>#noun_type_url</code>: {label: <code>URL</code>, name: <code>url</code>}</li><li><code>resource://ubiquity/standard-feeds/developer.js#n0</code>: {label: <code>category/method/selector</code>, name: <code>http://api.jquery.com/</code>}</li><li><code>#noun_type_lang_wikipedia</code>: {label: <code>language</code>, name: <code>lang_wikipedia</code>}</li><li><code>resource://ubiquity/standard-feeds/general.js#n0</code>: {label: <code>expression</code>, name: <code>calc</code>}</li><li><code>resource://ubiquity/standard-feeds/general.js#n1</code>: {label: <code>language</code>, name: <code>Arabic,Bulgarian,...</code>}</li><li><code>#noun_type_lang_google</code>: {label: <code>language</code>, name: <code>lang_google</code>}</li><li><code>#noun_type_contact</code>: {label: <code>name or email</code>, name: <code>contact</code>}</li><li><code>#noun_type_email_service</code>: {label: <code>email service</code>, name: <code>email_service</code>}</li><li><code>#noun_type_date</code>: {label: <code>date</code>, name: <code>date</code>}</li><li><code>resource://ubiquity/standard-feeds/map.js#n0</code>: {label: <code>address</code>, name: <code>undefined</code>}</li><li><code>#noun_type_search_engine</code>: {label: <code>search engine</code>, name: <code>search_engine</code>}</li><li><code>resource://ubiquity/standard-feeds/search.xhtml#n0</code>: {label: <code>index</code>, name: <code>All,Apparel,...</code>}</li><li><code>#noun_type_async_restaurant</code>: {label: <code>restaurant</code>, name: <code>async_restaurant</code>}</li><li><code>#noun_type_geo_town</code>: {label: <code>city/town</code>, name: <code>geo_town</code>}</li><li><code>#na_f91d4e47e1ed262667cce32e387c0f5d</code>: {label: <code>temperature unit</code>, name: <code>fahrenheit,celsius</code>}</li><li><code>#noun_type_command</code>: {label: <code>name</code>, name: <code>command</code>}</li><li><code>resource://ubiquity/builtin-feeds/builtincmds.js#n0</code>: {label: <code>?</code>, name: <code>undefined</code>}</li><li><code>#noun_type_skin</code>: {label: <code>name</code>, name: <code>skin</code>}</li><li><code>#noun_type_enabled_command</code>: {label: <code>name</code>, name: <code>enabled_command</code>}</li><li><code>#noun_type_disabled_command</code>: {label: <code>name</code>, name: <code>disabled_command</code>}</li></ul>
+        <p><small>(see source for score functions)</small></p>
+      </div>
+
+      <div>
+        <h2 class="toggle">Active verbs:</h2>
+        <ul id="verblist"><li><strong><code>exit Firefox</code></strong></li><li><strong><code>restart Firefox</code></strong></li><li><strong><code>close window</code></strong></li><li><strong><code>fullscreen</code></strong></li><li><strong><code>switch to tab</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_tab</code></li></ul></li><li><strong><code>close tab</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_tab</code></li></ul></li><li><strong><code>close all tabs with</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>count tabs</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>stop</code></strong></li><li><strong><code>refresh</code></strong></li><li><strong><code>bookmark</code></strong></li><li><strong><code>print</code></strong></li><li><strong><code>print preview</code></strong></li><li><strong><code>go back</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_number</code></li></ul></li><li><strong><code>go forward</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_number</code></li></ul></li><li><strong><code>go home</code></strong></li><li><strong><code>open error console</code></strong></li><li><strong><code>zoom</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_percentage</code></li></ul></li><li><strong><code>tag</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_tag</code></li></ul></li><li><strong><code>run bookmarklet</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_bookmarklet</code></li></ul></li><li><strong><code>undo closed tabs</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>check livemark</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_livemark</code></li></ul></li><li><strong><code>view add-on</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_extension</code></li></ul></li><li><strong><code>twitter</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>alias</code>, nountype: <code>#noun_type_twitter_user</code></li></ul></li><li><strong><code>digg</code></strong></li><li><strong><code>tinyurl</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_url</code></li></ul></li><li><strong><code>share on delicious</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>alias</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>instrument</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>highlight syntax</code></strong></li><li><strong><code>view source</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_url</code></li></ul></li><li><strong><code>view selection source</code></strong></li><li><strong><code>escape HTML entities</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>unescape HTML entities</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>jQuery API</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>resource://ubiquity/standard-feeds/developer.js#n0</code></li></ul></li><li><strong><code>run selector-selector</code></strong></li><li><strong><code>delete</code></strong></li><li><strong><code>undelete</code></strong></li><li><strong><code>edit page</code></strong></li><li><strong><code>stop editing page</code></strong></li><li><strong><code>save page edits</code></strong></li><li><strong><code>undo page edits</code></strong></li><li><strong><code>bold</code></strong></li><li><strong><code>italicize</code></strong></li><li><strong><code>underline</code></strong></li><li><strong><code>undo text edit</code></strong></li><li><strong><code>redo text edit</code></strong></li><li><strong><code>highlight</code></strong></li><li><strong><code>count words</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>link to Wikipedia</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>format</code>, nountype: <code>#noun_type_lang_wikipedia</code></li></ul></li><li><strong><code>calculate</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>resource://ubiquity/standard-feeds/general.js#n0</code></li></ul></li><li><strong><code>translate</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>source</code>, nountype: <code>resource://ubiquity/standard-feeds/general.js#n1</code></li><li>role: <code>goal</code>, nountype: <code>resource://ubiquity/standard-feeds/general.js#n1</code></li></ul></li><li><strong><code>translate page</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_url</code></li><li>role: <code>goal</code>, nountype: <code>#noun_type_lang_google</code></li></ul></li><li><strong><code>create bookmarklet command</code></strong><br /><ul><li>role: <code>source</code>, nountype: <code>#noun_type_bookmarklet</code></li></ul></li><li><strong><code>create search command</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>email</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>goal</code>, nountype: <code>#noun_type_contact</code></li></ul></li><li><strong><code>get last email</code></strong><br /><ul><li>role: <code>source</code>, nountype: <code>#noun_type_email_service</code></li></ul></li><li><strong><code>get email address</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_contact</code></li></ul></li><li><strong><code>add to google calendar</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>check google calendar</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_date</code></li></ul></li><li><strong><code>map</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>resource://ubiquity/standard-feeds/map.js#n0</code></li></ul></li><li><strong><code>search</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>instrument</code>, nountype: <code>#noun_type_search_engine</code></li></ul></li><li><strong><code>Google</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>Wikipedia</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>format</code>, nountype: <code>#noun_type_lang_wikipedia</code></li></ul></li><li><strong><code>IMDb</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>Yahoo!</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>Amazon.com</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li><li>role: <code>format</code>, nountype: <code>resource://ubiquity/standard-feeds/search.xhtml#n0</code></li></ul></li><li><strong><code>VideoSurf</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>YouTube</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>Flickr</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>Bugzilla</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>bing</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>eBay</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>Ask.com</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>Answers.com</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>Yelp</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_async_restaurant</code></li><li>role: <code>location</code>, nountype: <code>#noun_type_geo_town</code></li></ul></li><li><strong><code>check weather</code></strong><br /><ul><li>role: <code>location</code>, nountype: <code>#noun_type_geo_town</code></li><li>role: <code>format</code>, nountype: <code>#na_f91d4e47e1ed262667cce32e387c0f5d</code></li></ul></li><li><strong><code>define</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>google image search</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li><li><strong><code>help</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_command</code></li></ul></li><li><strong><code>open</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>resource://ubiquity/builtin-feeds/builtincmds.js#n0</code></li></ul></li><li><strong><code>write Ubiquity commands</code></strong></li><li><strong><code>list Ubiquity commands</code></strong></li><li><strong><code>change Ubiquity settings</code></strong></li><li><strong><code>get support</code></strong></li><li><strong><code>report bug</code></strong></li><li><strong><code>change skin</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_skin</code></li></ul></li><li><strong><code>disable command</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_enabled_command</code></li></ul></li><li><strong><code>enable command</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_type_disabled_command</code></li></ul></li><li><strong><code>command history</code></strong><br /><ul><li>role: <code>object</code>, nountype: <code>#noun_arb_text</code></li></ul></li></ul>
+      </div>
+
+    </div>
+  </div>
+
+  <h2>Suggestions</h2>
+  <p>KEY: <span class="verb">verb</span> <span class="object">object</span> <span class="prefix">prefix</span> <span class="argument">argument</span> (hover over the verb to see the actual verb and over prefixes to see the associated semantic role)</p>
+
+  <table id="scoredParses"></table>
+
+  <h2>Current parse:</h2>
+
+  <span class="current"></span>/<span class="runtimes"></span> = <span class="total"></span> ms (avg: <span class="avg"></span> ms)
+
+  <div id="parseinfo"></div>
+
+  <h2>Current query's parse tree:</h2>
+
+  <div id="parsetree"></div>
+
+</div>
+</body>
+</html>
