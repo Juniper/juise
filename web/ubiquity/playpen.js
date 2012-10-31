@@ -34,17 +34,15 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-Components.utils.import("resource://ubiquity/modules/utils.js");
-Components.utils.import("resource://ubiquity/modules/setup.js");
-Components.utils.import("resource://ubiquity/modules/localization_utils.js");
-
-var L = LocalizationUtils.propertySelector(
-  "chrome://ubiquity/locale/devubiquity.properties");
+// Components.utils.import("resource://ubiquity/modules/utils.js");
+// Components.utils.import("resource://ubiquity/modules/setup.js");
+// Components.utils.import("resource://ubiquity/modules/localization_utils.js");
+var L = LocalizationUtils.propertySelector("locale/devubiquity.properties");
 
 // set up the interface which will control the parser.
 
-var Cc = Components.classes;
-var Ci = Components.interfaces;
+var Cc = [ ]; // Components.classes;
+var Ci = [ ]; // Components.interfaces;
 
 var displayParse = function(parse, labels) (
   parse._id + ": " + parse.displayHtml

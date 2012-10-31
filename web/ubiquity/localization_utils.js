@@ -39,10 +39,12 @@
 
 var EXPORTED_SYMBOLS = ["LocalizationUtils"];
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/scripts/gettext/lib/Gettext.js")
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/scripts/gettext/lib/Gettext.js")
+
+var Cc = [ ];
 
 const LocalizableProperties = ["names", "help", "description"];
 const DefaultLanguageCodes  = ["en", "$"];
@@ -175,15 +177,17 @@ var LocalizationUtils = {
   propertySelector: function LU_propertySelector(properties) {
     if (properties in LU_propertySelector)
       return LU_propertySelector[properties];
-    var bundle = (Cc["@mozilla.org/intl/stringbundle;1"]
-                  .getService(Ci.nsIStringBundleService)
-                  .createBundle(properties));
+//     var bundle = (Cc["@mozilla.org/intl/stringbundle;1"]
+//                   .getService(Ci.nsIStringBundleService)
+//                   .createBundle(properties));
     return LU_propertySelector[properties] = function stringFor(name) (
-      arguments.length > 1
-      ? bundle.formatStringFromName(name,
-                                    Array.slice(arguments, 1),
-                                    arguments.length - 1)
-      : bundle.GetStringFromName(name));
+        // Perhaps use getFormattedString() here?
+        name);
+//       arguments.length > 1
+//       ? bundle.formatStringFromName(name,
+//                                     Array.slice(arguments, 1),
+//                                     arguments.length - 1)
+//       : bundle.GetStringFromName(name));
   },
 };
 
