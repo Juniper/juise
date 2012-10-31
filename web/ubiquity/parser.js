@@ -40,15 +40,15 @@
 
 var EXPORTED_SYMBOLS = ["Parser"];
 
-const Cu = Components.utils;
+// const Cu = Components.utils;
 
 // This turns on a number of checks which disallow parses with
 // multiple arguments in the same role.
 // This speeds things up considerably for longer parses.
 const DONT_PARSE_MULTIPLE_ARGS_PER_ROLE = true;
 
-Cu.import("resource://ubiquity/modules/utils.js");
-Cu.import("resource://ubiquity/modules/msgservice.js");
+// Cu.import("resource://ubiquity/modules/utils.js");
+// Cu.import("resource://ubiquity/modules/msgservice.js");
 
 var gOldAlerted = false;
 
