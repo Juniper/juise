@@ -45,14 +45,13 @@
 
 var EXPORTED_SYMBOLS = ["FeedManager"];
 
-const Cu = Components.utils;
+// const Cu = Components.utils;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/eventhub.js");
-Cu.import("/ubiquity/modules/localization_utils.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/eventhub.js");
+// Cu.import("/ubiquity/modules/localization_utils.js");
 
-var L = LocalizationUtils.propertySelector(
-  "/ubiquity/chrome/locale/coreubiquity.properties");
+var L = LocalizationUtils.propertySelector("locale/coreubiquity.properties");
 
 const FEED_SRC_ANNO          = "ubiquity/source";
 const FEED_TYPE_ANNO         = "ubiquity/type";
