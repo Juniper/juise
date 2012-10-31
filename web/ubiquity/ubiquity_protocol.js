@@ -34,9 +34,9 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-let EXPORTED_SYMBOLS = ["newChannel", "setPath"], paths = {};
+// let EXPORTED_SYMBOLS = ["newChannel", "setPath"], paths = {};
 
-Components.utils.import("/ubiquity/modules/utils.js");
+// Components.utils.import("/ubiquity/modules/utils.js");
 
 function newChannel(uri) {
   var path = uri.spec.slice(11);

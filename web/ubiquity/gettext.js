@@ -233,7 +233,7 @@ Raw locale data (in json structure). If specified, from_link data will be ignore
 
 // modification by Michael Yoshitaka Erlewine 20090615
 // now supports JavaScript Module format
-var EXPORTED_SYMBOLS = ["Gettext"];
+// var EXPORTED_SYMBOLS = ["Gettext"];
 
 Gettext = function (args) {
     this.domain         = 'messages';

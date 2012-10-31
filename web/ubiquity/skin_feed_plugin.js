@@ -37,16 +37,15 @@
 // = SkinFeedPlugin =
 // The boss of {{{SkinFeed}}}s, aka {{{skinService}}}.
 
-var EXPORTED_SYMBOLS = ["SkinFeedPlugin"];
+// var EXPORTED_SYMBOLS = ["SkinFeedPlugin"];
 
-const {classes: Cc, interfaces: Ci, utils: Cu, results: Cr} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu, results: Cr} = Components;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/codesource.js");
-Cu.import("/ubiquity/modules/localization_utils.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/codesource.js");
+// Cu.import("/ubiquity/modules/localization_utils.js");
 
-const L = LocalizationUtils.propertySelector(
-  "/ubiquity/chrome/locale/coreubiquity.properties");
+const L = LocalizationUtils.propertySelector("locale/coreubiquity.properties");
 const SSS = (Cc["@mozilla.org/content/style-sheet-service;1"]
              .getService(Ci.nsIStyleSheetService));
 const PREF_SKIN = "extensions.ubiquity.skin";

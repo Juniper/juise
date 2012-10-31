@@ -38,7 +38,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-var EXPORTED_SYMBOLS = ["UbiquitySetup"];
+// var EXPORTED_SYMBOLS = ["UbiquitySetup"];
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 

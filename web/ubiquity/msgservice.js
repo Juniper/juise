@@ -61,7 +61,7 @@
 //
 // {{{msg.onfinished}}} is a function called when the alert goes away.
 
-var EXPORTED_SYMBOLS = ["ExceptionUtils",
+var msgservice_EXPORTED_SYMBOLS = ["ExceptionUtils",
                         "ErrorConsoleMessageService",
                         "AlertMessageService",
                         "CompositeMessageService"];
