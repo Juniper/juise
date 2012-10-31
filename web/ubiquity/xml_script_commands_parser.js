@@ -25,7 +25,7 @@
 // visit the XML for <SCRIPT> home page at xmljs.sourceforge.net
 //
 
-var EXPORTED_SYMBOLS = ["parseCodeFromXml"];
+// var EXPORTED_SYMBOLS = ["parseCodeFromXml"];
 
 /*****************************************************************************
                     SAXEventHandler Object
