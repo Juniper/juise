@@ -37,13 +37,13 @@
 
 // = SuggestionMemory =
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 const Z = {__proto__: null}; // keep this empty!
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/dbutils.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/dbutils.js");
 
-var EXPORTED_SYMBOLS = ["SuggestionMemory"];
+// var EXPORTED_SYMBOLS = ["SuggestionMemory"];
 
 // In this schema, one row represents that fact that for the
 // named suggestionMemory object identified by (id_string),

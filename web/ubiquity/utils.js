@@ -42,7 +42,7 @@
 // for use by chrome code.  Everything clients need is contained within
 // the {{{Utils}}} namespace.
 
-var EXPORTED_SYMBOLS = ["Utils"];
+// var EXPORTED_SYMBOLS = ["Utils"];
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 // const {nsISupportsString, nsITransferable} = Ci;

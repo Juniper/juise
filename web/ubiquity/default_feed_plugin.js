@@ -38,14 +38,14 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-var EXPORTED_SYMBOLS = ["DefaultFeedPlugin"];
+// var EXPORTED_SYMBOLS = ["DefaultFeedPlugin"];
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/codesource.js");
-Cu.import("/ubiquity/modules/sandboxfactory.js");
-Cu.import("/ubiquity/modules/feed_plugin_utils.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/codesource.js");
+// Cu.import("/ubiquity/modules/sandboxfactory.js");
+// Cu.import("/ubiquity/modules/feed_plugin_utils.js");
 
 const Global = this;
 const CONFIRM_URL = "/ubiquity/chrome/content/confirm-add-command.xhtml";

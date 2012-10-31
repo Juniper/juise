@@ -37,14 +37,12 @@
 
 // = LocalizationUtils =
 
-var EXPORTED_SYMBOLS = ["LocalizationUtils"];
+// var EXPORTED_SYMBOLS = ["LocalizationUtils"];
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
 // Cu.import("/ubiquity/modules/utils.js");
 // Cu.import("/ubiquity/scripts/gettext/lib/Gettext.js")
-
-var Cc = [ ];
 
 const LocalizableProperties = ["names", "help", "description"];
 const DefaultLanguageCodes  = ["en", "$"];

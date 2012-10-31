@@ -35,14 +35,14 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-var EXPORTED_SYMBOLS = ["FeedAggregator"];
+// var EXPORTED_SYMBOLS = ["FeedAggregator"];
 
-const Cu = Components.utils;
+// const Cu = Components.utils;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/eventhub.js");
-Cu.import("/ubiquity/modules/localization_utils.js");
-Cu.import("/ubiquity/modules/suggestion_memory.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/eventhub.js");
+// Cu.import("/ubiquity/modules/localization_utils.js");
+// Cu.import("/ubiquity/modules/suggestion_memory.js");
 
 var L = LocalizationUtils.propertySelector(
   "/ubiquity/chrome/locale/coreubiquity.properties");

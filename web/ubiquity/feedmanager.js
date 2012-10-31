@@ -43,7 +43,7 @@
 // feed plugins to reload feeds when they change and expose the
 // functionality of all feeds to client code as {{{Feed}}} objects.
 
-var EXPORTED_SYMBOLS = ["FeedManager"];
+// var EXPORTED_SYMBOLS = ["FeedManager"];
 
 // const Cu = Components.utils;
 

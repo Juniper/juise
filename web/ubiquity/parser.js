@@ -38,7 +38,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-var EXPORTED_SYMBOLS = ["Parser"];
+// var EXPORTED_SYMBOLS = ["Parser"];
 
 // const Cu = Components.utils;
 

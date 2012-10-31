@@ -49,10 +49,10 @@
 // care must be taken to ensure that any JS libraries loaded don't load
 // remote code from untrusted sources.
 
-var EXPORTED_SYMBOLS = ["WebJsModule"];
+// var EXPORTED_SYMBOLS = ["WebJsModule"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
+// const Cc = Components.classes;
+// const Ci = Components.interfaces;
 
 // == The WebJsModule Class ==
 //

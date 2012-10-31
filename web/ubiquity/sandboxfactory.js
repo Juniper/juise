@@ -35,11 +35,11 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-const EXPORTED_SYMBOLS = ["SandboxFactory"];
+// const EXPORTED_SYMBOLS = ["SandboxFactory"];
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/utils.js");
 
 var defaultTarget = this;
 

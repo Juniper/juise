@@ -37,7 +37,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-var EXPORTED_SYMBOLS = [
+var codesource_EXPORTED_SYMBOLS = [
   "MixedCodeSource",
   "StringCodeSource",
   "RemoteUriCodeSource",
@@ -45,10 +45,10 @@ var EXPORTED_SYMBOLS = [
   "XhtmlCodeSource",
 ];
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/xml_script_commands_parser.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/xml_script_commands_parser.js");
 
 const VALID_SCHEMES_REMOTE = {http: 1, https: 1};
 const VALID_SCHEMES_LOCAL  = {file: 1, chrome: 1, resource: 1, ubiquity: 1};

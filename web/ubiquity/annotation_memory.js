@@ -42,9 +42,9 @@
 // The {{{AnnotationService}}} class presents an interface that is virtually
 // identical to {{{nsIAnnotationService}}}.
 
-var EXPORTED_SYMBOLS = ["AnnotationService"];
+// var EXPORTED_SYMBOLS = ["AnnotationService"];
 
-const {classes: Cc, interfaces: Ci} = Components;
+// const {classes: Cc, interfaces: Ci} = Components;
 
 var SQLITE_SCHEMA = (
   "CREATE TABLE ubiquity_annotation_memory(" +

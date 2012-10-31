@@ -34,11 +34,11 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-var EXPORTED_SYMBOLS = ["PrefCommands"];
+// var EXPORTED_SYMBOLS = ["PrefCommands"];
 
-const Cu = Components.utils;
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/ubiquity_protocol.js");
+// const Cu = Components.utils;
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/ubiquity_protocol.js");
 
 var PrefCommands = {
   COMMANDS_PREF : "extensions.ubiquity.commands",

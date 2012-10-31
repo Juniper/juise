@@ -38,15 +38,16 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-var EXPORTED_SYMBOLS = ["finishCommand"];
+// var EXPORTED_SYMBOLS = ["finishCommand"];
 
-const Cu = Components.utils;
+// const Cu = Components.utils;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/localization_utils.js");
-Utils.setTimeout(function delayedImport() {
-  Cu.import("/ubiquity/modules/setup.js");
-});
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/localization_utils.js");
+
+// Utils.setTimeout(function delayedImport() {
+//   Cu.import("/ubiquity/modules/setup.js");
+// });
 // Default delay to wait before calling a preview function, in ms.
 const DEFAULT_PREVIEW_DELAY = 150;
 
