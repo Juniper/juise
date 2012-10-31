@@ -36,9 +36,9 @@
 
 // = DbUtils =
 
-var EXPORTED_SYMBOLS = ["DbUtils"];
+// var EXPORTED_SYMBOLS = ["DbUtils"];
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
 var DbUtils = {};
 
