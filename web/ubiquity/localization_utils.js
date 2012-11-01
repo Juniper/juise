@@ -38,6 +38,7 @@
 // = LocalizationUtils =
 
 // var EXPORTED_SYMBOLS = ["LocalizationUtils"];
+jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
@@ -51,10 +52,12 @@ var feedGlobalsDict = {
   // feedUrl: [key0, key1, ...], ...
 };
 
-Gettext.prototype.get_lang_refs = function () [];
+$.u.Gettext.prototype.get_lang_refs = function () [];
 
-var LocalizationUtils = {
-  GETTEXT: new Gettext(),
+    var LocalizationUtils;
+
+$.u.LocalizationUtils = LocalizationUtils = {
+  GETTEXT: new $.u.Gettext(),
 
   get loadedPo() loadedPo,
 
@@ -198,3 +201,4 @@ function getLocalizedProperty(feedKey, cmd, property) {
     LocalizationUtils.getLocalizedStringFromContext(feedKey, context, key);
   return rv !== key && (propIsArray ? rv.split(/\s{0,}\|\s{0,}/) : rv);
 }
+});

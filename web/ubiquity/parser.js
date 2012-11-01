@@ -39,6 +39,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 // var EXPORTED_SYMBOLS = ["Parser"];
+jQuery(function ($) {
 
 // const Cu = Components.utils;
 
@@ -71,13 +72,14 @@ var gOldAlerted = false;
 // file--this, in turn, is controlled by a {{{makeXxParser}}} factory function;
 // take a look at en.js for an example.
 
-function Parser(props) {
+$.u.Parser = function Parser(props) {
   if (typeof props === "string")
     this.lang = props;
   else
     for (var key in props) this[key] = props[key];
 }
-Parser.prototype = {
+
+$.u.Parser.prototype = {
   // References to contextUtils and suggestionMemory modules; makeParserForLanguage()
   // in namespace.js will, and must, set these to either a stub for testing, or to the
   // real module.
@@ -2811,3 +2813,5 @@ Parse.prototype = {
 };
 
 function byScoreDescending(a, b) b.score - a.score;
+
+});

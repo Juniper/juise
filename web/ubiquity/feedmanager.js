@@ -45,13 +45,15 @@
 
 // var EXPORTED_SYMBOLS = ["FeedManager"];
 
+jQuery(function ($) {
+
 // const Cu = Components.utils;
 
 // Cu.import("/ubiquity/modules/utils.js");
 // Cu.import("/ubiquity/modules/eventhub.js");
 // Cu.import("/ubiquity/modules/localization_utils.js");
 
-var L = LocalizationUtils.propertySelector("locale/coreubiquity.properties");
+var L = $.u.LocalizationUtils.propertySelector("locale/coreubiquity.properties");
 
 const FEED_SRC_ANNO          = "ubiquity/source";
 const FEED_TYPE_ANNO         = "ubiquity/type";
@@ -75,7 +77,7 @@ const DEFAULT_FEED_TYPE = "commands";
 // {{{nsIAnnotationService}}}. For an example implementation, see
 // {{{AnnotationService}}}.
 
-function FeedManager(annSvc) {
+$.u.FeedManager = function FeedManager(annSvc) {
   this._annSvc = annSvc;
   this._plugins = {__proto__: null};
   this._feeds = {__proto__: null};

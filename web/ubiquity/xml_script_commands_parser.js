@@ -27,6 +27,8 @@
 
 // var EXPORTED_SYMBOLS = ["parseCodeFromXml"];
 
+jQuery(function ($) {
+
 /*****************************************************************************
                     SAXEventHandler Object
 *****************************************************************************/
@@ -427,10 +429,8 @@ SAXEventHandler.prototype._handleCharacterData = function()  {
 
 };  // end function _handleCharacterData
 
-function parseCodeFromXml(xml) {
+$.u.parseCodeFromXml = function parseCodeFromXml(xml) {
   var xmlsax = {};
-  Components.utils.import("/ubiquity/modules/xmlsax.js",
-                          xmlsax);
   var parser = new xmlsax.SAXDriver();
   var eventHandler = new SAXEventHandler(parser);
   parser.setDocumentHandler(eventHandler);
@@ -439,3 +439,4 @@ function parseCodeFromXml(xml) {
   parser.parse(xml);
   return eventHandler.code;
 }; // end function startParser
+});

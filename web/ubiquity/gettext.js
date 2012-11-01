@@ -235,7 +235,8 @@ Raw locale data (in json structure). If specified, from_link data will be ignore
 // now supports JavaScript Module format
 // var EXPORTED_SYMBOLS = ["Gettext"];
 
-Gettext = function (args) {
+jQuery(function ($) {
+$.u.Gettext = function (args) {
     this.domain         = 'messages';
     // locale_data will be populated from <link...> if not specified in args
     this.locale_data    = undefined;
@@ -261,10 +262,10 @@ Gettext = function (args) {
     return this;
 }
 
-Gettext.context_glue = "\004";
-Gettext._locale_data = {};
+$.u.Gettext.context_glue = "\004";
+$.u.Gettext._locale_data = {};
 
-Gettext.prototype.try_load_lang = function() {
+$.u.Gettext.prototype.try_load_lang = function() {
     // check to see if language is statically included
     if (typeof(this.locale_data) != 'undefined') {
         // we're going to reformat it, and overwrite the variable
@@ -272,7 +273,7 @@ Gettext.prototype.try_load_lang = function() {
         this.locale_data = undefined;
         this.parse_locale_data(locale_copy);
 
-        if (typeof(Gettext._locale_data[this.domain]) == 'undefined') {
+        if (typeof($.u.Gettext._locale_data[this.domain]) == 'undefined') {
             throw new Error("Error: Gettext 'locale_data' does not contain the domain '"+this.domain+"'");
         }
     }
@@ -313,9 +314,9 @@ Gettext.prototype.try_load_lang = function() {
 //          msgs : {
 //              msgid : [ msgid_plural, msgstr, msgstr_plural ],
 //          },
-Gettext.prototype.parse_locale_data = function(locale_data) {
-    if (typeof(Gettext._locale_data) == 'undefined') {
-        Gettext._locale_data = { };
+$.u.Gettext.prototype.parse_locale_data = function(locale_data) {
+    if (typeof($.u.Gettext._locale_data) == 'undefined') {
+        $.u.Gettext._locale_data = { };
     }
 
     // suck in every domain defined in the supplied data
@@ -337,32 +338,32 @@ Gettext.prototype.parse_locale_data = function(locale_data) {
         // if they specifcy a blank domain, default to "messages"
         if (domain == "") domain = "messages";
         // init the data structure
-        if (! this.isValidObject(Gettext._locale_data[domain]) )
-            Gettext._locale_data[domain] = { };
-        if (! this.isValidObject(Gettext._locale_data[domain].head) )
-            Gettext._locale_data[domain].head = { };
-        if (! this.isValidObject(Gettext._locale_data[domain].msgs) )
-            Gettext._locale_data[domain].msgs = { };
+        if (! this.isValidObject($.u.Gettext._locale_data[domain]) )
+            $.u.Gettext._locale_data[domain] = { };
+        if (! this.isValidObject($.u.Gettext._locale_data[domain].head) )
+            $.u.Gettext._locale_data[domain].head = { };
+        if (! this.isValidObject($.u.Gettext._locale_data[domain].msgs) )
+            $.u.Gettext._locale_data[domain].msgs = { };
 
         for (var key in data) {
             if (key == "") {
                 var header = data[key];
                 for (var head in header) {
                     var h = head.toLowerCase();
-                    Gettext._locale_data[domain].head[h] = header[head];
+                    $.u.Gettext._locale_data[domain].head[h] = header[head];
                 }
             } else {
-                Gettext._locale_data[domain].msgs[key] = data[key];
+                $.u.Gettext._locale_data[domain].msgs[key] = data[key];
             }
         }
     }
 
     // build the plural forms function
-    for (var domain in Gettext._locale_data) {
-        if (this.isValidObject(Gettext._locale_data[domain].head['plural-forms']) &&
-            typeof(Gettext._locale_data[domain].head.plural_func) == 'undefined') {
+    for (var domain in $.u.Gettext._locale_data) {
+        if (this.isValidObject($.u.Gettext._locale_data[domain].head['plural-forms']) &&
+            typeof($.u.Gettext._locale_data[domain].head.plural_func) == 'undefined') {
             // untaint data
-            var plural_forms = Gettext._locale_data[domain].head['plural-forms'];
+            var plural_forms = $.u.Gettext._locale_data[domain].head['plural-forms'];
             var pf_re = new RegExp('^(\\s*nplurals\\s*=\\s*[0-9]+\\s*;\\s*plural\\s*=\\s*(?:\\s|[-\\?\\|&=!<>+*/%:;a-zA-Z0-9_\(\)])+)', 'm');
             if (pf_re.test(plural_forms)) {
                 //ex english: "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -370,23 +371,23 @@ Gettext.prototype.parse_locale_data = function(locale_data) {
                 //ex russian: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10< =4 && (n%100<10 or n%100>=20) ? 1 : 2)
                 //pf = "nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2)";
 
-                var pf = Gettext._locale_data[domain].head['plural-forms'];
+                var pf = $.u.Gettext._locale_data[domain].head['plural-forms'];
                 if (! /;\s*$/.test(pf)) pf = pf.concat(';');
                 /* We used to use eval, but it seems IE has issues with it.
                  * We now use "new Function", though it carries a slightly
                  * bigger performance hit.
                 var code = 'function (n) { var plural; var nplurals; '+pf+' return { "nplural" : nplurals, "plural" : (plural === true ? 1 : plural ? plural : 0) }; };';
-                Gettext._locale_data[domain].head.plural_func = eval("("+code+")");
+                $.u.Gettext._locale_data[domain].head.plural_func = eval("("+code+")");
                 */
                 var code = 'var plural; var nplurals; '+pf+' return { "nplural" : nplurals, "plural" : (plural === true ? 1 : plural ? plural : 0) };';
-                Gettext._locale_data[domain].head.plural_func = new Function("n", code);
+                $.u.Gettext._locale_data[domain].head.plural_func = new Function("n", code);
             } else {
                 throw new Error("Syntax error in language file. Plural-Forms header is invalid ["+plural_forms+"]");
             }
 
         // default to english plural form
-        } else if (typeof(Gettext._locale_data[domain].head.plural_func) == 'undefined') {
-            Gettext._locale_data[domain].head.plural_func = function (n) {
+        } else if (typeof($.u.Gettext._locale_data[domain].head.plural_func) == 'undefined') {
+            $.u.Gettext._locale_data[domain].head.plural_func = function (n) {
                 var p = (n != 1) ? 1 : 0;
                 return { 'nplural' : 2, 'plural' : p };
                 };
@@ -398,7 +399,7 @@ Gettext.prototype.parse_locale_data = function(locale_data) {
 
 
 // try_load_lang_po : do an ajaxy call to load in the .po lang defs
-Gettext.prototype.try_load_lang_po = function(uri) {
+$.u.Gettext.prototype.try_load_lang_po = function(uri) {
     var data = this.sjax(uri);
     if (! data) return;
 
@@ -419,7 +420,7 @@ Gettext.prototype.try_load_lang_po = function(uri) {
     return 1;
 };
 
-Gettext.prototype.uri_basename = function(uri) {
+$.u.Gettext.prototype.uri_basename = function(uri) {
     var rv;
     if (rv = uri.match(/^(.*\/)?(.*)/)) {
         var ext_strip;
@@ -432,7 +433,7 @@ Gettext.prototype.uri_basename = function(uri) {
     }
 };
 
-Gettext.prototype.parse_po = function(data) {
+$.u.Gettext.prototype.parse_po = function(data) {
     var rv = {};
     var buffer = {};
     var lastbuffer = "";
@@ -449,7 +450,7 @@ Gettext.prototype.parse_po = function(data) {
             if (typeof(buffer['msgid']) != 'undefined') {
                 var msg_ctxt_id = (typeof(buffer['msgctxt']) != 'undefined' &&
                                    buffer['msgctxt'].length) ?
-                                  buffer['msgctxt']+Gettext.context_glue+buffer['msgid'] :
+                                  buffer['msgctxt']+$.u.Gettext.context_glue+buffer['msgid'] :
                                   buffer['msgid'];
                 var msgid_plural = (typeof(buffer['msgid_plural']) != 'undefined' &&
                                     buffer['msgid_plural'].length) ?
@@ -522,7 +523,7 @@ Gettext.prototype.parse_po = function(data) {
     if (typeof(buffer['msgid']) != 'undefined') {
         var msg_ctxt_id = (typeof(buffer['msgctxt']) != 'undefined' &&
                            buffer['msgctxt'].length) ?
-                          buffer['msgctxt']+Gettext.context_glue+buffer['msgid'] :
+                          buffer['msgctxt']+$.u.Gettext.context_glue+buffer['msgid'] :
                           buffer['msgid'];
         var msgid_plural = (typeof(buffer['msgid_plural']) != 'undefined' &&
                             buffer['msgid_plural'].length) ?
@@ -599,7 +600,7 @@ Gettext.prototype.parse_po = function(data) {
 //     return str;
 // };
 // 2009-06-23 satyr: ^wrong in many ways
-Gettext.prototype.parse_po_dequote = function(str) {
+$.u.Gettext.prototype.parse_po_dequote = function(str) {
     var match = /^"(.*)"/.exec(str);
     if (match) str = match[1];
     // This is satisfactory for our use in Ubiquity.
@@ -609,7 +610,7 @@ Gettext.prototype.parse_po_dequote = function(str) {
 
 
 // try_load_lang_json : do an ajaxy call to load in the lang defs
-Gettext.prototype.try_load_lang_json = function(uri) {
+$.u.Gettext.prototype.try_load_lang_json = function(uri) {
     var data = this.sjax(uri);
     if (! data) return;
 
@@ -621,7 +622,7 @@ Gettext.prototype.try_load_lang_json = function(uri) {
 
 // this finds all <link> tags, filters out ones that match our
 // specs, and returns a list of hashes of those
-Gettext.prototype.get_lang_refs = function() {
+$.u.Gettext.prototype.get_lang_refs = function() {
     var langs = new Array();
     var links = document.getElementsByTagName("link");
     // find all <link> tags in dom; filter ours
@@ -691,7 +692,7 @@ value returned will NOT be the previous domain).
 =cut
 
 */
-Gettext.prototype.textdomain = function (domain) {
+$.u.Gettext.prototype.textdomain = function (domain) {
     if (domain && domain.length) this.domain = domain;
     return this.domain;
 }
@@ -869,7 +870,7 @@ category, instead of the default category C<LC_MESSAGES>.
 */
 
 // gettext
-Gettext.prototype.gettext = function (msgid) {
+$.u.Gettext.prototype.gettext = function (msgid) {
     var msgctxt;
     var msgid_plural;
     var n;
@@ -877,7 +878,7 @@ Gettext.prototype.gettext = function (msgid) {
     return this.dcnpgettext(null, msgctxt, msgid, msgid_plural, n, category);
 };
 
-Gettext.prototype.dgettext = function (domain, msgid) {
+$.u.Gettext.prototype.dgettext = function (domain, msgid) {
     var msgctxt;
     var msgid_plural;
     var n;
@@ -885,7 +886,7 @@ Gettext.prototype.dgettext = function (domain, msgid) {
     return this.dcnpgettext(domain, msgctxt, msgid, msgid_plural, n, category);
 };
 
-Gettext.prototype.dcgettext = function (domain, msgid, category) {
+$.u.Gettext.prototype.dcgettext = function (domain, msgid, category) {
     var msgctxt;
     var msgid_plural;
     var n;
@@ -893,61 +894,61 @@ Gettext.prototype.dcgettext = function (domain, msgid, category) {
 };
 
 // ngettext
-Gettext.prototype.ngettext = function (msgid, msgid_plural, n) {
+$.u.Gettext.prototype.ngettext = function (msgid, msgid_plural, n) {
     var msgctxt;
     var category;
     return this.dcnpgettext(null, msgctxt, msgid, msgid_plural, n, category);
 };
 
-Gettext.prototype.dngettext = function (domain, msgid, msgid_plural, n) {
+$.u.Gettext.prototype.dngettext = function (domain, msgid, msgid_plural, n) {
     var msgctxt;
     var category;
     return this.dcnpgettext(domain, msgctxt, msgid, msgid_plural, n, category);
 };
 
-Gettext.prototype.dcngettext = function (domain, msgid, msgid_plural, n, category) {
+$.u.Gettext.prototype.dcngettext = function (domain, msgid, msgid_plural, n, category) {
     var msgctxt;
     return this.dcnpgettext(domain, msgctxt, msgid, msgid_plural, n, category, category);
 };
 
 // pgettext
-Gettext.prototype.pgettext = function (msgctxt, msgid) {
+$.u.Gettext.prototype.pgettext = function (msgctxt, msgid) {
     var msgid_plural;
     var n;
     var category;
     return this.dcnpgettext(null, msgctxt, msgid, msgid_plural, n, category);
 };
 
-Gettext.prototype.dpgettext = function (domain, msgctxt, msgid) {
+$.u.Gettext.prototype.dpgettext = function (domain, msgctxt, msgid) {
     var msgid_plural;
     var n;
     var category;
     return this.dcnpgettext(domain, msgctxt, msgid, msgid_plural, n, category);
 };
 
-Gettext.prototype.dcpgettext = function (domain, msgctxt, msgid, category) {
+$.u.Gettext.prototype.dcpgettext = function (domain, msgctxt, msgid, category) {
     var msgid_plural;
     var n;
     return this.dcnpgettext(domain, msgctxt, msgid, msgid_plural, n, category);
 };
 
 // npgettext
-Gettext.prototype.npgettext = function (msgctxt, msgid, msgid_plural, n) {
+$.u.Gettext.prototype.npgettext = function (msgctxt, msgid, msgid_plural, n) {
     var category;
     return this.dcnpgettext(null, msgctxt, msgid, msgid_plural, n, category);
 };
 
-Gettext.prototype.dnpgettext = function (domain, msgctxt, msgid, msgid_plural, n) {
+$.u.Gettext.prototype.dnpgettext = function (domain, msgctxt, msgid, msgid_plural, n) {
     var category;
     return this.dcnpgettext(domain, msgctxt, msgid, msgid_plural, n, category);
 };
 
 // this has all the options, so we use it for all of them.
-Gettext.prototype.dcnpgettext = function (domain, msgctxt, msgid, msgid_plural, n, category) {
+$.u.Gettext.prototype.dcnpgettext = function (domain, msgctxt, msgid, msgid_plural, n, category) {
     if (! this.isValidObject(msgid)) return '';
 
     var plural = this.isValidObject(msgid_plural);
-    var msg_ctxt_id = this.isValidObject(msgctxt) ? msgctxt+Gettext.context_glue+msgid : msgid;
+    var msg_ctxt_id = this.isValidObject(msgctxt) ? msgctxt+$.u.Gettext.context_glue+msgid : msgid;
 
     var domainname = this.isValidObject(domain)      ? domain :
                      this.isValidObject(this.domain) ? this.domain :
@@ -958,15 +959,15 @@ Gettext.prototype.dcnpgettext = function (domain, msgctxt, msgid, msgid_plural, 
     var category = 5;
 
     var locale_data = new Array();
-    if (typeof(Gettext._locale_data) != 'undefined' &&
-        typeof(Gettext._locale_data[domainname]) != 'undefined' &&
-        this.isValidObject(Gettext._locale_data[domainname])) {
-        locale_data.push( Gettext._locale_data[domainname] );
+    if (typeof($.u.Gettext._locale_data) != 'undefined' &&
+        typeof($.u.Gettext._locale_data[domainname]) != 'undefined' &&
+        this.isValidObject($.u.Gettext._locale_data[domainname])) {
+        locale_data.push( $.u.Gettext._locale_data[domainname] );
 
-    } else if (typeof(Gettext._locale_data) != 'undefined') {
+    } else if (typeof($.u.Gettext._locale_data) != 'undefined') {
         // didn't find domain we're looking for. Search all of them.
-        for (var dom in Gettext._locale_data) {
-            locale_data.push( Gettext._locale_data[dom] );
+        for (var dom in $.u.Gettext._locale_data) {
+            locale_data.push( $.u.Gettext._locale_data[dom] );
         }
     }
 
@@ -1080,7 +1081,7 @@ NOTE: this may be called as an instance method, or as a class method.
 
 */
 /* utility method, since javascript lacks a printf */
-Gettext.strargs = function (str, args) {
+$.u.Gettext.strargs = function (str, args) {
     // make sure args is an array
     if ( null == args ||
          'undefined' == typeof(args) ) {
@@ -1133,17 +1134,17 @@ Gettext.strargs = function (str, args) {
 }
 
 /* instance method wrapper of strargs */
-Gettext.prototype.strargs = function (str, args) {
-    return Gettext.strargs(str, args);
+$.u.Gettext.prototype.strargs = function (str, args) {
+    return $.u.Gettext.strargs(str, args);
 }
 
 /* verify that something is an array */
-Gettext.prototype.isArray = function (thisObject) {
+$.u.Gettext.prototype.isArray = function (thisObject) {
     return this.isValidObject(thisObject) && thisObject.constructor == Array;
 };
 
 /* verify that an object exists and is valid */
-Gettext.prototype.isValidObject = function (thisObject) {
+$.u.Gettext.prototype.isValidObject = function (thisObject) {
     if (null == thisObject) {
         return false;
     } else if ('undefined' == typeof(thisObject) ) {
@@ -1153,7 +1154,7 @@ Gettext.prototype.isValidObject = function (thisObject) {
     }
 };
 
-Gettext.prototype.sjax = function (uri) {
+$.u.Gettext.prototype.sjax = function (uri) {
     var xmlhttp;
     if (window.XMLHttpRequest) {
         xmlhttp = new XMLHttpRequest();
@@ -1185,7 +1186,7 @@ Gettext.prototype.sjax = function (uri) {
     }
 }
 
-Gettext.prototype.JSON = function (data) {
+$.u.Gettext.prototype.JSON = function (data) {
     return eval('(' + data + ')');
 }
 
@@ -1275,3 +1276,4 @@ Copyright (C) 2008, Joshua I. Miller E<lt>unrtst@cpan.orgE<gt>, all rights reser
 
 */
 
+    });

@@ -43,6 +43,7 @@
 // the {{{Utils}}} namespace.
 
 // var EXPORTED_SYMBOLS = ["Utils"];
+jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 // const {nsISupportsString, nsITransferable} = Ci;
@@ -52,7 +53,9 @@ const TO_STRING = Object.prototype.toString;
 // Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 // Cu.import("resource://gre/modules/Services.jsm");
 
-var Utils = {
+    var Utils;
+$.u.Utils = Utils = {
+
   toString: function toString() "[object UbiquityUtils]",
 
   NS_MATHML: "http://www.w3.org/1998/Math/MathML",
@@ -1484,3 +1487,4 @@ Utils.gist = {
     return match ? "https://raw.github.com/gist" + match[1] : url;
   },
 };
+});

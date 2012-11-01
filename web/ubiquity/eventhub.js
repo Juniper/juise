@@ -45,7 +45,9 @@
 //
 // Creating an instance of this class takes no arguments.
 
-function EventHub() {
+jQuery(function ($) {
+
+$.u.EventHub = function () {
   let self = this;
   let listeners = {};
 
@@ -110,3 +112,4 @@ function EventHub() {
     target.removeListener = self.removeListener;
   };
 }
+});
