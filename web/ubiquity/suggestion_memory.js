@@ -37,6 +37,8 @@
 
 // = SuggestionMemory =
 
+jQuery(function ($) {
+
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 const Z = {__proto__: null}; // keep this empty!
 
@@ -58,7 +60,7 @@ function openDatabase(file) DbUtils.connectLite(
     score      : "INTEGER" },
   [], file);
 
-Utils.defineLazyProperty(this, openDatabase, "gDatabaseConnection");
+$.u.Utils.defineLazyProperty(this, openDatabase, "gDatabaseConnection");
 
 var gTables = {__proto__: null};
 
@@ -209,3 +211,7 @@ SuggestionMemory.openDatabase = openDatabase;
 
 // TODO: Do we need functions for dealing with multiple SuggestionMemory
 // instances, e.g. listSuggestionMemoryIds() or wipeAllSuggestionMemory()?
+
+    $.u.SuggestionMemory = SuggestionMemory;
+
+});

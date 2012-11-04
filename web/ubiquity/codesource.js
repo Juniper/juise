@@ -37,7 +37,9 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-var codesource_EXPORTED_SYMBOLS = [
+jQuery(function ($) {
+
+var EXPORTED_SYMBOLS = [
   "MixedCodeSource",
   "StringCodeSource",
   "RemoteUriCodeSource",
@@ -248,3 +250,11 @@ function XhtmlCodeSource(codeSource) {
     return finalCode;
   };
 }
+
+    $.u.MixedCodeSource = MixedCodeSource;
+    $.u.StringCodeSource = StringCodeSource;
+    $.u.RemoteUriCodeSource = RemoteUriCodeSource;
+    $.u.LocalUriCodeSource = LocalUriCodeSource;
+    $.u.XhtmlCodeSource = XhtmlCodeSource;
+
+});

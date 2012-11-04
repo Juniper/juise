@@ -36,6 +36,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 // var EXPORTED_SYMBOLS = ["FeedAggregator"];
+jQuery(function ($) {
 
 // const Cu = Components.utils;
 
@@ -44,7 +45,7 @@
 // Cu.import("/ubiquity/modules/localization_utils.js");
 // Cu.import("/ubiquity/modules/suggestion_memory.js");
 
-var L = LocalizationUtils.propertySelector(
+var L = $.u.LocalizationUtils.propertySelector(
   "/ubiquity/chrome/locale/coreubiquity.properties");
 
 function FeedAggregator(feedManager, messageService, disabledCommands) {
@@ -135,7 +136,7 @@ function FeedAggregator(feedManager, messageService, disabledCommands) {
       for each (let cmd in feed.commands) {
         // if the command specifies limited application compatibility,
         // then check against current app name.
-        if (cmd.application && cmd.application.indexOf(Utils.appName) === -1)
+        if (cmd.application && cmd.application.indexOf($.u.Utils.appName) === -1)
           continue;
         commandNames.push({id: cmd.id, name: cmd.name, icon: cmd.icon});
         let cmdwd = makeCmdWithDisabler(cmd);
@@ -190,7 +191,7 @@ const PREF_REMPERIOD = "extensions.ubiquity.commandReminderPeriod";
 const PREF_NNSITES = "extensions.ubiquity.noNotificationSites";
 
 function maybeRemindCommand(document, commandsByDomain) {
-  var reminderPeriod = Utils.prefs.get(PREF_REMPERIOD, 0);
+  var reminderPeriod = $.u.Utils.prefs.get(PREF_REMPERIOD, 0);
   if (reminderPeriod < 1) return;
 
   try { var {domain, defaultView: window} = document } catch (e) { return }
@@ -203,29 +204,29 @@ function maybeRemindCommand(document, commandsByDomain) {
   if (!commands.length) return;
 
   if (reminderPeriod > 1 &&
-      Utils.history.visitsToDomain(domain) % reminderPeriod) return;
+      $.u.Utils.history.visitsToDomain(domain) % reminderPeriod) return;
 
-  var cmd = Utils.sort(commands, Math.random)[0];
+  var cmd = $.u.Utils.sort(commands, Math.random)[0];
   new SuggestionMemory("main_parser").getScore("", cmd.id) ||
     showEnabledCommandNotification(document, cmd.name);
 }
 
-function noNotificationSites() Utils.prefs.get(PREF_NNSITES, "").split("|");
+function noNotificationSites() $.u.Utils.prefs.get(PREF_NNSITES, "").split("|");
 
 function addToNoNotifications(site) {
   let nnSites = noNotificationSites().filter(Boolean);
   nnSites.push(site);
-  Utils.prefs.set(PREF_NNSITES, nnSites.join("|"));
+  $.u.Utils.prefs.set(PREF_NNSITES, nnSites.join("|"));
 }
 
-function stopNotifications() { Utils.prefs.set(PREF_REMPERIOD, 0) }
+function stopNotifications() { $.u.Utils.prefs.set(PREF_REMPERIOD, 0) }
 
 function showEnabledCommandNotification(targetDoc, commandName) {
   function toNoNo() {
     // add this domain to the list of domains to not give notifications for
     addToNoNotifications(targetDoc.domain);
   }
-  Utils.notify({
+  $.u.Utils.notify({
     target: targetDoc,
     label: L("ubiquity.feedmanager.didyouknow"),
     value: "ubiquity_notify_enabled_command",
@@ -235,8 +236,8 @@ function showEnabledCommandNotification(targetDoc, commandName) {
       // popup Ubiquity and input the verb associated with the website
       callback: function onShowMeClick(notification, button) {
         toNoNo();
-        Utils.setTimeout(function showCommandInUbiquity() {
-          Utils.currentChromeWindow.gUbiquity.preview(commandName);
+        $.u.Utils.setTimeout(function showCommandInUbiquity() {
+          $.u.Utils.currentChromeWindow.gUbiquity.preview(commandName);
         }, 500);
       },
       label: L("ubiquity.feedmanager.showme"),
@@ -250,3 +251,7 @@ function showEnabledCommandNotification(targetDoc, commandName) {
       label: L("ubiquity.feedmanager.neverremind"),
     }]});
 };
+
+    $.u.FeedAggregator = FeedAggregator;
+
+});

@@ -53,8 +53,7 @@ const TO_STRING = Object.prototype.toString;
 // Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 // Cu.import("resource://gre/modules/Services.jsm");
 
-    var Utils;
-$.u.Utils = Utils = {
+var Utils = {
 
   toString: function toString() "[object UbiquityUtils]",
 
@@ -1487,4 +1486,7 @@ Utils.gist = {
     return match ? "https://raw.github.com/gist" + match[1] : url;
   },
 };
+
+    $.u.Utils = Utils;
+
 });

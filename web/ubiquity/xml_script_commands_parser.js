@@ -429,7 +429,7 @@ SAXEventHandler.prototype._handleCharacterData = function()  {
 
 };  // end function _handleCharacterData
 
-$.u.parseCodeFromXml = function parseCodeFromXml(xml) {
+function parseCodeFromXml(xml) {
   var xmlsax = {};
   var parser = new xmlsax.SAXDriver();
   var eventHandler = new SAXEventHandler(parser);
@@ -439,4 +439,7 @@ $.u.parseCodeFromXml = function parseCodeFromXml(xml) {
   parser.parse(xml);
   return eventHandler.code;
 }; // end function startParser
+
+    $.u.parseCodeFromXml = parseCodeFromXml;
+
 });

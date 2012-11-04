@@ -47,7 +47,7 @@
 
 jQuery(function ($) {
 
-$.u.EventHub = function () {
+function EventHub() {
   let self = this;
   let listeners = {};
 
@@ -112,4 +112,7 @@ $.u.EventHub = function () {
     target.removeListener = self.removeListener;
   };
 }
+
+    $.u.EventHub = EventHub;
+
 });

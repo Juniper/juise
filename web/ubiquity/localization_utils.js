@@ -56,7 +56,7 @@ $.u.Gettext.prototype.get_lang_refs = function () [];
 
     var LocalizationUtils;
 
-$.u.LocalizationUtils = LocalizationUtils = {
+LocalizationUtils = {
   GETTEXT: new $.u.Gettext(),
 
   get loadedPo() loadedPo,
@@ -201,4 +201,7 @@ function getLocalizedProperty(feedKey, cmd, property) {
     LocalizationUtils.getLocalizedStringFromContext(feedKey, context, key);
   return rv !== key && (propIsArray ? rv.split(/\s{0,}\|\s{0,}/) : rv);
 }
+
+    $.u.LocalizationUtils = LocalizationUtils;
+
 });

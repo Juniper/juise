@@ -39,6 +39,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 // var EXPORTED_SYMBOLS = ["UbiquitySetup"];
+jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
@@ -60,7 +61,9 @@ const RESET_SCHEDULED_PREF = "extensions.ubiquity.isResetScheduled";
 const VERSION_PREF ="extensions.ubiquity.lastversion";
 const ANN_DB_FILENAME = "ubiquity_ann.sqlite";
 
-var UbiquitySetup = {
+    var UbiquitySetup;
+
+UbiquitySetup = {
   isNewlyInstalledOrUpgraded: false,
 
   STANDARD_FEEDS_URI: "/ubiquity/standard-feeds/",
@@ -246,3 +249,7 @@ function DisabledCmdStorage(prefName) {
     cmdSource.addListener("disabled-command-change", onDisableChange);
   };
 }
+
+    $.u.UbiquitySetup = UbiquitySetup;
+
+});

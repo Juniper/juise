@@ -43,6 +43,7 @@
 // identical to {{{nsIAnnotationService}}}.
 
 // var EXPORTED_SYMBOLS = ["AnnotationService"];
+jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci} = Components;
 
@@ -279,3 +280,7 @@ AnnotationService.openDatabase = function openDatabase(file) {
 
   return connection;
 };
+
+    $.u.AnnotationService = AnnotationService;
+
+});

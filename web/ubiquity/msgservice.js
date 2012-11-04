@@ -61,7 +61,8 @@
 //
 // {{{msg.onfinished}}} is a function called when the alert goes away.
 
-var msgservice_EXPORTED_SYMBOLS = ["ExceptionUtils",
+jQuery(function ($) {
+var EXPORTED_SYMBOLS = ["ExceptionUtils",
                         "ErrorConsoleMessageService",
                         "AlertMessageService",
                         "CompositeMessageService"];
@@ -73,7 +74,7 @@ var msgservice_EXPORTED_SYMBOLS = ["ExceptionUtils",
 
 const PREF_SHOW_ERROR = "extensions.ubiquity.displayAlertOnError";
 
-var L = LocalizationUtils.propertySelector(
+var L = $.u.LocalizationUtils.propertySelector(
   "/ubiquity/chrome/locale/coreubiquity.properties");
 
 // == Message Service Implementations ==
@@ -83,7 +84,7 @@ var L = LocalizationUtils.propertySelector(
 // the JavaScript error console, also logging their stack traces if
 // possible.
 
-function ErrorConsoleMessageService() {}
+$.u.ErrorConsoleMessageService = function ErrorConsoleMessageService() {}
 ErrorConsoleMessageService.prototype = {
   displayMessage: function ECMS_displayMessage(msg) {
     var {exception} = msg || 0;
@@ -102,7 +103,7 @@ ErrorConsoleMessageService.prototype = {
 // screen. On OS X, it's shown using
 // [[http://en.wikipedia.org/wiki/Growl_%28software%29|Growl]].
 
-function AlertMessageService() {}
+$.u.AlertMessageService = function AlertMessageService() {}
 AlertMessageService.prototype = {
   DEFAULT_ICON : "/ubiquity/chrome/skin/icons/favicon.ico",
   DEFAULT_TITLE: L("ubiquity.msgservice.defaultmsgtitle"),
@@ -155,7 +156,7 @@ AlertMessageService.prototype = {
 //
 // Use the {{{add()}}} method to add new implementations.
 
-function CompositeMessageService() {
+$.u.CompositeMessageService = function CompositeMessageService() {
   this._services = [];
 }
 CompositeMessageService.prototype = {
@@ -174,7 +175,8 @@ CompositeMessageService.prototype = {
 // The {{{ExceptionUtils}}} namespace provides some functionality for
 // introspecting JavaScript and XPCOM exceptions.
 
-var ExceptionUtils = {
+var ExceptionUtils;
+$.u.ExceptionUtils = ExceptionUtils = {
   stackTraceFromFrame: function EU_stackTraceFromFrame(frame, formatter) {
     if (!formatter)
       formatter = function EU_defaultFormatter(frame) { return frame; };
@@ -210,3 +212,10 @@ var ExceptionUtils = {
     return output;
   }
 };
+
+    $.u.ExceptionUtils = ExceptionUtils;
+    $.u.ErrorConsoleMessageService = ErrorConsoleMessageService;
+    $.u.AlertMessageService = AlertMessageService;
+    $.u.CompositeMessageService = CompositeMessageService;
+
+});

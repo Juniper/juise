@@ -38,6 +38,7 @@
 // The boss of {{{SkinFeed}}}s, aka {{{skinService}}}.
 
 // var EXPORTED_SYMBOLS = ["SkinFeedPlugin"];
+jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci, utils: Cu, results: Cr} = Components;
 
@@ -45,7 +46,7 @@
 // Cu.import("/ubiquity/modules/codesource.js");
 // Cu.import("/ubiquity/modules/localization_utils.js");
 
-const L = LocalizationUtils.propertySelector("locale/coreubiquity.properties");
+const L = $.u.LocalizationUtils.propertySelector("locale/coreubiquity.properties");
 const SSS = (Cc["@mozilla.org/content/style-sheet-service;1"]
              .getService(Ci.nsIStyleSheetService));
 const PREF_SKIN = "extensions.ubiquity.skin";
@@ -224,3 +225,7 @@ Cu.import("/ubiquity/modules/ubiquity_protocol.js", null).setPath(
     if (!css) css = Utils.getLocalUrl(URL_ROOT + "custom.css");
     return "data:text/css;charset=utf-8," + encodeURIComponent(css);
   });
+
+    $.u.SkinFeedPlugin = SkinFeedPlugin;
+
+});

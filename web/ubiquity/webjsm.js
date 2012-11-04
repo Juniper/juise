@@ -62,6 +62,8 @@
 // use to host any JS code. If unspecified, the hidden DOM window is
 // used.
 
+jQuery(function ($) {
+
 function WebJsModule(callback, window) {
   if (!window)
     window = Cc["@mozilla.org/appshell/appShellService;1"]
@@ -105,3 +107,7 @@ function WebJsModule(callback, window) {
     importedScripts[url] = true;
   };
 }
+
+    $.u.WebJsModule = WebJsModule;
+
+});

@@ -37,6 +37,7 @@
 // = DbUtils =
 
 // var EXPORTED_SYMBOLS = ["DbUtils"];
+jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
@@ -123,3 +124,7 @@ function createTable(connection, tableName, schema) {
     }
   return connection;
 }
+
+    $.u.DbUtils = DbUtils;
+
+});

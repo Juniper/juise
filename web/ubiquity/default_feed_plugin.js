@@ -39,6 +39,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 // var EXPORTED_SYMBOLS = ["DefaultFeedPlugin"];
+jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
@@ -363,3 +364,7 @@ var BuiltInFeedProto = {
     return JSON.parse(data);
   },
 };
+
+   $.u.DefaultFeedPlugin = DefaultFeedPlugin;
+
+});

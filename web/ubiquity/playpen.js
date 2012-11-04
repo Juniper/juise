@@ -34,10 +34,12 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+jQuery (function ($) {
+
 // Components.utils.import("resource://ubiquity/modules/utils.js");
 // Components.utils.import("resource://ubiquity/modules/setup.js");
 // Components.utils.import("resource://ubiquity/modules/localization_utils.js");
-var L = LocalizationUtils.propertySelector("locale/devubiquity.properties");
+var L = $.u.LocalizationUtils.propertySelector("locale/devubiquity.properties");
 
 // set up the interface which will control the parser.
 
@@ -273,7 +275,7 @@ function getParser(sync) {
   return makeParser();
 }
 
-$(document).ready(function(){
+function playpen(){
   var [gUSync] = $("#gu-sync").change(function(){ location.reload() });
   var parser = getParser(gUSync.checked);
   parser.setCommandList(UbiquitySetup.createServices()
@@ -333,5 +335,9 @@ $(document).ready(function(){
   //$('#clearnouncache').click(function() { nounCache = []; });
 
   $('.toggle').click(function(e){$(e.currentTarget).siblings().toggle();});
+
+}
+
+playpen();
 
 });

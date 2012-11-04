@@ -39,6 +39,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 // var EXPORTED_SYMBOLS = ["finishCommand"];
+jQuery(function ($) {
 
 // const Cu = Components.utils;
 
@@ -67,3 +68,7 @@ function finishCommand(cmd) {
 }
 
 function hyphenize(name) name.replace(/ /g, "-");
+
+    $.u.finishCommand = finishCommand;
+
+});

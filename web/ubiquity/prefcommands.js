@@ -35,6 +35,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 // var EXPORTED_SYMBOLS = ["PrefCommands"];
+jQuery(function ($) {
 
 // const Cu = Components.utils;
 // Cu.import("/ubiquity/modules/utils.js");
@@ -59,16 +60,20 @@ var PrefCommands = {
   },
 
   setCode: function PC_setCode(code) {
-    Utils.prefs.set(this.COMMANDS_PREF, code);
+    $.u.Utils.prefs.set(this.COMMANDS_PREF, code);
   },
 
-  getCode: function PC_getCode() Utils.prefs.get(this.COMMANDS_PREF, ""),
+  getCode: function PC_getCode() $.u.Utils.prefs.get(this.COMMANDS_PREF, ""),
 
   get id() "ubiquity://command-editor-code",
 };
 
-setPath(
+$.u.setPath(
   "command-editor-code",
   function makeDataUri()
     "data:application/javascript;charset=utf-8," +
     encodeURIComponent(PrefCommands.getCode()));
+
+    $.u.PrefCommands = PrefCommands;
+
+});

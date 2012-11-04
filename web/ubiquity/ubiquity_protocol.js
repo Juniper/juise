@@ -35,6 +35,9 @@
  * ***** END LICENSE BLOCK ***** */
 
 // let EXPORTED_SYMBOLS = ["newChannel", "setPath"], paths = {};
+jQuery(function ($) {
+
+    var paths = { };
 
 // Components.utils.import("/ubiquity/modules/utils.js");
 
@@ -49,3 +52,9 @@ function setPath(path, funcOrUri) {
   paths[path] =
     typeof funcOrUri == "string" ? function () funcOrUri : funcOrUri;
 }
+
+    $.u.newChannel = newChannel;
+    $.u.setPath = setPath;
+    $.u.paths = paths;
+
+});

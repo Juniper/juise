@@ -36,6 +36,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 // const EXPORTED_SYMBOLS = ["SandboxFactory"];
+jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
@@ -43,7 +44,7 @@
 
 var defaultTarget = this;
 
-function SandboxFactory(globals, target, ignoreForcedProtection) {
+function SandboxFactory (globals, target, ignoreForcedProtection) {
   maybeInitialize();
   globals = globals || {};
   this._target = target || defaultTarget;
@@ -66,8 +67,8 @@ function maybeInitialize() {
   if (SandboxFactory.isInitialized) return;
 
   SandboxFactory.fileUri =
-    Utils.ResProtocolHandler.resolveURI(
-      Utils.uri("/ubiquity/modules/sandboxfactory.js"));
+    $.u.Utils.ResProtocolHandler.resolveURI(
+      $.u.Utils.uri("/ubiquity/modules/sandboxfactory.js"));
   // We need to prefix any source code URI's with a known
   // "protected" file URI so that XPConnect wrappers are implicitly
   // made for them.
@@ -76,7 +77,7 @@ function maybeInitialize() {
   SandboxFactory.isInitialized = true;
 }
 
-Utils.extend(SandboxFactory.prototype, {
+$.extend(SandboxFactory.prototype, {
   makeSandbox: function makeSandbox(codeSource) {
     var sandbox = Cu.Sandbox(this._target);
     var globals = this._makeGlobals(codeSource);
@@ -98,4 +99,8 @@ Utils.extend(SandboxFactory.prototype, {
     }
     return retVal;
   }
+});
+
+    $.u.SandboxFactory = SandboxFactory;
+
 });

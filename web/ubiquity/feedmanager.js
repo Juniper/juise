@@ -77,7 +77,7 @@ const DEFAULT_FEED_TYPE = "commands";
 // {{{nsIAnnotationService}}}. For an example implementation, see
 // {{{AnnotationService}}}.
 
-$.u.FeedManager = function FeedManager(annSvc) {
+function FeedManager(annSvc) {
   this._annSvc = annSvc;
   this._plugins = {__proto__: null};
   this._feeds = {__proto__: null};
@@ -515,3 +515,7 @@ var Bin = {
   toJSON: function toJSON() this.__bin__,
   toString: function toString() "[object Bin]",
 };
+
+    $.u.FeedManager = FeedManager;
+
+});
