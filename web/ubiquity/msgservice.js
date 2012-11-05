@@ -84,7 +84,7 @@ var L = $.u.LocalizationUtils.propertySelector(
 // the JavaScript error console, also logging their stack traces if
 // possible.
 
-$.u.ErrorConsoleMessageService = function ErrorConsoleMessageService() {}
+function ErrorConsoleMessageService() {}
 ErrorConsoleMessageService.prototype = {
   displayMessage: function ECMS_displayMessage(msg) {
     var {exception} = msg || 0;
@@ -103,7 +103,7 @@ ErrorConsoleMessageService.prototype = {
 // screen. On OS X, it's shown using
 // [[http://en.wikipedia.org/wiki/Growl_%28software%29|Growl]].
 
-$.u.AlertMessageService = function AlertMessageService() {}
+function AlertMessageService() {}
 AlertMessageService.prototype = {
   DEFAULT_ICON : "/ubiquity/chrome/skin/icons/favicon.ico",
   DEFAULT_TITLE: L("ubiquity.msgservice.defaultmsgtitle"),
@@ -156,7 +156,7 @@ AlertMessageService.prototype = {
 //
 // Use the {{{add()}}} method to add new implementations.
 
-$.u.CompositeMessageService = function CompositeMessageService() {
+function CompositeMessageService() {
   this._services = [];
 }
 CompositeMessageService.prototype = {
@@ -175,8 +175,7 @@ CompositeMessageService.prototype = {
 // The {{{ExceptionUtils}}} namespace provides some functionality for
 // introspecting JavaScript and XPCOM exceptions.
 
-var ExceptionUtils;
-$.u.ExceptionUtils = ExceptionUtils = {
+var ExceptionUtils = {
   stackTraceFromFrame: function EU_stackTraceFromFrame(frame, formatter) {
     if (!formatter)
       formatter = function EU_defaultFormatter(frame) { return frame; };

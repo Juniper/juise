@@ -55,6 +55,7 @@ jQuery(function ($) {
 // Cu.import("/ubiquity/modules/prefcommands.js");
 // Cu.import("/ubiquity/modules/skin_feed_plugin.js");
 
+var Utils = $.u.Utils;
 var gServices, gWebJsModule, gPrefs = Utils.prefs;
 
 const RESET_SCHEDULED_PREF = "extensions.ubiquity.isResetScheduled";

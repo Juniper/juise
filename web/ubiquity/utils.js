@@ -991,63 +991,80 @@ function extend(target) {
 // == {{{ Utils.prefs }}} ==
 // Proxy to {{{nsIPrefBranch2}}} set to root.
 
-// const {PREF_STRING, PREF_BOOL, PREF_INT} = Ci.nsIPrefBranch;
-// const gPrefBranch = Services.prefs;
+const {PREF_STRING, PREF_BOOL, PREF_INT} = [ ]; // Ci.nsIPrefBranch;
+var gPrefBranch = {
+    getPrefType: function (name) {
+        $.dbgpr("Utils.prefs: getPrefType: " + name);
+        return { };
+    },
+    getComplexValue: function (name) {
+        $.dbgpr("Utils.prefs: getComplexPref: " + name);
+        return { };
+    },
+    getBoolPref: function (name) {
+        $.dbgpr("Utils.prefs: getBoolPref: " + name);
+        return { };
+    },
+    getIntPref: function (name) {
+        $.dbgpr("Utils.prefs: getIntPref: " + name);
+        return { };
+    },
+}
 
-// var gPrefs = Utils.prefs = {
-//   // === {{{ Utils.prefs.getValue(name, value = undefined) }}} ===
-//   // === {{{ Utils.prefs.setValue(name, value) }}} ===
-//   // Copycats of
-//   // [[https://developer.mozilla.org/en/Toolkit_API/extIPreferenceBranch]]'s
-//   // namesakes. Also available in the names of {{{get()}}} and {{{set()}}}.
-//   get: function prefs_get(name, value) {
-//     switch (gPrefBranch.getPrefType(name)) {
-//       case PREF_STRING:
-//       try {
-//         return gPrefBranch.getComplexValue(
-//           name, Ci.nsIPrefLocalizedString).data;
-//       } catch ([]) {}
-//       return gPrefBranch.getComplexValue(name, nsISupportsString).data;
-//       case PREF_BOOL:
-//       return gPrefBranch.getBoolPref(name);
-//       case PREF_INT:
-//       return gPrefBranch.getIntPref(name);
-//     }
-//     return value;
-//   },
-//   set: function prefs_set(name, value) {
-//     switch (typeof value) {
-//       case "string": {
-//         let ss = (Cc["@mozilla.org/supports-string;1"]
-//                   .createInstance(nsISupportsString));
-//         ss.data = value;
-//         gPrefBranch.setComplexValue(name, nsISupportsString, ss);
-//       } break;
-//       case "boolean": gPrefBranch.setBoolPref(name, value); break;
-//       case "number": gPrefBranch.setIntPref(name, value); break;
-//       default: throw TypeError("invalid pref value");
-//     }
-//     return value;
-//   },
-//   // === {{{ Utils.prefs.reset(name) }}} ===
-//   // Resets the {{{name}}}d preference to the default value.
-//   // Returns a boolean indicating whether or not the reset succeeded.
-//   reset: function prefs_reset(name)
-//     gPrefBranch.prefHasUserValue(name) && !gPrefBranch.clearUserPref(name),
-//   // === {{{ Utils.prefs.resetBranch(name) }}} ===
-//   // Resets all preferences that start with {{{name}}} to the default values.
-//   // Returns an array of preference names that were reset.
-//   resetBranch: function prefs_resetBranch(name) {
-//     var names = (gPrefBranch.getChildList(name, {})
-//                  .filter(gPrefBranch.prefHasUserValue));
-//     names.forEach(gPrefBranch.clearUserPref);
-//     return names;
-//   },
-//   __noSuchMethod__:
-//   function prefs_pass(name, args) gPrefBranch[name].apply(gPrefBranch, args),
-// };
-// gPrefs.getValue = gPrefs.get;
-// gPrefs.setValue = gPrefs.set;
+var gPrefs = Utils.prefs = {
+  // === {{{ Utils.prefs.getValue(name, value = undefined) }}} ===
+  // === {{{ Utils.prefs.setValue(name, value) }}} ===
+  // Copycats of
+  // [[https://developer.mozilla.org/en/Toolkit_API/extIPreferenceBranch]]'s
+  // namesakes. Also available in the names of {{{get()}}} and {{{set()}}}.
+  get: function prefs_get(name, value) {
+    switch (gPrefBranch.getPrefType(name)) {
+      case PREF_STRING:
+      try {
+        return gPrefBranch.getComplexValue(
+          name, Ci.nsIPrefLocalizedString).data;
+      } catch ([]) {}
+      return gPrefBranch.getComplexValue(name).data;
+      case PREF_BOOL:
+      return gPrefBranch.getBoolPref(name);
+      case PREF_INT:
+      return gPrefBranch.getIntPref(name);
+    }
+    return value;
+  },
+  set: function prefs_set(name, value) {
+    switch (typeof value) {
+      case "string": {
+        let ss = (Cc["@mozilla.org/supports-string;1"]
+                  .createInstance(nsISupportsString));
+        ss.data = value;
+        gPrefBranch.setComplexValue(name, nsISupportsString, ss);
+      } break;
+      case "boolean": gPrefBranch.setBoolPref(name, value); break;
+      case "number": gPrefBranch.setIntPref(name, value); break;
+      default: throw TypeError("invalid pref value");
+    }
+    return value;
+  },
+  // === {{{ Utils.prefs.reset(name) }}} ===
+  // Resets the {{{name}}}d preference to the default value.
+  // Returns a boolean indicating whether or not the reset succeeded.
+  reset: function prefs_reset(name)
+    gPrefBranch.prefHasUserValue(name) && !gPrefBranch.clearUserPref(name),
+  // === {{{ Utils.prefs.resetBranch(name) }}} ===
+  // Resets all preferences that start with {{{name}}} to the default values.
+  // Returns an array of preference names that were reset.
+  resetBranch: function prefs_resetBranch(name) {
+    var names = (gPrefBranch.getChildList(name, {})
+                 .filter(gPrefBranch.prefHasUserValue));
+    names.forEach(gPrefBranch.clearUserPref);
+    return names;
+  },
+  __noSuchMethod__:
+  function prefs_pass(name, args) gPrefBranch[name].apply(gPrefBranch, args),
+};
+gPrefs.getValue = gPrefs.get;
+gPrefs.setValue = gPrefs.set;
 
 // === {{{ Utils.BrowserTab(tabbrowser_tab) }}} ===
 // Wrapper for browser tabs. Supports roughly the same features as
@@ -1488,5 +1505,6 @@ Utils.gist = {
 };
 
     $.u.Utils = Utils;
+    $.u.Utils.defineLazyProperty = defineLazyProperty;
 
 });
