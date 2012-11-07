@@ -98,8 +98,8 @@ var Utils = {
   __globalObject: this,
 };
 
-for each (let f in this) if (typeof f === "function") Utils[f.name] = f;
-delete Utils.QueryInterface;
+// for each (let f in this) if (typeof f === "function") Utils[f.name] = f;
+// delete Utils.QueryInterface;
 [
   // === {{{ Utils.Application }}} ===
   // Shortcut to [[https://developer.mozilla.org/en/FUEL/Application]].
@@ -1011,6 +1011,8 @@ var gPrefBranch = {
     },
 }
 
+var myprefs = { };
+
 var gPrefs = Utils.prefs = {
   // === {{{ Utils.prefs.getValue(name, value = undefined) }}} ===
   // === {{{ Utils.prefs.setValue(name, value) }}} ===
@@ -1018,6 +1020,8 @@ var gPrefs = Utils.prefs = {
   // [[https://developer.mozilla.org/en/Toolkit_API/extIPreferenceBranch]]'s
   // namesakes. Also available in the names of {{{get()}}} and {{{set()}}}.
   get: function prefs_get(name, value) {
+      return myprefs[name];
+
     switch (gPrefBranch.getPrefType(name)) {
       case PREF_STRING:
       try {
@@ -1033,6 +1037,9 @@ var gPrefs = Utils.prefs = {
     return value;
   },
   set: function prefs_set(name, value) {
+      myprefs[value] = name;
+      return value;
+
     switch (typeof value) {
       case "string": {
         let ss = (Cc["@mozilla.org/supports-string;1"]

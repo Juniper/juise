@@ -263,14 +263,14 @@ var demoParserInterface = {
 }
 
 function getParser(sync) {
-  if (sync) {
-    var {gUbiquity} = Utils.currentChromeWindow;
-    if (gUbiquity) return gUbiquity.cmdManager.__nlParser;
-    else $('#gubiquity').show();
-  }
-  eval(Utils.getLocalUrl("resource://ubiquity/modules/parser/new/"+
-                         UbiquitySetup.languageCode + ".js"), "utf-8");
-  return makeParser();
+//  if (sync) {
+//    var {gUbiquity} = Utils.currentChromeWindow;
+//    if (gUbiquity) return gUbiquity.cmdManager.__nlParser;
+//    else $('#gubiquity').show();
+//  }
+//  eval(Utils.getLocalUrl("resource://ubiquity/modules/parser/new/"+
+//                         UbiquitySetup.languageCode + ".js"), "utf-8");
+  return $.u.makeParser();
 }
 
 function playpen(){

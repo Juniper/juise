@@ -36,7 +36,9 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-function makeParser() new Parser({
+jQuery(function ($) {
+
+function makeParser() new $.u.Parser({
   lang: "en",
   anaphora: ["this", "that", "it", "selection", "him", "her", "them"],
   roles: [
@@ -57,5 +59,9 @@ function makeParser() new Parser({
     {role: "alias", delimiter: "named"}
   ],
   branching: "right",
-  verbFinalMultiplier: 0.3
+    verbFinalMultiplier: 0.3,
+});
+
+    $.u.makeParser = makeParser;
+
 });

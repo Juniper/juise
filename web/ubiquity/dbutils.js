@@ -43,8 +43,8 @@ jQuery(function ($) {
 
 var DbUtils = {};
 
-for each (let f in this) if (typeof f === "function") DbUtils[f.name] = f;
-delete DbUtils.QueryInterface;
+//for each (let f in this) if (typeof f === "function") DbUtils[f.name] = f;
+//delete DbUtils.QueryInterface;
 
 // === {{{ DbUtils.connectLite(tableName, schemaDict, initialRows, file) }}}
 // Creates a simple DB file in the user's profile directory (if nonexistent)
