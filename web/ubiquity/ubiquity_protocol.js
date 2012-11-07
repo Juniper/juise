@@ -43,7 +43,7 @@ jQuery(function ($) {
 
 function newChannel(uri) {
   var path = uri.spec.slice(11);
-  return Utils.IOService.newChannel(
+  return $.u.Utils.IOService.newChannel(
     path in paths ? paths[path]() : "data:,ERROR:unknown path.",
     null, null);
 }
