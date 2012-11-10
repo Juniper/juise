@@ -38,17 +38,18 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+jQuery(function ($) {
 var EXPORTED_SYMBOLS = ["CommandManager"];
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/setup.js");
-Cu.import("/ubiquity/modules/parser/parser.js");
-Cu.import("/ubiquity/modules/preview_browser.js");
-Cu.import("/ubiquity/modules/localization_utils.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/setup.js");
+// Cu.import("/ubiquity/modules/parser/parser.js");
+// Cu.import("/ubiquity/modules/preview_browser.js");
+// Cu.import("/ubiquity/modules/localization_utils.js");
 
-var L = LocalizationUtils.propertySelector(
+var L = $.u.LocalizationUtils.propertySelector(
   "/ubiquity/chrome/locale/coreubiquity.properties");
 
 const {prefs} = Utils;
@@ -381,3 +382,4 @@ CommandManager.prototype = {
   get hilitedIndex() this.__hilitedIndex,
   set hilitedIndex(i) this.__hilitedIndex = i,
 };
+});

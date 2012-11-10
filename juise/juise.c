@@ -410,6 +410,20 @@ do_emit_xml (const char *scriptname, const char *input, char **argv)
         return -1;
     }
 
+    if (docp && docp->children) {
+	lx_node_t *childp, *nextp;
+
+	for (childp = docp->children; childp; childp = nextp) {
+	    nextp = childp->next;
+	    if (childp->type == XML_DTD_NODE
+		|| childp->type == XML_ENTITY_DECL
+		|| childp->type == XML_COMMENT_NODE) {
+		xmlUnlinkNode(childp);
+		xmlFreeNode(childp);
+	    }
+	}
+    }
+
     slaxDumpToFd(fileno(stdout), docp, 0);
 
     xmlFreeDoc(docp);

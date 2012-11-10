@@ -40,6 +40,7 @@
 #include "console.h"
 #include "websocket.h"
 #include "request.h"
+#include <signal.h>
 
 unsigned mx_sock_id;   /* Monotonically increasing ID number */
 
@@ -353,6 +354,8 @@ main (int argc UNUSED, char **argv UNUSED)
 	    print_help(cp);
 	}
     }
+
+    signal(SIGPIPE, SIG_IGN);
 
     slaxLogEnableCallback(mx_log_callback, NULL);
 
