@@ -582,6 +582,7 @@ function urlToParams(url) {
 // {{{charset}}} is an optional string to specify the character set.
 
 function getLocalUrl(url, charset) {
+    return "";
   var req = (Cc["@mozilla.org/xmlextras/xmlhttprequest;1"]
              .createInstance(Ci.nsIXMLHttpRequest));
   req.open("GET", url, false);

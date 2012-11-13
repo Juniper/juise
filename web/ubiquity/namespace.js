@@ -34,12 +34,15 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+jQuery(function ($) {
 var EXPORTED_SYMBOLS = ["NLParser2", "parserRegistry"];
 
-const Cu = Components.utils;
+// const Cu = Components.utils;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/parser/new/parser.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/parser/new/parser.js");
+
+    var Utils = $.u.Utils;
 
 var NLParser2 = {
   // Namespace object
@@ -61,24 +64,18 @@ var NLParser2 = {
      * Normally I would do this in the constructor, but because we use
      * parserFactories[]() it's easier to do it here:
      */
-    parser._contextUtils = (
-      ContextUtils ||
-      (Cu.import("/ubiquity/modules/contextutils.js", null)
-       .ContextUtils));
-    parser._suggestionMemory = (
-      SuggestionMemory ||
-      new (Cu.import("/ubiquity/modules/suggestion_memory.js", null)
-           .SuggestionMemory)("main_parser"));
+      parser._contextUtils = $.u.ContextUtils;
+//      ContextUtils ||
+//      (Cu.import("/ubiquity/modules/contextutils.js", null)
+//       .ContextUtils));
+      parser._suggestionMemory = $.u.SuggestionMemory;
+//      SuggestionMemory ||
+//      new (Cu.import("/ubiquity/modules/suggestion_memory.js", null)
+//           .SuggestionMemory)("main_parser"));
 
     return parser;
   }
 };
-
-var parserRegistry = eval(
-  "0," +
-  Utils.getLocalUrl(
-    "/ubiquity/modules/parser/new/parser_registry.json",
-    "utf-8"));
 
 function loadParserMaker(code) {
   eval(Utils.getLocalUrl(
@@ -86,3 +83,7 @@ function loadParserMaker(code) {
     "utf-8"));
   NLParser2.parserFactories[code] = makeParser;
 }
+
+    $.u.NLParser2 = NLParser2;
+
+});
