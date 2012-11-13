@@ -125,6 +125,10 @@ function createTable(connection, tableName, schema) {
   return connection;
 }
 
+    DbUtils.connectLite = connectLite;
+    DbUtils.openDatabase = openDatabase;
+    DbUtils.createTable = createTable;
+
     $.u.DbUtils = DbUtils;
 
 });

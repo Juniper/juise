@@ -46,6 +46,7 @@
 // A library of noun related utilities.
 // {{{CmdUtils}}} inherits them all.
 
+jQuery(function ($) {
 var EXPORTED_SYMBOLS = ["NounUtils"];
 
 var NounUtils = {};
@@ -290,3 +291,7 @@ function mixNouns(label) {
     default: nouns.some(function (n) "default" in n) && mixer("default"),
   };
 }
+
+    $.u.NounUtils = NounUtils;
+
+});

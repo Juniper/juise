@@ -50,15 +50,17 @@
 // ** {{{noSelection}}}
 // ** {{{noExternalCalls}}}
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+jQuery(function ($) {
 
-Cu.import("resource://gre/modules/XPCOMUtils.jsm");
-Cu.import("/ubiquity/modules/cmdutils.js");
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/setup.js");
-Cu.import("resource://gre/modules/PlacesUtils.jsm");
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-var {commandSource, skinService} = UbiquitySetup.createServices();
+// Cu.import("resource://gre/modules/XPCOMUtils.jsm");
+// Cu.import("/ubiquity/modules/cmdutils.js");
+// Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/setup.js");
+// Cu.import("resource://gre/modules/PlacesUtils.jsm");
+
+var {commandSource, skinService} = $.u.UbiquitySetup.createServices();
 
 // === {{{ noun_arb_text }}} ===
 // Suggests the input as is.
@@ -1281,3 +1283,4 @@ for (let [old, now] in new Iterator({
   this[sym] = now;
   EXPORTED_SYMBOLS.push(sym);
 }
+});
