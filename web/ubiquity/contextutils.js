@@ -46,16 +46,18 @@
 // {{{context}}} is a dictionary which must contain
 // {{{focusedWindow}}} and {{{focusedElement}}} fields.
 
+jQuery(function ($) {
+
 var EXPORTED_SYMBOLS = ["ContextUtils"];
 
 var ContextUtils = {};
 
-for each (let f in this) if (typeof f === "function") ContextUtils[f.name] = f;
-delete ContextUtils.QueryInterface;
+//for each (let f in this) if (typeof f === "function") ContextUtils[f.name] = f;
+// delete ContextUtils.QueryInterface;
 
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+// const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-Cu.import("/ubiquity/modules/utils.js");
+// Cu.import("/ubiquity/modules/utils.js");
 
 // === {{{ ContextUtils.getHtmlSelection(context, joint = "<hr/>") }}} ===
 // Returns a string containing the HTML representation of the
@@ -110,7 +112,7 @@ function setSelection(context, content, options) {
     return true;
   }
 
-  if (Utils.isTextBox(focusedElement)) {
+  if (false && Utils.isTextBox(focusedElement)) {
     let plainText = String(
       options && options.text ||
       (focusedElement.ownerDocument.createRange()
@@ -212,3 +214,14 @@ function getSelectedRanges(context) {
   if (sel) for (let i = sel.rangeCount; i--;) rngs[i] = sel.getRangeAt(i);
   return rngs;
 }
+
+$.u.ContextUtils = ContextUtils;
+ContextUtils.getHtmlSelection = getHtmlSelection;
+ContextUtils.getSelection = getSelection;
+ContextUtils.setSelection = setSelection;
+ContextUtils.getSelectionObject = getSelectionObject;
+ContextUtils.getSelectedNodes = getSelectedNodes;
+ContextUtils.getIsSelected = getIsSelected;
+ContextUtils.getSelectedRanges = getSelectedRanges;
+
+});

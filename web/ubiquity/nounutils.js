@@ -49,12 +49,16 @@
 jQuery(function ($) {
 var EXPORTED_SYMBOLS = ["NounUtils"];
 
+var Utils = $.u.Utils;
+
 var NounUtils = {};
+
+    var nextId = 0;
 
 for each (let f in this) if (typeof f === "function") NounUtils[f.name] = f;
 delete NounUtils.QueryInterface;
 
-Components.utils.import("/ubiquity/modules/utils.js");
+// Components.utils.import("/ubiquity/modules/utils.js");
 
 // === {{{ NounUtils.NounType(label, expected, defaults) }}} ===
 //
@@ -89,8 +93,8 @@ function NounType(label, expected, defaults) {
   this.label = label;
   this.noExternalCalls = true;
   this.cacheTime = -1;
-  if (this.id) this.id += Utils.computeCryptoHash("MD5", (uneval(expected) +
-                                                          uneval(defaults)));
+    if (this.id) this.id += ++nextId; // Utils.computeCryptoHash("MD5", (uneval(expected) +
+                                         //                 uneval(defaults)));
   if (defaults) {
     // [[a], [b, c], ...] => [a].concat([b, c], ...) => [a, b, c, ...]
     this.default =
@@ -293,5 +297,11 @@ function mixNouns(label) {
 }
 
     $.u.NounUtils = NounUtils;
+    NounUtils.NounType = NounType;
+    NounUtils.matchScore = matchScore;
+    NounUtils.makeSugg = makeSugg;
+    NounUtils.grepSuggs = grepSuggs;
+    NounUtils.byScoreDescending = byScoreDescending;
+    NounUtils.mixNouns = mixNouns;
 
 });

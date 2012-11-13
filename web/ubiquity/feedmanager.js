@@ -81,7 +81,7 @@ function FeedManager(annSvc) {
   this._annSvc = annSvc;
   this._plugins = {__proto__: null};
   this._feeds = {__proto__: null};
-  this._hub = new EventHub();
+  this._hub = new $.u.EventHub();
   this._hub.attachMethods(this);
 }
 

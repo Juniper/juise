@@ -113,3 +113,9 @@ input.input {
 .badge.winner.badge9 {
   border: 2px red solid;
 }
+
+div#debug-log {
+    white-space: pre-wrap;
+    background-color: #ffffff;
+    font-size: 66%;
+}

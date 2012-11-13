@@ -159,25 +159,24 @@ UbiquitySetup = {
         this.isNewlyInstalledOrUpgraded = true;
       }
 
-      var annDbFile = AnnotationService.getProfileFile(ANN_DB_FILENAME);
-      var annDbConn = AnnotationService.openDatabase(annDbFile);
-      var annSvc = new AnnotationService(annDbConn);
+      var annDbFile = $.u.AnnotationService.getProfileFile(ANN_DB_FILENAME);
+      var annDbConn = $.u.AnnotationService.openDatabase(annDbFile);
+      var annSvc = new $.u.AnnotationService(annDbConn);
 
-      var feedManager = new FeedManager(annSvc);
-      var msgService = new CompositeMessageService();
+      var feedManager = new $.u.FeedManager(annSvc);
+      var msgService = new $.u.CompositeMessageService();
 
-      msgService.add(new AlertMessageService());
-      msgService.add(new ErrorConsoleMessageService());
+      msgService.add(new $.u.AlertMessageService());
+      msgService.add(new $.u.ErrorConsoleMessageService());
 
       var disabledStorage =
         new DisabledCmdStorage("extensions.ubiquity.disabledCommands");
 
-      var defaultFeedPlugin =
-        new DefaultFeedPlugin(
-          feedManager, msgService, gWebJsModule, "/ubiquity/");
+        var defaultFeedPlugin = [ ];
+//        new $.u.DefaultFeedPlugin(
+//          feedManager, msgService, gWebJsModule, "/ubiquity/");
 
-      var cmdSource =
-        new FeedAggregator(
+        var cmdSource = new $.u.FeedAggregator(
           feedManager, msgService, disabledStorage.getDisabledCommands());
       disabledStorage.attach(cmdSource);
 
@@ -185,29 +184,29 @@ UbiquitySetup = {
         commandSource: cmdSource,
         feedManager: feedManager,
         messageService: msgService,
-        skinService: SkinFeedPlugin(feedManager, msgService, gWebJsModule),
+          skinService: [ ], // SkinFeedPlugin(feedManager, msgService, gWebJsModule),
         webJsm: gWebJsModule,
       };
 
-      Services.obs.addObserver({
-        observe: function fm_fin() feedManager.finalize(),
-      }, "quit-application", false);
+//      Services.obs.addObserver({
+//        observe: function fm_fin() feedManager.finalize(),
+//      }, "quit-application", false);
 
-      PrefCommands.init(feedManager);
+//      PrefCommands.init(feedManager);
 
-      if (this.isNewlyInstalledOrUpgraded) {
-        this.__removeExtinctStandardFeeds(feedManager);
+//      if (this.isNewlyInstalledOrUpgraded) {
+//        this.__removeExtinctStandardFeeds(feedManager);
 
         // For some reason, the following function isn't executed
         // atomically by Javascript; perhaps something being called is
         // getting the '@mozilla.org/thread-manager;1' service and
         // spinning via a call to processNextEvent() until some kind of
         // I/O is finished?
-        defaultFeedPlugin.installDefaults(this.STANDARD_FEEDS_URI,
-                                          this.STANDARD_FEEDS);
-      }
+//        defaultFeedPlugin.installDefaults(this.STANDARD_FEEDS_URI,
+//                                          this.STANDARD_FEEDS);
+//      }
 
-      cmdSource.refresh();
+//      cmdSource.refresh();
     }
 
     return gServices;
@@ -236,7 +235,7 @@ UbiquitySetup = {
     gPrefs.getValue("extensions.ubiquity.parserVersion", 2),
 };
 function DisabledCmdStorage(prefName) {
-  var disabledCommands = JSON.parse(gPrefs.getValue(prefName, "{}"));
+    var disabledCommands = { }; // JSON.parse(gPrefs.getValue(prefName, "{}"));
 
   this.getDisabledCommands = function getDisabledCommands() {
     return disabledCommands;

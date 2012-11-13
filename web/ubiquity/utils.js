@@ -1020,7 +1020,7 @@ var gPrefs = Utils.prefs = {
   // [[https://developer.mozilla.org/en/Toolkit_API/extIPreferenceBranch]]'s
   // namesakes. Also available in the names of {{{get()}}} and {{{set()}}}.
   get: function prefs_get(name, value) {
-      return myprefs[name];
+      return value;
 
     switch (gPrefBranch.getPrefType(name)) {
       case PREF_STRING:
@@ -1513,5 +1513,43 @@ Utils.gist = {
 
     $.u.Utils = Utils;
     $.u.Utils.defineLazyProperty = defineLazyProperty;
+    Utils.log = log;
+    Utils.reportError = reportError;
+    Utils.reportWarning = reportWarning;
+    Utils.reportInfo = reportInfo;
+    Utils.ellipsify = ellipsify;
+    Utils.absolutifyUrlAttribute = absolutifyUrlAttribute;
+    Utils.isTextBox = isTextBox;
+    Utils.setTimeout = setTimeout;
+    Utils.clearTimeout = clearTimeout;
+    Utils.__TimerCallback = __TimerCallback;
+    Utils.uri = uri;
+    Utils.openUrlInBrowser = openUrlInBrowser;
+    Utils.focusUrlInBrowser = focusUrlInBrowser;
+    Utils.getCookie = getCookie;
+    Utils.paramsToString = paramsToString;
+    Utils.urlToParams = urlToParams;
+    Utils.getLocalUrl = getLocalUrl;
+    Utils.parseHtml = parseHtml;
+    Utils.sort = sort;
+    Utils.uniq = uniq;
+    Utils.isEmpty = isEmpty;
+    Utils.classOf = classOf;
+    Utils.count = count;
+    Utils.keys = keys;
+    Utils.powerSet = powerSet;
+    Utils.Sequence = Sequence;
+    Utils.computeCryptoHash = computeCryptoHash;
+    Utils.signHmac = signHmac;
+    Utils.escapeHtml = escapeHtml;
+    Utils.unescapeHtml = unescapeHtml;
+    Utils.convertFromUnicode = convertFromUnicode;
+    Utils.convertToUnicode = convertToUnicode;
+    Utils.notify = notify;
+    Utils.listenOnce = listenOnce;
+    Utils.defineLazyProperty = defineLazyProperty;
+    Utils.extend = extend;
+    Utils.BrowserTab = BrowserTab;
+    Utils.regexp = regexp;
 
 });

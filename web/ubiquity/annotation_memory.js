@@ -107,6 +107,7 @@ function AnnotationService(connection) {
   connection = new NiceConnection(connection);
 
   function initialize() {
+      return;
     var ioSvc = Cc["@mozilla.org/network/io-service;1"]
                 .getService(Ci.nsIIOService);
     var selectSql = ("SELECT uri, name, value " +
@@ -250,6 +251,7 @@ function AnnotationService(connection) {
 // corresponding to a file in the current user's profile directory.
 
 AnnotationService.getProfileFile = function AS_getProfileFile(filename) {
+    return undefined;
   var dirSvc = Cc["@mozilla.org/file/directory_service;1"]
                .getService(Ci.nsIProperties);
 
@@ -268,6 +270,7 @@ AnnotationService.getProfileFile = function AS_getProfileFile(filename) {
 // {{{AnnotationService}}}, it's created too.
 
 AnnotationService.openDatabase = function openDatabase(file) {
+    return [ ];
   var storSvc = Cc["@mozilla.org/storage/service;1"]
                 .getService(Ci.mozIStorageService);
   var connection = null;

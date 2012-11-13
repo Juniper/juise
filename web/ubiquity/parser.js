@@ -41,6 +41,8 @@
 // var EXPORTED_SYMBOLS = ["Parser"];
 jQuery(function ($) {
 
+    var Utils = $.u.Utils;
+
 // const Cu = Components.utils;
 
 // This turns on a number of checks which disallow parses with

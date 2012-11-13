@@ -52,13 +52,13 @@ var EXPORTED_SYMBOLS = ["CommandManager"];
 var L = $.u.LocalizationUtils.propertySelector(
   "/ubiquity/chrome/locale/coreubiquity.properties");
 
-const {prefs} = Utils;
+const {prefs} = $.u.Utils;
 const DEFAULT_PREVIEW_URL = "/ubiquity/preview.html";
 const DEFAULT_MAX_SUGGESTIONS = 5;
 const PREF_MAX_SUGGESTIONS = "extensions.ubiquity.maxSuggestions";
 const MIN_MAX_SUGGS = 1;
 const MAX_MAX_SUGGS = 42;
-const {NS_XHTML, NS_XUL} = Utils;
+const {NS_XHTML, NS_XUL} = $.u.Utils;
 const DEFAULT_HELP = (
   '<div class="default" xmlns="' + NS_XHTML + '">' +
   L("ubiquity.cmdmanager.defaulthelp") +

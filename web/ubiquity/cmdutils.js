@@ -47,21 +47,25 @@
 // A library of general utility functions for use by command code.
 // Everything clients need is contained within the {{{CmdUtils}}} namespace.
 
+jQuery(function ($) {
+
 var EXPORTED_SYMBOLS = ["CmdUtils"];
 
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
-Cu.import("/ubiquity/modules/utils.js");
-Cu.import("/ubiquity/modules/setup.js");
-Cu.import("/ubiquity/modules/nounutils.js");
-Cu.import("/ubiquity/modules/contextutils.js");
-Cu.import("/ubiquity/modules/localization_utils.js");
-Cu.import("/ubiquity/modules/cmdmanager.js");
+//Cu.import("/ubiquity/modules/utils.js");
+//Cu.import("/ubiquity/modules/setup.js");
+//Cu.import("/ubiquity/modules/nounutils.js");
+//Cu.import("/ubiquity/modules/contextutils.js");
+//Cu.import("/ubiquity/modules/localization_utils.js");
+//Cu.import("/ubiquity/modules/cmdmanager.js");
 
-var L = LocalizationUtils.propertySelector(
+var L = $.u.LocalizationUtils.propertySelector(
   "/ubiquity/chrome/locale/coreubiquity.properties");
 
-var {commandSource, messageService} = UbiquitySetup.createServices();
+    var Utils = $.u.Utils;
+
+var {commandSource, messageService} = $.u.UbiquitySetup.createServices();
 
 var CmdUtils = {
   toString: function toString() "[object CmdUtils]",
@@ -81,25 +85,25 @@ var CmdUtils = {
 
   // === {{{ CmdUtils.maxSuggestions }}} ===
   // The current number of max suggestions.
-  get maxSuggestions() CommandManager.maxSuggestions,
+  get maxSuggestions() $.u.CommandManager.maxSuggestions,
 };
 
 for each (let f in this) if (typeof f === "function") CmdUtils[f.name] = f;
 for each (let g in ["document", "documentInsecure",
                     "window", "windowInsecure", "hiddenWindow",
                     "geoLocation"]) {
-  CmdUtils.__defineGetter__(g, this["get" + g[0].toUpperCase() + g.slice(1)]);
+    CmdUtils.__defineGetter__(g, eval("get" + g[0].toUpperCase() + g.slice(1)));
 }
 delete CmdUtils.QueryInterface;
 
-this.doAt = function doAt(code, keys) {
+function doAt(code, keys) {
   for each (let key in keys) doAt.it += (";" + code).replace(/@/g, key);
 };
 
 // == From NounUtils ==
 // {{{CmdUtils}}} inherits {{{NounUtils}}}.
 
-for (let k in NounUtils) CmdUtils[k] = NounUtils[k];
+for (let k in $.u.NounUtils) CmdUtils[k] = $.u.NounUtils[k];
 
 // == From ContextUtils ==
 // {{{CmdUtils}}} inherits {{{ContextUtils}}}.
@@ -116,7 +120,7 @@ doAt(<![CDATA[{
         (c = Utils.currentChromeWindow.document.commandDispatcher);
       return ContextUtils.@(c, x, y);
     });
-}]]>, (name for (name in ContextUtils)));
+}]]>, (name for (name in $.u.ContextUtils)));
 
 // === {{{ CmdUtils.log(a, b, c, ...) }}} ===
 // See {{{Utils}}}{{{.log}}}.
@@ -279,7 +283,6 @@ function injectJavascript(src, callback, document) {
   }, false);
   doc.body.appendChild(script);
 }
-CmdUtils.injectJs = injectJavascript;
 
 // === {{{ CmdUtils.loadJQuery(callback, [document]) }}} ===
 // Injects the jQuery javascript library into the current tab's document or
@@ -382,6 +385,8 @@ function setLastResult(result) {
 // directly.
 
 function getGeoLocation(callback) {
+    return undefined;
+
   if (!callback)
     return getGeoLocation.cache || getGeoLocation(function fetch() {});
 
@@ -1342,3 +1347,39 @@ function safeWrapper(func) function safeWrapped() {
 
 eval(doAt.it);
 delete doAt;
+
+    $.u.CmdUtils = CmdUtils;
+    CmdUtils.getWindow = getWindow;
+    CmdUtils.getDocument = getDocument;
+    CmdUtils.getWindowInsecure = getWindowInsecure;
+    CmdUtils.getDocumentInsecure = getDocumentInsecure;
+    CmdUtils.getHiddenWindow = getHiddenWindow;
+    CmdUtils.getCommand = getCommand;
+    CmdUtils.geocodeAddress = geocodeAddress;
+    CmdUtils.injectCss = injectCss;
+    CmdUtils.injectHtml = injectHtml;
+    CmdUtils.injectJavascript = injectJavascript;
+    CmdUtils.loadJQuery = loadJQuery;
+    CmdUtils.copyToClipboard = copyToClipboard;
+    CmdUtils.onPageLoad = onPageLoad;
+    CmdUtils.onUbiquityLoad = onUbiquityLoad;
+    CmdUtils.setLastResult = setLastResult;
+    CmdUtils.getGeoLocation = getGeoLocation;
+    CmdUtils.getTabSnapshot = getTabSnapshot;
+    CmdUtils.getWindowSnapshot = getWindowSnapshot;
+    CmdUtils.getImageSnapshot = getImageSnapshot;
+    CmdUtils.savePassword = savePassword;
+    CmdUtils.loadPassword = loadPassword;
+    CmdUtils.retrieveLogins = retrieveLogins;
+    CmdUtils.CreateCommand = CreateCommand;
+    CmdUtils.CreateAlias = CreateAlias;
+    CmdUtils.makeSearchCommand = makeSearchCommand;
+    CmdUtils.makeBookmarkletCommand = makeBookmarkletCommand;
+    CmdUtils.renderTemplate = renderTemplate;
+    CmdUtils.previewAjax = previewAjax;
+    CmdUtils.previewCallback = previewCallback;
+    CmdUtils.previewList = previewList;
+    CmdUtils.absUrl = absUrl;
+    CmdUtils.safeWrapper = safeWrapper;
+
+});

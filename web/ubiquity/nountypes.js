@@ -62,6 +62,9 @@ jQuery(function ($) {
 
 var {commandSource, skinService} = $.u.UbiquitySetup.createServices();
 
+    var Utils = $.u.Utils;
+    var CmdUtils = $.u.CmdUtils;
+
 // === {{{ noun_arb_text }}} ===
 // Suggests the input as is.
 // * {{{text, html}}} : user input
@@ -230,14 +233,14 @@ var noun_type_search_engine = {
   noExternalCalls: true,
   // the default search engine should just get 0.3 or so...
   // if it's actually entered, it can get a higher score.
-  default: function nt_sengine_default()
-    this._sugg(this._BSS.defaultEngine, 0.3),
-  suggest: function nt_sengine_suggest(text) {
-    var suggs = this._BSS.getVisibleEngines({}).map(this._sugg);
-    return CmdUtils.grepSuggs(text, suggs);
-  },
-  _BSS: (Cc["@mozilla.org/browser/search-service;1"]
-         .getService(Ci.nsIBrowserSearchService)),
+//  default: function nt_sengine_default()
+//    this._sugg(this._BSS.defaultEngine, 0.3),
+//  suggest: function nt_sengine_suggest(text) {
+//    var suggs = this._BSS.getVisibleEngines({}).map(this._sugg);
+//    return CmdUtils.grepSuggs(text, suggs);
+//  },
+//  _BSS: (Cc["@mozilla.org/browser/search-service;1"]
+//         .getService(Ci.nsIBrowserSearchService)),
   _sugg: function nt_sengine__sugg(engine, score) (
     CmdUtils.makeSugg(engine.name, null, engine, score || 1)),
 };
@@ -643,28 +646,28 @@ var noun_type_bookmarklet = {
     return CmdUtils.grepSuggs(text, this.list);
   },
   list: null,
-  load: function nt_bookmarklet_load(reload) {
-    var list = [];
-    var {bookmarks, history} = PlacesUtils;
-    var query = history.getNewQuery();
-    var options = history.getNewQueryOptions();
-    query.onlyBookmarked = true;
-    query.searchTerms = "javascript:";
-    options.queryType = options.QUERY_TYPE_BOOKMARKS;
-    options.sortingMode = options.SORT_BY_TITLE_DESCENDING;
-    var {root} = history.executeQuery(query, options);
-    root.containerOpen = true;
-    for (var i = root.childCount; i--;) {
-      var node = root.getChild(i);
-      if (/^javascript:/.test(node.uri) &&
-          !bookmarks.getKeywordForBookmark(node.itemId))
-        list.push(CmdUtils.makeSugg(node.title, null, node.uri));
-    }
-    root.containerOpen = false;
-    this.list = list;
-    return this;
-  }
-}.load();
+//  load: function nt_bookmarklet_load(reload) {
+//    var list = [];
+//    var {bookmarks, history} = PlacesUtils;
+//    var query = history.getNewQuery();
+//    var options = history.getNewQueryOptions();
+//    query.onlyBookmarked = true;
+//    query.searchTerms = "javascript:";
+//    options.queryType = options.QUERY_TYPE_BOOKMARKS;
+//    options.sortingMode = options.SORT_BY_TITLE_DESCENDING;
+//    var {root} = history.executeQuery(query, options);
+//    root.containerOpen = true;
+//    for (var i = root.childCount; i--;) {
+//      var node = root.getChild(i);
+//      if (/^javascript:/.test(node.uri) &&
+//          !bookmarks.getKeywordForBookmark(node.itemId))
+//        list.push(CmdUtils.makeSugg(node.title, null, node.uri));
+//    }
+//    root.containerOpen = false;
+//    this.list = list;
+//    return this;
+//  }
+}
 
 // === {{{ noun_type_date }}} ===
 // === {{{ noun_type_time }}} ===

@@ -40,6 +40,7 @@
 jQuery(function ($) {
 
 // const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+    var Cc = [ ];
 
 var DbUtils = {};
 
@@ -62,11 +63,11 @@ var DbUtils = {};
 // {{{file}}} is an optional {{{nsIFile}}} instance specifying the DB file.
 
 function connectLite(tableName, schemaDict, initialRows, file) {
-  if (!file)
-    ((file = (Cc["@mozilla.org/file/directory_service;1"]
-              .getService(Ci.nsIProperties)
-              .get("ProfD", Ci.nsIFile)))
-     .append(tableName + ".sqlite"));
+//  if (!file)
+//    ((file = (Cc["@mozilla.org/file/directory_service;1"]
+//              .getService(Ci.nsIProperties)
+//              .get("ProfD", Ci.nsIFile)))
+//     .append(tableName + ".sqlite"));
   var connection = openDatabase(file);
   if (connection && !connection.tableExists(tableName)) {
     let schema = (
@@ -82,7 +83,7 @@ function connectLite(tableName, schemaDict, initialRows, file) {
       ");");
     try { connection.executeSimpleSQL(schema) }
     catch (e) {
-      Cu.reportError(
+      $.dbgpr(
         tableName + " database table appears to be corrupt. Resetting it." +
         "\n(" + connection.lastErrorString + ")");
       // remove corrupt database table
@@ -98,12 +99,12 @@ function openDatabase(file) {
   /* If the pointed-at file doesn't already exist, it means the database
    * has never been initialized */
   var connection = null;
-  var storSvc = (Cc["@mozilla.org/storage/service;1"]
-                 .getService(Ci.mozIStorageService));
+//  var storSvc = (Cc["@mozilla.org/storage/service;1"]
+//                 .getService(Ci.mozIStorageService));
   try {
     connection = storSvc.openDatabase(file);
   } catch (e) {
-    Cu.reportError(
+    $.dbgpr(
       "Opening database failed. It may not have been initialized.");
   }
   return connection;
@@ -114,7 +115,7 @@ function createTable(connection, tableName, schema) {
     try {
       connection.executeSimpleSQL(schema);
     } catch (e) {
-      Cu.reportInfo(
+      $.dbgpr(
         tableName + " database table appears to be corrupt. Resetting it.");
       let file = connection.databaseFile;
       // remove corrupt database table

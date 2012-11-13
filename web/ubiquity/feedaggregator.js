@@ -58,7 +58,7 @@ function FeedAggregator(feedManager, messageService, disabledCommands) {
   var ubiquityLoadFuncLists = [];
   var feedsChanged = true;
 
-  var hub = new EventHub();
+  var hub = new $.u.EventHub();
   hub.attachMethods(this);
 
   function onFeedManagerChange(eventName, uri) {

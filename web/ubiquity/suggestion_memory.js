@@ -52,7 +52,7 @@ const Z = {__proto__: null}; // keep this empty!
 // it happened (score) number of times that the user typed in
 // the string (input) and, out of all the suggested completions,
 // the one the user chose was (suggestion).
-function openDatabase(file) DbUtils.connectLite(
+function openDatabase(file) $.u.DbUtils.connectLite(
   "ubiquity_suggestion_memory",
   { id_string  : "VARCHAR(256)",
     input      : "VARCHAR(256)",
