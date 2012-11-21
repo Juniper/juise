@@ -280,6 +280,10 @@ function playpen(){
                         .commandSource.getAllCommands());
   demoParserInterface.currentParser = parser;
 
+    // XX Not sure where this is supposed to happen
+    parser._contextUtils = $.u.ContextUtils;
+    parser._suggestionMemory = $.u.SuggestionMemory;
+
   for each (let {role, delimiter} in parser.roles) {
     // may need to switch &quot; to &#34;
     $('<li><code>'+role+'</code>: &quot;'+ delimiter+'&quot;</li>').appendTo($('#roles'));

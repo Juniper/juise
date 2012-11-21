@@ -367,7 +367,7 @@ mx_channel_close (mx_channel_t *mcp)
 int
 mx_channel_write_buffer (mx_channel_t *mcp, mx_buffer_t *mbp)
 {
-    int len = mbp->mb_len, rc;
+    int len = mbp->mb_len, slen = mbp->mb_len, rc;
 
     do {
 	rc = mx_channel_write(mcp, mbp->mb_data + mbp->mb_start, len);
@@ -376,16 +376,17 @@ mx_channel_write_buffer (mx_channel_t *mcp, mx_buffer_t *mbp)
 		return rc;
 
 	    /* XXX recovery/close? */
+	    mx_log("C%u write failed %d", mcp->mc_id, rc);
 	    return rc;
 	}
 
 	mbp->mb_start += rc;
 	len -= rc;
-    } while (mbp->mb_start < (unsigned) len);
+    } while (len > 0);
 
     mbp->mb_start = mbp->mb_len = 0; /* Reset */
 
-    return len;
+    return slen;
 }
 
 static int

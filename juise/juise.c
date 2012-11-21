@@ -1559,7 +1559,8 @@ main (int argc UNUSED, char **argv, char **envp)
 	    } else if (streq(cp, "--trace") || streq(cp, "-t")) {
 		opt_trace_file_name = *++argv;
 
-	    } else if (streq(cp, "--user") || streq(cp, "-u")) {
+	    } else if (streq(cp, "--user") || streq(cp, "--username")
+		       || streq(cp, "-u")) {
 		opt_username = *++argv;
 
 	    } else if (streq(cp, "--verbose") || streq(cp, "-v")) {

@@ -333,14 +333,166 @@ element of those libraries.
 
 *** jcs
 
+The "jcs" namespace is used for JUNOS-specific extension function, but
+many of the functions are no longer JUNOS specific.  "jcs" was
+originally for "JUNOS Commit Scripts", but these functions can be used
+for other sorts of scripting as well.
+
+In addition, many of the extension functions in the "slax" namespace
+were originally in the "jcs" namespace, and are now available in both
+namespaces.   The following table lists these dual-homed functions.
+
+|---------------|
+| Function Name |
+|---------------|
+| break-lines   |
+| break_lines   |
+| dampen        |
+| empty         |
+| first-of      |
+| get-command   |
+| get-input     |
+| get-secret    |
+| getsecret     |
+| input         |
+| is-empty      |
+| output        |
+| progress      |
+| printf        |
+| regex         |
+| sleep         |
+| split         |
+| sprintf       |
+| sysctl        |
+| syslog        |
+| trace         |
+|---------------|
+
+
 **** jcs:open
+
+The jcs:open() function creates a connection to either the local
+machine (for on-box JUNOS scripts) or a remote device using the
+NETCONF or JUNOScript API.  This connection can be passed to
+jcs:execute() to invoke RPCs and to jcs:close() to close the
+connection.
+
+Three protocols can be used for network access:
+- netconf: IETF standard (RFC6241) over the standard netconf port with
+the netconf subsystem
+- junoscript: the original JUNOScript API accessed over the standard
+ssh port using the JUNOS CLI
+- junos-netconf: the NETCONF protocol accessed over the standard
+ssh port using the JUNOS CLI
+
+"junoscript" and "junos-netconf" have the advantage of not requiring
+additional configuration, where "netconf" has the advantage of being
+the full standard mechanism.
+
+The behavior of jcs:open varies with the number of arguments given:
+
+- If no arguments are passed and the script is running under JUNOS, a
+connection to the local device is created.  RPCs are processed within
+the device and no network login is needed.
+
+- If no arguments are passed and the script is not running under
+JUNOS, the arguments to the juise program are using to build a
+connection.  The "--target", "--user", and "--protocol" options, along
+with the "[user]@target" argument (if provided), identify the target
+of the connection.
+
+- If one argument is provided, the argument is the name of the device
+to connect with.  The name may be in either "target" or "user@target"
+format.
+
+- If two arguments are provided, the first argument is the name of the
+device to connect with, and the second argument is a node-set with the
+following members.
+
+|--------------------+---------------------------------------|
+| Element Name       | Value                                 |
+|--------------------+---------------------------------------|
+| connection-timeout | Seconds before connect fails          |
+| method             | netconf, junos-netconf, or junoscript |
+| passphrase         | SSH passphrase                        |
+| password           | User password                         |
+| port               | Transport port number                 |
+| timeout            | Connection timeout                    |
+| username           | User login name                       |
+|--------------------+---------------------------------------|
+
+- If three arguments are provided, the first argument is the name of
+the device to connect with, the second is the username, and the third
+is the password.
+
+    SYNTAX::
+        node-set jcs:open();
+        node-set jcs:open(hostname);
+        node-set jcs:open(hostname, info);
+        node-set jcs:open(hostname, username, password);
+
+    EXAMPLE::
+        var $info = {
+            <port> 5000;
+            <timeout> 600;
+        }
+        var $conn = jcs:open($target, $info);
 
 **** jcs:execute
 
+The jcs:execute() function invokes RPCs using a connection returned by
+jcs:open().  RPCs are invoked and their results returned using a
+persistent connection, allowing stateful RPCs, such as locking the
+configuration database.
+
+The first argument is the connection, as returned by jcs:open().  If the
+second argument is a string, it is the name of an RPC operation.
+Otherwise the second argument is a node-set containing the operation
+to be invoked.
+
+    SYNTAX::
+        node-set jcs:execute(conn, method);
+        node-set jcs:execute(conn, rpc);
+
+    EXAMPLE::
+        var $rpc = <get-interface-information> {
+            <interface-name> "fe-0/0/0";
+            <statistics>;
+        }
+        var $res = jcs:execute($conn, $rpc);
+        var $sw = jcs:execute($conn, "get-software-information");
+
 **** jcs:invoke
+
+The jcs:invoke() function invokes RPCs but does not use or require a
+persistent connection.  RPCs are stateless, since any connection
+needed is temporary, so operations like locking the configuration
+database should be avoided since the lock will be immediately
+released.
+
+If the argument to jcs:invoke is a string, it is the name of an RPC
+operation.  Otherwise the argument is a node-set containing the
+operation to be invoked.
+
+    SYNTAX::
+        node-set jcs:invoke(method);
+        node-set jcs:invoke(rpc);
+
+    EXAMPLE::
+        var $rpc = <get-interface-information> {
+            <interface-name> "fe-0/0/0";
+            <statistics>;
+        }
+        var $res = jcs:invoke($rpc);
+        var $sw = jcs:invoke("get-software-information");
 
 **** jcs:close
 
+The jcs:close() function closes a connection opened by jcs:open(),
+releasing any resources on both the local and remote side.
+
+    SYNTAX::
+        void jcs:close(conn);
 
 {{document:
     name juise-manual;

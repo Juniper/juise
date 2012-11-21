@@ -226,11 +226,10 @@ function log(what) {
 // displays caller's name, concats arguments and appends a line feed.
 
 Utils.dump = function niceDump() {
-  if (!gPrefs.get("extensions.ubiquity.dump", false)) return;
+//  if (!gPrefs.get("extensions.ubiquity.dump", false)) return;
 
   var {caller} = arguments.callee;
-  dump((caller ? caller.name + ": " : "") +
-       Array.join(arguments, " ") + "\n");
+  $.dbgpr((caller ? caller.name + ": " : "") + Array.join(arguments, " "));
 };
 
 // === {{{ Utils.reportError(error) }}} ===

@@ -52,6 +52,8 @@ var EXPORTED_SYMBOLS = ["ContextUtils"];
 
 var ContextUtils = {};
 
+var Utils = $.u.Utils;
+
 //for each (let f in this) if (typeof f === "function") ContextUtils[f.name] = f;
 // delete ContextUtils.QueryInterface;
 
