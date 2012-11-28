@@ -551,6 +551,8 @@ AC_DEFINE_UNQUOTED(LIBJUISE_VERSION_STRING, ["$LIBJUISE_VERSION_NUMBER"],
     [Version number as string])
 AC_DEFINE_UNQUOTED(LIBJUISE_VERSION_EXTRA, ["$LIBJUISE_VERSION_EXTRA"],
     [Version number extra information])
+AC_DEFINE_UNQUOTED(JUISE_DIR, ["$JUISE_DIR"],
+    [Directory for JUISE shared files])
 
 AC_CONFIG_HEADERS([libjuise/juiseconfig.h])
 AC_CONFIG_FILES([
@@ -565,6 +567,7 @@ AC_CONFIG_FILES([
   mixer/Makefile
   web/Makefile
   web/lighttpd.conf
+  import/Makefile
 ])
 AC_OUTPUT
 

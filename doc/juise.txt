@@ -175,9 +175,6 @@ statement:
 
     import "../import/junos.xsl";
 
-
-
-
 **** Op Scripts
 
 Op scripts are passed an empty document as input.  Any command line

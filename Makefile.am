@@ -10,7 +10,7 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libjuise juise juise-askpass extensions doc
+SUBDIRS = libjuise juise juise-askpass extensions doc import
 
 if NEED_MIXER
 SUBDIRS += mixer

@@ -1654,6 +1654,9 @@ main (int argc UNUSED, char **argv, char **envp)
     if (cp)
 	slaxIncludeAddPath(cp);
 
+    /* Add the default import directory last */
+    slaxIncludeAddPath(JUISE_DIR "/import");
+
     if (opt_trace_file_name == NULL)
 	opt_trace_file_name = getenv("JUISE_TRACE_FILE");
 

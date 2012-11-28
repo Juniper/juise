@@ -1,0 +1,97 @@
+#
+# $Id$
+#
+# Copyright (c) 2012, Juniper Networks, Inc.
+# All rights reserved.
+# This SOFTWARE is licensed under the LICENSE provided in the
+# ../Copyright file. By downloading, installing, copying, or otherwise
+# using the SOFTWARE, you agree to be bound by the terms of that
+# LICENSE.
+#
+#
+#             lib-wizard -- an interactive framework
+#                  Phil Shafer <phil@juniper.net>
+#                      Raleigh, NC
+#
+
+The Wizard Library (lib-wizard.slax) provides a means of guiding an op
+script user through a series of interactive questions.  The results
+are encoded into an XML hierarchy that can be passed used as the
+source of transformations that build configuration for JUNOS devices.
+
+This document details the data that the wizard library uses, and gives
+examples.
+
+* The Wizard Library (lib-wizard.slax)
+
+In NETCONF, details of the data are coded in YANG.  The user interface
+(CLI) can use that data to interact with the user.  The Wizard Library
+(aka lib-wizard.slax) gives similar functionality.  Data is describes
+in a "guide" using YANG-like constructs.  This is passed to the wizard
+library and is used to guide the user through a set of questions.  The
+results of that interaction (the answers to those questions) are
+encoded in an XML hierarchy that is returned to the caller.
+
+* Functions
+
+** wizard-builder
+
+wizard-builder ($config, $guide, $title);
+
+** banner-message
+
+banner-message ($banner-message);
+
+** prompt
+
+prompt ($prompt, $previous, $node = /null,
+		 $default = $node/@default, $mandatory = $node/@mandatory,
+		 $type = $node/@type, $range = $node/@range,
+		 $help = $node/help);
+
+** promptyesno
+
+promptyesno ($prompt);
+
+** display-config
+
+display-config ($guide, $config, $indent = 0);
+
+** commit-config
+
+commit-config ($config, $dump);
+
+* Guides
+
+** Elements
+
+*** Common Attributes
+
+*** Container
+
+*** Leaf
+
+*** Choice
+
+** Types
+
+** yes/no
+
+** string
+
+** integer
+
+** Regex-based Types
+
+*** dnsname
+
+*** ip-address
+
+*** ip-prefix
+
+** Functions
+
+There are several
+
+* Examples
+
