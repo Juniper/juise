@@ -14,6 +14,8 @@
 #ifndef LIBJUISE_JUISENAME_H
 #define LIBJUISE_JUISENAME_H
 
+#define ELT_ARGUMENT		"argument"
+#define ELT_ARGUMENTS		"arguments"
 #define ELT_CHANGE		"change"
 #define ELT_CHANGE_TRANSIENT	"change-transient"
 #define ELT_CGI			"cgi"

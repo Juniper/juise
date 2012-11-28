@@ -63,6 +63,7 @@ static int nbparams;
 
 int dump_all;
 
+static char **opt_args;
 int opt_debugger;		/* Invoke the debugger */
 int opt_indent;			/* Pretty-print XML output */
 static int opt_load;		/* Under-implemented */
@@ -111,11 +112,12 @@ juise_make_param (const char *pname, const char *pvalue, int quoted_string)
 }
 
 static lx_node_t *
-juise_add_node (lx_node_t *parent, const char *tag, const char *content)
+juise_add_node (lx_document_t *docp, lx_node_t *parent,
+		const char *tag, const char *content)
 {
     static char tag_ok[] =
 	"abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ-_";
-    lx_node_t *nodep, *childp;
+    lx_node_t *nodep;
     
     if (strspn(tag, tag_ok) != strlen(tag)) {
 	trace(trace_file, TRACE_ALL,
@@ -124,15 +126,11 @@ juise_add_node (lx_node_t *parent, const char *tag, const char *content)
 	return NULL;
     }
 
-    childp = xmlNewText((const xmlChar *) content ?: (const xmlChar *) "");
-    if (childp == NULL)
-	return NULL;
-
-    nodep = xmlNewNode(NULL, (const xmlChar *) tag);
+    nodep = xmlNewDocNode(docp, NULL,
+			  (const xmlChar *) tag, (const xmlChar *) content);
     if (nodep == NULL)
 	return NULL;
 
-    xmlAddChild(nodep, childp);
     xmlAddChild(parent, nodep);
 
     return nodep;
@@ -141,7 +139,6 @@ juise_add_node (lx_node_t *parent, const char *tag, const char *content)
 static lx_document_t *
 juise_build_op_input (lx_node_t *newp)
 {
-    xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
     lx_document_t *docp;
     lx_node_t *input, *nodep, *childp;
     char *value;
@@ -154,77 +151,82 @@ juise_build_op_input (lx_node_t *newp)
 	goto fail;
 
     docp->standalone = 1;
+    docp->dict = xmlDictCreate();
 
-    input = xmlNewNode(NULL, (const xmlChar *) ELT_OP_SCRIPT_INPUT);
+    input = xmlNewDocNode(docp, NULL,
+			  (const xmlChar *) ELT_OP_SCRIPT_INPUT, NULL);
+
     while (input) {		/* Not _really_ a loop, but.... */
 	xmlDocSetRootElement(docp, input);
 
 	if (newp)
 	    xmlAddChild(input, newp);
 
-	nodep = xmlNewNode(NULL, (const xmlChar *) ELT_JUNOS_CONTEXT);
+	nodep = xmlNewDocNode(docp, NULL,
+			      (const xmlChar *) ELT_JUNOS_CONTEXT, NULL);
 	if (nodep == NULL)
 	    break;
 	xmlAddChild(input, nodep);
 
 	/* Hostname */
 	if (gethostname(hostname, sizeof(hostname)) == 0)
-	    juise_add_node(nodep, ELT_HOST_NAME, hostname);
+	    juise_add_node(docp, nodep, ELT_HOST_NAME, hostname);
 
-	juise_add_node(nodep, ELT_PRODUCT, "juise");
+	juise_add_node(docp, nodep, ELT_PRODUCT, "juise");
 
 	/* Time */
 	time(&now);
 	value = strndup(ctime(&now), 24);
 	if (value) {
-	    juise_add_node(nodep, ELT_LOCALTIME, value);
+	    juise_add_node(docp, nodep, ELT_LOCALTIME, value);
 	    free(value);
 	}
-	juise_add_node(nodep, ELT_LOCALTIME_ISO, time_isostr(&now));
+	juise_add_node(docp, nodep, ELT_LOCALTIME_ISO, time_isostr(&now));
 
-	juise_add_node(nodep, ELT_SCRIPT_TYPE, "op");
+	juise_add_node(docp, nodep, ELT_SCRIPT_TYPE, "op");
 
-	childp = xmlNewNode(NULL, (const xmlChar *) ELT_USER_CONTEXT);
+	childp = xmlNewDocNode(docp, NULL,
+			       (const xmlChar *) ELT_USER_CONTEXT, NULL);
 	if (childp == NULL)
 	    break;
 	xmlAddChild(nodep, childp);
 
 	if (opt_target)
-	    juise_add_node(childp, ELT_HOST_NAME, opt_target);
+	    juise_add_node(docp, childp, ELT_HOST_NAME, opt_target);
 
 	if (opt_username)
-	    juise_add_node(childp, ELT_USER, opt_username);
+	    juise_add_node(docp, childp, ELT_USER, opt_username);
 	else {
 	    pwd = getpwuid(getuid());
 	    if (pwd) {
 		char nbuf[10];
-		juise_add_node(childp, ELT_USER, pwd->pw_name);
+		juise_add_node(docp, childp, ELT_USER, pwd->pw_name);
 
 #if 0
 #ifdef HAVE_PWD_CLASS
-		juise_add_node(childp, ELT_CLASS_NAME, pwd->pw_class);
+		juise_add_node(docp, childp, ELT_CLASS_NAME, pwd->pw_class);
 #endif
 #endif
 
 		snprintf(nbuf, sizeof(nbuf), "%d", (int) pwd->pw_uid);
-		juise_add_node(childp, ELT_UID, nbuf);
+		juise_add_node(docp, childp, ELT_UID, nbuf);
 	    }
 	}
 
-	juise_add_node(childp, ELT_OP_CONTEXT, "");
+	juise_add_node(docp, childp, ELT_OP_CONTEXT, "");
+
+	if (opt_args) {
+	    char **av = opt_args;
+
+	    lx_node_t *anp = juise_add_node(docp, childp, ELT_ARGUMENTS, NULL);
+	    for ( ; *av; av++)
+		juise_add_node(docp, anp, ELT_ARGUMENT, *av);
+	}
 
 	break;			/* Not really a loop */
     }
 
-    if (ctxt->dict) {
-	docp->dict = ctxt->dict;
-	xmlDictReference(docp->dict);
-    }
-
  fail:
-    if (ctxt)
-	xmlFreeParserCtxt(ctxt);
-
     return docp;
 }
 
@@ -860,7 +862,7 @@ do_run_server_on_stdin (const char *scriptname UNUSED,
 }
 
 static void
-parse_query_string (lx_node_t *nodep, char *str)
+parse_query_string (lx_document_t *docp, lx_node_t *nodep, char *str)
 {
     char *cp, *ap, *ep, *xp;
 
@@ -891,7 +893,7 @@ parse_query_string (lx_node_t *nodep, char *str)
 		  cp, ep);
 	    if (strncmp(cp, "junos", 5) != 0 && !streq(cp, ELT_CGI))
 		juise_make_param(cp, ep, TRUE);
-	    juise_add_node(nodep, cp, ep);
+	    juise_add_node(docp, nodep, cp, ep);
 	}
 	xmlFreeAndEasy(ep);	/* xmlURIUnescapeString allocated them */
 	xmlFreeAndEasy(cp);
@@ -938,7 +940,11 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 
     slaxDataListInit(&lines);
 
-    nodep = xmlNewNode(NULL, (const xmlChar *) ELT_CGI);
+    lx_document_t *docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
+    if (docp == NULL)
+	errx(1, "op: out of memory");
+
+    nodep = xmlNewDocNode(docp, NULL, (const xmlChar *) ELT_CGI, NULL);
     if (nodep == NULL)
 	errx(1, "op: out of memory");
 
@@ -947,7 +953,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	cp = getenv(cgi_params[i]);
 	if (cp) {
 	    juise_make_param(cgi_params[i], cp, TRUE);
-	    juise_add_node(nodep, cgi_params[i + 1], cp);
+	    juise_add_node(docp, nodep, cgi_params[i + 1], cp);
 
 	    trace(trace_file, TRACE_ALL, "cgi: env: '%s' = '%s'",
 		  cgi_params[i], cp);
@@ -959,14 +965,14 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	}
     }
 
-    paramp = xmlNewNode(NULL, (const xmlChar *) ELT_PARAMETERS);
+    paramp = xmlNewDocNode(docp, NULL, (const xmlChar *) ELT_PARAMETERS, NULL);
     if (paramp == NULL)
 	errx(1, "juise: out of memory");
     xmlAddChild(nodep, paramp);
 
     cp = getenv("QUERY_STRING");
     if (cp)
-	parse_query_string(paramp, cp);
+	parse_query_string(docp, paramp, cp);
 
     while (fgets(buf, sizeof(buf), stdin) != NULL) {
 	trace(trace_file, TRACE_ALL, "cgi: stdin: %s", buf);
@@ -989,9 +995,9 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	    bp[len] = '\0';
 
 	    if (method && streq(method, "POST"))
-		juise_add_node(nodep, ELT_CONTENTS, bp);
+		juise_add_node(docp, nodep, ELT_CONTENTS, bp);
 
-	    parse_query_string(paramp, bp);
+	    parse_query_string(docp, paramp, bp);
 
 	    slaxDataListClean(&lines);
 	}
@@ -1045,7 +1051,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 		cp = xmlURIUnescapeString(cp, 0, NULL);
 
 		juise_make_param(params, cp, TRUE);
-		juise_add_node(paramp, params, cp);
+		juise_add_node(docp, paramp, params, cp);
 		trace(trace_file, TRACE_ALL, "cgi-local: env: '%s' = '%s'",
 		      params, cp);
 
@@ -1066,7 +1072,8 @@ do_run_as_fastcgi (const char *scriptname UNUSED, const char *input UNUSED,
 }
 
 static xmlNodePtr
-makeLeafNode (xmlNodePtr parent, const char *name, const char *value)
+makeLeafNode (xmlDocPtr docp, xmlNodePtr parent,
+	      const char *name, const char *value)
 {
     char *uname, *uvalue;
     xmlNodePtr childp, textp;
@@ -1075,7 +1082,7 @@ makeLeafNode (xmlNodePtr parent, const char *name, const char *value)
 	  name, value ?: "");
 
     uname = xmlURIUnescapeString(name, 0, NULL);
-    childp = xmlNewNode(NULL, (const xmlChar *) uname);
+    childp = xmlNewDocNode(docp, NULL, (const xmlChar *) uname, NULL);
     if (childp == NULL)
 	errx(1, "could not build parameter: '%s'", name);
     xmlAddChild(parent, childp);
@@ -1096,7 +1103,7 @@ makeLeafNode (xmlNodePtr parent, const char *name, const char *value)
 }
 
 static void
-rpc_parse_query_string (lx_node_t *nodep, char *str)
+rpc_parse_query_string (lx_document_t *docp, lx_node_t *nodep, char *str)
 {
     char *cp, *ap, *ep, *xp;
 
@@ -1119,7 +1126,7 @@ rpc_parse_query_string (lx_node_t *nodep, char *str)
 		*xp = ' ';
 	
 	if (cp && ep)
-	    makeLeafNode(nodep, cp, ep);
+	    makeLeafNode(docp, nodep, cp, ep);
     }
 }
 
@@ -1207,7 +1214,7 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     trace(trace_file, TRACE_ALL, "rpc: target [%s] op [%s] attr [%s] p [%s]",
 	  target, operation, attributes ?: "", params ?: "");
 
-    rpc = xmlNewNode(NULL, (const xmlChar *) operation);
+    rpc = xmlNewDocNode(docp, NULL, (const xmlChar *) operation, NULL);
     if (rpc == NULL)
 	errx(1, "op: out of memory");
 
@@ -1240,14 +1247,14 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 	    if (next)
 		*next++ = '\0';
 
-	    makeLeafNode(rpc, params, cp);
+	    makeLeafNode(docp, rpc, params, cp);
 	}
     }
 
 
     cp = getenv("QUERY_STRING");
     if (cp)
-	rpc_parse_query_string(rpc, cp);
+	rpc_parse_query_string(docp, rpc, cp);
 
     while (fgets(buf, sizeof(buf), stdin) != NULL) {
 	trace(trace_file, TRACE_ALL, "cgi: stdin: %s", buf);
@@ -1269,7 +1276,7 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 	    }
 	    bp[len] = '\0';
 
-	    rpc_parse_query_string(rpc, bp);
+	    rpc_parse_query_string(docp, rpc, bp);
 	    slaxDataListClean(&lines);
 	}
     }
@@ -1437,8 +1444,11 @@ main (int argc UNUSED, char **argv, char **envp)
     int opt_commit_script = FALSE;
     char *env_args = getenv("JUISE_OPTIONS");
     unsigned ioflags = 0;
+    int opt_ignore_arguments = FALSE;
 
     slaxDataListInit(&plist);
+
+    opt_args = argv;
 
     cp = *argv;
     if (cp) {
@@ -1486,6 +1496,10 @@ main (int argc UNUSED, char **argv, char **envp)
 	    } else if (streq(cp, "--help")) {
 		print_help();
 		return -1;
+
+	    } else if (streq(cp, "--ignore-arguments")) {
+		opt_ignore_arguments = TRUE;
+		break;
 
 	    } else if (streq(cp, "--include") || streq(cp, "-I")) {
 		slaxIncludeAdd(*++argv);
@@ -1703,6 +1717,11 @@ main (int argc UNUSED, char **argv, char **envp)
 
     if (ssh_agent_forwarding)
 	jsio_add_ssh_options("-A");
+
+    if (opt_ignore_arguments) {
+	static char *null_args[] = { NULL };
+	argv = null_args;
+    }
 
     func(script, input, argv);
 

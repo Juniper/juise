@@ -75,9 +75,12 @@ libjuise_la_SOURCES = \
     io/trace.c \
     io/logging.c \
     io/rotate_log.c \
+    xml/xml_escape.c \
+    xml/xml_escaped_size.c \
     xml/extensions.c \
     xml/jsio.c \
     xml/libxml.c \
+    xml/xmlinput.c \
     xml/xmlrpc.c \
     xml/xml_parse_attributes.c \
     xml/xml_unescape.c
