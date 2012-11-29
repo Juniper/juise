@@ -353,6 +353,8 @@ then
 		LIBSLAX_CFLAGS="$LIBSLAX_CFLAGS `$SLAX_CONFIG --cflags`"
 		SLAX_EXTDIR="`$SLAX_CONFIG --extdir`"
 		SLAX_LIBDIR="`$SLAX_CONFIG --libdir`"
+		SLAX_BINDIR="`$SLAX_CONFIG --bindir`"
+		SLAX_OXTRADOCDIR="`$SLAX_CONFIG --oxtradoc`"
 		AC_MSG_RESULT($LIBSLAX_VERSION found)
 	else
 		AC_MSG_ERROR(Version $LIBSLAX_VERSION found. You need at least libslax $LIBSLAX_REQUIRED_VERSION for this version of juise)
@@ -364,8 +366,10 @@ fi
 AC_SUBST(SLAX_CONFIG)
 AC_SUBST(LIBSLAX_CFLAGS)
 AC_SUBST(LIBSLAX_LIBS)
+AC_SUBST(SLAX_BINDIR)
 AC_SUBST(SLAX_EXTDIR)
 AC_SUBST(SLAX_LIBDIR)
+AC_SUBST(SLAX_OXTRADOCDIR)
 
 #
 # ---- handle libssh2 (which does not have a libssh2-config)

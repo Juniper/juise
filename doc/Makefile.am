@@ -8,12 +8,36 @@
 # using the SOFTWARE, you agree to be bound by the terms of that
 # LICENSE.
 
-BINDIR = ~/work/yang/bin
-OUTLINE2XML = ${BINDIR}/outline2xml
-XML2RFC = ${BINDIR}/xml2rfc.tcl
-XML2HTMLBIN = ${BINDIR}/rfc2629-yang.xslt
-XML2HTMLDIR = `dirname ${XML2HTMLBIN}`
-XML2HTML = xsltproc --path ${XML2HTMLDIR} ${XML2HTMLBIN}
+OXTRADOC_DIR = ${SLAX_OXTRADOCDIR}
+OXTRADOC_PREFIX = ${OXTRADOC_DIR}
+OXTRADOC = ${OXTRADOC_DIR}/oxtradoc
+SLAXPROC_BINDIR = ${SLAX_BINDIR}
+
+XML2RFC = ${OXTRADOC_DIR}/xml2rfc.tcl
+XML2HTMLDIR = ${OXTRADOC_DIR}
+XML2HTMLBIN = ${XML2HTMLDIR}/rfc2629-to-html.slax
+SLAXPROC = ${SLAX_BINDIR}/slaxproc
+
+SLAXPROC_ARGS = \
+    -a oxtradoc-dir ${OXTRADOC_DIR} \
+    -a oxtradoc-install-dir ${OXTRADOC_DIR} \
+    -a anchor-prefix docs
+
+SLAXPROC_ARGS_INLINE = \
+    -a oxtradoc-inline yes
+
+SLAXPROC_ARGS += ${SLAXPROC_ARGS_INLINE}
+
+XML2HTML = \
+    ${SLAXPROC} -g -e -I ${OXTRADOC_DIR} -I . \
+    ${SLAXPROC_ARGS} \
+    ${XML2HTMLBIN}
+
+OX_ARGS = -P ${OXTRADOC_PREFIX} -L ${OXTRADOC_PREFIX}
+OX_ARGS += -S ${SLAXPROC} -p doc
+OX_CMD = ${PERL} ${PERLOPTS} ${OXTRADOC} ${OX_ARGS}
+OXTRADOC_CMD = ${OX_CMD}
+
 
 OUTPUT = juise-manual-${PACKAGE_VERSION}
 INPUT = juise.txt
@@ -24,17 +48,11 @@ EXTRA_DIST = \
 
 doc docs: ${OUTPUT}.txt ${OUTPUT}.html
 
-${OUTPUT}.txt: ${OUTPUT}.xml
-	${XML2RFC} $< > $@
+${OUTPUT}.txt: ${INPUT} ${OXTRADOC}
+	${OXTRADOC_CMD} -m text -o $@ $<
 
-${OUTPUT}.xml: ${INPUT} ${OUTLINE2XML}
-	${OUTLINE2XML} $< > $@
-
-${OUTPUT}.html: ${OUTPUT}.fxml ${XML2HTMLBIN}
-	${XML2HTML} $< > $@
-
-${OUTPUT}.fxml: ${INPUT} ${OUTLINE2XML}
-	${OUTLINE2XML} -D $< > $@
+${OUTPUT}.html: ${INPUT} ${OXTRADOC} ${XML2HTMLBIN}
+	${OXTRADOC_CMD} -m html -o $@ $<
 
 CLEANFILES = \
 ${OUTPUT}.xml \

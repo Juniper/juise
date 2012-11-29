@@ -57,7 +57,10 @@ following URL:
 
 Refer to the ./README file for building instructions.
 
-** The "juise" Command
+Note that juise has a number of prerequisite software packages,
+including libxslt, libxml2, libpcre, libslax, and others.
+
+* The "juise" Command
 
 The "juise" command is the central program of the JUISE project.  It
 is used to test, format, convert, debug, and execute scripts.
@@ -70,9 +73,11 @@ discussed in this section.
 - server mode
 - cgi mode
 
-*** Syntax
+** Syntax
 
-Usage: juise [[user]@target] [options] [script] [param value]*
+The juise command line interface is as follows:
+
+  Usage: juise [[user]@target] [options] [script] [param value]*
 
 The juise command is normally invoked with the name of the script to
 be run, a set of options are used to tailor the execution of the
@@ -82,7 +87,183 @@ parameters to the script, as they are for the JUNOS "op" command.
 A token containing an '@' will be taken as the default target of a
 jcs:open() call, allowing either "user@device" or "@device".
 
-*** Command Line Options
+The following sections add more details for the specific juise command
+modes.
+
+* Commit Scripts
+
+This section describes how commit scripts can be used inside juise. 
+
+** Overview (Function and History)
+
+Commit scripts were introduced in JUNOS-7.2 as a means of adding
+custom rules to the "commit check" process, allowing customers to
+define additional validation rules which the incoming configuration
+must satisfy.  Commit scripts can find and report configuration
+statements that do not follow these rules.
+
+Commit script can also change the configuration in two distinct ways.
+Normal changes are added to the candidate configuration before it is
+passed to the rest of the JUNOS subcomponents for validation.  These
+changes are normal parts of the configuration data set.
+
+In contrast, transient changes are not part of the normal
+configuration data set, since they are not visible in the candidate
+configuration nor are they saved in rollback data sets.  But they are
+exposed to JUNOS subcomponents during validation, allowing the commit
+script to create second order configuration information based on the
+first order data in the candidate configuration.
+
+The typical commit script relies heavily upon XPath to find errant
+configuration.  They typically follow the pattern:
+
+    if (xpath/to/find/bad/config) {
+        report bad config;
+    }
+
+or:
+
+    for-each (some/list/that/needs/to/be/checked) {
+        if (xpath/to/find/bad/config) {
+            report bad config;
+        }
+    }
+
+Consider this example:
+
+    version 1.1;
+
+    import "../import/junos.xsl";
+
+    match configuration {
+        var $ldp = protocols/ldp;
+        var $isis = protocols/isis;
+        var $ospf = protocols/ospf;
+
+        for-each ($isis/interface/name | $ospf/area/interface/name) {
+            var $ifname = .;
+
+            if (not($ldp/interface[name == $ifname])) {
+                <xnm:error> {
+                    call jcs:edit-path();
+                    call jcs:statement();
+                    <message> "ldp not enabled for this interface";
+                }
+            }
+        }
+    }
+
+This script looks for interfaces listed under [protocols isis]
+and [protocols ospf] to find interfaces not listed under [protocols
+ldp].  When such interfaces are found, an error is generated.  The UI
+sees this error and stops the configuration from being validated.
+
+** Testing Commit Scripts
+
+juise can be used to test commit scripts by using the "-c" option. The
+target device can be given with either the --target (-T) option.  If
+no target is given and the first argument contains an '@', then this
+is used as the target.
+
+    % juise -c me@my-router my-script.slax
+
+To execute the commit script, juise tries to reproduce the environment
+which the script would run under JUNOS.  juise starts by downloading
+the configuration in the same format used by on-box commit scripts,
+with expanded inheritance and group and change attributes.  This
+configuration is wrapped in an input document (the <op-script-input>
+element) to be passed to the script.  The wrapper is identical to the
+JUNOS wrapper, complete with the <junos-context> element.
+
+The <op-script-input> element is passed as input to the script, which
+runs normally, inspecting the configuration and generating,
+<xnm:error>, <xnm:warning>, <syslog>, <change>, and <transient>
+elements as needed.
+
+** Debugging Commit Scripts
+
+The libslax debugger (sdb) can be used to debug commit scripts.  Use
+the "-d" option to trigger the debugger.
+
+    % juise -d -c me@my-router my-script.slax
+    sdb: The SLAX Debugger (version 0.12.2)
+    Type 'help' for help
+    (sdb) help
+    List of commands:
+      break [loc]     Add a breakpoint at [file:]line or template
+      callflow [val]  Enable call flow tracing
+      continue [loc]  Continue running the script
+      delete [num]    Delete all (or one) breakpoints
+      finish          Finish the current template
+      help            Show this help message
+      info            Showing info about the script being debugged
+      list [loc]      List contents of the current script
+      next            Execute the over instruction, stepping over calls
+      over            Execute the current instruction hierarchy
+      print <xpath>   Print the value of an XPath expression
+      profile [val]   Turn profiler on or off
+      reload          Reload the script contents
+      run             Restart the script
+      step            Execute the next instruction, stepping into calls
+      verbose         Turn on verbose (-v) output logging
+      where           Show the backtrace of template calls
+      quit            Quit debugger
+
+    Command name abbreviations are allowed
+    (sdb) 
+
+* Op Scripts
+
+** Overview (Function and History)
+
+Op scripts were introduced in JUNOS-7.5 as a means of adding custom
+commands to the JUNOS CLI.
+
+Op scripts are passed an empty document as input.  Any command line
+parameters are passed as SLAX parameters.  Output can be generated by
+"message" statements and "jcs:output" calls, as well as by the XML
+document which the script generates.
+
+** Running Native Scripts
+
+juise can also be used to develop scripts that are not intended to run
+under JUNOS.  The off-box environment gives a number of distinct
+advantages for scripts that operate like "op" scripts.  These scripts
+join the simplicity and flexibility of SLAX to the unix environment.
+
+*** "#!/usr/bin/slax"
+
+The SLAX parser supports the "#!" mechanism which is a normal part of
+the unix environment.  This allows scripts beginning
+with the line "#!/usr/bin/slax" to be executed directly from the
+command line.
+
+    #!/usr/bin/slax
+    match / { message "this works"; }
+
+If this script file is given the appropriate "executable" permission
+bit (such as "chmod a+x works"), then the command "works" will work.
+
+    % works
+    this works
+    %
+
+Additional options can be added to the "#!" line:
+
+    #!/usr/bin/slax -g --param check yes
+
+* Event Scripts
+
+Event scripts are not yet functional.
+
+* NETCONF Server @server@
+
+juise can perform as a NETCONF server using the "-R" or "--run-server"
+option.
+
+XXX needs more
+
+* "juise" Command Line Options
 
 = --agent OR -A
 Enable forwarding of ssh-agent credentials, allowing remote ssh
@@ -162,63 +343,39 @@ After starting and parsing arguments, juise will wait for the
 specified number of seconds, allowing the user to attach to the
 process with "gdb" for additional debugging.
 
-*** Running JUNOS Scripts
+** Environment Variables and configure.ac Settings
 
-The information passed to scripts depends on the mode in which the
-script operates.  This section describes the modes of juise that
-relate to JUNOS.
+The values of certain environment variables and the command line
+arguments to the "configure" script will affect the operation of
+JUISE.  This section details these settings
 
-**** Setting Up the Import Path
+*** Setting The Import Path
 
 JUNOS scripts typically import junos.xsl using the following
 statement:
 
     import "../import/junos.xsl";
 
-**** Op Scripts
+JUISE installs this file, along with other import files, in the
+$prefix/share/juise/import directory.
 
-Op scripts are passed an empty document as input.  Any command line
-parameters are passed as SLAX parameters.  Output can be generated by
-"message" statements and "jcs:output" calls, as well as by the XML
-document which the script generates.
+In addition, JUISE will look at the environment variables JUISEPATH
+and SLAXPATH.  These variables list a set of colon-separated
+directories to be searched for import and include files.
 
-**** Commit Scripts
+Additional paths may be passed in on the command line using the "-I"
+flag.
 
-Commit scripts are not yet functional.
+The "--with-juise-dir" will also affect this.  The contents of this
+option are appended with "/import" and added to the initial search
+path.
 
-**** Event Scripts
+** Finding Scripts
 
-Event scripts are not yet functional.
+If a valid filename is not passed to juise, it will look in
+$prefix/share/juise/scripts/ for scripts.
 
-*** Running Native Scripts
-
-juise can also be used to develop scripts that are not intended to run
-under JUNOS.  The off-box environment gives a number of distinct
-advantages for scripts that operate like "op" scripts.  These scripts
-join the simplicity and flexibility of SLAX to the unix environment.
-
-**** "#!/usr/bin/slax"
-
-The SLAX parser supports the "#!" mechanism which is a normal part of
-the unix environment.  This allows scripts beginning
-with the line "#!/usr/bin/slax" to be executed directly from the
-command line.
-
-    #!/usr/bin/slax
-    match / { message "this works"; }
-
-If this script file is given the appropriate "executable" permission
-bit (such as "chmod a+x works"), then the command "works" will work.
-
-    % works
-    this works
-    %
-
-Additional options can be added to the "#!" line:
-
-    #!/usr/bin/slax -g --param check yes
-
-** mod_juise
+* mod_juise
 
 The JUISE project includes a plug-in module for the "lighttpd" (aka
 "lightey") web server.  This plug-in allows scripts to be run directly
@@ -232,7 +389,7 @@ your lighttpd.conf file:
 
     juise.assign = ( ".slax" => "juise.cgi" )
 
-*** juise.cgi
+** juise.cgi
 
 When a file ending in ".slax" is requested, lighttpd will pass the
 request to mod_juise which will invoke juise using the "juise.cgi"
@@ -289,13 +446,13 @@ element:
         expr "Parameter '" _ name() _ "' is '" _ . _ "'";
     }
 
-*** The <cgi> Element
+** The <cgi> Element
 
 When SLAX scripts are invoked via mod_juise, the script can choose to
 emit a top level element named <cgi>.  This element is used to supply
 directions to the HTTP server.
 
-*** Attributes
+** Attributes
 
 Any non-namespace attributes given on the <cgi> element is converted
 into a header field in the HTTP reply message.  The attribute name is
@@ -314,21 +471,18 @@ Additional attributes and elements may be defined under the <cgi>
 element.  For future proofing, script should avoid attributes and
 elements whose names being with "junos", "cgi", or "juise".
 
-** NETCONF Server @server@
+* CLIRA
 
-juise can perform as a NETCONF server using the "-R" or "--run-server"
-option.
+CLIRA is the CLI Remote Access project.
 
-XXX needs more
-
-** Extension Libraries
+* Extension Libraries
 
 The JUISE project includes several dynamic extension, which are
 installed into the normal extension directory where they are available
 for any SLAX script.  This section details the extension functions and
 element of those libraries.
 
-*** jcs
+** jcs
 
 The "jcs" namespace is used for JUNOS-specific extension function, but
 many of the functions are no longer JUNOS specific.  "jcs" was
@@ -366,7 +520,7 @@ namespaces.   The following table lists these dual-homed functions.
 |---------------|
 
 
-**** jcs:open
+*** jcs:open
 
 The jcs:open() function creates a connection to either the local
 machine (for on-box JUNOS scripts) or a remote device using the
@@ -435,7 +589,7 @@ is the password.
         }
         var $conn = jcs:open($target, $info);
 
-**** jcs:execute
+*** jcs:execute
 
 The jcs:execute() function invokes RPCs using a connection returned by
 jcs:open().  RPCs are invoked and their results returned using a
@@ -459,7 +613,7 @@ to be invoked.
         var $res = jcs:execute($conn, $rpc);
         var $sw = jcs:execute($conn, "get-software-information");
 
-**** jcs:invoke
+*** jcs:invoke
 
 The jcs:invoke() function invokes RPCs but does not use or require a
 persistent connection.  RPCs are stateless, since any connection
@@ -483,7 +637,7 @@ operation to be invoked.
         var $res = jcs:invoke($rpc);
         var $sw = jcs:invoke("get-software-information");
 
-**** jcs:close
+*** jcs:close
 
 The jcs:close() function closes a connection opened by jcs:open(),
 releasing any resources on both the local and remote side.
