@@ -20,6 +20,7 @@
 #define ELT_CHANGE_TRANSIENT	"change-transient"
 #define ELT_CGI			"cgi"
 #define ELT_CLASS_NAME		"class-name"
+#define ELT_COMMIT_SCRIPT_INPUT "commit-script-input"
 #define ELT_CONTENTS		"contents"
 #define ELT_EDIT_PATH		"edit-path"
 #define ELT_ERROR		"error"

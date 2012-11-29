@@ -36,7 +36,6 @@
 #include <libxml/xmlsave.h>
 #include <libexslt/exslt.h>
 #include <libxslt/xsltutils.h>
-
 #include <libslax/slax.h>
 #include <libslax/slaxconfig.h>
 #include <libslax/slaxdata.h>
@@ -50,6 +49,7 @@
 #include <libjuise/io/jtrace.h>
 #include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
+#include <libjuise/xml/xmlrpc.h>
 #include <libjuise/xml/juisenames.h>
 
 #include "juise.h"
@@ -137,14 +137,16 @@ juise_add_node (lx_document_t *docp, lx_node_t *parent,
 }
 
 static lx_document_t *
-juise_build_op_input (lx_node_t *newp)
+juise_build_input (const char *root_name, lx_node_t *nodep,
+		   lx_nodeset_t *nodesetp)
 {
     lx_document_t *docp;
-    lx_node_t *input, *nodep, *childp;
+    lx_node_t *input, *childp;
     char *value;
     struct passwd *pwd;
     char hostname[MAXHOSTNAMELEN];
     time_t now;
+    int i;
 
     docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
     if (docp == NULL)
@@ -153,14 +155,17 @@ juise_build_op_input (lx_node_t *newp)
     docp->standalone = 1;
     docp->dict = xmlDictCreate();
 
-    input = xmlNewDocNode(docp, NULL,
-			  (const xmlChar *) ELT_OP_SCRIPT_INPUT, NULL);
+    input = xmlNewDocNode(docp, NULL, (const xmlChar *) root_name, NULL);
 
     while (input) {		/* Not _really_ a loop, but.... */
 	xmlDocSetRootElement(docp, input);
 
-	if (newp)
-	    xmlAddChild(input, newp);
+	/* Add the junos namespace */
+	xmlNewNs(input, (const xmlChar *) JUNOS_FULL_NS,
+		 (const xmlChar *) JUNOS_NS);
+
+	if (nodep)
+	    xmlAddChild(input, nodep);
 
 	nodep = xmlNewDocNode(docp, NULL,
 			      (const xmlChar *) ELT_JUNOS_CONTEXT, NULL);
@@ -221,6 +226,21 @@ juise_build_op_input (lx_node_t *newp)
 	    lx_node_t *anp = juise_add_node(docp, childp, ELT_ARGUMENTS, NULL);
 	    for ( ; *av; av++)
 		juise_add_node(docp, anp, ELT_ARGUMENT, *av);
+	}
+
+	/* Now we need to add the contents of the node set argument */
+	lx_node_t *rootp = xmlDocGetRootElement(docp);
+
+	if (nodesetp) {
+	    for (i = 0; i < nodesetp->nodeNr; i++) {
+		nodep = nodesetp->nodeTab[i];
+		if (nodep == NULL)
+		    continue;
+
+		xmlNodePtr newp = xmlDocCopyNode(nodep, docp, 1);
+		if (newp)
+		    xmlAddChild(rootp, newp);
+	    }
 	}
 
 	break;			/* Not really a loop */
@@ -378,7 +398,7 @@ do_run_op_common (const char *scriptname, const char *input,
 	    fclose(infile);
 
     } else {
-	indoc = juise_build_op_input(nodep);
+	indoc = juise_build_input(ELT_OP_SCRIPT_INPUT, nodep, NULL);
 	if (indoc == NULL)
 	    errx(1, "unable to build input document");
     }
@@ -462,14 +482,11 @@ juise_build_get_configuration_rpc (lx_document_t **docpp, int post,
 static lx_document_t *
 juise_build_input_commit (lx_nodeset_t *config_data)
 {
-    static char doc_text[] = "<commit-script-input \
-xmlns:junos=\"http://xml.juniper.net/junos/*/junos\"/>\n";
     lx_document_t *docp;
     lx_node_t *rootp, *nodep;
     int i;
 
-    docp = xmlReadMemory(doc_text, strlen(doc_text), "doc_text",
-			 NULL, XML_PARSE_NOENT);
+    docp = juise_build_input(ELT_COMMIT_SCRIPT_INPUT, NULL, config_data);
     if (docp == NULL)
 	return NULL;
 
