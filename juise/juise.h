@@ -16,10 +16,9 @@ extern trace_file_t *trace_file;
 extern int opt_indent;
 extern int opt_debugger;
 
-void
-run_server (int fdin, int fdout, session_type_t stype);
+void run_server (int fdin, int fdout, session_type_t stype);
 
-void
-srv_set_juise_dir (const char *jdir);
+void srv_add_dir (const char *jdir);
+void srv_add_path (const char *jdir);
 
 #endif /* JUISE_H */

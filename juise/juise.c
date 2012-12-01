@@ -68,7 +68,7 @@ int opt_debugger;		/* Invoke the debugger */
 int opt_indent;			/* Pretty-print XML output */
 static int opt_load;		/* Under-implemented */
 static int opt_local;		/* Run a local (server-based) script */
-char *opt_output_format;
+const char *opt_output_format = "compare";
 char *opt_username;
 char *opt_target;
 
@@ -1419,7 +1419,7 @@ print_help (void)
     printf("\t--agent OR -A: enable ssh-agent forwarding\n");
     printf("\t--commit-script OR -c: test a commit script\n");
     printf("\t--debug OR -d: use the libslax debugger\n");
-    printf("\t--directory <dir> OR -D <dir>: set JUISE_DIR (for server scripts)\n");
+    printf("\t--directory <dir> OR -D <dir>: set the directory for server scripts\n");
     printf("\t--include <dir> OR -I <dir>: search directory for includes/imports\n");
     printf("\t--input <file> OR -i <file>: use given file for input\n");
     printf("\t--indent OR -g: indent output ala output-method/indent\n");
@@ -1505,7 +1505,7 @@ main (int argc UNUSED, char **argv, char **envp)
 		jsio_flags |= JSIO_MEMDUMP;
 
 	    } else if (streq(cp, "--directory") || streq(cp, "-D")) {
-		srv_set_juise_dir(*++argv);
+		srv_add_path(*++argv);
 
 	    } else if (streq(cp, "--fastcgi")) {
 		func = do_run_as_fastcgi;
@@ -1552,7 +1552,8 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--output-format")) {
 		opt_output_format = *++argv;
-		if (!streq(opt_output_format, "html")
+		if (!streq(opt_output_format, "xml")
+			    && !streq(opt_output_format, "none")
 			    && !streq(opt_output_format, "text")
 			    && !streq(opt_output_format, "compare"))
 		    errx(1, "invalid output format: %s", opt_output_format);
@@ -1671,8 +1672,14 @@ main (int argc UNUSED, char **argv, char **envp)
     if (cp)
 	slaxIncludeAddPath(cp);
 
-    /* Add the default import directory last */
+    /* Add the default directory and the default import directory last */
+    slaxIncludeAddPath(JUISE_DIR);
     slaxIncludeAddPath(JUISE_DIR "/import");
+
+    cp = getenv("JUISE_SCRIPT_DIR");
+    if (cp)
+	srv_add_path(cp);
+    srv_add_dir(JUISE_SCRIPT_DIR);
 
     if (opt_trace_file_name == NULL)
 	opt_trace_file_name = getenv("JUISE_TRACE_FILE");
@@ -1727,6 +1734,7 @@ main (int argc UNUSED, char **argv, char **envp)
 
     jsio_init(jsio_flags);
 
+    /* The target argument defines the default target */
     if (opt_target)
 	jsio_set_default_server(opt_target);
     else if (opt_commit_script)
@@ -1743,6 +1751,7 @@ main (int argc UNUSED, char **argv, char **envp)
 	argv = null_args;
     }
 
+    /* Finally we get to work: call the mode-specific function */
     func(script, input, argv);
 
     if (trace_fp && trace_fp != stderr)

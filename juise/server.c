@@ -20,6 +20,8 @@
 #include <sys/param.h>
 #include <pwd.h>
 #include <sys/socket.h>
+#include <sys/queue.h>
+#include <string.h>
 
 #include <libxml/tree.h>
 #include <libxml/dict.h>
@@ -34,8 +36,9 @@
 #endif
 
 #include "juiseconfig.h"
-#include <libslax/slax.h>
 #include <libslax/slaxconfig.h>
+#include <libslax/slax.h>
+#include <libslax/slaxdata.h>
 
 #include <libjuise/string/strextra.h>
 #include <libjuise/time/timestr.h>
@@ -50,13 +53,56 @@
 static int script_count;
 
 static char *juise_dir;
+static slax_data_list_t srv_includes;
+static int srv_includes_inited;
 
+/*
+ * Add a directory to the list of directories searched for files
+ */
 void
-srv_set_juise_dir (const char *jdir)
+srv_add_dir (const char *dir)
 {
-    if (juise_dir)
-	free(juise_dir);
-    juise_dir = strdup(jdir);
+    if (!srv_includes_inited) {
+	srv_includes_inited = TRUE;
+	slaxDataListInit(&srv_includes);
+    }
+
+    slaxDataListAddNul(&srv_includes, dir);
+}
+
+/*
+ * Add a set of directories to the list of directories searched for files
+ */
+void
+srv_add_path (const char *dir)
+{
+    char *buf = NULL;
+    int buflen = 0;
+    const char *cp;
+
+    while (dir && *dir) {
+	cp = strchr(dir, ':');
+	if (cp == NULL) {
+	    srv_add_dir(dir);
+	    break;
+	}
+
+	if (cp - dir > 1) {
+	    if (buflen < cp - dir + 1) {
+		buflen = cp - dir + 1 + BUFSIZ;
+		buf = alloca(buflen);
+	    }
+
+	    memcpy(buf, dir, cp - dir);
+	    buf[cp - dir] = '\0';
+
+	    srv_add_dir(buf);
+	}
+
+	if (*cp == '\0')
+	    break;
+	dir = cp + 1;
+    }
 }
 
 static lx_document_t *
@@ -71,14 +117,18 @@ open_script (const char *scriptname, char *full_name, int full_size)
     char const *extentions[] = { "slax", "xsl", "xslt", "sh", "pl", "", NULL };
     char const **cpp;
     FILE *fp;
-    const char *jdir = juise_dir ?: JUISE_SCRIPT_DIR;
+    slax_data_node_t *dnp;
 
-    for (cpp = extentions; *cpp; cpp++) {
-	snprintf(full_name, full_size, "%s/%s%s%s",
-		 jdir, scriptname, **cpp ? "." : "", *cpp);
-	fp = fopen(full_name, "r+");
-	if (fp)
-	    return fp;
+    SLAXDATALIST_FOREACH(dnp, &srv_includes) {
+	char *dir = dnp->dn_data;
+
+	for (cpp = extentions; *cpp; cpp++) {
+	    snprintf(full_name, full_size, "%s/%s%s%s",
+		     dir, scriptname, **cpp ? "." : "", *cpp);
+	    fp = fopen(full_name, "r+");
+	    if (fp)
+		return fp;
+	}
     }
 
     return NULL;
@@ -158,7 +208,7 @@ run_server (int fdin, int fdout, session_type_t stype)
     js_session_t *jsp;
     lx_document_t *rpc;
     const char *name;
-				 
+
     jsp = js_session_open_server(fdin, fdout, stype, 0);
     if (jsp == NULL)
 	errx(1, "could not open server");
