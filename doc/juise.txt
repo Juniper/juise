@@ -476,7 +476,13 @@ command.
     </rpc-reply>]]>]]>
     %
 
-* "juise" Command Line Options
+* The "juise" Command Reference
+
+This section contains reference material for the juise command,
+including command line options, environment variables, build options,
+and other information.
+
+** "juise" Command Line Options
 
 This section provides a complete listing of available juise options.
 
@@ -563,7 +569,7 @@ process with "gdb" for additional debugging.
 
 The values of certain environment variables and the command line
 arguments to the "configure" script will affect the operation of
-JUISE.  This section details these settings
+JUISE.  This section details these settings.
 
 *** Setting The Import Path
 
@@ -593,15 +599,21 @@ $prefix/share/juise/scripts/ for scripts.
 
 * mod_juise
 
-The JUISE project includes a plug-in module for the "lighttpd" (aka
-"lightey") web server.  This plug-in allows scripts to be run directly
-from lighttpd will allowing SSH credentials established using
-"ssh-agent" to be inherited by the SLAX script.  SSH connections,
-including those from the jcs:open() call, can be opened without
-prompting for a passphrase.
+The JUISE project includes a plug-in module for the "lighttpd"
+(pronounced "lightey") web server.  This plug-in allows scripts to be
+run directly from lighttpd while allowing SSH credentials established
+using "ssh-agent" to be inherited by the SLAX script.  SSH
+connections, including those from the jcs:open() call, can then be
+opened without prompting for a passphrase.
 
-To add mod_juise to your lighttpd server, add the following line to
-your lighttpd.conf file:
+A suitable lighttpd.conf file is provided with juise, installed in the
+$prefix/share/juise/web/ directory.  lighttpd can be started by using
+the "-f" option and this file:
+
+    lighttpd -f $prefix/share/juise/web/lighttpd.conf
+
+To add mod_juise to an existing lighttpd server, add the following
+line to your lighttpd.conf file:
 
     juise.assign = ( ".slax" => "juise.cgi" )
 
@@ -642,7 +654,7 @@ parameter name and the $cgi element name.
 | SYSTEMROOT        | systemroot        |
 |-------------------+-------------------|
 
-The following lines are equivalent:
+The following lines are functionally equivalent:
 
     expr "User is " _ $REMOTE_USER;
     expr "User is " _ $cgi/remote-user;
@@ -650,7 +662,7 @@ The following lines are equivalent:
 In addition $cgi has an element named "parameters" which has the
 fields of $QUERY_STRING broken into individual elements.  These are
 also available as global parameters.  The following lines are
-equivalent: 
+functionally equivalent: 
 
     expr "'from' parameter is " _ $cgi/parameters/from;
     expr "'from' parameter is " _ $from;
@@ -687,20 +699,33 @@ Additional attributes and elements may be defined under the <cgi>
 element.  For future proofing, script should avoid attributes and
 elements whose names being with "junos", "cgi", or "juise".
 
-* The Muxer Daemon
+* The MUXER Daemon
+
+The MUXER daemon provides persistent SSH connections, allowing
+multiple jcs:open calls to return more quickly by avoiding most of the
+SSH connection establishment and negotiation expense.
+
+MUXER can be used to forward normal SSH connections, but also gateways
+WebSocket calls into NETCONF connections, allowing browser-based
+software access to NETCONF services.
+
+MUXER is currently under development.
 
 * The CLIRA Project
 
 CLIRA is the CLI Remote Access project.
 
+CLIRA is currently under development.
+
 * Extension Libraries for juise
 
-The JUISE project includes several dynamic extension, which are
-installed into the normal extension directory where they are available
-for any SLAX script.  This section details the extension functions and
-element of those libraries.
+The JUISE project includes the jcs extension library which allows
+invocation of NETCONF RPCs.  This library is identical to the jcs
+library available under JUNOS.  This section details the extension
+functions and element of those libraries.
+
 {{note::
-This is currently fiction/wishful thinking.  The jcs extension library
+The jcs extension library is not a dynamic extension library and is
 is only available when using the juise command.  This needs to change,
 but is low priority.
 }}
