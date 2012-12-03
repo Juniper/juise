@@ -230,16 +230,16 @@ CommandManager.prototype = {
         function eachFeed(feed, i, feeds) {
           function accList(list, feed, i)
             list.appendChild(
-              <li><a href={feed.url} accesskey={(i + 1).toString(36)}
-              >{feed.title}</a></li>);
+              "<li><a href={feed.url} accesskey={(i + 1).toString(36)}"
+              + ">{feed.title}</a></li>");
           feed.checkForManualUpdate(function check(updated, confirmUrl) {
             feeds[i] = updated && {title: feed.title, url: confirmUrl};
             if (++count === feeds.length &&
                 (feeds = feeds.filter(Boolean)).length)
               gDomNodes.feedUpdates.appendChild(createFragment(
-                <div class="feed-updates" xmlns={NS_XHTML}>
-                <h3>The following feeds have updates:</h3>
-                </div>.appendChild(feeds.reduce(accList, <ol/>))));
+                  "<div class='feed-updates' xmlns={NS_XHTML}>"
+                      + "<h3>The following feeds have updates:</h3>"
+                      + "</div>.appendChild(feeds.reduce(accList, <ol/>"));
           });
         });
     }

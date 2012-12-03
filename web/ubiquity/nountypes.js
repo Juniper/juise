@@ -374,19 +374,19 @@ var noun_type_extension = {
 // See [[http://en.wikipedia.org/wiki/URI_scheme]].
 // * {{{text, html}}} : URI scheme
 
-var common_URI_schemes = <><![CDATA[
-  aaa aaas acap cap cid crid data dav dict dns fax file ftp go gopher h323
-  http https icap im imap info ipp iris iris.beep iris.xpc iris.xpcs iris.lws
-  ldap mailto mid modem msrp msrps mtqp mupdate news nfs nntp opaquelocktoken
-  pop pres prospero rtsp service shttp sip sips snmp soap.beep soap.beeps tag
-  tel telnet tftp thismessage tip tv urn vemmi wais xmlrpc.beep xmpp
-  z39.50r z39.50s
-  about afp aim apt bolo bzr callto cel cvs daap ed2k feed fish gg git
-  gizmoproject iax2 irc ircs itms lastfm ldaps magnet mms msnim psyc rsync
-  secondlife skype ssh svn sftp smb sms soldat steam unreal ut2004 view-source
-  vzochat webcal wyciwyg xfire ymsgr
-  chrome resource
-  ]]></>.match(/\S+/g);
+var common_URI_schemes = "						\
+  aaa aaas acap cap cid crid data dav dict dns fax file ftp go gopher h323 \
+  http https icap im imap info ipp iris iris.beep iris.xpc iris.xpcs iris.lws \
+  ldap mailto mid modem msrp msrps mtqp mupdate news nfs nntp opaquelocktoken \
+  pop pres prospero rtsp service shttp sip sips snmp soap.beep soap.beeps tag \
+  tel telnet tftp thismessage tip tv urn vemmi wais xmlrpc.beep xmpp	\
+  z39.50r z39.50s							\
+  about afp aim apt bolo bzr callto cel cvs daap ed2k feed fish gg git	\
+  gizmoproject iax2 irc ircs itms lastfm ldaps magnet mms msnim psyc rsync \
+  secondlife skype ssh svn sftp smb sms soldat steam unreal ut2004 view-source \
+  vzochat webcal wyciwyg xfire ymsgr					\
+  chrome resource							\
+".match(/\S+/g);
 
 var noun_type_common_URI_scheme = CmdUtils.NounType(
   "URI scheme",
@@ -769,7 +769,7 @@ var noun_type_contact = {
       function nt_contact_ok(contacts) {
         var list = self._list;
         for each (var {name, email} in contacts) {
-          let htm = <>{name} &lt;{email}&gt;</>.toXMLString();
+          let htm = "{name} &lt;{email}&gt;".toXMLString();
           list.push({
             text: email, html: htm, data: name, summary: htm, score: 1});
         }

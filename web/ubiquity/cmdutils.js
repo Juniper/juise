@@ -111,16 +111,16 @@ for (let k in $.u.NounUtils) CmdUtils[k] = $.u.NounUtils[k];
 // (i.e. {{{CmdUtils.getSelection("")}}} is equivalent to
 // {{{ContextUtils.getSelection(context, "")}}})
 
-doAt(<![CDATA[{
-  CmdUtils["__define" + "@"[0].toUpperCase() + "etter__"](
-    "@"[3].toLowerCase() + "@".slice(4),
-    CmdUtils.@ = function @(x, y) {
-      var c = this.__globalObject.context || {};
-      "focusedWindow" in c && "focusedElement" in c ||
-        (c = Utils.currentChromeWindow.document.commandDispatcher);
-      return ContextUtils.@(c, x, y);
-    });
-}]]>, (name for (name in $.u.ContextUtils)));
+doAt("{									\
+  CmdUtils['__define' + '@'[0].toUpperCase() + 'etter__'](		\
+    '@'[3].toLowerCase() + '@'.slice(4),				\
+    CmdUtils.@ = function @(x, y) {					\
+      var c = this.__globalObject.context || {};			\
+      'focusedWindow' in c && 'focusedElement' in c ||			\
+        (c = Utils.currentChromeWindow.document.commandDispatcher);	\
+      return ContextUtils.@(c, x, y);					\
+    });									\
+}", (name for (name in $.u.ContextUtils)));
 
 // === {{{ CmdUtils.log(a, b, c, ...) }}} ===
 // See {{{Utils}}}{{{.log}}}.
@@ -175,12 +175,12 @@ function getCommand(id) commandSource.getCommand(id);
 // }}}
 
 // TODO: If the command doesn't exist, should we notify and/or fail gracefully?
-doAt(<![CDATA[{
-  CmdUtils.@Command = function @Command(command, x, y, z) {
-    if (typeof command === "string") command = getCommand(command);
-    return command.@(this.__globalObject.context, x, y, z);
-  };
-}]]>, ["execute", "preview"]);
+doAt("{									\
+  CmdUtils.@Command = function @Command(command, x, y, z) {		\
+    if (typeof command === 'string') command = getCommand(command);	\
+    return command.@(this.__globalObject.context, x, y, z);		\
+  };									\
+}", ["execute", "preview"]);
 
 // === {{{ CmdUtils.geocodeAddress(location, callback) }}} ===
 // This function uses the Yahoo geocoding service to take a text
@@ -1185,20 +1185,20 @@ function previewAjax(pblock, options) {
 // time that it's requested and the time it displays.  If the preview
 // is cancelled, the given callback will not be called.
 
-doAt(<![CDATA[{
-  CmdUtils.preview@ = function preview@(pblock, url, data, callback, type) {
-    if (typeof data === "function") {
-      callback = data;
-      data = null;
-    }
-    return this.previewAjax(pblock, {
-      type: "@",
-      url: url,
-      data: data,
-      success: callback,
-      dataType: type});
-  };
-}]]>, ["Get", "Post"]);
+doAt("{									\
+  CmdUtils.preview@ = function preview@(pblock, url, data, callback, type) { \
+    if (typeof data === 'function') {					\
+      callback = data;							\
+      data = null;							\
+    }									\
+    return this.previewAjax(pblock, {					\
+      type: '@',							\
+      url: url,								\
+      data: data,							\
+      success: callback,						\
+      dataType: type});							\
+  };									\
+}", ["Get", "Post"]);
 
 // === {{{ CmdUtils.previewCallback(pblock, callback, [abortCallback]) }}} ===
 // Creates a 'preview callback': a wrapper for a function which
@@ -1285,17 +1285,17 @@ function previewList(block, htmls, callback, css) {
   }, false);
   return ol;
 }
-previewList.CSS = "" + <![CDATA[
-  #preview-list {margin: 0; padding-left: 1.5em; list-style-type: none}
-  #preview-list > li {position: relative; min-height: 3ex}
-  #preview-list > li:hover {outline: 1px solid; -moz-outline-radius: 8px}
-  #preview-list label {display: block; cursor: pointer}
-  #preview-list .button {
-    position: absolute; left: -1.5em; height: 3ex;
-    padding: 0; border-width: 1px;
-    font: bold 108% monospace; text-transform: uppercase}
-  #keyshifter {position:absolute; top:-9999px}
-  ]]>;
+previewList.CSS = "							\
+  #preview-list {margin: 0; padding-left: 1.5em; list-style-type: none}	\
+  #preview-list > li {position: relative; min-height: 3ex}		\
+  #preview-list > li:hover {outline: 1px solid; -moz-outline-radius: 8px} \
+  #preview-list label {display: block; cursor: pointer}			\
+  #preview-list .button {						\
+    position: absolute; left: -1.5em; height: 3ex;			\
+    padding: 0; border-width: 1px;					\
+    font: bold 108% monospace; text-transform: uppercase}		\
+  #keyshifter {position:absolute; top:-9999px}				\
+";
 
 // === {{{ CmdUtils.absUrl(data, baseUrl) }}} ===
 // Fixes relative URLs in {{{data}}} (e.g. as returned by Ajax calls).
