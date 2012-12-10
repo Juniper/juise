@@ -49,6 +49,8 @@ jQuery(function ($) {
 
 // const Cu = Components.utils;
 
+    var Utils = $.u.Utils;
+
 // Cu.import("/ubiquity/modules/utils.js");
 // Cu.import("/ubiquity/modules/eventhub.js");
 // Cu.import("/ubiquity/modules/localization_utils.js");

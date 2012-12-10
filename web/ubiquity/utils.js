@@ -237,11 +237,13 @@ Utils.dump = function niceDump() {
 // as if it was thrown from the original location.
 
 function reportError(error) {
-  var scriptError =
-    Cc["@mozilla.org/scripterror;1"].createInstance(Ci.nsIScriptError);
-  scriptError.init(error, error.fileName, null, error.lineNumber,
-                   null, scriptError.errorFlag, null);
-  Utils.ConsoleService.logMessage(scriptError);
+    $.dbgpr("file: " + error.fileName + ":" + error.lineNumber
+            + ": " + error);
+//  var scriptError =
+//    Cc["@mozilla.org/scripterror;1"].createInstance(Ci.nsIScriptError);
+//  scriptError.init(error, error.fileName, null, error.lineNumber,
+//                   null, scriptError.errorFlag, null);
+//  Utils.ConsoleService.logMessage(scriptError);
 }
 
 // === {{{ Utils.reportWarning(aMessage, stackFrameNumber) }}} ===
@@ -281,7 +283,8 @@ function reportWarning(aMessage, stackFrameNumber) {
 // in to this function.
 
 function reportInfo(message) {
-  Utils.ConsoleService.logStringMessage(LOG_PREFIX + message);
+    $.dbgpr(LOG_PREFIX + message);
+//  Utils.ConsoleService.logStringMessage(LOG_PREFIX + message);
 }
 
 // === {{{Utils.ellipsify(node, characters, [ellipsis])}}} ===
@@ -425,6 +428,7 @@ function uri(spec, defaultUri) {
     spec = spec.uri || null;
   }
   try {
+      return { }
     return Utils.IOService.newURI(spec, null, base);
   } catch (e if defaultUri) {
     return uri(defaultUri);

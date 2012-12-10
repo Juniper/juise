@@ -192,21 +192,21 @@ UbiquitySetup = {
 //        observe: function fm_fin() feedManager.finalize(),
 //      }, "quit-application", false);
 
-//      PrefCommands.init(feedManager);
+        $.u.PrefCommands.init(feedManager);
 
-//      if (this.isNewlyInstalledOrUpgraded) {
-//        this.__removeExtinctStandardFeeds(feedManager);
+        if (this.isNewlyInstalledOrUpgraded) {
+            this.__removeExtinctStandardFeeds(feedManager);
 
         // For some reason, the following function isn't executed
         // atomically by Javascript; perhaps something being called is
         // getting the '@mozilla.org/thread-manager;1' service and
         // spinning via a call to processNextEvent() until some kind of
         // I/O is finished?
-//        defaultFeedPlugin.installDefaults(this.STANDARD_FEEDS_URI,
-//                                          this.STANDARD_FEEDS);
-//      }
+            $.u.DefaultFeedPlugin.installDefaults(this.STANDARD_FEEDS_URI,
+                                          this.STANDARD_FEEDS);
+      }
 
-//      cmdSource.refresh();
+        $.u.cmdSource.refresh();
     }
 
     return gServices;

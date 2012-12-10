@@ -229,7 +229,7 @@ Parser.prototype = {
     }
   },
   
-  refreshCommandList: function addCommandToList() {
+  refreshCommandList: function refreshCommandList() {
 
     var verbs = this._verbList;
 
@@ -1705,7 +1705,8 @@ var ParseQuery = function(parser, queryString, selObj, context,
 
 ParseQuery.prototype = {
   dump: function PQ_dump(msg) {
-    Utils.dump(this._idTime + ":" + (new Date - this._idTime), msg);
+      $.dbgpr("PD:dump: " + this._idTime + ":"
+              + (new Date - this._idTime), msg);
   },
 
   // ** {{{ParseQuery#run()}}} **
