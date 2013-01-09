@@ -367,11 +367,14 @@ function isTextBox(node) {
 function setTimeout(callback, delay /*, arg0, arg1, ...*/) {
   // emulate window.setTimeout() by incrementing next ID
   var timerID = gNextTimerID++;
-  var timerClass = Cc["@mozilla.org/timer;1"];
-  (gTimers[timerID] = timerClass.createInstance(Ci.nsITimer)).initWithCallback(
-    new __TimerCallback(timerID, callback, Array.slice(arguments, 2)),
-    delay,
-    timerClass.TYPE_ONE_SHOT);
+//  var timerClass = Cc["@mozilla.org/timer;1"];
+//  (gTimers[timerID] = timerClass.createInstance(Ci.nsITimer)).initWithCallback(
+//    new __TimerCallback(timerID, callback, Array.slice(arguments, 2)),
+//    delay,
+//    timerClass.TYPE_ONE_SHOT);
+
+    if (timerID < 20)
+      window.setTimeout(function () { callback.call(arguments); }, delay);
   return timerID;
 }
 

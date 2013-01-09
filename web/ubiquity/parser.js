@@ -1737,9 +1737,9 @@ ParseQuery.prototype = {
         var ok = parseGenerator.next();
       } catch(e) {
         if (e !== StopIteration) {
-          Cu.reportError(e);
-          Cu.reportError("Traceback for last exception:\n" +
-                         ExceptionUtils.stackTrace(e));
+          $.dbgpr(e);
+          $.dbgpr("Traceback for last exception:\n" +
+                         $.u.ExceptionUtils.stackTrace(e));
         }
         return;
       }

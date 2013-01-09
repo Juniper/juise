@@ -274,11 +274,13 @@ function getParser(sync) {
 }
 
 function playpen(){
+    $.dbgpr("playpen is running");
   var [gUSync] = $("#gu-sync").change(function(){ location.reload() });
   var parser = getParser(gUSync.checked);
-  parser.setCommandList(UbiquitySetup.createServices()
-                        .commandSource.getAllCommands());
+//  parser.setCommandList(UbiquitySetup.createServices()
+//                        .commandSource.getAllCommands());
   demoParserInterface.currentParser = parser;
+    $.dbgpr("playpen is parser has been made");
 
     // XX Not sure where this is supposed to happen
     parser._contextUtils = $.u.ContextUtils;
@@ -318,6 +320,7 @@ function playpen(){
   }
 
   function run() {
+    $.dbgpr("playpen run has been hit");
     demoParserInterface.startTime = new Date().getTime();
     $('.runtimes').text($('#times').val());
     demoParserInterface.runtimes = 0;

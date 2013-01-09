@@ -143,9 +143,9 @@ UbiquitySetup = {
       RegExp("^" + Utils.regexp.quote(this.baseUrl) + "standard-feeds/"),
       /^resource:\/\/ubiquity\/standard-feeds\/.+\.html$/];
 
-    feedManager.getAllFeeds().forEach(function removeExtinct(feed) {
-      if (OLD_STD_FEED_TESTERS.some("".match, feed.uri.spec)) feed.purge();
-    });
+//    feedManager.getAllFeeds().forEach(function removeExtinct(feed) {
+//      if (OLD_STD_FEED_TESTERS.some("".match, feed.uri.spec)) feed.purge();
+//    });
   },
 
   get services() this.createServices(),
@@ -163,7 +163,7 @@ UbiquitySetup = {
       var annDbConn = $.u.AnnotationService.openDatabase(annDbFile);
       var annSvc = new $.u.AnnotationService(annDbConn);
 
-      var feedManager = new $.u.FeedManager(annSvc);
+      var feedManager = [ ] ; //new $.u.FeedManager(annSvc);
       var msgService = new $.u.CompositeMessageService();
 
       msgService.add(new $.u.AlertMessageService());
@@ -176,9 +176,9 @@ UbiquitySetup = {
 //        new $.u.DefaultFeedPlugin(
 //          feedManager, msgService, gWebJsModule, "/ubiquity/");
 
-        var cmdSource = new $.u.FeedAggregator(
-          feedManager, msgService, disabledStorage.getDisabledCommands());
-      disabledStorage.attach(cmdSource);
+        var cmdSource = [ ] ; //new $.u.FeedAggregator(
+///          feedManager, msgService, disabledStorage.getDisabledCommands());
+//      disabledStorage.attach(cmdSource);
 
       gServices = {
         commandSource: cmdSource,
@@ -202,11 +202,11 @@ UbiquitySetup = {
         // getting the '@mozilla.org/thread-manager;1' service and
         // spinning via a call to processNextEvent() until some kind of
         // I/O is finished?
-            $.u.DefaultFeedPlugin.installDefaults(this.STANDARD_FEEDS_URI,
-                                          this.STANDARD_FEEDS);
+//            $.u.DefaultFeedPlugin.installDefaults(this.STANDARD_FEEDS_URI,
+//                                          this.STANDARD_FEEDS);
       }
 
-        $.u.cmdSource.refresh();
+//        $.u.cmdSource.refresh();
     }
 
     return gServices;

@@ -47,11 +47,11 @@ var PrefCommands = {
   __feedManager: null,
 
   __subscribeFeed: function PC__subscribeFeed() {
-    this.__feedManager.addSubscribedFeed({
-      sourceUrl: this.id,
-      canAutoUpdate: true,
-      isBuiltIn: true,
-    });
+//    this.__feedManager.addSubscribedFeed({
+//      sourceUrl: this.id,
+//      canAutoUpdate: true,
+//      isBuiltIn: true,
+//    });
   },
 
   init: function PC_init(feedManager) {
