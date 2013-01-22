@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.3.18], [phil@juniper.net])
+AC_INIT([juise], [0.3.19], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 AC_DISABLE_SHARED
 
@@ -28,7 +28,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 #
 LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
-LIBSLAX_REQUIRED_VERSION=0.10.0
+LIBSLAX_REQUIRED_VERSION=0.12.3
 LIBSSH2_REQUIRED_VERSION=1.4.2
 
 AC_PROG_CC
@@ -351,10 +351,10 @@ then
 	then
 		LIBSLAX_LIBS="$LIBSLAX_LIBS `$SLAX_CONFIG --libs`"
 		LIBSLAX_CFLAGS="$LIBSLAX_CFLAGS `$SLAX_CONFIG --cflags`"
-		SLAX_EXTDIR="`$SLAX_CONFIG --extdir`"
-		SLAX_LIBDIR="`$SLAX_CONFIG --libdir`"
-		SLAX_BINDIR="`$SLAX_CONFIG --bindir`"
-		SLAX_OXTRADOCDIR="`$SLAX_CONFIG --oxtradoc`"
+		SLAX_EXTDIR="`$SLAX_CONFIG --extdir | head -1`"
+		SLAX_LIBDIR="`$SLAX_CONFIG --libdir | head -1`"
+		SLAX_BINDIR="`$SLAX_CONFIG --bindir | head -1`"
+		SLAX_OXTRADOCDIR="`$SLAX_CONFIG --oxtradoc | head -1`"
 		AC_MSG_RESULT($LIBSLAX_VERSION found)
 	else
 		AC_MSG_ERROR(Version $LIBSLAX_VERSION found. You need at least libslax $LIBSLAX_REQUIRED_VERSION for this version of juise)
