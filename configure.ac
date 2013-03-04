@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.3.19], [phil@juniper.net])
+AC_INIT([juise], [0.3.20], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 AC_DISABLE_SHARED
 
@@ -407,7 +407,8 @@ then
                 AC_MSG_ERROR(Version $LIBSSH2_VERSION found. You need at least libssh2 $LIBSSH2_REQUIRED_VERSION for this version of juise)
         fi
 else
-	AC_MSG_ERROR([Could not find libssh2 anywhere, check http://www.libssh2.org/.])
+    AC_MSG_NOTICE([Could not find libssh2 anywhere, check http://www.libssh2.org/.])
+    NEED_MIXER=no
 fi
 
 AC_SUBST(LIBSSH2_CFLAGS)
