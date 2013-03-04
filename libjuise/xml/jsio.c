@@ -241,7 +241,7 @@ js_buffer_read_data (js_session_t *jsp, char *bp, int blen)
 }
 
 static int
-js_buffer_find_reset_dangling (js_session_t *jsp, char *bp, int blen)
+js_buffer_find_reset_dangling (js_session_t *jsp, char *bp, int *plen)
 {
     /*
      * Now we need to see if the data has a trailing xml_parser_reset
@@ -249,6 +249,7 @@ js_buffer_find_reset_dangling (js_session_t *jsp, char *bp, int blen)
      */
     int len = xml_parser_reset_len - jsp->js_len;
     const char *cp = xml_parser_reset + jsp->js_len;
+    int blen = *plen;
 
     /*
      * So we _might_ have seen the start of a reset string, but ran
@@ -285,6 +286,7 @@ js_buffer_find_reset_dangling (js_session_t *jsp, char *bp, int blen)
     len = jsp->js_len;
     memmove(bp + len, bp, blen);
     memcpy(bp, xml_parser_reset, len);
+    *plen += len;
     jsp->js_len = 0;
 
     return FALSE;
@@ -298,7 +300,7 @@ static int
 js_buffer_find_reset (js_session_t *jsp, char *bp, int blen)
 {
     /* If there was a dangling reset string, look for the rest */
-    if (jsp->js_len && js_buffer_find_reset_dangling(jsp, bp, blen))
+    if (jsp->js_len && js_buffer_find_reset_dangling(jsp, bp, &blen))
 	return 0;
 
     int reset_len = xml_parser_reset_len;
