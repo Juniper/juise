@@ -47,3 +47,6 @@ upload: dist
 	@echo "Uploading juise-manual-${PACKAGE_VERSION}.html ... "
 	@${UPLOAD} -s 'Full Documentation' -l Type-Docs,Featured \
 		doc/juise-manual-${PACKAGE_VERSION}.html
+
+svnignore:
+	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}

@@ -11,7 +11,7 @@ jQuery(function ($) {
      */
     $.dbgpr = function () {
         /* The actual work is pretty trivial */
-        $('#debug-log').prepend(Array.prototype.slice
+        $('#debug-log').append(Array.prototype.slice
                                 .call(arguments).join(" ") + "\n");
     }
 });

@@ -152,7 +152,8 @@ div#debug-container {
 div#debug-log {
     white-space: pre-wrap;
     background-color: #ffffff;
-    font-size: 66%;
+    margin-bottom: 20px;
+/*    font-size: 66%;*/
 }
 
 div#header {
@@ -472,4 +473,33 @@ input.text-entry {
 
 .jquery-checkbox {
     line-height: 24px;
+}
+
+div.input {
+    background: #e0e0ff;
+    padding: 10px;
+}
+
+div.parse {
+    background: grey;
+    padding: 10px;
+    border: 1px solid black;
+}
+
+div.input {
+    background: #ffe0e0;
+    border-bottom: 1px solid black;
+    padding: 10px;
+    font-weight: bold;
+}
+
+div.possibility {
+    background: #ffe0e0;
+    padding: 10px;
+    border-bottom: 1px dotted red;
+}
+
+div.match {
+    display: inline-block;
+    padding: 5px;
 }

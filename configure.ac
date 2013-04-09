@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.3.20], [phil@juniper.net])
+AC_INIT([juise], [0.3.23], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 AC_DISABLE_SHARED
 
@@ -573,6 +573,7 @@ AC_CONFIG_FILES([
   web/Makefile
   web/lighttpd.conf
   import/Makefile
+  tests/Makefile
 ])
 AC_OUTPUT
 

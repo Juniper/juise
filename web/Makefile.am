@@ -28,6 +28,8 @@ BASE_FILES = \
     clira/clira.html \
     clira/clira.css \
     clira/clira.js \
+    clira/parser.js \
+    clira/parser-test.js \
     clira/clira.slax \
     static/drag-test.html
 
@@ -111,3 +113,6 @@ not-yet-install-exec-hook:
 		mkdir -p $$mdir ; \
 		cp $$rfile $$mdir/ ; \
         done
+
+svnignore:
+	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
