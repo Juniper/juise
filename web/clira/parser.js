@@ -12,13 +12,22 @@
 jQuery(function ($) {
 
     $.clira = {
-        debug: false,           // Have debug output use $.dbgpr()
+        debug: true,           // Have debug output use $.dbgpr()
     };
     $.clira.commands = [ ];
     $.clira.types = { };
     $.clira.bundles = { };
 
+    $.clira.lang = {
+        match: function langMatch (name, token) {
+            if (name.substring(0, token.length) == token)
+                return true;
+            else false;
+        },
+    }
+
     var scoring = {
+        enumv: 3,
         keyword: 15,
         multiple_words: 0,
         order: 5,
@@ -104,6 +113,19 @@ jQuery(function ($) {
         return newObj;
     }
 
+    function contentsAreEqual(a, b) {
+        var equal = (a.length == b.length);
+        if (equal) {
+            $.each(a, function (k, v) {
+                if (a[k] != b[k]) {
+                    equal = false;
+                    return false;
+                }
+            });
+        }
+        return equal;
+    }
+
     var parse_id = 1;
     function Parse (base) {
         buildObject(this, base, null, { id: parse_id++, });
@@ -118,8 +140,8 @@ jQuery(function ($) {
                 this.debug_log += Array.prototype.slice
                     .call(arguments).join(" ") + "\n";
         },
-        execute: function parseExecute (inputString) {
-            // Execute a parse of the given input string
+        parse: function parse (inputString) {
+            // Attempt a parse of the given input string
             this.input = {
                 string: inputString,
                 tokens:  splitTokens(inputString),
@@ -186,8 +208,22 @@ jQuery(function ($) {
                 if (poss.last.arg.multiple_words)
                     match.multiple_words = true;
 
-                // Add a possibility using this match
-                that.addPossibility(res, poss, match, scoring.needs_data);
+                if (poss.last.arg.enums) {
+                    $.each(poss.last.arg.enums, function (n, enumv) {
+                        if ($.clira.lang.match(enumv.name, tok)) {
+                            that.dbgpr("enumeration match for " + enumv.name);
+                            match.enum = enumv;
+                            match.data = enumv.name;
+                            that.addPossibility(res, poss, match,
+                                                scoring.needs_data
+                                                + scoring.enumv);
+                        }
+                    });
+                } else {
+
+                    // Add a possibility using this match
+                    that.addPossibility(res, poss, match, scoring.needs_data);
+                }
 
                 // Early return, meaning that data for needs_data won't match
                 // normal tokens, which seems reasonable.
@@ -204,7 +240,7 @@ jQuery(function ($) {
 
                 // If the name matches the input token, we have a
                 // possible parse
-                if (arg.name.substring(0, tok.length) == tok) {
+                if ($.clira.lang.match(arg.name, tok)) {
                     not_seen = false;
                     match = {
                         token: tok,
@@ -315,6 +351,16 @@ jQuery(function ($) {
                     this.dbgpr("all matches are nokeyword; whacking: "
                                + poss.id + ": " + poss.command.command);
                     whack = true;
+                } else {
+                    for (var j = 0; j < i; j++) {
+                        var jp = list[j];
+                        if (poss.command == jp.command
+                                && contentsAreEqual(poss.data, jp.data)) {
+                            this.dbgpr("possibility has already been seen");
+                            whack = true;
+                            break;
+                        }
+                    }
                 }
 
                 for (var k = 0; k < poss.command.arguments.length; k++) {
@@ -441,7 +487,7 @@ jQuery(function ($) {
 
     function parse (inputString, options) {
         var p = new Parse(options);
-        p.execute(inputString);
+        p.parse(inputString);
         p.possibilities.sort(function sortPossibilities (a, b) {
             return b.score - a.score;
         });
@@ -470,6 +516,10 @@ jQuery(function ($) {
                 {
                     name: "empty",
                     needs_data: false,
+                },
+                {
+                    name: "enumeration",
+                    needs_data: true,
                 },
                 {
                     name: "interface",
@@ -512,6 +562,10 @@ jQuery(function ($) {
                             name: "near",
                             type: "location",
                         },
+                        {
+                            name: "for",
+                            type: "location",
+                        },
                     ],
                 },
                 {
@@ -528,6 +582,14 @@ jQuery(function ($) {
                     arguments: [
                         {
                             name: "affecting",
+                            type: "empty",
+                        },
+                        {
+                            name: "lsp",
+                            type: "lsp",
+                        },
+                        {
+                            name: "customer",
                             type: "string",
                         },
                     ],
@@ -579,6 +641,25 @@ jQuery(function ($) {
                             name: "statistics",
                             type: "empty",
                             help: "Show statistics only",
+                        },
+                        {
+                            name: "color",
+                            type: "enumeration",
+                            help: "Color of interface",
+                            enums: [
+                                {
+                                    name: "blue",
+                                    help: "Blue like the sea after a storm",
+                                },
+                                {
+                                    name: "black",
+                                    help: "Black line the night",
+                                },
+                                {
+                                    name: "red",
+                                    help: "Red",
+                                }
+                            ],
                         },
                     ],
                     execute: function () {
@@ -678,7 +759,11 @@ jQuery(function ($) {
                 },
                 {
                     command: "list outages",
-                    bundle: [ "affecting", "since", ],
+                    bundle: [ "affecting", "since", "between-locations", ],
+                },
+                {
+                    command: "list flaps",
+                    bundle: [ "affecting", "since", "between-locations", ],
                 },
                 {
                     command: "show latency issues",
@@ -708,11 +793,17 @@ jQuery(function ($) {
                     ],
                 },
                 {
-                    command: "route lsp",
+                    command: "route lsp away from device",
                     arguments: [
                         {
-                            name: "away from device",
+                            name: "lsp-name",
+                            type: "lsp",
+                            nokeyword: true,
+                        },
+                        {
+                            name: "device-name",
                             type: "device",
+                            nokeyword: true,
                         },
                     ],
                 },
@@ -754,29 +845,34 @@ jQuery(function ($) {
     ];
     $.each(
         [
+            "show interfaces color red",
+            "show interfaces color bl",
             "show alarms",
+            "alarms show",
             "complete failure",
             "show al c e",
             "show interfaces type ethernet statistics",
             "show interfaces statistics",
             "tell user phil message now is the time",
+            "tell phil this one is working",
             "tell user phil message user security must work",
             "on dent show interfaces fe-0/0/0",
             "show latency issues near iad",
             "show outages near iad",
-            "map outages affecting lsp foobar",
             "list outages since yesterday",
             "list outages between lax and bos",
-            "show latency issues affecting lsp foobar",
-            "show drop issues affecting customer blah",
             "map paths between lax and bos",
             "list flaps near lax since yesterday",
             "list flaps between device lax and location boston",
             "test lsp foobar",
             "show alarms for northeast",
-            "route lsp foobar away from device bos",
             "configure new lsp goober between bos and lax",
             "add device bos interface fe-0/0/0 to vpn corporate",
+            "route lsp foobar away from device bos",
+
+            "map outages affecting lsp foobar",
+            "show latency issues affecting lsp foobar",
+            "show drop issues affecting customer blah",
         ], function (x, cmd) {
             $.dbgpr("test: input: [" + cmd + "]");
             var res = parse(cmd);
@@ -786,12 +882,14 @@ jQuery(function ($) {
             res.eachPossibility(function (x, p) {
                 p.dump($.dbgpr, "results: ");
                 html += "<div class='possibility'>";
-                html += "<div class='details'>Id: " + p.id
+                html += "<div class='details'>Possibility Id: " + p.id
                     + ", Score: " + p.score
                     + ", Command: '" + p.command.command + "'</div>";
                 p.eachMatch(function eachMatch (x, m) {
                     var title = "Id: " + m.id + " " + m.arg.name
                         + " (" + m.arg.type + ")";
+                    if (this.enum)
+                        title += " (" + this.enum.name + ")";
                     if (this.data)
                         title += " data";
                     if (this.needs_data)
