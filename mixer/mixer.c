@@ -38,6 +38,7 @@
 #include "forwarder.h"
 #include "session.h"
 #include "console.h"
+#include "db.h"
 #include "websocket.h"
 #include "request.h"
 #include <signal.h>
@@ -56,6 +57,7 @@ char keyfile1[MAXPATHLEN], keyfile2[MAXPATHLEN];
 
 const char *opt_user;		/* User name (if not getlogin()) */
 const char *opt_password;
+const char *opt_db = NULL;
 const char *opt_desthost = "localhost";
 unsigned opt_destport = 22;
 int opt_no_agent;
@@ -273,7 +275,12 @@ print_help (const char *opt)
     if (opt)
 	fprintf(stderr, "invalid option: %s\n\n", opt);
 
-    fprintf(stderr, "syntax: mixer [options]\n");
+    fprintf(stderr, "syntax: mixer [options]\n\n"
+	    "    --console          Enable console mode\n"
+	    "    --db <dbname>      Specify mixer database file\n"
+	    "    --verbose          Enable verbose logs\n"
+	    "\n");
+	        
     exit(1);
 }
 
@@ -310,6 +317,9 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	if (streq(cp, "--console") || streq(cp, "-c")) {
 	    opt_console = TRUE;
+
+	} else if (streq(cp, "--db")) {
+	    opt_db = *++argv;
 
 	} else if (streq(cp, "--fork")) {
 	    opt_login = TRUE;
@@ -385,6 +395,11 @@ main (int argc UNUSED, char **argv UNUSED)
 	opt_password = strdup(getpass("Password:"));
 
     mx_type_info_init();
+
+    if (!mx_db_init()) {
+	mx_log("mixer database initialization failed");
+	return 1;
+    }
 
     rc = libssh2_init (0);
     if (rc != 0) {

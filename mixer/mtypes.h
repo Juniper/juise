@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (c) 2012, Juniper Networks, Inc.
+ * Copyright (c) 2012-2013, Juniper Networks, Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -116,7 +116,10 @@ typedef struct mx_request_s {
     unsigned mr_state;		/* State of this request */
     mx_muxid_t mr_muxid;	/* Muxer ID (client's ID) */
     char *mr_name;		/* Request name (tag) */
-    char *mr_target;		/* Target hostname */
+    char *mr_target;		/* Target name (could be alias) */
+    char *mr_fulltarget;        /* Full target name (user@host:port) */
+    char *mr_hostname;          /* Target hostname */
+    unsigned mr_port;           /* Remote target port */
     char *mr_user;		/* User/login name */
     char *mr_password;		/* Password (if needed) */
     char *mr_passphrase;	/* Passphrase (if needed) */

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (c) 2012, Juniper Networks, Inc.
+ * Copyright (c) 2012-2013, Juniper Networks, Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -17,8 +17,7 @@
 #include "channel.h"
 #include "forwarder.h"
 #include "request.h"
-
-static char *mx_session_passphrase; /* Passphrase for private key */
+#include "db.h"
 
 static void
 mx_session_print (MX_TYPE_PRINT_ARGS)
@@ -81,28 +80,42 @@ mx_session_create (LIBSSH2_SESSION *session, int sock,
  * and let them make the call.
  */
 int
-mx_session_check_hostkey (mx_sock_session_t *session, mx_request_t *mrp)
+mx_session_check_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp)
 {
     mx_sock_t *client = mrp->mr_client;
     const char *fingerprint;
     int i;
     char buf[BUFSIZ], *bp = buf, *ep = buf + sizeof(buf);
 
-    /* XXX insert checks for known hosts here */
-
-
-    fingerprint = libssh2_hostkey_hash(session->mss_session,
+    fingerprint = libssh2_hostkey_hash(mssp->mss_session,
 				       LIBSSH2_HOSTKEY_HASH_SHA1);
-    bp += snprintf_safe(bp, ep - bp, "Host key for '%s' is not known\n",
-			mrp->mr_target);
-    bp += snprintf_safe(bp, ep - bp, "    The key's fingerprint is '");
+    
+    /*
+     * Check our hostkey database for this keymatch.
+     */
+    switch (mx_db_check_hostkey(mssp, mrp)) {
+	case DB_CHECK_HOSTKEY_NOMATCH:
+	    bp += snprintf_safe(bp, ep - bp, "Host key for '%s' is not "
+		    "known\n    The key's fingerprint is '", mrp->mr_target);
+	    break;
+	case DB_CHECK_HOSTKEY_MISMATCH:
+	    bp += snprintf_safe(bp, ep - bp, "WARNING!!! Host key for '%s'"
+		    " was found, but the keys do not match!!\n    The new "
+		    "key's fingerprint is '", mrp->mr_target);
+	    break;
+
+	case DB_CHECK_HOSTKEY_MATCH:
+	    return FALSE;
+    }
+
     for (i = 0; i < 20; i++)
-        bp += snprintf_safe(bp, ep - bp, "%02X ",
-			    (unsigned char) fingerprint[i]);
+        bp += snprintf_safe(bp, ep - bp, "%02X%s",
+			    (unsigned char) fingerprint[i], 
+			    i < 19 ? " " : "");
     bp += snprintf_safe(bp, ep - bp, "'\n");
     bp += snprintf_safe(bp, ep - bp, "Do you want to accept this host key?");
 
-    mx_log("S%u hostkey check [%s]", session->mss_base.ms_id, buf);
+    mx_log("S%u hostkey check [%s]", mssp->mss_base.ms_id, buf);
 
     if (client && mx_mti(client)->mti_check_hostkey)
 	return mx_mti(client)->mti_check_hostkey(client, mrp, buf);
@@ -167,6 +180,7 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
 {
     mx_sock_t *msp = mrp->mr_client;
     const char *passphrase = mrp->mr_passphrase;
+    const char *db_passphrase = mx_db_get_passphrase();
 
     if (passphrase && *passphrase == '\0') {
 	mx_log("R%u null passphrase", mrp->mr_id);
@@ -174,7 +188,7 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
 	return FALSE;
     }
 
-    if (mx_session_passphrase == NULL && passphrase == NULL) {
+    if (db_passphrase == NULL && passphrase == NULL) {
 	/*
 	 * We got here with no passphrase; must be the initial attempt.
 	 * Try to decrypt with no (empty) passphrase.
@@ -197,17 +211,15 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
 	} else {
 	    mx_log("R%u Authentication by new public key succeeded",
 		   mrp->mr_id);
-	    if (mx_session_passphrase)
-		free(mx_session_passphrase);
-	    mx_session_passphrase = strdup(passphrase);
+	    mx_db_save_passphrase(passphrase);
 	    goto success;
 	}
     }
 
-    if (mx_session_passphrase && *mx_session_passphrase) {
+    if (db_passphrase) {
 	if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
 						keyfile1, keyfile2,
-						mx_session_passphrase)) {
+						db_passphrase)) {
 	    mx_log("R%u Authentication by existing public key failed",
 		   mrp->mr_id);
 	} else {
@@ -247,12 +259,6 @@ mx_session_check_password (mx_sock_session_t *session, mx_request_t *mrp,
     mx_sock_t *msp = mrp->mr_client;
     const char *password = mrp->mr_password;
 
-    if (password && *password == '\0') {
-	mx_log("R%u null password", mrp->mr_id);
-	mx_request_set_state(mrp, MSS_FAILED);
-	return FALSE;
-    }
-
     if (password == NULL)
 	password = mx_password(session->mss_target, user);
 
@@ -268,14 +274,18 @@ mx_session_check_password (mx_sock_session_t *session, mx_request_t *mrp,
 		   session->mss_base.ms_id, user);
 	    /* We're authenticated now */
 	    mx_request_set_state(mrp, MSS_ESTABLISHED);
+
+	    /* Save to in-memory cache as well as db */
 	    mx_password_save(mrp->mr_target, user, password);
+	    mx_db_save_password(mrp, password);
+
 	    return FALSE;
 	}
     }
 
     char buf[BUFSIZ], *bp = buf, *ep = buf + sizeof(buf);
 
-    if (password)
+    if (password && *password)
 	bp += snprintf_safe(bp, ep - bp, "Invalid password\n");
 
     bp += snprintf_safe(bp, ep - bp, "Enter password:");
@@ -290,7 +300,7 @@ mx_session_check_password (mx_sock_session_t *session, mx_request_t *mrp,
 }
 
 int
-mx_session_check_auth (mx_sock_session_t *session, mx_request_t *mrp)
+mx_session_check_auth (mx_sock_session_t *mssp, mx_request_t *mrp)
 {
     const char *user = mrp->mr_user ?: opt_user ?: getlogin();
     const char *password = mrp->mr_password;
@@ -298,7 +308,7 @@ mx_session_check_auth (mx_sock_session_t *session, mx_request_t *mrp)
     char *userauthlist;
 
     /* check what authentication methods are available */
-    userauthlist = libssh2_userauth_list(session->mss_session,
+    userauthlist = libssh2_userauth_list(mssp->mss_session,
 					 user, strlen(user));
     mx_log("Authentication methods: %s", userauthlist ?: "(empty)");
 
@@ -312,10 +322,10 @@ mx_session_check_auth (mx_sock_session_t *session, mx_request_t *mrp)
     mx_request_set_state(mrp, MSS_PASSWORD);
 
     if (auth_publickey) {
-	if (!opt_no_agent && mx_session_check_agent(session, mrp, user))
+	if (!opt_no_agent && mx_session_check_agent(mssp, mrp, user))
 	    goto success;
 
-	if (mx_session_check_keyfile(session, mrp, user))
+	if (mx_session_check_keyfile(mssp, mrp, user))
 	    return TRUE;
 
 	if (mrp->mr_state == MSS_ESTABLISHED)
@@ -324,10 +334,10 @@ mx_session_check_auth (mx_sock_session_t *session, mx_request_t *mrp)
 
     if (auth_password && (mrp->mr_state != MSS_ESTABLISHED)) {
 	if (password == NULL || *password == '\0')
-	    password = mx_password(session->mss_target, user);
+	    password = mx_password(mssp->mss_target, user);
 
 	mx_request_set_state(mrp, MSS_PASSWORD);
-	if (mx_session_check_password(session, mrp, user))
+	if (mx_session_check_password(mssp, mrp, user))
 	    return TRUE;
 
 	if (mrp->mr_state == MSS_ESTABLISHED)
@@ -335,21 +345,28 @@ mx_session_check_auth (mx_sock_session_t *session, mx_request_t *mrp)
     }
 
     mx_log("S%u no supported authentication methods found",
-	   session->mss_base.ms_id);
+	   mssp->mss_base.ms_id);
 
     mx_request_set_state(mrp, MSS_FAILED);
     return TRUE;
 
  success:
     mx_log("R%u auth'd session is established; S%u",
-	   mrp->mr_id, session->mss_base.ms_id);
+	   mrp->mr_id, mssp->mss_base.ms_id);
     mx_request_set_state(mrp, MSS_ESTABLISHED);
     return FALSE;
 }
 
 int
-mx_session_approve_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp) {
+mx_session_approve_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp)
+{
     mx_log("R%u host key is approved S%u", mrp->mr_id, mssp->mss_base.ms_id);
+
+    /*
+     * Save hostkey to db
+     */
+    mx_db_save_hostkey(mssp, mrp);
+
     return FALSE;
 }
 
@@ -360,29 +377,22 @@ mx_session_open (mx_request_t *mrp)
     mx_sock_session_t *mssp;
     LIBSSH2_SESSION *session;
     struct addrinfo hints, *res, *aip;
-    char *service, service_ssh[4] = {'s', 's', 'h', '\0'};
-    size_t tlen = strlen(mrp->mr_target) + 1;
-    char target[tlen];
+    char buf[BUFSIZ];
     
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_CANONNAME;
 
-    memcpy(target, mrp->mr_target, tlen);
-    mx_log("R%u session open to %s", mrp->mr_id, target);
+    snprintf(buf, sizeof(buf), "%d", mrp->mr_port);
 
-    service = strchr(target, ':');
-    if (service)
-	*service++ = '\0';
-    else
-	service = service_ssh;
+    mx_log("R%u session open to %s", mrp->mr_id, mrp->mr_hostname);
 
-    rc = getaddrinfo(target, service, &hints, &res);
+    rc = getaddrinfo(mrp->mr_hostname, buf, &hints, &res);
     if (rc) {
-	mx_log("R%u invalid hostname: '%s': %s", mrp->mr_id, mrp->mr_target,
+	mx_log("R%u invalid hostname: '%s': %s", mrp->mr_id, mrp->mr_hostname,
 	       gai_strerror(rc));
-	mx_request_error(mrp, "invalid hostname: %s", mrp->mr_target);
+	mx_request_error(mrp, "invalid hostname: %s", mrp->mr_hostname);
 	return NULL;
     }
 
@@ -394,8 +404,8 @@ mx_session_open (mx_request_t *mrp)
 		   aip->ai_canonname ? " (" :"",
 		   aip->ai_canonname ?: "", aip->ai_canonname ? ")" : "");
 	} else {
-	    strncpy(hn, target, sizeof(hn));
-	    strncpy(sn, service, sizeof(sn));
+	    strncpy(hn, mrp->mr_hostname, sizeof(hn));
+	    strncpy(sn, buf, sizeof(sn));
 	}
 
 	/* Connect to SSH server */
@@ -414,12 +424,13 @@ mx_session_open (mx_request_t *mrp)
 
     if (aip == NULL) {
         mx_log("R%u could not open SSH session connection", mrp->mr_id);
-	mx_request_error(mrp, "could not open connection: %s", mrp->mr_target);
+	mx_request_error(mrp, "could not open connection: %s",
+		mrp->mr_hostname);
 	freeaddrinfo(res);
         return NULL;
     }
 
-    mx_log("R%u connected to %s", mrp->mr_id, mrp->mr_target);
+    mx_log("R%u connected to %s", mrp->mr_id, mrp->mr_hostname);
 
     /* Create a session instance */
     session = libssh2_session_init();
@@ -444,7 +455,8 @@ mx_session_open (mx_request_t *mrp)
      * still have problems.  If we don't make it thru, we use the
      * ms_state to record our current state.
      */
-    mssp = mx_session_create(session, sock, mrp->mr_target, aip->ai_canonname);
+    mssp = mx_session_create(session, sock, mrp->mr_fulltarget,
+	    aip->ai_canonname);
     if (mssp == NULL) {
 	mx_log("mx session failed");
 	freeaddrinfo(res);
@@ -494,7 +506,7 @@ mx_session_find (const char *target)
 mx_sock_session_t *
 mx_session (mx_request_t *mrp)
 {
-    mx_sock_session_t *session = mx_session_find(mrp->mr_target);
+    mx_sock_session_t *session = mx_session_find(mrp->mr_fulltarget);
 
     if (session == NULL || session->mss_base.ms_state != MSS_ESTABLISHED)
 	session = mx_session_open(mrp);

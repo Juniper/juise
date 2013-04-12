@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (c) 2012, Juniper Networks, Inc.
+ * Copyright (c) 2012-2013, Juniper Networks, Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -61,6 +61,7 @@ extern unsigned mx_sock_id;   /* Monotonically increasing ID number */
 extern const char *opt_user;
 extern const char *opt_password;
 extern const char *opt_desthost;
+extern const char *opt_db;
 extern unsigned opt_destport;
 extern int opt_no_agent;
 

@@ -30,6 +30,7 @@ LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
 LIBSLAX_REQUIRED_VERSION=0.12.3
 LIBSSH2_REQUIRED_VERSION=1.4.2
+SQLITE3_REQUIRED_VERSION=3.0.0
 
 AC_PROG_CC
 AM_PROG_AR
@@ -415,6 +416,48 @@ AC_SUBST(LIBSSH2_CFLAGS)
 AC_SUBST(LIBSSH2_LIBS)
 
 #
+# ---- handle sqlite3
+#
+
+AC_ARG_WITH(sqlite3-prefix,
+        [  --with-sqlite3-prefix=[PFX]           Specify location of sqlite3 config],
+        SQLITE3_PREFIX=$withval,
+        SQLITE3_PREFIX=$prefix
+)
+
+AC_ARG_WITH(sqlite3-include-prefix,
+        [  --with-sqlite3-include-prefix=[PFX]   Specify location of sqlite3 headers],
+        SQLITE3_INCLUDE="$withval",
+        SQLITE3_INCLUDE="$SQLITE3_PREFIX/include",
+)
+SQLITE3_CFLAGS=-I$SQLITE3_INCLUDE
+
+AC_ARG_WITH(sqlite3-libs-prefix,
+        [  --with-sqlite3-libs-prefix=[PFX]      Specify location of sqlite3 libs],
+        SQLITE3_LIBS="-L$withval -lsqlite3",
+        SQLITE3_LIBS="-L$SQLITE3_PREFIX/lib -lsqlite3"
+)
+
+AC_MSG_CHECKING([version of sqlite3])
+
+if test -f $SQLITE3_INCLUDE/sqlite3.h
+then
+        SQLITE3_VERSION=`grep 'SQLITE_VERSION ' $SQLITE3_INCLUDE/sqlite3.h | awk -F'"' '{print $2}'`
+
+        if test VERSION_TO_NUMBER(echo $SQLITE3_VERSION) -ge VERSION_TO_NUMBER(echo $SQLITE3_REQUIRED_VERSION)
+        then
+                AC_MSG_RESULT($SQLITE3_VERSION found)
+        else
+                AC_MSG_ERROR(Version $SQLITE3_VERSION found. You need at least sqlite3 $SQLITE3_REQUIRED_VERSION for this version of juise)
+        fi
+else
+	AC_MSG_ERROR([Could not find sqlite3 anywhere, check http://www.sqlite.org/.])
+fi
+
+AC_SUBST(SQLITE3_CFLAGS)
+AC_SUBST(SQLITE3_LIBS)
+
+#
 # ---- end of noise
 #
 
@@ -601,6 +644,9 @@ AC_MSG_NOTICE([summary of build options:
   libssh2 version:  ${LIBSSH2_VERSION}
   libssh2 cflags:   ${LIBSSH2_CFLAGS}
   libssh2 libs:     ${LIBSSH2_LIBS}
+  sqlite3 version:  ${SQLITE3_VERSION}
+  sqlite3 cflags:   ${SQLITE3_CFLAGS}
+  sqlite3 libs:     ${SQLITE3_LIBS}
   libpcre cflags:   ${PCRE_CFLAGS}
   libpcre libs:     ${PCRE_LIB}
   lighttpd src:     ${LIGHTTPD_SRC}

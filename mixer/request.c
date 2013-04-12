@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (c) 2012, Juniper Networks, Inc.
+ * Copyright (c) 2012-2013, Juniper Networks, Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -9,11 +9,15 @@
  * LICENSE.
  */
 
+#include <sys/types.h>
+#include <pwd.h>
+
 #include "local.h"
 #include "request.h"
 #include "session.h"
 #include "channel.h"
 #include "netconf.h"
+#include "db.h"
 
 static unsigned mx_request_id; /* Monotonically increasing ID number */
 static mx_request_list_t mx_request_list; /* List of outstanding requests */
@@ -23,12 +27,25 @@ unsigned mx_netconf_tag_open_rpc_len = sizeof(mx_netconf_tag_open_rpc) - 1;
 char mx_netconf_tag_close_rpc[] = "</rpc>";
 unsigned  mx_netconf_tag_close_rpc_len = sizeof(mx_netconf_tag_close_rpc) - 1;
 
+/*
+ * Create a mixer request using the incoming attributes.
+ *
+ * target => This can be in the format: [user@]target[:port]
+ *
+ * If target is in the database with a stored host/port/credentials, we will
+ * use that information as the basis of the connection.  The user and port can
+ * be overridden using the optional format.
+ *
+ * If target is NOT in the database, it is treated as the actual hostname/ip.
+ * The user and port can be overridden using the optional format.
+ */
 mx_request_t *
 mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
 		   mx_muxid_t muxid, const char *tag, const char **attrs)
 {
+    struct passwd *pw;
     mx_request_t *mrp;
-    char *cp;
+    char buf[BUFSIZ];
 
     mrp = calloc(1, sizeof(*mrp));
     if (mrp == NULL)
@@ -40,27 +57,42 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
     mrp->mr_muxid = muxid;
     mrp->mr_name = strdup(tag);
     mrp->mr_client = &mswp->msw_base;
-    mrp->mr_target = nstrdup(xml_get_attribute(attrs, "target"));
-    mrp->mr_user = nstrdup(xml_get_attribute(attrs, "user"));
-    mrp->mr_password = nstrdup(xml_get_attribute(attrs, "password"));
-    mrp->mr_passphrase = nstrdup(xml_get_attribute(attrs, "passphrase"));
-    mrp->mr_hostkey = nstrdup(xml_get_attribute(attrs, "hostkey"));
+
+    /*
+     * Look up our target in the db.  It could be an alias.
+     */
+    if (!mx_db_target_lookup(xml_get_attribute(attrs, "target"), mrp)) {
+	mrp->mr_hostname = nstrdup(mrp->mr_target);
+	mrp->mr_user = nstrdup(xml_get_attribute(attrs, "user"));
+	mrp->mr_password = nstrdup(xml_get_attribute(attrs, "password"));
+	mrp->mr_passphrase = nstrdup(xml_get_attribute(attrs, "passphrase"));
+	mrp->mr_hostkey = nstrdup(xml_get_attribute(attrs, "hostkey"));
+    }
+    
     mrp->mr_rpc = mx_buffer_copy(mbp, len);
 
-    if (mrp->mr_user == NULL && mrp->mr_target) {
-	cp = index(mrp->mr_target, '@');
-	if (cp) {
-	    mrp->mr_user = mrp->mr_target;
-	    *cp++ = '\0';
-	    mrp->mr_target = strdup(cp);
+    /*
+     * Create our full target name (user@hostname:port) to use for indexing
+     * sessions.  If username isn't specified at this point, default to
+     * whoever is running mixer.
+     */
+    if (!mrp->mr_user) {
+	pw = getpwuid(getuid());
+	if (pw && pw->pw_name) {
+	    mrp->mr_user = nstrdup(pw->pw_name);
 	}
     }
+    snprintf(buf, sizeof(buf), "%s@%s:%d", mrp->mr_user, mrp->mr_hostname,
+	    mrp->mr_port);
+    mrp->mr_fulltarget = strdup(buf);
 
     TAILQ_INSERT_HEAD(&mx_request_list, mrp, mr_link);
 
-    mx_log("R%u request %s %lu from S%u, target %s, user %s",
+    mx_log("R%u request %s %lu from S%u, target %s, hostname: %s, "
+	    "port: %d, user: %s",
 	   mrp->mr_id, mrp->mr_name, mrp->mr_muxid,
-	   mswp->msw_base.ms_id, mrp->mr_target, mrp->mr_user);
+	   mswp->msw_base.ms_id, mrp->mr_target, mrp->mr_hostname,
+	   mrp->mr_port, mrp->mr_user);
 
     return mrp;
 
@@ -263,6 +295,8 @@ mx_request_free (mx_request_t *mrp)
 
     if (mrp->mr_name) free(mrp->mr_name);
     if (mrp->mr_target) free(mrp->mr_target);
+    if (mrp->mr_fulltarget) free(mrp->mr_fulltarget);
+    if (mrp->mr_hostname) free(mrp->mr_hostname);
     if (mrp->mr_user) free(mrp->mr_user);
     if (mrp->mr_password) free(mrp->mr_password);
     if (mrp->mr_passphrase) free(mrp->mr_passphrase);

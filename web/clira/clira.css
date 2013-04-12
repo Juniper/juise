@@ -190,6 +190,14 @@ div#header-info {
     padding-left: 10px;
 }
 
+div#prefsbtn {
+    background: url(/images/gear.png) no-repeat left center;
+    height 30px;
+    min-height: 30px;
+    width: 30px;
+    float: right;
+}
+
 div#header-actions {
     height: 60px;
     width: 200px;
@@ -473,6 +481,44 @@ input.text-entry {
 
 .jquery-checkbox {
     line-height: 24px;
+}
+
+ul.setupgrid {
+    padding: 0;
+    list-style: none;
+    margin: 0 auto;
+}
+
+ul.setupgrid li {
+    float: left;
+    padding: 10px;
+    border: 1px solid #cbcad0;
+    margin: 0 5px 10px 5px;
+}
+
+div.setupgrid {
+   font-family: 'GraublauWeb', arial, serif;
+   text-align: center;
+}
+
+.setupgrid a {
+    height: 32px;
+    width: 64px;
+    display: block;
+    padding-top: 32px;
+    text-decoration: none;
+}
+
+.setupgrid a#prefs-devices {
+    background: url(/images/prefs-devices.png) no-repeat center top;
+}
+
+.setupgrid a#prefs-groups {
+    background: url(/images/prefs-groups.png) no-repeat center top;
+}
+
+.setupgrid a#prefs-general {
+    background: url(/images/prefs-general.png) no-repeat center top;
 }
 
 div.input {

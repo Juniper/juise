@@ -17,7 +17,8 @@ jQuery(function ($) {
     var muxer;
     var command_number = 0;
     var cmdHistory, tgtHistory;
-    var prefs = { };            // Initial value (to handle early references)
+    var prefs = {};          // Initial value (to handle early references)
+    var renderBuffer = {};
 
     var loadingMessage = "<img src='/icons/loading.png'>"
         + "    ....loading...\n";
@@ -88,14 +89,6 @@ jQuery(function ($) {
             type: "boolean",
             label: "Live",
             title: "Interact with real devices",
-        },
-        {
-            name: "muxer",
-            def: true,
-            type: "boolean",
-            label: "Muxer",
-            title: "Use the Muxer API",
-            change: prefsChangeMuxer,
         },
         {
             name: "mixer",
@@ -328,19 +321,234 @@ jQuery(function ($) {
         var prefs_form = $.yform(prefs_options, "#prefs-dialog", prefs_fields);
         prefs = prefs_form.getData();
 
-        $("#juise").button();
-        $("#prefs").button().click(function (event) {
-            $.dbgpr("prefsEdit:", event.type);
+
+        $("#prefs-main-form").dialog({
+            autoOpen: false,
+            height: 300,
+            width: 350,
+            modal: true,
+            buttons: {
+                'Close': function() {
+                    $(this).dialog("close");
+                }
+            },
+            close: function() {
+            }
+        });
+        $("#prefsbtn").click(function() {
+            $("#prefs-main-form").dialog("open");
+        });
+
+        /* Set Up Devices */
+        $("#prefs-devices-form").dialog({
+            autoOpen: false,
+            height: 600,
+            width: 800,
+            resizable: false,
+            modal: true,
+            buttons: {
+                'Close': function() {
+                    $(this).dialog("close");
+                }
+            },
+            close: function() {
+            }
+        });
+        $("#prefs-devices").click(function() {
+            $("#prefs-devices-form").dialog("open");
+
+            $("#prefs-devices-grid").jqGrid({
+                url: '/clira/db.php?p=device_list',
+                editurl: '/clira/db.php?p=device_edit',
+                datatype: 'json',
+                colNames: ['Name', 'Hostname', 'Port', 'Username', 'Password', 'Save Password', ''],
+                colModel: [
+                    {name: 'name', index: 'index', width: 90, editable: true, editrules: {
+                            required: true
+                    }},
+                    {name: 'hostname', index: 'hostname', width: 100, editable: true, editrules: {
+                            required: true
+                    }},
+                    {name: 'port', index: 'port', width: 50, editable: true},
+                    {name: 'username', index: 'username', width: 100, editable: true, editrules: {
+                            required: true
+                    }},
+                    {name: 'password', index: 'password', width: 40, editable: true, edittype: 'password', hidden: true, hidedlg: true, editrules: { edithidden: true }},
+                    {name: 'save_password', index: 'save_password', width: 20, editable: true, edittype: 'checkbox', editoptions: {value: 'yes:no', defaultValue: 'no'}, formatter: 'checkbox'},
+                    {name: 'action', index: 'action', width: 40, formatter: 'actions', formatoptions: {
+                        editformbutton: true,
+                        editOptions: {
+                            closeAfterEdit: true,
+                            afterShowForm: function ($form) {
+                                var $dialog = $('#editmodprefs-devices-grid');
+                                var grid = $('#prefs-devices-grid');
+                                var coord = {};
+
+                                coord.top = grid.offset().top + (grid.height() / 2);
+                                coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                                $dialog.offset(coord);
+                            }
+                        },
+                        delOptions: {
+                            afterShowForm: function ($form) {
+                                var $dialog = $form.closest('div.ui-jqdialog');
+                                var grid = $('#prefs-devices-grid');
+                                var coord = {};
+
+                                coord.top = grid.offset().top + (grid.height() / 2);
+                                coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                                $dialog.offset(coord);
+                            }
+                        }
+                    }}
+                ],
+                rowNum: 10,
+                sortname: 'name',
+                autowidth: true,
+                viewrecords: true,
+                sortorder: 'asc',
+                height: 400,
+                pager: '#prefs-devices-pager',
+                beforeSelectRow: function (rowid, e) {
+                    if (e.target.id == 'delete') {
+                        // Do our row delete
+                        alert('delete row ' + rowid);
+                    }
+                }
+            }).navGrid('#prefs-devices-pager', {edit:false,add:true,del:false,search:false}, {
+                //prmEdit
+                closeAfterEdit: true
+            }, {
+                //prmAdd,
+                closeAfterAdd: true
+            })
+        });
+        
+        /* Set Up Groups */
+        $("#prefs-groups-form").dialog({
+            autoOpen: false,
+            height: 600,
+            width: 800,
+            resizable: false,
+            modal: true,
+            buttons: {
+                'Close': function() {
+                    $(this).dialog("close");
+                }
+            },
+            close: function() {
+            }
+        });
+        $("#prefs-groups").click(function() {
+            $("#prefs-groups-form").dialog("open");
+
+            $("#prefs-groups-grid").jqGrid({
+                url: '/clira/db.php?p=group_list',
+                editurl: '/clira/db.php?p=group_edit',
+                datatype: 'json',
+                colNames: ['Name', 'Members', ''],
+                colModel: [
+                    {name: 'name', index: 'name', width: 90, editable: true, editrules: {
+                            required: true
+                    }},
+                    {name: 'members', index: 'devices', editable: true, edittype: 'select', editrules: {
+                            required: true
+                    }, editoptions: {
+                        multiple: true,
+                        dataUrl: '/clira/db.php?p=device',
+                        buildSelect: function (data) {
+                            var j = $.parseJSON(data);
+                            var s = '<select>';
+                            if (j.devices && j.devices.length) {
+                                $.each(j.devices, function (i, item) {
+                                    s += '<option value="' + item.id + '">' + item.name + '</option>';
+                                });
+                            }
+                            return $(s)[0];
+                        }
+                    }},
+                    {name: 'action', index: 'action', width: 40, formatter: 'actions', formatoptions: {
+                        editformbutton: true,
+                        editOptions: {
+                            closeAfterEdit: true,
+                            afterShowForm: function ($form) {
+                                var $dialog = $('#editmodprefs-groups-grid');
+                                var grid = $('#prefs-groups-grid');
+                                var coord = {};
+
+                                coord.top = grid.offset().top + (grid.height() / 2);
+                                coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                                $dialog.offset(coord);
+                            }
+                        },
+                        delOptions: {
+                            afterShowForm: function ($form) {
+                                var $dialog = $form.closest('div.ui-jqdialog');
+                                var grid = $('#prefs-groups-grid');
+                                var coord = {};
+
+                                coord.top = grid.offset().top + (grid.height() / 2);
+                                coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                                $dialog.offset(coord);
+                            }
+                        }
+                    }}
+                ],
+                rowNum: 10,
+                sortname: 'name',
+                autowidth: true,
+                viewrecords: true,
+                sortorder: 'asc',
+                height: 400,
+                pager: '#prefs-groups-pager',
+                beforeSelectRow: function (rowid, e) {
+                    if (e.target.id == 'delete') {
+                        // Do our row delete
+                        alert('delete row ' + rowid);
+                    }
+                }
+            }).navGrid('#prefs-groups-pager', {edit:false,add:true,del:false,search:false}, {
+                //prmEdit
+                closeAfterEdit: true
+            }, {
+                //prmAdd,
+                closeAfterAdd: true
+            })
+        });
+        $.extend(jQuery.jgrid.edit, {recreateForm: true});
+       
+        /* General Preferences */
+        $("#prefs-general").click(function() {
+            //$("#prefs-general-form").dialog("open");
+            // XXX: rkj    use new forms, decide what prefs we need?
             if (prefs_form.shown()) {
                 prefs_form.close();
 
-                /* Put the focus back where it belongs */
                 if (tgtHistory.value())
                     cmdHistory.focus();
                 else tgtHistory.focus();
 
             } else {
                 prefs_form.open();
+            }
+        });
+        
+        $("#prefs-general-form").dialog({
+            autoOpen: false,
+            height: 600,
+            width: 800,
+            resizable: false,
+            modal: true,
+            buttons: {
+                'Close': function() {
+                    $(this).dialog("close");
+                }
+            },
+            close: function() {
             }
         });
     }
@@ -539,85 +747,85 @@ jQuery(function ($) {
                       });
 
         } else if (prefs.live_action) {
-            var $out = $("div.output-replace", $newp);
-            $out.slideUp(0).slideDown(prefs.slide_speed);
-
-            if (prefs.muxer) {
-                if (muxer == undefined)
-                    openMuxer();
-
-                var full = [ ];
-
-                muxer.rpc({
-                    div: $out,
-                    target: target,
-                    payload: "<command format='html'>"
-                        + command + "</command>",
-                    onreply: function (data) {
-                        $.dbgpr("rpc: reply: full.length " + full.length
-                                + ", data.length " + data.length);
-                        full.push(data);
-
-                        // Turns out that if we continually pass on incoming
-                        // data, firefox becomes overwhelmed with the work
-                        // of rendering it into html.  We cheat here by
-                        // rendering the first piece, and then letting the
-                        // rest wait until the RPC is complete.  Ideally, there
-                        // should also be a timer to render what we've got if
-                        // the output RPC stalls.
-                        if (full.length <= 2)
-                            $out.html(data);
-                    },
-                    oncomplete: function () {
-                        $.dbgpr("rpc: complete");
-                        $out.html(full.join(""));
-                    },
-                    onhostkey: function (data) {
-                        var self = this;
-                        promptForHostKey($out, data, function (response) {
-                            muxer.hostkey(self, response);
-                        });
-                    },
-                    onpsphrase: function (data) {
-                        var self = this;
-                        promptForSecret($out, data, function (response) {
-                            muxer.psphrase(self, response);
-                        });
-                    },
-                    onpsword: function (data) {
-                        var self = this;
-                        promptForSecret($out, data, function (response) {
-                            muxer.psword(self, response);
-                        });
-                    },
-                    onclose: function (event, message) {
-                        $.dbgpr("muxer: rpc onclose");
-                        if (full.length == 0) {
-                            makeAlert($out, message,
-                                      "internal failure (websocket)");
-                        }
-                    },
-                    onerror: function (message) {
-                        $.dbgpr("muxer: rpc onerror");
-                        if (full.length == 0) {
-                            makeAlert($out, message,
-                                      "internal failure (websocket)");
-                        }
-                    },
-                });
-
-            } else {
-                $out.load("/clira/clira.slax",
-                         {
-                             target: target,
-                             command: command,
-                             form: "false",
-                         },
-                         function (text, status, http) {
-                             loadHttpReply(text, status, http,
-                                           $(this), $out);
-                         });
+            if (muxer == undefined) {
+                openMuxer();
             }
+
+            // Resolve our group/device
+            $.getJSON(
+                '/clira/db.php?p=group_members',
+                { target: target },
+                function (json) {
+                    $.each(json.devices, function (i, target) {
+                        
+                        var $out = $("div.output-replace", $newp);
+                        $out.slideUp(0).slideDown(prefs.slide_speed);
+            
+                        renderBuffer[target] = [];
+
+                        muxer.rpc({
+                                div: $out,
+                                target: target,
+                                payload: "<command format='html'>"
+                                + command + "</command>",
+                                onreply: function (data) {
+                                    $.dbgpr("rpc: reply: renderBuffer[" + target + "].length " 
+                                        + renderBuffer[target].length
+                                        + ", data.length " + data.length);
+                                    renderBuffer[target].push(data);
+
+                                    // Turns out that if we continually pass on incoming
+                                    // data, firefox becomes overwhelmed with the work
+                                    // of rendering it into html.  We cheat here by
+                                    // rendering the first piece, and then letting the
+                                    // rest wait until the RPC is complete.  Ideally, there
+                                    // should also be a timer to render what we've got if
+                                    // the output RPC stalls.
+                                    if (renderBuffer[target].length <= 2)
+                                        $out.html(data);
+                                },
+                                oncomplete: function () {
+                                    $.dbgpr("rpc: complete");
+                                    $out.html(renderBuffer[target].join(""));
+                                },
+                                onhostkey: function (data) {
+                                    var self = this;
+                                    promptForHostKey($out, data, function (response) {
+                                            muxer.hostkey(self, response);
+                                        });
+                                },
+                                onpsphrase: function (data) {
+                                    var self = this;
+                                    promptForSecret($out, data, function (response) {
+                                            muxer.psphrase(self, response);
+                                        });
+                                },
+                                onpsword: function (data) {
+                                    var self = this;
+                                    promptForSecret($out, data, function (response) {
+                                            muxer.psword(self, response);
+                                        });
+                                },
+                                onclose: function (event, message) {
+                                    $.dbgpr("muxer: rpc onclose");
+                                    if (renderBuffer[target].length == 0) {
+                                        makeAlert($out, message,
+                                            "internal failure (websocket)");
+                                    }
+                                },
+                                onerror: function (message) {
+                                    $.dbgpr("muxer: rpc onerror");
+                                    if (renderBuffer[target].length == 0) {
+                                        makeAlert($out, message,
+                                            "internal failure (websocket)");
+                                    }
+                                },
+                            });
+                    });
+
+                }
+            );
+
         }
 
         decorateIcons($newp);

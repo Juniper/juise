@@ -29,12 +29,14 @@ LIBS = \
     ${LIBXSLT_LIBS} \
     -lexslt \
     ${LIBXML_LIBS} \
-    ${LIBSSH2_LIBS}
+    ${LIBSSH2_LIBS} \
+    ${SQLITE3_LIBS}
 
 noinst_HEADERS = \
     buffer.h \
     channel.h \
     console.h \
+    db.h \
     debug.h \
     forwarder.h \
     listener.h \
@@ -58,6 +60,7 @@ mixer_SOURCES = \
     buffer.c \
     channel.c \
     console.c \
+    db.c \
     debug.c \
     forwarder.c \
     listener.c \

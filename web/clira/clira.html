@@ -16,6 +16,8 @@
 	  type="text/css" rel="Stylesheet" class="ui-main"/>
     <link href="/themes/black-tie/addons-black-tie.css"
 	  type="text/css" rel="Stylesheet" class="ui-addon"/>
+          
+    <link href="/jquery/jqgrid/ui.jqgrid.css" type="text/css" rel="Stylesheet"/>
 
     <script type="text/javascript" src="/jquery/jquery.js"></script>
     <script type="text/javascript" src="/jquery/jquery.mruPulldown.js"
@@ -28,6 +30,9 @@
 
     <script type="text/javascript" src="/clira/clira.js"></script>
     <script type="text/javascript" src="/clira/clira.muxer.js"></script>
+    
+    <script type="text/javascript" src="/jquery/jqgrid/grid.locale-en.js"></script>
+    <script type="text/javascript" src="/jquery/jqgrid/jquery.jqGrid.src.js"></script>
 
 <!--
     <script type="text/javascript" src="/jquery/dform.js"></script> 
@@ -43,11 +48,31 @@
   <body>
 
     <div id="header">
-      <div id="header-logo">
-	<button id="juise">juise</button>
+      <div id="prefsbtn"></div>
+      
+      <div id="prefs-main-form" title="Preferences">
+        <div class="setupgrid">
+          <ul class="setupgrid">
+            <li><a id="prefs-devices" href="#">Set Up Devices</a></li>
+            <li><a id="prefs-groups" href="#">Set Up Groups</a></li>
+            <li><a id="prefs-general" href="#">General Preferences</a></li>
+          </ul>
+        </div>
       </div>
-      <div id="header-actions">
-	<button id="prefs">Preferences</button>
+
+      <div id="prefs-devices-form" title="Devices">
+        <p>The devices that CLIRA can access are listed below.</p>
+        <table id="prefs-devices-grid"></table>
+        <div id="prefs-devices-pager"></div>
+      </div>
+      
+      <div id="prefs-groups-form" title="Groups">
+        <p>Groups of devices that CLIRA can access are listed below.</p>
+        <table id="prefs-groups-grid"></table>
+        <div id="prefs-groups-pager"></div>
+      </div>
+
+      <div id="prefs-general-form" title="General">
       </div>
 
       <div id="prefs-dialog" title="Preferences" style="display: none">

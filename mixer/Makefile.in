@@ -197,7 +197,8 @@ LIBS = \
     ${LIBXSLT_LIBS} \
     -lexslt \
     ${LIBXML_LIBS} \
-    ${LIBSSH2_LIBS}
+    ${LIBSSH2_LIBS} \
+    ${SQLITE3_LIBS}
 
 LIBSLAX_CFLAGS = @LIBSLAX_CFLAGS@
 LIBSLAX_LIBS = @LIBSLAX_LIBS@
@@ -255,6 +256,8 @@ SLAX_CONFIG = @SLAX_CONFIG@
 SLAX_EXTDIR = @SLAX_EXTDIR@
 SLAX_LIBDIR = @SLAX_LIBDIR@
 SLAX_OXTRADOCDIR = @SLAX_OXTRADOCDIR@
+SQLITE3_CFLAGS = @SQLITE3_CFLAGS@
+SQLITE3_LIBS = @SQLITE3_LIBS@
 STRIP = @STRIP@
 VERSION = @VERSION@
 XML_CONFIG = @XML_CONFIG@
@@ -320,6 +323,7 @@ noinst_HEADERS = \
     buffer.h \
     channel.h \
     console.h \
+    db.h \
     debug.h \
     forwarder.h \
     listener.h \
@@ -335,6 +339,7 @@ mixer_SOURCES = \
     buffer.c \
     channel.c \
     console.c \
+    db.c \
     debug.c \
     forwarder.c \
     listener.c \
