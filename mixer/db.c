@@ -250,7 +250,7 @@ mx_db_get_passphrase (void)
 	if (db_passphrase) {
 	    free(db_passphrase);
 	}
-	db_passphrase = nstrdup((char *) sqlite3_column_text(stmt, 0));
+	db_passphrase = nstrdup((const char *) sqlite3_column_text(stmt, 0));
     }
 
     sqlite3_finalize(stmt);
