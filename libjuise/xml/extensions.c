@@ -164,10 +164,10 @@ ext_jcs_extract_authinfo (const char *key, char *value, size_t size)
  * Build a node containing a text node
  */
 static xmlNode *
-ext_jcs_make_text_node (xmlNs *nsp, const xmlChar *name,
+ext_jcs_make_text_node (xmlDocPtr docp, xmlNs *nsp, const xmlChar *name,
 		    const xmlChar *content, int len)
 {
-    xmlNode *newp = xmlNewNode(nsp, name);
+    xmlNode *newp = xmlNewDocNode(docp, nsp, name, NULL);
 
     if (newp == NULL)
 	return NULL;
@@ -534,33 +534,37 @@ ext_jcs_open (xmlXPathParserContext *ctxt, int nargs)
     }
 
     /*
-     * Create session cookie
-     */
-    nodep = xmlNewNode(NULL, (const xmlChar *) "cookie");
-
-    if (jso.jso_server == NULL)
-	jso.jso_server = xmlStrdup2("");
-
-    serverp = ext_jcs_make_text_node(NULL, (const xmlChar *) "server",
-	    (xmlChar *) jso.jso_server, xmlStrlen((xmlChar *) jso.jso_server));
-    xmlAddChild(nodep, serverp);
-
-    sname = jsio_session_type_name(jso.jso_stype);
-    methodp = ext_jcs_make_text_node(NULL, (const xmlChar *) "method",
-				     (const xmlChar *) sname, strlen(sname));
-
-    xmlAddSibling(serverp, methodp);
-    xmlAddChild(nodep, methodp);
-
-    jsopts_free(&jso);
-
-    /*
      * Create a Result Value Tree container, and register it with RVT garbage 
      * collector. 
      */
     tctxt = xsltXPathGetTransformContext(ctxt);
     container = xsltCreateRVT(tctxt);
     xsltRegisterLocalRVT(tctxt, container);
+
+    /*
+     * Create session cookie
+     */
+    nodep = xmlNewDocNode(container, NULL, (const xmlChar *) "cookie", NULL);
+
+    if (jso.jso_server == NULL)
+	jso.jso_server = xmlStrdup2("");
+
+    serverp = ext_jcs_make_text_node(container, NULL,
+				     (const xmlChar *) "server",
+				     (xmlChar *) jso.jso_server,
+				     xmlStrlen((xmlChar *) jso.jso_server));
+    xmlAddChild(nodep, serverp);
+
+    sname = jsio_session_type_name(jso.jso_stype);
+    methodp = ext_jcs_make_text_node(container, NULL,
+				     (const xmlChar *) "method",
+				     (const xmlChar *) sname,
+				     strlen(sname));
+
+    xmlAddSibling(serverp, methodp);
+    xmlAddChild(nodep, methodp);
+
+    jsopts_free(&jso);
 
     xmlAddChild((xmlNodePtr) container, nodep);
  
@@ -960,6 +964,7 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
     char address[IPV6_ADDR_BUFLEN];
     u_int32_t *v4_net = NULL, *v4_msk = NULL;
     struct in6_addr v6_net;
+    struct in6_addr v6_msk;
 
     if (nargs != 1) {
 	xmlXPathSetArityError(ctxt);
@@ -1033,6 +1038,8 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 	 */
 	
 	memcpy(&v6_net, &addr, sizeof(v6_net));
+	memset(&v6_msk, -1, sizeof(v6_msk));
+
 	/*
 	 * Find the last network byte
 	 */
@@ -1045,6 +1052,7 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 	if (pfxlen % NBBY) {
 	    first_bits = 0xff << (NBBY - (pfxlen % NBBY));
 	    v6_net.s6_addr[byte] &= first_bits;
+	    v6_msk.s6_addr[byte] &= first_bits;
 	}
 
 	/*
@@ -1053,6 +1061,7 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 	 */
 	for (byte = byte + 1; byte < sizeof(addr); byte++) {
 	    v6_net.s6_addr[byte] = 0;
+	    v6_msk.s6_addr[byte] = 0;
 	}
     } else {
 	LX_ERR("parse-ip error: Unknown address family\n");
@@ -1061,8 +1070,9 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 
     /* Output: results[1] =>  Address */
     inet_ntop(af, &addr, address, sizeof(address));
-    newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
-			      (const xmlChar *) address, strlen(address));
+    newp = ext_jcs_make_text_node(container, NULL,
+				  (const xmlChar *) "parse-ip",
+				  (const xmlChar *) address, strlen(address));
     if (newp) {
 	xmlXPathNodeSetAdd(results, newp);
 
@@ -1072,8 +1082,9 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 
     /* Output: results[2] => inet or inet6 */
     const char *tag = (af == AF_INET) ? "inet" : "inet6";
-    newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
-			      (const xmlChar *) tag, strlen(tag));
+    newp = ext_jcs_make_text_node(container, NULL,
+				  (const xmlChar *) "parse-ip",
+				  (const xmlChar *) tag, strlen(tag));
 
     if (newp) {
 	xmlXPathNodeSetAdd(results, newp);
@@ -1089,8 +1100,10 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 
 	/* Output: results[3] => Prefix length */
 	snprintf(address, sizeof(address), "%d", (int) pfxlen);
-	newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
-				  (const xmlChar *) address, strlen(address));
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "parse-ip",
+				      (const xmlChar *) address,
+				      strlen(address));
 
 	if (newp) {
     	    xmlXPathNodeSetAdd(results, newp);
@@ -1111,8 +1124,10 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
     	    inet_ntop(af, &v6_net, address, sizeof(address));
 	}
 
-	newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
-				  (const xmlChar *) address, strlen(address));
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "parse-ip",
+				      (const xmlChar *) address,
+				      strlen(address));
 	if (newp) {
     	    xmlXPathNodeSetAdd(results, newp);
 
@@ -1126,19 +1141,25 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 	/* Output: results[5] => Netmask only in case of ipv4 */
 	if (af == AF_INET) {
 	    inet_ntop(af, v4_msk, address, sizeof(address));
-	    newp = ext_jcs_make_text_node(NULL, (const xmlChar *) "parse-ip",
+	} else if (af == AF_INET6) {
+	    inet_ntop(af, &v6_msk, address, sizeof(address));
+	} else {
+	    snprintf(address, sizeof(address),
+		     "unknown address family: %d", af);
+	}
+
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "parse-ip",
 				      (const xmlChar *) address,
 				      strlen(address));
+	if (newp) {
+	    xmlXPathNodeSetAdd(results, newp);
 
-	    if (newp) {
-		xmlXPathNodeSetAdd(results, newp);
+	    if (last)
+		xmlAddSibling(last, newp);
 
-		if (last)
-		    xmlAddSibling(last, newp);
-
-		xmlAddChild((xmlNodePtr) container, newp);
-		last = newp;
-	    }
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
 	}
     }
 
