@@ -21,6 +21,8 @@ juise.assign = (
     "/local/"  => "@prefix@/bin/juise --cgi --local",
 )
 
+cgi.assign = ( ".php" => "@PHP_CGI@" )
+
 url.rewrite-once = (
   "^/ubiquity/chrome/locale/(.*)" => "/ubiquity/chrome/locale/en-US/$1",
 )

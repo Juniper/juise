@@ -112,13 +112,23 @@ AC_ARG_ENABLE([warnings],
 AC_MSG_RESULT([$JUISE_WARNINGS])
 AM_CONDITIONAL([JUISE_WARNINGS_HIGH], [test "$JUISE_WARNINGS" != "no"])
 
+AC_MSG_CHECKING([whether to build CLIRA web interface])
+AC_ARG_ENABLE([clira],
+    [  --enable-clira        Build the CLIRA web interface],
+    [NEED_CLIRA=$enableval],
+    [NEED_CLIRA=no])
+AC_MSG_RESULT([$NEED_CLIRA])
+AM_CONDITIONAL([NEED_CLIRA], [test "$NEED_CLIRA" != "no"])
+AC_SUBST(NEED_CLIRA)
+
 AC_MSG_CHECKING([whether to build mixer])
 AC_ARG_ENABLE([mixer],
     [  --enable-mixer        Build the mixer binary],
     [NEED_MIXER=$enableval],
-    [NEED_MIXER=no])
+    [NEED_MIXER=$NEED_CLIRA])
 AC_MSG_RESULT([$NEED_MIXER])
 AM_CONDITIONAL([NEED_MIXER], [test "$NEED_MIXER" != "no"])
+AC_SUBST(NEED_MIXER)
 
 AC_MSG_CHECKING([whether to build with debugging])
 AC_ARG_ENABLE([debug],
@@ -130,6 +140,7 @@ AM_CONDITIONAL([JUISE_DEBUG], [test "$JUISE_DEBUG" = "yes"])
 if test "JUISE_DEBUG" = "yes" ; then
     AC_DEFINE([JUISE_DEBUG], [1], [Enable debugging])
 fi
+AC_SUBST(JUISE_DEBUG)
 
 AC_MSG_CHECKING([whether to build with readline])
 AC_ARG_ENABLE([readline],
@@ -498,6 +509,12 @@ AC_ARG_WITH(lighttpd-mod,
         [LIGHTTPD_MOD=$prefix/lib]
 )
 
+AC_ARG_WITH(lighttpd-lib,
+        [  --with-lighttpd-lib=[DIR]      Specify location of lighttpd libraries],
+        [LIGHTTPD_LIBDIR=$withval],
+        [LIGHTTPD_LIBDIR=$prefix/lib]
+)
+
 AC_SUBST(LIGHTTPD_MOD)
 AC_SUBST(LIGHTTPD_SRC)
 AC_SUBST(LIGHTTPD_OBJ)
@@ -536,40 +553,44 @@ AC_ARG_WITH(juise-dir,
         [JUISE_DIR=$withval],
         [JUISE_DIR=$prefix/share/juise]
 )
+AC_SUBST(JUISE_DIR)
 
 AC_ARG_WITH(script-dir,
         [  --with-script-dir=[DIR]           Specify location of juise scripts],
         [JUISE_SCRIPT_DIR=$withval],
         [JUISE_SCRIPT_DIR=$JUISE_DIR/scripts]
 )
+AC_SUBST(JUISE_SCRIPT_DIR)
 
 AC_ARG_WITH(web-dir,
         [  --with-web-dir=[DIR]           Specify location of web server],
         [JUISE_WEB_DIR=$withval],
         [JUISE_WEB_DIR=$JUISE_DIR/web]
 )
+AC_SUBST(JUISE_WEB_DIR)
 
 AC_ARG_WITH(cgi-dir,
         [  --with-cgi-dir=[DIR]           Specify location of cgi files],
         [JUISE_CGI_DIR=$withval],
         [JUISE_CGI_DIR=$JUISE_DIR/web/local]
 )
+AC_SUBST(JUISE_CGI_DIR)
+
+AC_ARG_WITH(php-cgi,
+        [  --with-php-cgi=[DIR]           Specify location of php-cgi binary],
+        [PHP_CGI=$withval],
+        [PHP_CGI=$prefix/bin/php-cgi]
+)
+AC_SUBST(PHP_CGI)
 
 JUISE_SRCDIR='${srcdir}'
-JUISE_LIBDIR='${libdir}'
-JUISE_INCLUDEDIR='${includedir}'
-JUISE_LIBEXECDIR='${pkglibexecdir}'
-AC_SUBST(JUISE_DIR)
-AC_SUBST(JUISE_SCRIPT_DIR)
-AC_SUBST(JUISE_WEB_DIR)
-AC_SUBST(JUISE_CGI_DIR)
 AC_SUBST(JUISE_SRCDIR)
+JUISE_LIBDIR='${libdir}'
 AC_SUBST(JUISE_LIBDIR)
+JUISE_INCLUDEDIR='${includedir}'
 AC_SUBST(JUISE_LIBEXECDIR)
+JUISE_LIBEXECDIR='${pkglibexecdir}'
 AC_SUBST(JUISE_INCLUDEDIR)
-AC_SUBST(JUISE_CFLAGS)
-AC_SUBST(JUISE_LIBTOOLLIBS)
-AC_SUBST(JUISE_LIBS)
 
 dnl for the spec file
 RELDATE=`date +'%Y-%m-%d%n'`
@@ -623,7 +644,7 @@ AC_OUTPUT
 
 AC_MSG_NOTICE([summary of build options:
 
-  juise version:  ${VERSION} ${LIBJUISE_VERSION_EXTRA}
+  juise version:    ${VERSION} ${LIBJUISE_VERSION_EXTRA}
   host type:        ${host}
   install prefix:   ${prefix}
   compiler:         ${CC}
@@ -631,32 +652,41 @@ AC_MSG_NOTICE([summary of build options:
   library types:    Shared=${enable_shared}, Static=${enable_static}
 
   libxml version:   ${LIBXML_VERSION}
-  libxslt cflags:   ${LIBXSLT_CFLAGS}
+  libxml cflags:    ${LIBXML_CFLAGS}
   libxml libs:      ${LIBXML_LIBS}
+
   libxslt version:  ${LIBXSLT_VERSION}
   libxslt cflags:   ${LIBXSLT_CFLAGS}
   libxslt libs:     ${LIBXSLT_LIBS}
+
   libslax version:  ${LIBSLAX_VERSION}
   libslax cflags:   ${LIBSLAX_CFLAGS}
   libslax libs:     ${LIBSLAX_LIBS}
   libslax libdir:   ${SLAX_LIBDIR}
   libslax extdir:   ${SLAX_EXTDIR}
+
   libssh2 version:  ${LIBSSH2_VERSION}
   libssh2 cflags:   ${LIBSSH2_CFLAGS}
   libssh2 libs:     ${LIBSSH2_LIBS}
+
   sqlite3 version:  ${SQLITE3_VERSION}
   sqlite3 cflags:   ${SQLITE3_CFLAGS}
   sqlite3 libs:     ${SQLITE3_LIBS}
+
   libpcre cflags:   ${PCRE_CFLAGS}
   libpcre libs:     ${PCRE_LIB}
+
   lighttpd src:     ${LIGHTTPD_SRC}
   lighttpd obj:     ${LIGHTTPD_OBJ}
+  lighttpd libdir:  ${LIGHTTPD_LIBDIR}
   lighttpd modules: ${LIGHTTPD_MOD}
+  php cgi binary:   ${PHP_CGI}
 
   warnings:         ${JUISE_WARNINGS:-no}
   debug:            ${JUISE_DEBUG:-no}
   readline:         ${HAVE_READLINE:-no}
   libedit:          ${HAVE_LIBEDIT:-no}
   printf-like:      ${HAVE_PRINTFLIKE:-no}
+  build clira:      ${NEED_CLIRA:-no}
   build mixer:      ${NEED_MIXER:-no}
 ])
