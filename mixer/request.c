@@ -330,6 +330,11 @@ mx_request_release_session (mx_sock_session_t *session)
 	    mx_log("R%u session released S%u, C%u",
 		   mrp->mr_id, mrp->mr_session->mss_base.ms_id,
 		   mrp->mr_channel ? mrp->mr_channel->mc_id : 0);
+
+	    if (mrp->mr_client) {
+		mx_request_error(mrp, "session failure");
+	    }
+
 	    mrp->mr_state = MSS_FAILED;
 	    mrp->mr_session = NULL;
 	    mrp->mr_channel = NULL;
