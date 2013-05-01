@@ -26,10 +26,11 @@
     <script type="text/javascript" src="/jquery/jquery.dbgpr.js"></script>
     <script type="text/javascript" src="/jquery/yform.js"></script> 
 
-<!--
     <script type="text/javascript" src="/clira/clira.js"></script>
     <script type="text/javascript" src="/clira/clira.muxer.js"></script>
 
+
+<!--
     <script type="text/javascript" src="/jquery/dform.js"></script> 
     <script type="text/javascript" src="/jquery/dform.converters.js"></script> 
     <script type="text/javascript" src="/jquery/dform.extensions.js"></script> 
@@ -39,12 +40,46 @@
 -->
 
     <script type="text/javascript" src="/clira/parser.js"></script>
+    <script type="text/javascript" src="/clira/parser.types.js"></script>
+    <script type="text/javascript" src="/clira/parser.test.js"></script>
 
   </head>
 
   <body>
 
-    <div id="output"></div>
+    <div id="header">
+      <div id="header-logo">
+	<button id="juise">juise</button>
+      </div>
+      <div id="header-actions">
+	<button id="prefs">Preferences</button>
+      </div>
+
+      <div id="prefs-dialog" title="Preferences" style="display: none">
+      </div>
+    </div>
+
+    <div id="input-top">
+      <div id="command-top">
+	<div id="command-history" style="display: none"
+	     class="history command-value">
+	  <div class="empty">No commands</div>
+	  <div class="contents" style="display: none"></div>
+	</div>
+	<button id="command-clear" class="icon-clear"></button>
+	<div class="label">clira&gt;</div>
+	<form id="command-input-form" action="#">
+	  <input spellcheck="false" autocomplete="off" id="command"
+		 class="command-value input text-entry" autofocus="on"
+		 maxlength="2048" name="command" size="120"
+		 type="text"/>
+	</form>
+	<button id="command-pulldown" class="icon-pulldown"></button>
+      </div>
+      <button id="input-enter" class="icon-enter"></button>
+    </div>
+
+    <div id="output-top"></div>
 
     <div id="debug-container" class="ui-widget ui-corner-all">
       <div class="ui-state-default ui-widget-header ui-corner-all">

@@ -10,46 +10,45 @@
  */
 
 jQuery(function ($) {
+    if ($.clira == undefined)
+        $.clira = { };
 
-    $.clira = {
+    $.extend($.clira, {
         debug: true,           // Have debug output use $.dbgpr()
-    };
-    $.clira.commands = [ ];
-    $.clira.types = { };
-    $.clira.bundles = { };
-
-    $.clira.lang = {
-        match: function langMatch (name, token) {
-            if (name.substring(0, token.length) == token)
-                return true;
-            else false;
+        commands:  [ ],
+        types: { },
+        bundles: { },
+        scoring: {
+            enum: 3,
+            keyword: 15,
+            multiple_words: 0,
+            order: 5,
+            name: 5,
+            name_exact: 10,
+            needs_data: 5,
+            nokeyword: 2,
+            missing_keyword: 5,
         },
-    }
-
-    var scoring = {
-        enumv: 3,
-        keyword: 15,
-        multiple_words: 0,
-        order: 5,
-        name: 5,
-        name_exact: 10,
-        needs_data: 5,
-        nokeyword: 2,
-        missing_keyword: 5,
-    }
-
-    function buildObject (obj, base, defaults, adds) {
-        if (defaults)
-            $.extend(obj, defaults);
-        if (base)
-            $.extend(obj, base);
-        if (adds)
-            $.extend(obj, adds);
-    }
+        lang: {
+            match: function langMatch (name, token) {
+                if (name.substring(0, token.length) == token)
+                    return true;
+                else false;
+            },
+        },
+        buildObject: function buildObject (obj, base, defaults, adds) {
+            if (defaults)
+                $.extend(obj, defaults);
+            if (base)
+                $.extend(obj, base);
+            if (adds)
+                $.extend(obj, adds);
+        },
+    });
 
     function Command (options) {
         $.dbgpr("New command: " + options.command);
-        buildObject(this, options, { arguments: [ ]}, null);
+        $.clira.buildObject(this, options, { arguments: [ ]}, null);
 
         $.extend(this, options);
         var that = this;
@@ -86,20 +85,38 @@ jQuery(function ($) {
         }
     }
 
-    $.clira.addCommand = function addCommand (command) {
-        $.clira.commands.push(new Command(command));
-    }
-
-    $.clira.addType = function addType (type) {
-        $.clira.types[type.name] = type;
-    }
-
-    $.clira.addBundle = function addBundle (bundle) {
-        $.clira.bundles[bundle.name] = bundle;
-    }
+    $.extend($.clira, {
+        addCommand: function addCommand (command) {
+            if (Array.isArray(command)) {
+                $.each(command, function (x,c) {
+                    $.clira.commands.push(new Command(c));
+                });
+            } else {
+                $.clira.commands.push(new Command(command));
+            }
+        },
+        addType: function addType (type) {
+            if (Array.isArray(type)) {
+                $.each(type, function (n, t) {
+                    $.clira.types[t.name] = t;
+                });
+            } else {
+                $.clira.types[type.name] = type;
+            }
+        },
+        addBundle: function addBundle (bundle) {
+            if (Array.isArray(bundle)) {
+                $.each(bundle, function (n, b) {
+                    $.clira.bundles[b.name] = b;
+                });
+            } else {
+                $.clira.bundles[bundle.name] = bundle;
+            }
+        },
+    });
 
     function splitTokens (input) {
-        return input.split(/\s+/);
+        return input.trim().split(/\s+/);
     }
 
     function clone (obj) {
@@ -128,7 +145,7 @@ jQuery(function ($) {
 
     var parse_id = 1;
     function Parse (base) {
-        buildObject(this, base, null, { id: parse_id++, });
+        $.clira.buildObject(this, base, null, { id: parse_id++, });
         this.possibilities = [ ];
         this.debug_log = "";
     }
@@ -159,6 +176,9 @@ jQuery(function ($) {
 
             // For each input token, look for new possibilities
             $.each(this.input.tokens, function (argn, tok) {
+                if (tok.length == 0) // Skip drivel
+                    return;
+
                 that.dump(dbgpr, possibilities, "[top] >> ",
                            "top of parse loop for token: '" + tok + "'");
 
@@ -209,20 +229,21 @@ jQuery(function ($) {
                     match.multiple_words = true;
 
                 if (poss.last.arg.enums) {
-                    $.each(poss.last.arg.enums, function (n, enumv) {
-                        if ($.clira.lang.match(enumv.name, tok)) {
-                            that.dbgpr("enumeration match for " + enumv.name);
-                            match.enum = enumv;
-                            match.data = enumv.name;
+                    $.each(poss.last.arg.enums, function (n, e) {
+                        if ($.clira.lang.match(e.name, tok)) {
+                            that.dbgpr("enumeration match for " + e.name);
+                            match.enum = e;
+                            match.data = e.name;
                             that.addPossibility(res, poss, match,
-                                                scoring.needs_data
-                                                + scoring.enumv);
+                                                $.clira.scoring.needs_data
+                                                + $.clira.scoring.enum);
                         }
                     });
                 } else {
 
                     // Add a possibility using this match
-                    that.addPossibility(res, poss, match, scoring.needs_data);
+                    that.addPossibility(res, poss, match,
+                                        $.clira.scoring.needs_data);
                 }
 
                 // Early return, meaning that data for needs_data won't match
@@ -254,9 +275,9 @@ jQuery(function ($) {
                         match.needs_data = true;
 
                     // Calculate the score for this possibility
-                    var score = scoring.name;
+                    var score = $.clira.scoring.name;
                     if (arg.name.length == tok.length)
-                        score += scoring.name_exact;
+                        score += $.clira.scoring.name_exact;
                     if (argn == cmdn && $.clira.types[arg.type].order)
                         score += $.clira.types[arg.type].order;
 
@@ -280,6 +301,7 @@ jQuery(function ($) {
                         token: tok,
                         arg: arg,
                         data: tok,
+                        nokeyword: true,
                     }
 
                     // If the argument allows multiple tokens, mark it as such
@@ -287,7 +309,8 @@ jQuery(function ($) {
                         match.multiple_words = true;
 
                     // Add a possibility using this match
-                    that.addPossibility(res, poss, match, scoring.nokeyword);
+                    that.addPossibility(res, poss, match,
+                                        $.clira.scoring.nokeyword);
                 }
             });
 
@@ -303,7 +326,8 @@ jQuery(function ($) {
                 }
 
                 // Add a possibility using this match
-                that.addPossibility(res, poss, match, scoring.multiple_words);
+                that.addPossibility(res, poss, match,
+                                    $.clira.scoring.multiple_words);
             }
 
             return res;
@@ -367,7 +391,7 @@ jQuery(function ($) {
                     var arg = poss.command.arguments[k];
 
                     if (arg.type == "keyword" && !poss.seen[arg.name])
-                        poss.score -= scoring.missing_keyword;
+                        poss.score -= $.clira.scoring.missing_keyword;
                 }
 
                 // Remove possibilities where all matches are nokeyword
@@ -396,7 +420,7 @@ jQuery(function ($) {
 
     var poss_id = 1;
     function Possibility (base) {
-        buildObject(this, base, null, { id: poss_id++, });
+        $.clira.buildObject(this, base, null, { id: poss_id++, });
 
         /* We need our own copy of the matches and data */
         this.matches = clone(base.matches);
@@ -459,7 +483,7 @@ jQuery(function ($) {
 
     var match_id = 1;
     function Match (base) {
-        buildObject(this, base, { },
+        $.clira.buildObject(this, base, { },
                     { id: match_id++, });
     }
     $.extend(Match.prototype, {
@@ -485,7 +509,7 @@ jQuery(function ($) {
         return possibilities;
     }
 
-    function parse (inputString, options) {
+    $.clira.parse = function parse (inputString, options) {
         var p = new Parse(options);
         p.parse(inputString);
         p.possibilities.sort(function sortPossibilities (a, b) {
@@ -502,411 +526,144 @@ jQuery(function ($) {
         return s;
     }
 
-    function load () {
-        $.each(
-            [
-                {
-                    name: "date-and-time",
-                    needs_data: true,
-                },
-                {
-                    name: "device",
-                    needs_data: true,
-                },
-                {
-                    name: "empty",
-                    needs_data: false,
-                },
-                {
-                    name: "enumeration",
-                    needs_data: true,
-                },
-                {
-                    name: "interface",
-                    needs_data: true,
-                },
-                {
-                    name: "location",
-                    needs_data: true,
-                },
-                {
-                    name: "lsp",
-                    needs_data: true,
-                },
-                {
-                    name: "keyword",
-                    needs_data: false,
-                    score: scoring.keyword,
-                    order: scoring.order,
-                },
-                {
-                    name: "media-type",
-                    needs_data: true,
-                },
-                {
-                    name: "string",
-                    needs_data: true,
-                },
-                {
-                    name: "vpn",
-                    needs_data: true,
-                },
-            ], function (x, t) { $.clira.addType(t);});
+    Parse.prototype.render = function renderParse (opts) {
+        var parse = this;
+        var res = "<div class='parse'>"
+            + "<div class='input-debug'>Input: "
+            + parse.input.string + "</div>";
+        var that = this;
 
-        $.each(
-            [
-                {
-                    name: "location",
-                    arguments: [
-                        {
-                            name: "near",
-                            type: "location",
-                        },
-                        {
-                            name: "for",
-                            type: "location",
-                        },
-                    ],
-                },
-                {
-                    name: "since",
-                    arguments: [
-                        {
-                            name: "since",
-                            type: "date-and-time",
-                        },
-                    ],
-                },
-                {
-                    name: "affecting",
-                    arguments: [
-                        {
-                            name: "affecting",
-                            type: "empty",
-                        },
-                        {
-                            name: "lsp",
-                            type: "lsp",
-                        },
-                        {
-                            name: "customer",
-                            type: "string",
-                        },
-                    ],
-                },
-                {
-                    name: "between-locations",
-                    arguments: [
-                        {
-                            name: "between",
-                            type: "location",
-                        },
-                        {
-                            name: "and",
-                            type: "location",
-                        },
-                    ],
-                },
-                {
-                    name: "between-devices",
-                    arguments: [
-                        {
-                            name: "between",
-                            type: "device",
-                        },
-                        {
-                            name: "and",
-                            type: "device",
-                        },
-                    ],
-                },
-            ], function (x, o) { $.clira.addBundle(o); });
+        parse.eachPossibility(function (x, p) {
+            p.render(that, opts);
+            res += p.html;
+        });
 
-        $.each(
-            [
-                {
-                    command: "show interfaces",
-                    arguments: [
-                        {
-                            name: "interface",
-                            type: "interface",
-                            help: "Interface name",
-                        },
-                        {
-                            name: "type",
-                            type: "media-type",
-                            help: "Media type",
-                        },
-                        {
-                            name: "statistics",
-                            type: "empty",
-                            help: "Show statistics only",
-                        },
-                        {
-                            name: "color",
-                            type: "enumeration",
-                            help: "Color of interface",
-                            enums: [
-                                {
-                                    name: "blue",
-                                    help: "Blue like the sea after a storm",
-                                },
-                                {
-                                    name: "black",
-                                    help: "Black line the night",
-                                },
-                                {
-                                    name: "red",
-                                    help: "Red",
-                                }
-                            ],
-                        },
-                    ],
-                    execute: function () {
-                        $.dbgpr("got it");
-                    },
-                },
-                {
-                    command: "show alarms",
-                    bundle: [ "affecting", "since", "location", ],
-                    arguments: [
-                        {
-                            name: "interface",
-                            type: "interface",
-                            help: "Interface name",
-                        },
-                        {
-                            name: "type",
-                            type: "media-type",
-                            help: "Media type",
-                        },
-                    ],
-                    execute: function () {
-                        $.dbgpr("got it");
-                    },
-                },
-                {
-                    command: "show alarms critical extensive",
-                    arguments: [
-                        {
-                            name: "interface",
-                            type: "interface",
-                            help: "Interface name",
-                        },
-                        {
-                            name: "type",
-                            type: "media-type",
-                            help: "Media type",
-                        },
-                    ],
-                    execute: function () {
-                        $.dbgpr("got it");
-                    },
-                },
-                {
-                    command: "tell",
-                    arguments: [
-                        {
-                            name: "user",
-                            type: "string",
-                            help: "User to send message to",
-                            nokeyword: true,
-                        },
-                        {
-                            name: "message",
-                            type: "string",
-                            multiple_words: true,
-                            help: "Message to send to user",
-                            nokeyword: true,
-                        },
-                    ],
-                    execute: function () {
-                        $.dbgpr("got it");
-                    },
-                },
-                {
-                    command: "on",
-                    arguments: [
-                        {
-                            name: "target",
-                            type: "string",
-                            help: "Remote device name",
-                            nokeyword: true,
-                        },
-                        {
-                            name: "command",
-                            type: "string",
-                            multiple_words: true,
-                            help: "Command to execute",
-                            nokeyword: true,
-                        },
-                    ],
-                    execute: function () {
-                        $.dbgpr("got it");
-                    },
-                },
-                {
-                    command: "show latency issues",
-                    bundle: [ "location", ],
-                },
-                {
-                    command: "show outages",
-                    bundle: [ "location", "since", ],
-                },
-                {
-                    command: "map outages",
-                    bundle: [ "affecting", "since", ],
-                },
-                {
-                    command: "list outages",
-                    bundle: [ "affecting", "since", "between-locations", ],
-                },
-                {
-                    command: "list flaps",
-                    bundle: [ "affecting", "since", "between-locations", ],
-                },
-                {
-                    command: "show latency issues",
-                    bundle: [ "affecting", "since", ],
-                },
-                {
-                    command: "show drop issues",
-                    bundle: [ "affecting", "since", ],
-                },
-                {
-                    command: "map paths",
-                    bundle: [ "between-locations", ],
-                },
-                {
-                    command: "list flags",
-                    bundle: [ "affecting", "since",
-                              "between-locations", "location", ],
-                },
-                {
-                    command: "test lsp",
-                    arguments: [
-                        {
-                            name: "lsp-name",
-                            type: "lsp",
-                            nokeyword: true,
-                        },
-                    ],
-                },
-                {
-                    command: "route lsp away from device",
-                    arguments: [
-                        {
-                            name: "lsp-name",
-                            type: "lsp",
-                            nokeyword: true,
-                        },
-                        {
-                            name: "device-name",
-                            type: "device",
-                            nokeyword: true,
-                        },
-                    ],
-                },
-                {
-                    command: "configure new lsp",
-                    bundle: [ "between-devices", ],
-                    arguments: [
-                        {
-                            name: "lsp-name",
-                            type: "lsp",
-                            nokeyword: true,
-                        },
-                    ],
-                },
-                {
-                    command: "add device to vpn",
-                    arguments: [
-                        {
-                            name: "device-name",
-                            type: "device",
-                            nokeyword: true,
-                        },
-                        {
-                            name: "interface",
-                            type: "interface",
-                        },
-                        {
-                            name: "vpn-name",
-                            type: "vpn",
-                        },
-                    ],
-                },
+        res += "</div>";
 
-            ], function (x, c) { $.clira.addCommand(c); });
+        return res;
     }
 
-    load();
-    var examples = [
-    ];
-    $.each(
-        [
-            "show interfaces color red",
-            "show interfaces color bl",
-            "show alarms",
-            "alarms show",
-            "complete failure",
-            "show al c e",
-            "show interfaces type ethernet statistics",
-            "show interfaces statistics",
-            "tell user phil message now is the time",
-            "tell phil this one is working",
-            "tell user phil message user security must work",
-            "on dent show interfaces fe-0/0/0",
-            "show latency issues near iad",
-            "show outages near iad",
-            "list outages since yesterday",
-            "list outages between lax and bos",
-            "map paths between lax and bos",
-            "list flaps near lax since yesterday",
-            "list flaps between device lax and location boston",
-            "test lsp foobar",
-            "show alarms for northeast",
-            "configure new lsp goober between bos and lax",
-            "add device bos interface fe-0/0/0 to vpn corporate",
-            "route lsp foobar away from device bos",
+    function commandToken(poss, match, token, value) {
+        var res = "";
+        if (match.nokeyword)
+            res = "<div class='parse-implicit-keyword'>"
+            + match.arg.name + "</div> ";
 
-            "map outages affecting lsp foobar",
-            "show latency issues affecting lsp foobar",
-            "show drop issues affecting customer blah",
-        ], function (x, cmd) {
-            $.dbgpr("test: input: [" + cmd + "]");
-            var res = parse(cmd);
-            $.dbgpr("res: " + res.possibilities.length);
-            var html = "<div class='parse'>"
-                + "<div class='input'>Input: " + cmd + "</div>";
-            res.eachPossibility(function (x, p) {
-                p.dump($.dbgpr, "results: ");
-                html += "<div class='possibility'>";
-                html += "<div class='details'>Possibility Id: " + p.id
-                    + ", Score: " + p.score
-                    + ", Command: '" + p.command.command + "'</div>";
-                p.eachMatch(function eachMatch (x, m) {
-                    var title = "Id: " + m.id + " " + m.arg.name
-                        + " (" + m.arg.type + ")";
-                    if (this.enum)
-                        title += " (" + this.enum.name + ")";
-                    if (this.data)
-                        title += " data";
-                    if (this.needs_data)
-                        title += " needs_data";
-                    if (this.multiple_words)
-                        title += " multiple_words";
-                    html += "<div class='match' title='" + title + "'>";
-                    html += m.token;
-                    html += "</div>";
-                });
-                html += "<div class='details'>Data: {" + dump(p.data)
-                    + "}, Seen: {" + dump(p.seen) + "}</div>";
-                html += "</div>";
-            });
-            html += "</div>";
-            var $out = $(html);
-            $("#output").append($out);
+        res += "<div class='parse-token'>" + token + "</div>";
+
+        var trailing = value.substring(token.length);
+        if (trailing)
+            res += "<div class='parse-trailing'>" + trailing + "</div>";
+
+        return res;
+    }
+
+    function renderAsText (html) {
+        var res = "";
+        for (;;) {
+            var s = html.indexOf("<");
+            if (s < 0)
+                break;
+            var e = html.indexOf(">", s);
+            if (s != 0)
+                res += html.substring(0, s);
+            html = html.substring(e + 1);
         }
-    );
+        res += html;
+        return res;
+    }
+
+    Possibility.prototype.render = function renderPossibility (parse, opts) {
+        var details = "";
+        var html = "<div class='possibility'>";
+        html += "<div class='command-line'>";
+        var poss = this;
+
+        if (opts == undefined)
+            opts = { };
+
+        if (opts.details) {
+            details = "<div class='details'>Possibility Id: " + this.id
+                + ", Score: " + this.score
+                + ", Command: '" + this.command.command + "'</div>";
+            details += "<div class='details'>";
+        }
+
+        var emitted = { };
+
+        this.eachMatch(function eachMatch (x, m) {
+            var title = "Id: " + m.id + " " + m.arg.name
+                + " (" + m.arg.type + ")";
+            if (m.enum)
+                title += " (" + m.enum.name + ")";
+            if (m.data)
+                title += " data";
+            if (m.needs_data)
+                title += " needs_data";
+            if (m.multiple_words)
+                title += " multiple_words";
+
+            if (opts.details) {
+                details += "<div class='match-details' title='" + title
+                    + "'>" + m.token + "</div> ";
+            }
+
+            html += emitMissingTokens(poss, m, emitted, false);
+
+            html += "<div class='command-token' title='" + title + "'>";
+
+            var full = m.enum ? m.enum.name : m.data ? "" : m.arg.name;
+
+            html += commandToken(poss, m, m.token, full);
+            html += "</div> ";
+        });
+
+        html += emitMissingTokens(this, null, emitted, true);
+
+        html += "</div>";
+        if (opts.details) {
+            details += "</div>";
+            details += "<div class='details'>Data: {" + dump(this.data)
+                + "}, Seen: {" + dump(this.seen) + "}</div>";
+            html += "<div class='parse-details'>" + details + "</div>";
+        }
+
+        html += "</div>";
+
+        this.html = html;
+        var text = renderAsText(html);
+        this.text = text;
+        return text;
+    }
+
+    // If there are missing token (keywords) then emit them now.
+    function emitMissingTokens (poss, match, emitted, final) {
+        var res = "";
+        var all_keywords = true;
+
+        $.each(poss.command.arguments, function (n, arg) {
+            // Stop when we hit the current match
+            if (match && arg == match.arg)
+                return false;
+
+            // If we've already emitted it, skip
+            if (emitted[arg.name])
+                return true;
+
+            if (arg.mandatory && !poss.seen[arg.name]) {
+                res += "<div class='parse-mandatory'>" + arg.name + "</div> ";
+                res += "<div class='parse-mandatory-value'>"
+                    + arg.name + "</div> ";
+                emitted[arg.name] = true;
+            }
+
+            // If it's a keyword that we haven't seen, emit it
+            if (arg.type == "keyword" && !poss.seen[arg.name]) {
+                res += "<div class='parse-missing'>" + arg.name + "</div> ";
+                emitted[arg.name] = true;
+            }
+        });
+
+        return res;
+    }
 });
