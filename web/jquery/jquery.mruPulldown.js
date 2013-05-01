@@ -33,60 +33,106 @@ jQuery.mruPulldown({
  */
 
 jQuery(function ($) {
-    $.mruPulldown = function (info) {
-        var me = {
+    function MruPulldown (info) {
+        $.dbgpr("pulldown: init:", info.name, info);
+        $.extend(this, {
             depth: 40,
             version: "0.0.1",
-        }
-        $.extend(me, info);
-        $.dbgpr("pulldown: init:", me.name, me);
-
-        var shown = false;
+            shown: false,
+        });
+        $.extend(this, info);
+        var that = this;
 
         /*
          * If the caller didn't give an icon, look for one.  If we 
          * can't find one, then we have to bail.
          */
-        if (!me.pulldownIcon) {
-            me.pulldownIcon = $('.icon-pulldown', me.top);
-            if (!me.pulldownIcon) {
+        if (!this.pulldownIcon) {
+            this.pulldownIcon = $('.icon-pulldown', this.top);
+            if (!this.pulldownIcon) {
                 return null;
             }
         }
 
-        if (!me.target)
-            me.target = $('.input', me.top);
+        if (!this.target)
+            this.target = $('.input', this.top);
 
-        if (!me.history)
-            me.history = $('.history', me.top);
+        if (!this.history)
+            this.history = $('.history', this.top);
 
-        if (!me.focusAfter)
-            me.focusAfter = me.target;
+        if (!this.focusAfter)
+            this.focusAfter = this.target;
 
-        if (!me.contents)
-            me.contents = $('.contents', me.history);
+        if (!this.contents)
+            this.contents = $('.contents', this.history);
 
-        if (!me.focusAfter)
-            me.focusAfter = me.target;
+        if (!this.focusAfter)
+            this.focusAfter = this.target;
 
-        if (!me.clearIcon)
-            me.clearIcon = $('.icon-clear', me.top);
+        if (!this.clearIcon)
+            this.clearIcon = $('.icon-clear', this.top);
 
-        me.pulldown = function (e, noCall) {
+        this.clearIcon.text("Clear").button({
+            text: false,
+            icons: { primary: 'ui-icon-trash' },
+        }).attr("tabindex", "-1").click(function () {
+            $.dbgpr("pulldown: clear:", that.name);
+            that.select("");
+            that.focus();
+        });
+
+        this.pulldownIcon.button({
+            text: false,
+            icons: { primary: 'ui-icon-triangle-1-s' },
+        }).attr("tabindex", "-1").click(function (e) {
+            that.pulldown(e);
+        });
+
+        if (this.multiple) {
+            $("input", this.multiple).button({
+                text: true,
+            });
+
+            this.multiple.submit(function (e) {
+                if (e)
+                    e.preventDefault();
+                that.close();
+
+                var value = "";
+
+                $('input:checked', that.history).each(function () {
+                    if (that.name)
+                        value += " " + that.name;
+                    $(that).removeAttr('checked');
+                });
+
+                value = value.substr(1);
+
+                if (value != "") {
+                    that.select(value);
+                    that.focusAfter.focus();
+                }
+            });
+
+        }
+    }
+
+    $.extend(MruPulldown.prototype, {
+        pulldown: function (e, noCall) {
             e.preventDefault();
-            $.dbgpr("pulldown: click:", me.name);
-            shown = !shown;
-            if (shown) {
+            $.dbgpr("pulldown: click:", this.name);
+            this.shown = !this.shown;
+            if (this.shown) {
                 var top, left, width;
 
-                top = me.target.offset().top
-                    + me.target.outerHeight();
-                left = me.target.offset().left;
-                width = me.target.outerWidth();
+                top = this.target.offset().top
+                    + this.target.outerHeight();
+                left = this.target.offset().left;
+                width = this.target.outerWidth();
 
-                $.dbgpr("pulldown: click:", me.name, top, left);
+                $.dbgpr("pulldown: click:", this.name, top, left);
 
-                me.history.css({
+                this.history.css({
                     top: top,
                     left: left,
                     width: width,
@@ -99,41 +145,24 @@ jQuery(function ($) {
                  * div was shown, which we retreat as a "cancel".
                  * Drop the pulldown and give the input field focus.
                  */
-                $.dbgpr("pulldown: click-to-cancel:", me.name);
-                me.history.css({ display: "none" });
-                me.target.focus();
+                $.dbgpr("pulldown: click-to-cancel:", this.name);
+                this.history.css({ display: "none" });
+                this.target.focus();
             }
 
-            if (!noCall && me.click)
-                me.click(me);
-        }
+            if (!noCall && this.click)
+                this.click(this);
+        },
+        markUsed: function (value) {
+            var that = this;
 
-        me.pulldownIcon.click(me.pulldown);
-
-        me.clearIcon.text("Clear").button({
-            text: false,
-            icons: { primary: 'ui-icon-trash' },
-        }).attr("tabindex", "-1").click(function () {
-            $.dbgpr("pulldown: clear:", me.name);
-            me.select("");
-            me.focus();
-        });
-
-        me.pulldownIcon.button({
-            text: false,
-            icons: { primary: 'ui-icon-triangle-1-s' },
-        }).attr("tabindex", "-1").click(function () {
-            me.pulldown();
-        });
-
-        me.markUsed = function (value) {
-            $.dbgpr("pulldown: mark-used:", me.name, value);
+            $.dbgpr("pulldown: mark-used:", this.name, value);
             /*
              * Mark a value in the history as "used", pushing it
              * to the top of the MRU list.
              */
             var $match, $elt;
-            $('.' + me.entryClass, me.contents).each(function (i, elt) {
+            $('.' + this.entryClass, this.contents).each(function (i, elt) {
                 $elt = $(elt);
                 if ($elt.eq(0).text() == value)
                     $match = $elt;
@@ -144,35 +173,35 @@ jQuery(function ($) {
              * for re-adding it below.  If it doesn't exist, make it
              */
             if ($match) {
-                $.dbgpr("pulldown: mark-used:", me.name, "recent");
-                if (me.multiple)
+                $.dbgpr("pulldown: mark-used:", this.name, "recent");
+                if (this.multiple)
                     $match = $match.parent();
 
                 $match.remove();
-                me.contents.prepend($match);
+                this.contents.prepend($match);
 
             } else {
                 var evalue = value.replace(/&/g, "&amp;")
                            .replace(/</g, "&lt;")
                            .replace(/>/g, "&gt;")
 
-                $.dbgpr("pulldown: mark-used:", me.name, "new");
-                var content = '<div class="' + me.entryClass + '">'
+                $.dbgpr("pulldown: mark-used:", this.name, "new");
+                var content = '<div class="' + this.entryClass + '">'
 	                    + evalue + '</div>';
-                if (me.multiple) {
-                    content = '<div class="' + me.entryClass + '-parent">'
+                if (this.multiple) {
+                    content = '<div class="' + this.entryClass + '-parent">'
                         + '<input type="checkbox" name="' + evalue + '"/>'
                         + content + '</div>';
                 }
 
                 $match = jQuery(content);
-                me.contents.prepend($match);
+                this.contents.prepend($match);
 
-                me.trim();
+                this.trim();
             }
 
             $match.click(function (e) {
-                if (me.multiple) {
+                if (that.multiple) {
                     var $inp = $('input', $match)
                     $inp.attr('checked', 'checked');
 
@@ -180,89 +209,57 @@ jQuery(function ($) {
                         return;
 
                     value = "";
-                    $('input:checked', me.history).each(function () {
-                        if (this.name)
-                            value += " " + this.name;
-                        $(this).removeAttr('checked');
+                    $('input:checked', that.history).each(function () {
+                        if (that.name)
+                            value += " " + that.name;
+                        $(that).removeAttr('checked');
                     });
                     value = value.substr(1);
                 }
 
                 if (value != "")
-                    me.select(value);
-                me.close();
-                me.focus();
+                    that.select(value);
+                that.close();
+                that.focus();
             });
 
-            $('.empty', me.history).css({ display: "none" });
-            me.contents.css({ display: "block" });
-        }
-
-        if (me.multiple) {
-            $("input", me.multiple).button({
-                text: true,
-            });
-
-            me.multiple.submit(function (e) {
-                if (e)
-                    e.preventDefault();
-                me.close();
-
-                var value = "";
-
-                $('input:checked', me.history).each(function () {
-                    if (this.name)
-                        value += " " + this.name;
-                    $(this).removeAttr('checked');
-                });
-
-                value = value.substr(1);
-
-                if (value != "") {
-                    me.select(value);
-                    me.focusAfter.focus();
-                }
-            });
-
-        }
-
-        me.value = function () {
-            return me.target.get(0).value;
-        }
-
-        me.select = function (value) {
-            me.target.get(0).value = value;
-            return me;
-        }
-
-        me.focus = function (value) {
-            $.dbgpr("pulldown: focus:", me.name);
-            me.target.focus();
-            return me;
-        }
-
-        me.close = function () {
-            if (shown) {
-                $.dbgpr("pulldown: close:", me.name);
-                shown = false;
-                me.history.css({ display: "none" });
-            }
-            return me;
-        }
-
-        me.maxDepth = function (newDepth) {
+            $('.empty', this.history).css({ display: "none" });
+            this.contents.css({ display: "block" });
+        },
+        maxDepth: function (newDepth) {
             if (newDepth) {
-                me.depth = newDepth;
+                this.depth = newDepth;
             } else {
-                return me.depth;
+                return this.depth;
             }
-        }
-
-        me.trim = function () {
+        },
+        trim: function () {
             /* XXX */
-        }
+        },
+        value: function () {
+            return this.target.get(0).value;
+        },
+        select: function (value) {
+            this.target.get(0).value = value;
+            return this;
+        },
+        focus: function (value) {
+            $.dbgpr("pulldown: focus:", this.name);
+            this.target.focus();
+            return this;
+        },
+        close: function () {
+            if (this.shown) {
+                $.dbgpr("pulldown: close:", this.name);
+                this.shown = false;
+                this.history.css({ display: "none" });
+            }
+            return this;
+        },
+    });
 
-        return me;
+    $.mruPulldown = function (info) {
+        var res = new MruPulldown(info);
+        return res;
     }
-
 });
