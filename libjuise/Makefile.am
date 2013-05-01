@@ -89,3 +89,6 @@ LIBS = \
     ${LIBSLAX_LIBS} \
     ${LIBXSLT_LIBS} \
     ${LIBXML_LIBS}
+
+svnignore:
+	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
