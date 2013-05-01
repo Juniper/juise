@@ -61,12 +61,14 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
     /*
      * Look up our target in the db.  It could be an alias.
      */
-    if (!mx_db_target_lookup(xml_get_attribute(attrs, "target"), mrp)) {
-	mrp->mr_hostname = nstrdup(mrp->mr_target);
+    const char *target = xml_get_attribute(attrs, "target");
+    if (!mx_db_target_lookup(target, mrp)) {
+	mrp->mr_hostname = nstrdup(target);
 	mrp->mr_user = nstrdup(xml_get_attribute(attrs, "user"));
 	mrp->mr_password = nstrdup(xml_get_attribute(attrs, "password"));
 	mrp->mr_passphrase = nstrdup(xml_get_attribute(attrs, "passphrase"));
 	mrp->mr_hostkey = nstrdup(xml_get_attribute(attrs, "hostkey"));
+	mrp->mr_port = opt_destport;
     }
     
     mrp->mr_rpc = mx_buffer_copy(mbp, len);

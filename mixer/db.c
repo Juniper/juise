@@ -56,7 +56,8 @@
  *
  */
 
-sqlite3 *mx_db_handle = NULL;
+static sqlite3 *mx_db_handle;
+static char *mx_db_passphrase;
 
 /*
  * Check the hostkey database for this session's hostkey.
@@ -76,6 +77,9 @@ mx_db_check_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp)
     size_t len, olen;
     const char *fingerprint;
     char *enckey;
+
+    if (opt_no_db)
+	return DB_CHECK_HOSTKEY_NOMATCH;
 
     /*
      * Our hostkey name looks like:
@@ -155,7 +159,10 @@ mx_db_save_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp)
     char *enckey = NULL;
     sqlite3_stmt *stmt;
 
-    /*
+     if (opt_no_db)
+	return;
+
+   /*
      * Delete old hostkeys with this name
      */
     if (sqlite3_prepare_v2(mx_db_handle,
@@ -244,6 +251,9 @@ mx_db_get_passphrase (void)
     sqlite3_stmt *stmt;
     static char *db_passphrase = NULL;
 
+     if (opt_no_db)
+	return mx_db_passphrase;
+
     rc = sqlite3_prepare_v2(mx_db_handle, "SELECT passphrase FROM general",
 	    -1, &stmt, NULL);
     if (rc == SQLITE_OK && sqlite3_step(stmt) == SQLITE_ROW) {
@@ -267,6 +277,13 @@ mx_db_save_passphrase (const char *passphrase)
     int rc;
     sqlite3_stmt *stmt;
     int save_passphrase = 0;
+
+    if (opt_no_db) {
+	if (mx_db_passphrase)
+	    free(mx_db_passphrase);
+	mx_db_passphrase = strdup(passphrase);
+	return;
+    }
 
     rc = sqlite3_prepare_v2(mx_db_handle, "SELECT save_passphrase FROM "
 	    " general", -1, &stmt, NULL);
@@ -308,6 +325,9 @@ mx_db_save_password (mx_request_t *mrp, const char *password)
 {
     sqlite3_stmt *stmt;
     int save_password = 0, row_id = -1;
+
+    if (opt_no_db)
+	return;
 
     if (!mrp || !mrp->mr_target) {
 	return;
@@ -404,8 +424,11 @@ mx_db_target_lookup (const char *target, mx_request_t *mrp)
     }
 
     if (mrp->mr_port == 0) {
-	mrp->mr_port = 22;
+	mrp->mr_port = opt_destport;
     }
+
+    if (opt_no_db)
+	return FALSE;
 
     /*
      * See if we have an entry
@@ -437,7 +460,7 @@ mx_db_target_lookup (const char *target, mx_request_t *mrp)
 	    mrp->mr_password = nstrdup((const char *) sqlite3_column_text(stmt,
 			5));
 	}
-	if (mrp->mr_port == 22) {
+	if (mrp->mr_port == 0) {
 	    mrp->mr_port = sqlite3_column_int(stmt, 3);
 	}
 
@@ -445,6 +468,10 @@ mx_db_target_lookup (const char *target, mx_request_t *mrp)
     }
 
 cleanup:
+
+    if (mrp->mr_port == 0) {
+	mrp->mr_port = opt_destport;
+    }
 
     sqlite3_finalize(stmt);
 
@@ -665,4 +692,13 @@ mx_db_init (void)
 	    "0.0.1\",\"5000\",\"foo\",\"\",\"1\")", NULL, NULL, NULL);
 
     return TRUE;
+}
+
+void
+mx_db_close (void)
+{
+    if (mx_db_handle) {
+	sqlite3_close(mx_db_handle);
+	mx_db_handle = NULL;
+    }
 }

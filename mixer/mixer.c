@@ -62,6 +62,7 @@ const char *opt_desthost = "localhost";
 unsigned opt_destport = 22;
 int opt_no_agent;
 int opt_no_known_hosts;
+int opt_no_db;
 
 static int opt_login;
 static int opt_fork;
@@ -330,6 +331,9 @@ main (int argc UNUSED, char **argv UNUSED)
 	} else if (streq(cp, "--login")) {
 	    opt_login = TRUE;
 
+	} else if (streq(cp, "--no-db")) {
+	    opt_no_db = TRUE;
+
 	} else if (streq(cp, "--password")) {
 	    opt_password = *++argv;
 
@@ -396,7 +400,7 @@ main (int argc UNUSED, char **argv UNUSED)
 
     mx_type_info_init();
 
-    if (!mx_db_init()) {
+    if (!opt_no_db && !mx_db_init()) {
 	mx_log("mixer database initialization failed");
 	return 1;
     }
@@ -420,13 +424,17 @@ main (int argc UNUSED, char **argv UNUSED)
     }
 #endif
 
-    if (mx_listener(opt_port, MST_LISTENER, MST_WEBSOCKET, "carl") == NULL) {
+    if (mx_listener(opt_port, MST_LISTENER, MST_WEBSOCKET,
+		    "websocket") == NULL) {
 	mx_log("initial listen failed");
     }
 
     main_loop();
 
     libssh2_exit();
+
+    if (!opt_no_db)
+	mx_db_close();
 
     return 0;
 }

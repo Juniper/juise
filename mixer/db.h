@@ -33,3 +33,6 @@ mx_db_target_lookup (const char *target, mx_request_t *mrp);
 
 int
 mx_db_init (void);
+
+void
+mx_db_close (void);
