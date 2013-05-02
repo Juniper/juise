@@ -10,18 +10,453 @@
  */
 
 jQuery(function ($) {
-    decorateIcons($("#debug-container"));
-    $.dbgpr("document is ready");
-
     var $output = $("#output-top");
     var muxer;
     var command_number = 0;
-    var cmdHistory, tgtHistory;
-    var prefs = {};          // Initial value (to handle early references)
+    var tgtHistory;
     var renderBuffer = {};
 
     var loadingMessage = "<img src='/icons/loading.png'>"
         + "    ....loading...\n";
+
+    if ($.clira == undefined)
+        $.clira = { };
+
+    $.extend($.clira, {
+        prefs: { },
+        prefsInit: function prefsInit () {
+            $.clira.prefs_form = $.yform(prefs_options, "#prefs-dialog",
+                                         prefs_fields);
+            $.clira.prefs = $.clira.prefs_form.getData();
+            $("#prefs").button().click(function (event) {
+                $.dbgpr("prefsEdit:", event.type);
+                if ($.clira.prefs_form.shown()) {
+                    $.clira.prefs_form.close();
+
+                    /* Put the focus back where it belongs */
+                    $.clira.refocus();
+
+                } else {
+                    $.clira.prefs_form.open();
+                }
+            });
+
+            $("#prefs-main-form").dialog({
+                autoOpen: false,
+                height: 300,
+                width: 350,
+                modal: true,
+                buttons: {
+                    'Close': function() {
+                        $(this).dialog("close");
+                    }
+                },
+                close: function() {
+                },
+            });
+
+            $("#prefsbtn").click(function() {
+                $("#prefs-main-form").dialog("open");
+            });
+
+            /* Set Up Devices */
+            $("#prefs-devices-form").dialog({
+                autoOpen: false,
+                height: 600,
+                width: 800,
+                resizable: false,
+                modal: true,
+                buttons: {
+                    'Close': function() {
+                        $(this).dialog("close");
+                    }
+                },
+                close: function() {
+                },
+            });
+
+            $("#prefs-devices").click(function() {
+                $("#prefs-devices-form").dialog("open");
+
+                $("#prefs-devices-grid").jqGrid({
+                    url: '/clira/db.php?p=device_list',
+                    editurl: '/clira/db.php?p=device_edit',
+                    datatype: 'json',
+                    colNames: ['Name', 'Hostname', 'Port',
+                               'Username', 'Password', 'Save Password', ''],
+                    colModel: [
+                        {
+                            name: 'name',
+                            index: 'index',
+                            width: 90,
+                            editable: true,
+                            editrules: {
+                                required: true
+                            },
+                        },
+                        {
+                            name: 'hostname',
+                            index: 'hostname',
+                            width: 100,
+                            editable: true,
+                            editrules: {
+                                required: true
+                            },
+                        },
+                        {
+                            name: 'port',
+                            index: 'port',
+                            width: 50,
+                            editable: true
+                        },
+                        {
+                            name: 'username',
+                            index: 'username',
+                            width: 100,
+                            editable: true,
+                            editrules: {
+                                required: true
+                            },
+                        },
+                        {
+                            name: 'password',
+                            index: 'password',
+                            width: 40,
+                            editable: true,
+                            edittype: 'password',
+                            hidden: true,
+                            hidedlg: true,
+                            editrules: {
+                                edithidden: true,
+                            },
+                        },
+                        {
+                            name: 'save_password',
+                            index: 'save_password',
+                            width: 20,
+                            editable: true,
+                            edittype: 'checkbox',
+                            editoptions: {
+                                value: 'yes:no',
+                                defaultValue: 'no',
+                            },
+                            formatter: 'checkbox',
+                        },
+                        {
+                            name: 'action',
+                            index: 'action',
+                            width: 40,
+                            formatter: 'actions',
+                            formatoptions: {
+                                editformbutton: true,
+                                editOptions: {
+                                    closeAfterEdit: true,
+                                    afterShowForm: function ($form) {
+                                        var $dialog = $('#editmodprefs-devices-grid');
+                                        var grid = $('#prefs-devices-grid');
+                                        var coord = {};
+
+                                        coord.top = grid.offset().top + (grid.height() / 2);
+                                        coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                                        $dialog.offset(coord);
+                                    }
+                                },
+                                delOptions: {
+                                    afterShowForm: function ($form) {
+                                        var $dialog = $form.closest('div.ui-jqdialog');
+                                        var grid = $('#prefs-devices-grid');
+                                        var coord = {};
+
+                                        coord.top = grid.offset().top + (grid.height() / 2);
+                                        coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                                        $dialog.offset(coord);
+                                    }
+                                },
+                            },
+                        },
+                    ],
+                    rowNum: 10,
+                    sortname: 'name',
+                    autowidth: true,
+                    viewrecords: true,
+                    sortorder: 'asc',
+                    height: 400,
+                    pager: '#prefs-devices-pager',
+                    beforeSelectRow: function (rowid, e) {
+                        if (e.target.id == 'delete') {
+                            // Do our row delete
+                            alert('delete row ' + rowid);
+                        }
+                    },
+                }).navGrid('#prefs-devices-pager', {
+                    edit:false,
+                    add:true,
+                    del:false,
+                    search:false,
+                }, {
+                    //prmEdit
+                    closeAfterEdit: true
+                }, {
+                    //prmAdd,
+                    closeAfterAdd: true
+                });
+            });
+        
+            /* Set Up Groups */
+            $("#prefs-groups-form").dialog({
+                autoOpen: false,
+                height: 600,
+                width: 800,
+                resizable: false,
+                modal: true,
+                buttons: {
+                    'Close': function() {
+                        $(this).dialog("close");
+                    }
+                },
+                close: function() {
+                }
+            });
+
+            $("#prefs-groups").click(function() {
+                $("#prefs-groups-form").dialog("open");
+
+                $("#prefs-groups-grid").jqGrid({
+                    url: '/clira/db.php?p=group_list',
+                    editurl: '/clira/db.php?p=group_edit',
+                    datatype: 'json',
+                    colNames: ['Name', 'Members', ''],
+                    colModel: [
+                        {
+                            name: 'name',
+                            index: 'name',
+                            width: 90,
+                            editable: true,
+                            editrules: {
+                                required: true
+                            },
+                        },
+                        {
+                            name: 'members',
+                            index: 'devices',
+                            editable: true,
+                            edittype: 'select',
+                            editrules: {
+                                required: true,
+                            },
+                            editoptions: {
+                                multiple: true,
+                                dataUrl: '/clira/db.php?p=device',
+                                buildSelect: function (data) {
+                                    var j = $.parseJSON(data);
+                                    var s = '<select>';
+                                    if (j.devices && j.devices.length) {
+                                        $.each(j.devices, function (i, item) {
+                                            s += '<option value="' + item.id + '">' + item.name + '</option>';
+                                        });
+                                    }
+                                    return $(s)[0];
+                                },
+                            },
+                        },
+                        {
+                            name: 'action',
+                            index: 'action',
+                            width: 40,
+                            formatter: 'actions',
+                            formatoptions: {
+                                editformbutton: true,
+                                editOptions: {
+                                    closeAfterEdit: true,
+                                    afterShowForm: function ($form) {
+                                        var $dialog = $('#editmodprefs-groups-grid');
+                                        var grid = $('#prefs-groups-grid');
+                                        var coord = {};
+
+                                        coord.top = grid.offset().top + (grid.height() / 2);
+                                        coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                                        $dialog.offset(coord);
+                                    }
+                                },
+                                delOptions: {
+                                    afterShowForm: function ($form) {
+                                        var $dialog = $form.closest('div.ui-jqdialog');
+                                        var grid = $('#prefs-groups-grid');
+                                        var coord = {};
+
+                                        coord.top = grid.offset().top + (grid.height() / 2);
+                                        coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                                        $dialog.offset(coord);
+                                    }
+                                },
+                            },
+                        },
+                    ],
+                    rowNum: 10,
+                    sortname: 'name',
+                    autowidth: true,
+                    viewrecords: true,
+                    sortorder: 'asc',
+                    height: 400,
+                    pager: '#prefs-groups-pager',
+                    beforeSelectRow: function (rowid, e) {
+                        if (e.target.id == 'delete') {
+                            // Do our row delete
+                            alert('delete row ' + rowid);
+                        }
+                    },
+                }).navGrid('#prefs-groups-pager', {
+                    edit:false,
+                    add:true,
+                    del:false,
+                    search:false,
+                }, {
+                    //prmEdit
+                    closeAfterEdit: true
+                }, {
+                    //prmAdd,
+                    closeAfterAdd: true
+                });
+            });
+
+            $.extend(jQuery.jgrid.edit, { recreateForm: true });
+       
+            /* General Preferences */
+            $("#prefs-general").click(function() {
+                //$("#prefs-general-form").dialog("open");
+                // XXX: rkj    use new forms, decide what prefs we need?
+                if ($.clira.prefs_form.shown()) {
+                    $.clira.prefs_form.close();
+                    
+                    if (tgtHistory.value())
+                        cmdHistory.focus();
+                    else tgtHistory.focus();
+
+                } else {
+                    $.clira.prefs_form.open();
+                }
+            });
+        
+            $("#prefs-general-form").dialog({
+                autoOpen: false,
+                height: 600,
+                width: 800,
+                resizable: false,
+                modal: true,
+                buttons: {
+                    'Close': function() {
+                        $(this).dialog("close");
+                    }
+                },
+                close: function() {
+                }
+            });
+        },
+        decorateIcons: function decorateIcons ($wrapper) {
+            // Our container decorations (which need some of our functions)
+            $(".icon-remove-section", $wrapper).text("Close").button({
+                text: false,
+                icons: { primary: "ui-icon-closethick" },
+            }).click(function () {
+                divRemove($wrapper);
+            });
+
+            $(".icon-hide-section", $wrapper).text("Hide").button({
+                text: false,
+                icons: { primary: "ui-icon-minusthick" },
+            }).click(function () {
+                divHide($wrapper);
+            });
+
+            $(".icon-unhide-section", $wrapper).text("Unhide").button({
+                text: false,
+                icons: { primary: "ui-icon-plusthick" },
+            }).click(function () {
+                divUnhide($wrapper);
+            }).addClass("hidden");
+
+            $(".icon-clear-section", $wrapper).text("Clear").button({
+                text: false,
+                icons: { primary: "ui-icon-trash" },
+            }).click(function () {
+                $(".can-hide", $wrapper).text("");
+            });
+
+            $(".icon-keeper-section", $wrapper).text("Keep").button({
+                text: false,
+                icons: { primary: "ui-icon-star" },
+            }).click(function () {
+                $wrapper.toggleClass("keeper-active");
+                $(this).toggleClass("ui-state-highlight");
+            });
+        },
+
+        makeAlert: function makeAlert ($div, message, defmessage) {
+            if (message == undefined || message.length == 0)
+                message = defmessage;
+            var content = '<div class="ui-state-error ui-corner-all">'
+                + '<span><span class="ui-icon ui-icon-alert">'
+                + '</span>';
+            content += '<strong>Error:</strong> ' + message + '</span></div>';
+            $div.html(content);
+        },
+
+        refocus: function () {
+            if (tgtHistory.value())
+                $.clira.cmdHistory.focus();
+            else tgtHistory.focus();
+        },
+
+        cliraInit: function cliraInit (need_history, submit) {
+            $.clira.prefsInit();
+            $.clira.decorateIcons($("#debug-container"));
+
+            if (need_history) {
+                $.clira.cmdHistory = $.mruPulldown({
+                    name: "command-history",
+                    top: $("#command-top"),
+                    clearIcon: $("#command-clear"),
+                    entryClass: "command-history-entry",
+                    click: function (me) {
+                        if (tgtHistory)
+                            tgtHistory.close();
+                    },
+                });
+
+                tgtHistory = $.mruPulldown({
+                    name: "target-history",
+                    top: $("#target-top"),
+                    clearIcon: $("#target-clear"),
+                    multiple: $("#target-history-form"),
+                    history: $("#target-history"),
+                    entryClass: "target-history-entry",
+                    focusAfter: $("#command-input"),
+                    click: function (me) {
+                        if ($.clira.cmdHistory)
+                            $.clira.cmdHistory.close();
+                    },
+                });
+            }
+
+            $("#target-input-form").submit(submit);
+            $("#command-input-form").submit(submit);
+
+            $("#input-enter").text("Enter").button({
+                text: true,
+            }).click(function (e) {
+                submit(e);
+                $.clira.cmdHistory.focus();
+                $(this).blur();
+                return false;
+            });
+
+            $("#juise").button();
+        },
+    });
 
     var prefs_fields = [
         {
@@ -104,13 +539,15 @@ jQuery(function ($) {
         preferences: {
             apply: function () {
                 $.dbgpr("prefsApply");
-                prefs_form.close();
-                prefs = prefs_form.getData();
+                $.clira.prefs_form.close();
+                $.clira.prefs = $.clira.prefs_form.getData();
             }
         },
         title: "Preferences",
         dialog : { },
     }
+
+    $.dbgpr("document is ready");
 
     var testForms = {
         first: {
@@ -321,249 +758,20 @@ jQuery(function ($) {
         var prefs_form = $.yform(prefs_options, "#prefs-dialog", prefs_fields);
         prefs = prefs_form.getData();
 
-
-        $("#prefs-main-form").dialog({
-            autoOpen: false,
-            height: 300,
-            width: 350,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
-        $("#prefsbtn").click(function() {
-            $("#prefs-main-form").dialog("open");
-        });
-
-        /* Set Up Devices */
-        $("#prefs-devices-form").dialog({
-            autoOpen: false,
-            height: 600,
-            width: 800,
-            resizable: false,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
-        $("#prefs-devices").click(function() {
-            $("#prefs-devices-form").dialog("open");
-
-            $("#prefs-devices-grid").jqGrid({
-                url: '/clira/db.php?p=device_list',
-                editurl: '/clira/db.php?p=device_edit',
-                datatype: 'json',
-                colNames: ['Name', 'Hostname', 'Port', 'Username', 'Password', 'Save Password', ''],
-                colModel: [
-                    {name: 'name', index: 'index', width: 90, editable: true, editrules: {
-                            required: true
-                    }},
-                    {name: 'hostname', index: 'hostname', width: 100, editable: true, editrules: {
-                            required: true
-                    }},
-                    {name: 'port', index: 'port', width: 50, editable: true},
-                    {name: 'username', index: 'username', width: 100, editable: true, editrules: {
-                            required: true
-                    }},
-                    {name: 'password', index: 'password', width: 40, editable: true, edittype: 'password', hidden: true, hidedlg: true, editrules: { edithidden: true }},
-                    {name: 'save_password', index: 'save_password', width: 20, editable: true, edittype: 'checkbox', editoptions: {value: 'yes:no', defaultValue: 'no'}, formatter: 'checkbox'},
-                    {name: 'action', index: 'action', width: 40, formatter: 'actions', formatoptions: {
-                        editformbutton: true,
-                        editOptions: {
-                            closeAfterEdit: true,
-                            afterShowForm: function ($form) {
-                                var $dialog = $('#editmodprefs-devices-grid');
-                                var grid = $('#prefs-devices-grid');
-                                var coord = {};
-
-                                coord.top = grid.offset().top + (grid.height() / 2);
-                                coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
-
-                                $dialog.offset(coord);
-                            }
-                        },
-                        delOptions: {
-                            afterShowForm: function ($form) {
-                                var $dialog = $form.closest('div.ui-jqdialog');
-                                var grid = $('#prefs-devices-grid');
-                                var coord = {};
-
-                                coord.top = grid.offset().top + (grid.height() / 2);
-                                coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
-
-                                $dialog.offset(coord);
-                            }
-                        }
-                    }}
-                ],
-                rowNum: 10,
-                sortname: 'name',
-                autowidth: true,
-                viewrecords: true,
-                sortorder: 'asc',
-                height: 400,
-                pager: '#prefs-devices-pager',
-                beforeSelectRow: function (rowid, e) {
-                    if (e.target.id == 'delete') {
-                        // Do our row delete
-                        alert('delete row ' + rowid);
-                    }
-                }
-            }).navGrid('#prefs-devices-pager', {edit:false,add:true,del:false,search:false}, {
-                //prmEdit
-                closeAfterEdit: true
-            }, {
-                //prmAdd,
-                closeAfterAdd: true
-            })
-        });
-        
-        /* Set Up Groups */
-        $("#prefs-groups-form").dialog({
-            autoOpen: false,
-            height: 600,
-            width: 800,
-            resizable: false,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
-        $("#prefs-groups").click(function() {
-            $("#prefs-groups-form").dialog("open");
-
-            $("#prefs-groups-grid").jqGrid({
-                url: '/clira/db.php?p=group_list',
-                editurl: '/clira/db.php?p=group_edit',
-                datatype: 'json',
-                colNames: ['Name', 'Members', ''],
-                colModel: [
-                    {name: 'name', index: 'name', width: 90, editable: true, editrules: {
-                            required: true
-                    }},
-                    {name: 'members', index: 'devices', editable: true, edittype: 'select', editrules: {
-                            required: true
-                    }, editoptions: {
-                        multiple: true,
-                        dataUrl: '/clira/db.php?p=device',
-                        buildSelect: function (data) {
-                            var j = $.parseJSON(data);
-                            var s = '<select>';
-                            if (j.devices && j.devices.length) {
-                                $.each(j.devices, function (i, item) {
-                                    s += '<option value="' + item.id + '">' + item.name + '</option>';
-                                });
-                            }
-                            return $(s)[0];
-                        }
-                    }},
-                    {name: 'action', index: 'action', width: 40, formatter: 'actions', formatoptions: {
-                        editformbutton: true,
-                        editOptions: {
-                            closeAfterEdit: true,
-                            afterShowForm: function ($form) {
-                                var $dialog = $('#editmodprefs-groups-grid');
-                                var grid = $('#prefs-groups-grid');
-                                var coord = {};
-
-                                coord.top = grid.offset().top + (grid.height() / 2);
-                                coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
-
-                                $dialog.offset(coord);
-                            }
-                        },
-                        delOptions: {
-                            afterShowForm: function ($form) {
-                                var $dialog = $form.closest('div.ui-jqdialog');
-                                var grid = $('#prefs-groups-grid');
-                                var coord = {};
-
-                                coord.top = grid.offset().top + (grid.height() / 2);
-                                coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
-
-                                $dialog.offset(coord);
-                            }
-                        }
-                    }}
-                ],
-                rowNum: 10,
-                sortname: 'name',
-                autowidth: true,
-                viewrecords: true,
-                sortorder: 'asc',
-                height: 400,
-                pager: '#prefs-groups-pager',
-                beforeSelectRow: function (rowid, e) {
-                    if (e.target.id == 'delete') {
-                        // Do our row delete
-                        alert('delete row ' + rowid);
-                    }
-                }
-            }).navGrid('#prefs-groups-pager', {edit:false,add:true,del:false,search:false}, {
-                //prmEdit
-                closeAfterEdit: true
-            }, {
-                //prmAdd,
-                closeAfterAdd: true
-            })
-        });
-        $.extend(jQuery.jgrid.edit, {recreateForm: true});
-       
-        /* General Preferences */
-        $("#prefs-general").click(function() {
-            //$("#prefs-general-form").dialog("open");
-            // XXX: rkj    use new forms, decide what prefs we need?
-            if (prefs_form.shown()) {
-                prefs_form.close();
-
-                if (tgtHistory.value())
-                    cmdHistory.focus();
-                else tgtHistory.focus();
-
-            } else {
-                prefs_form.open();
-            }
-        });
-        
-        $("#prefs-general-form").dialog({
-            autoOpen: false,
-            height: 600,
-            width: 800,
-            resizable: false,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
     }
 
     function commandSubmit (event) {
         event.preventDefault();
         $.dbgpr("commandSubmit:", event.type);
 
-        tgtHistory.close();
-        cmdHistory.close();
-
-        var command = cmdHistory.value();
+        if (tgtHistory)
+            tgtHistory.close();
+        $.clira.cmdHistory.close();
+  
+        var command = $.clira.cmdHistory.value();
         if (command == "") {
             $.dbgpr("submit; skipping since command value is empty");
-            cmdHistory.focus();
+            $.clira.cmdHistory.focus();
             return false;
         }
 
@@ -602,7 +810,7 @@ jQuery(function ($) {
                 targetListMarkUsed(this, tname, cname);
         }
 
-        cmdHistory.markUsed(command);
+        $.clira.cmdHistory.markUsed(command);
         commandOutputTrim(count);
 
         return false;
@@ -632,7 +840,7 @@ jQuery(function ($) {
         $target.click(function (event) {
             tgtHistory.close();
             tgtHistory.select(target);
-            cmdHistory.focus();
+            $.clira.cmdHistory.focus();
         });
 
         $("#target-contents-none").css({ display: "none" });
@@ -642,7 +850,7 @@ jQuery(function ($) {
         $(".target", $tset).each(function (index, target) {
             var delta = $(target).position().top -
                         $(target).parent().position().top;
-            if ( delta > prefs.max_target_position) {
+            if ( delta > $.clira.prefs.max_target_position) {
                 $(target).remove();
             }
         });     
@@ -699,7 +907,7 @@ jQuery(function ($) {
                 + loadingMessage;
                 + "</div>";
 
-        } else if (prefs.live_action) {
+        } else if ($.clira.prefs.live_action) {
             content += "<div class='output-replace'>"
                 + loadingMessage;
                 + "</div>";
@@ -714,8 +922,8 @@ jQuery(function ($) {
 
         var $newp = jQuery(content);
         $output.prepend($newp);
-        if (prefs.slide_speed > 0)
-            $newp.slideUp(0).slideDown(prefs.slide_speed);
+        if ($.clira.prefs.slide_speed > 0)
+            $newp.slideUp(0).slideDown($.clira.prefs.slide_speed);
         divUnhide($newp);
 
         if (test) {
@@ -735,7 +943,7 @@ jQuery(function ($) {
 
         } else if (local) {
             var $out = $("div.output-replace", $newp);
-            $out.slideUp(0).slideDown(prefs.slide_speed);
+            $out.slideUp(0).slideDown($.clira.prefs.slide_speed);
 
             var params = parseParams("script " + local);
             var name = params["script"];
@@ -746,115 +954,48 @@ jQuery(function ($) {
                                         $(this), $out);
                       });
 
-        } else if (prefs.live_action) {
-            if (muxer == undefined) {
-                openMuxer();
-            }
+        } else if ($.clira.prefs.live_action) {
+            var $out = $("div.output-replace", $newp);
+            if ($.clira.prefs.muxer) {
+                $.clira.runCommand($out, target, command);
 
-            // Resolve our group/device
-            $.getJSON(
-                '/clira/db.php?p=group_members',
-                { target: target },
-                function (json) {
-                    $.each(json.devices, function (i, target) {
-                        
-                        var $out = $("div.output-replace", $newp);
-                        $out.slideUp(0).slideDown(prefs.slide_speed);
-            
-                        renderBuffer[target] = [];
-
-                        muxer.rpc({
-                                div: $out,
-                                target: target,
-                                payload: "<command format='html'>"
-                                + command + "</command>",
-                                onreply: function (data) {
-                                    $.dbgpr("rpc: reply: renderBuffer[" + target + "].length " 
-                                        + renderBuffer[target].length
-                                        + ", data.length " + data.length);
-                                    renderBuffer[target].push(data);
-
-                                    // Turns out that if we continually pass on incoming
-                                    // data, firefox becomes overwhelmed with the work
-                                    // of rendering it into html.  We cheat here by
-                                    // rendering the first piece, and then letting the
-                                    // rest wait until the RPC is complete.  Ideally, there
-                                    // should also be a timer to render what we've got if
-                                    // the output RPC stalls.
-                                    if (renderBuffer[target].length <= 2)
-                                        $out.html(data);
-                                },
-                                oncomplete: function () {
-                                    $.dbgpr("rpc: complete");
-                                    $out.html(renderBuffer[target].join(""));
-                                },
-                                onhostkey: function (data) {
-                                    var self = this;
-                                    promptForHostKey($out, data, function (response) {
-                                            muxer.hostkey(self, response);
-                                        });
-                                },
-                                onpsphrase: function (data) {
-                                    var self = this;
-                                    promptForSecret($out, data, function (response) {
-                                            muxer.psphrase(self, response);
-                                        });
-                                },
-                                onpsword: function (data) {
-                                    var self = this;
-                                    promptForSecret($out, data, function (response) {
-                                            muxer.psword(self, response);
-                                        });
-                                },
-                                onclose: function (event, message) {
-                                    $.dbgpr("muxer: rpc onclose");
-                                    if (renderBuffer[target].length == 0) {
-                                        makeAlert($out, message,
-                                            "internal failure (websocket)");
-                                    }
-                                },
-                                onerror: function (message) {
-                                    $.dbgpr("muxer: rpc onerror");
-                                    if (renderBuffer[target].length == 0) {
-                                        makeAlert($out, message,
-                                            "internal failure (websocket)");
-                                    }
-                                },
-                            });
-                    });
-
+                if (muxer == undefined) {
+                    openMuxer();
                 }
-            );
 
+                // Resolve our group/device
+                $.getJSON(
+                    "/clira/db.php?p=group_members",
+                    { target: target },
+                    function (json) {
+                        $.each(json.devices, function (i, name) {
+                            $.clira.runCommand($out, name, command);
+                        });
+                    }
+                ).fail(function fail (x, message, err) {
+                    // Failure means we assume it's a single target
+                    $.clira.runCommand($out, target, command);
+                });
+            }
         }
 
-        decorateIcons($newp);
+        $.clira.decorateIcons($newp);
 
         if (target) {
             $(".target-value", $newp).click(function () {
                 tgtHistory.close();
                 tgtHistory.select($(this).text());
-                cmdHistory.focus();
+                $.clira.cmdHistory.focus();
             });
         }
 
         $(".command-value", $newp).click(function () {
-            cmdHistory.close();
-            cmdHistory.select($(this).text());
-            cmdHistory.focus();
+            $.clira.cmdHistory.close();
+            $.clira.cmdHistory.select($(this).text());
+            $.clira.cmdHistory.focus();
         });
 
         return false;
-    }
-
-    function makeAlert ($div, message, defmessage) {
-        if (message == undefined || message.length == 0)
-            message = defmessage;
-	var content = '<div class="ui-state-error ui-corner-all">'
-	    + '<span><span class="ui-icon ui-icon-alert">'
-            + '</span>';
-        content += '<strong>Error:</strong>' + message + '</span></div>';
-        $div.html(content);
     }
 
     function openMuxer () {
@@ -862,7 +1003,7 @@ jQuery(function ($) {
             muxer.close();
 
         muxer = $.Muxer({
-            url: prefs.mixer,
+            url: $.clira.prefs.mixer,
             onopen: function (event) {
                 $.dbgpr("clira: WebSocket has opened");
             },
@@ -881,10 +1022,79 @@ jQuery(function ($) {
     }
 
     function restoreReplaceDiv ($div) {
-        cmdHistory.focus();
+        $.clira.cmdHistory.focus();
         $div.parent().html(loadingMessage);
         $div.remove();
     }
+
+    $.extend($.clira, {
+        runCommand: function runCommand ($output, target, command) {
+            $output.html(loadingMessage);
+            $output.slideUp(0).slideDown($.clira.prefs.slide_speed);
+
+            if (muxer == undefined)
+                openMuxer();
+
+            var full = [ ];
+
+            muxer.rpc({
+                div: $output,
+                target: target,
+                payload: "<command format='html'>" + command + "</command>",
+                onreply: function (data) {
+                    $.dbgpr("rpc: reply: full.length " + full.length
+                            + ", data.length " + data.length);
+                    full.push(data);
+
+                    // Turns out that if we continually pass on incoming
+                    // data, firefox becomes overwhelmed with the work
+                    // of rendering it into html.  We cheat here by
+                    // rendering the first piece, and then letting the
+                    // rest wait until the RPC is complete.  Ideally, there
+                    // should also be a timer to render what we've got if
+                    // the output RPC stalls.
+                    if (full.length <= 2)
+                        $output.html(data);
+                },
+                oncomplete: function () {
+                    $.dbgpr("rpc: complete");
+                    $output.html(full.join(""));
+                },
+                onhostkey: function (data) {
+                    var self = this;
+                    promptForHostKey($output, data, function (response) {
+                        muxer.hostkey(self, response);
+                    });
+                },
+                onpsphrase: function (data) {
+                    var self = this;
+                    promptForSecret($output, data, function (response) {
+                        muxer.psphrase(self, response);
+                    });
+                },
+                onpsword: function (data) {
+                    var self = this;
+                    promptForSecret($output, data, function (response) {
+                        muxer.psword(self, response);
+                    });
+                },
+                onclose: function (event, message) {
+                    $.dbgpr("muxer: rpc onclose");
+                    if (full.length == 0) {
+                        $.clira.makeAlert($output, message,
+                                          "internal failure (websocket)");
+                    }
+                },
+                onerror: function (message) {
+                    $.dbgpr("muxer: rpc onerror");
+                    if (full.length == 0) {
+                        $.clira.makeAlert($output, message,
+                                          "internal failure (websocket)");
+                    }
+                },
+            });
+        },
+    });
 
     function promptForHostKey ($parent, prompt, onclick) {
         var content = "<div class='muxer-prompt ui-state-highlight'>"
@@ -938,7 +1148,7 @@ jQuery(function ($) {
         });
     }
 
-    function loadHttpReply (text, status, http, $this, $out) {
+    function loadHttpReply (text, status, http, $this, $output) {
         $.dbgpr("loadHttpReply: ", "target:", target,
                 "; status:", status, "; text:", text);
         $.dbgpr("http", http);
@@ -957,7 +1167,7 @@ jQuery(function ($) {
                            + htmlEscape($("message", $err).text())
                              + "</div>");
         }
-        $out.slideDown(prefs.slide_speed);
+        $output.slideDown($.clira.prefs.slide_speed);
     }
 
     function htmlEscape (val) {
@@ -982,9 +1192,9 @@ jQuery(function ($) {
                 keep += 1;
             } else if (i < fresh_count) {
                 // do nothing
-            } else if (i >= prefs.output_remove_after + keep) {
+            } else if (i >= $.clira.prefs.output_remove_after + keep) {
                 divRemove($child);
-            } else if (i >= prefs.output_close_after + keep) {
+            } else if (i >= $.clira.prefs.output_close_after + keep) {
                 if (!divIsHidden($child))
                     divHide($child);
             } else {
@@ -995,7 +1205,7 @@ jQuery(function ($) {
     }
 
     function divRemove ($wrapper) {
-        $wrapper.slideUp(prefs.slide_speed, function () {
+        $wrapper.slideUp($.clira.prefs.slide_speed, function () {
             $wrapper.remove();
         });
     }
@@ -1007,17 +1217,17 @@ jQuery(function ($) {
     function divHide ($wrapper) {
         $(".icon-unhide-section", $wrapper).removeClass("hidden");
         $(".icon-hide-section", $wrapper).addClass("hidden");
-        $(".can-hide", $wrapper).slideUp(prefs.slide_speed);
+        $(".can-hide", $wrapper).slideUp($.clira.prefs.slide_speed);
     }
 
     function divUnhide ($wrapper) {
         $(".icon-unhide-section", $wrapper).addClass("hidden");
         $(".icon-hide-section", $wrapper).removeClass("hidden");
-        $(".can-hide", $wrapper).slideDown(prefs.slide_speed);
+        $(".can-hide", $wrapper).slideDown($.clira.prefs.slide_speed);
     }
 
     function prefsSetupConfirmExit () {
-        if (prefs.stay_on_page) {
+        if ($.clira.prefs.stay_on_page) {
             window.onbeforeunload = function (e) {
                 return "Are you sure?  You don't look sure.....";
             }
@@ -1048,47 +1258,6 @@ jQuery(function ($) {
         }
     }
 
-    /*
-     * Our dbgpr container decorations (which need some of our functions)
-     */
-    function decorateIcons ($wrapper) {
-        $(".icon-remove-section", $wrapper).text("Close").button({
-            text: false,
-            icons: { primary: "ui-icon-closethick" },
-        }).click(function () {
-            divRemove($wrapper);
-        });
-
-        $(".icon-hide-section", $wrapper).text("Hide").button({
-            text: false,
-            icons: { primary: "ui-icon-minusthick" },
-        }).click(function () {
-            divHide($wrapper);
-        });
-
-        $(".icon-unhide-section", $wrapper).text("Unhide").button({
-            text: false,
-            icons: { primary: "ui-icon-plusthick" },
-        }).click(function () {
-            divUnhide($wrapper);
-        }).addClass("hidden");
-
-        $(".icon-clear-section", $wrapper).text("Clear").button({
-            text: false,
-            icons: { primary: "ui-icon-trash" },
-        }).click(function () {
-            $(".can-hide", $wrapper).text("");
-        });
-
-        $(".icon-keeper-section", $wrapper).text("Keep").button({
-            text: false,
-            icons: { primary: "ui-icon-star" },
-        }).click(function () {
-            $wrapper.toggleClass("keeper-active");
-            $(this).toggleClass("ui-state-highlight");
-        });
-    }
-
     function hideCommandForm (yform) {
         var $top = $(yform.form).parents("div.output-wrapper");
         var $bar = $("div.output-header", $top);
@@ -1103,7 +1272,7 @@ jQuery(function ($) {
             }).click(function () {
                 $(".icon-hide-form", $bar).removeClass("hidden");
                 $(".icon-show-form", $bar).addClass("hidden");
-                yform.form.slideDown(prefs.slide_speed);
+                yform.form.slideDown($.clira.prefs.slide_speed);
             });
 
             $(".icon-hide-form", $bar).text("Hide Form").button({
@@ -1112,33 +1281,36 @@ jQuery(function ($) {
             }).addClass("hidden").click(function () {
                 $(".icon-show-form", $bar).removeClass("hidden");
                 $(".icon-hide-form", $bar).addClass("hidden");
-                yform.form.slideUp(prefs.slide_speed);
+                yform.form.slideUp($.clira.prefs.slide_speed);
             });
         }
 
         $(".icon-show-form", $bar).removeClass("hidden");
         $(".icon-hide-form", $bar).addClass("hidden");
-        yform.form.slideUp(prefs.slide_speed);
+        yform.form.slideUp($.clira.prefs.slide_speed);
     }
 
-    function runRpc (yform, $out, rpc, target) {
+    function runRpc (yform, $output, rpc, target) {
         $.dbgpr("runrpc:", rpc);
-        if (prefs.live_action) {
-            $out.slideUp(0).slideDown(prefs.slide_speed);
-            $out.load("/clira/clira.slax",
+        if ($.clira.prefs.live_action) {
+            $output.slideUp(0).slideDown($.clira.prefs.slide_speed);
+            $output.load("/clira/clira.slax",
                          {
                              target: target, // target is optional
                              rpc: rpc,       // rpc is in string form
                              form: "false",  // don't want form in reply
                          },
                          function (text, status, http) {
-                             loadHttpReply(text, status, http, $(this), $out);
+                             loadHttpReply(text, status, http,
+                                           $(this), $output);
                          });
         } else {
-            $out.text("RPC:\n" + rpc);
+            $output.text("RPC:\n" + rpc);
         }
     }
 
-    cliInit();
-    tgtHistory.focus();
+    if (false) {
+        $.clira.cliraInit(true, commandSubmit);
+        tgtHistory.focus();
+    }
 });
