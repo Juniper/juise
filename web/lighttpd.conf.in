@@ -41,6 +41,7 @@ mimetype.assign = (
   ".png" => "image/png",
   ".ico" => "image/png",
   ".svg" => "image/svg+xml",
+  ".js" => "application/javascript",
 )
 
 url.access-deny = ( "~", ".inc", ".conf" )
