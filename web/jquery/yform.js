@@ -1,7 +1,7 @@
 /*
  * $Id$
  *  -*-  indent-tabs-mode:nil -*-
- * Copyright 2011, Juniper Network Inc.
+ * Copyright 2011-2013, Juniper Network Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -16,6 +16,13 @@ jQuery(function ($) {
     var js_files = { };
 
     $.yform = function (guide, selector, fields) {
+        var yf = new YForm (guide, selector, fields);
+        yf.create();
+        yf.restore(true);
+        return yf;
+    }
+
+    function YForm (guide, selector, fields) {
         // Allow alternate method of arguments
         if (selector === undefined)
             selector = guide.selector;
@@ -24,195 +31,159 @@ jQuery(function ($) {
         if (fields === undefined)
             fields = [ ];
 
-        // Find our wrapper.  If it doesn't exist, bail.
-        var $wrapper = $(selector);
-        if ($wrapper.length == 0)
-            return undefined;
+        $.extend(this, {
+            guide: guide,
+            id: idgen++,
+            selector: selector,
+            fields: fields,
+            wrapper: $(selector),
+            data: { },
+        });
+    }
 
-        var yform = { };
-        yform.guide = guide;
-        yform.id = idgen++;
-        yform.selector = selector;
-        yform.fields = fields;
-        yform.wrapper = $wrapper;
-        yform.data = { };
+    $.extend(YForm.prototype, {
+        create: function create () {
+            var that = this;
+            this.form = $("<form id='ui-yf-form-" + this.id
+                          + "' action='#'></form>");
+            this.wrapper.append(this.form);
 
-        var $form = $("<form id='ui-yf-form-" + yform.id
-                      + "' action='#'></form>");
-        $wrapper.append($form);
-        yform.form = $form;
+            if (this.guide.title)
+                this.wrapper.attr("title", this.guide.title);
 
-        if (guide.title)
-            $wrapper.attr("title", guide.title);
+            if (this.guide.css) {
+                this.addFile(css_files, this.guide.css, function (file) {
+                    var $link = $("<link rel='stylesheet' type='text/css' "
+                        + "href='" + file + "'/>");
 
-        if (guide.css) {
-            addFile(css_files, guide.css, function (file) {
-                var $link = $("<link rel='stylesheet' type='text/css' "
-                    + "href='" + file + "'/>");
-
-                $link.appendTo($("html > head"));
-            });
-        }
-
-        if (guide.preferences) {
-            yform.dialog = {
-                autoOpen: false,
-                width: 600,
-                modal: true,
-                draggable: false,
-                position: "top",
-                resizable: false,
-                show: "blind",
-
-                open: function () {
-                    //
-                    // By default, there is no linkage between hitting
-                    // enter and submitting a form.  In our HTML, we
-                    // make a fake "submit" button so the browser does
-                    // the "right" thing, but here we hijack it and
-                    // make it use our own submit logic to click on
-                    // the "Apply" button.
-                    //
-                    yform.showing = true;
-                    $form.unbind("submit");
-                    $form.submit(function (e) {
-                        e.preventDefault();
-                        $("button :last", $wrapper).click();
-                        return false;
-                    })
-                    if (yform.dialog.afterOpen)
-                        yform.dialog.afterOpen(yform);
-                },
-                buttons: {
-                    "Restore defaults": function() {
-                        yform.restore();
-                        loadForm(yform.data);
-                        yform.close();
-                    },
-                    Cancel: function() {
-                        yform.close();
-                    },
-                    Apply: function() {
-                        yform.apply();
-                        yform.close();
-                    },
-                },
-                close: function() {
-                    yform.showing = false;
-                    /* allFields.removeClass( "ui-state-error" ); */
-                    if (yform.dialog.afterClose)
-                        yform.dialog.afterClose(yform);
-                }
+                    $link.appendTo($("html > head"));
+                });
             }
-            $.extend(yform.dialog, guide.dialog);
-        }
 
-        yform.shown = function() {
-            return yform.showing;
-        }
+            if (this.guide.preferences) {
+                this.dialog = {
+                    autoOpen: false,
+                    width: 600,
+                    modal: true,
+                    draggable: false,
+                    position: "top",
+                    resizable: false,
+                    show: "blind",
 
-        yform.restore = function (initial) {
-            var data = yform.data;
-            for (var f = 0; f < fields.length; f++) {
-                var info = fields[f];
+                    open: function () {
+                        //
+                        // By default, there is no linkage between hitting
+                        // enter and submitting a form.  In our HTML, we
+                        // make a fake "submit" button so the browser does
+                        // the "right" thing, but here we hijack it and
+                        // make it use our own submit logic to click on
+                        // the "Apply" button.
+                        //
+                        that.showing = true;
+                        that.form.unbind("submit");
+                        that.form.submit(function (e) {
+                            e.preventDefault();
+                            $("button :last", that.wrapper).click();
+                            return false;
+                        })
+                        if (that.dialog.afterOpen)
+                            that.dialog.afterOpen(that);
+                    },
+                    buttons: {
+                        "Restore defaults": function() {
+                            that.restore();
+                            that.loadForm();
+                            that.close();
+                        },
+                        Cancel: function() {
+                            that.close();
+                        },
+                        Apply: function() {
+                            that.apply();
+                            that.close();
+                        },
+                    },
+                    close: function() {
+                        that.showing = false;
+                        /* allFields.removeClass( "ui-state-error" ); */
+                        if (that.dialog.afterClose)
+                            that.dialog.afterClose(that);
+                    }
+                }
+                $.extend(this.dialog, this.guide.dialog);
+            }
+        },
+        shown: function() {
+            return this.showing;
+        },
+
+        restore: function (initial) {
+            var data = this.data;
+            for (var f = 0; f < this.fields.length; f++) {
+                var info = this.fields[f];
                 var key = info.name;
                 var prev = data[key];
                 var value = info.def;
                 if (info.type == "boolean")
                     value = (value === true || value == "true");
-                prefsSetValue(info, key, value, info.type, initial);
+                this.prefsSetValue(info, key, value, info.type, initial);
             }
 
             return data;
-        }
+        },
 
-        yform.apply = function () {
-            $.dbgpr("yform.apply");
+        apply: function () {
+            $.dbgpr("yform: apply");
 
-            for (var f = 0; f < fields.length; f++) {
-                var info = fields[f];
+            for (var f = 0; f < this.fields.length; f++) {
+                var info = this.fields[f];
                 var key = info.name;
                 var value;
 
                 if (info.type == "boolean") {
-                    value = $("input[name=" + key + "]:checked", $form);
+                    value = $("input[name=" + key + "]:checked", this.form);
                     value = (value && value.length != 0);
                 } else {
-                    value = $("input[name=" + key + "]", $form).val();
+                    value = $("input[name=" + key + "]", this.form).val();
                 }
 
-                prefsSetValue(info, key, value, info.type);
+                this.prefsSetValue(info, key, value, info.type);
             }
 
             return false;
-        }
+        },
 
-        function prefsSetValue (info, name, value, type, initial) {
-            if (!initial)
-                $.dbgpr("prefsSetValue",  info, name, value, type);
-            if (type == "boolean") {
-                value = (value === true || value == "true");
-                if (yform.data[name] == value)
-                    return;
-            } else if (type == "string") {
-                if (yform.data[name] == value)
-                    return;
-            } else {
-                var ival = parseInt(value);
-
-                if (!isNaN(ival)) {
-                    if (yform.data[name] == ival)
-                        return;
-                    value = ival;
-
-                } else if (type == "number-plus") {
-                    if (yform.data[name] == value)
-                        return;
-                } else {
-                    return;     // Can't set numbers to garbage
-                }
-            }
-
-            var prev = yform.data[name];
-            if (!initial)
-                $.dbgpr("prefs: ", name, "set to", value, "; was ", prev);
-            yform.data[name] = value;
-            if (info.change)
-                info.change(value, initial, prev);
-        }
-
-        yform.buildForm = function (execute) {
+        buildForm: function (execute) {
+            var that = this;
             if (this.built) 
                 return;
             this.built = true;
 
-            if (guide.tabs)
-                yform.form.append("<ul class='ui-yf-tablist'></ul>");
+            if (this.guide.tabs)
+                this.form.append("<ul class='ui-yf-tablist'></ul>");
 
-            if (guide.preferences) {
-                buildFormData();
-                loadForm(yform.data);
-                $wrapper.dialog(yform.dialog);
+            this.buildFormData();
+            this.loadForm();
 
-            } else if (guide.command) {
-                buildFormData();
-                loadForm(yform.data);
+            if (this.guide.preferences) {
+                this.wrapper.dialog(this.dialog);
 
-                $form.append("<button class='ui-yf-execute'>Ok</button>");
+            } else if (this.guide.command) {
+                this.form.append("<button class='ui-yf-execute'>Ok</button>");
 
-                $(".ui-yf-execute", $form).button().click(function (event) {
+                $(".ui-yf-execute", this.form).button().click(function (event) {
                     event.preventDefault();
                     $.dbgpr("yform command execute button", $(this).text());
-                    execute(yform, yform.guide);
+                    execute(this, that.guide);
                 });
 
             } else {
                 /* ... */
             }
 
-            if (guide.tabs) {
-                var $tablist = $(".ui-yf-tablist", yform.form);
-                $("fieldset", yform.form).each(function (i, fs) {
+            if (this.guide.tabs) {
+                var $tablist = $(".ui-yf-tablist", this.form);
+                $("fieldset", this.form).each(function (i, fs) {
                     $tablist.append("<li><a href='#" + $(fs).attr("id")
                                     + "'>" + $("legend", fs).text()
                                     + "</a></li>");
@@ -221,62 +192,152 @@ jQuery(function ($) {
 
                 var tabs = $.extend({
                     // event: "mouseover",
-                }, guide.tabs);
-                yform.form.tabs(tabs);
+                }, this.guide.tabs);
+                this.form.tabs(tabs);
 
-                yform.form.submit(function (e) {
-                    $.dbgpr("yform.submit");
+                this.form.submit(function (e) {
+                    $.dbgpr("yform: submit");
                     e.preventDefault();
-                    $("button :last", yform.form).click();
+                    $("button :last", that.form).click();
                     return false;
                 });
             }
-        }
+        },
 
-        function loadForm (data) {
-            for (var f = 0; f < fields.length; f++) {
-                var info = fields[f];
+        open: function () {
+            if (this.guide.preferences) {
+                this.buildForm();
+                this.loadForm();
+                this.wrapper.dialog("open");
+            }
+        },
+
+        close: function () {
+            if (this.guide.preferences) {
+                this.wrapper.dialog("close");
+            }
+        },
+
+        focus: function (selector) {
+            if (selector === undefined)
+                selector = "input[type='text']";
+            var $in = $(selector, this.form);
+            if ($in.length > 0)
+                $in.get(0).focus();
+        },
+
+        getData: function () {
+            return this.data;
+        },
+
+        buildRpc: function () {
+            var rpc = "<" + this.guide.command.rpc + ">";
+
+            for (var f = 0; f < this.fields.length; f++) {
+                var info = this.fields[f];
+                var key = info.name;
+                var value;
+
+                if (info.type == "boolean") {
+                    value = $("input[name=" + key + "]:checked", this.form);
+                    value = (value && value.length != 0);
+                    if (value)
+                        rpc += "<" + key + "/>";
+                } else {
+                    value = $("input[name=" + key + "]", this.form).val();
+                    if (value != "")
+                        rpc += "<" + key + ">" + value + "</" + key + ">";
+                }
+            }
+
+            rpc += "</" + this.guide.command.rpc + ">";
+            return rpc;
+        },
+
+        prefsSetValue: function prefsSetValue (info, name, value, type,
+                                               initial) {
+            if (!initial)
+                $.dbgpr("yform: prefsSetValue ", info, name, value, type);
+            if (type == "boolean") {
+                value = (value === true || value == "true");
+                if (this.data[name] == value)
+                    return;
+            } else if (type == "string") {
+                if (this.data[name] == value)
+                    return;
+            } else {
+                var ival = parseInt(value);
+                
+                if (!isNaN(ival)) {
+                    if (this.data[name] == ival)
+                        return;
+                    value = ival;
+                
+                } else if (type == "number-plus") {
+                    if (this.data[name] == value)
+                        return;
+                } else {
+                    return;     // Can't set numbers to garbage
+                }
+            }
+
+            var prev = this.data[name];
+            if (!initial)
+                $.dbgpr("prefs: ", name, "set to", value, "; was ", prev);
+            this.data[name] = value;
+            if (info.change)
+                info.change(value, initial, prev);
+        },
+
+        loadForm: function loadForm () {
+            var data = this.data;
+            for (var f = 0; f < this.fields.length; f++) {
+                var info = this.fields[f];
                 var key = info.name;
                 if (info.type == "boolean") {
                     if (data[key] === true || data[key] == "true")
-                        $("input[name=" + key + "]", $form).attr("checked", "checked");
+                        $("input[name=" + key + "]", this.form)
+                            .attr("checked", "checked");
                     else
-                        $("input[name=" + key + "]", $form).removeAttr("checked");
+                        $("input[name=" + key + "]", this.form)
+                            .removeAttr("checked");
                 } else {
-                    $("input[name=" + key + "]", $form).val(data[key]);
+                    $("input[name=" + key + "]", this.form).val(data[key]);
                 }
             }
-        }
+        },
 
-        function unloadForm () {
-            var data = yform.data;
-            for (var f = 0; f < fields.length; f++) {
-                var info = fields[f];
+        unloadForm: function unloadForm () {
+            var data = this.data;
+            for (var f = 0; f < this.fields.length; f++) {
+                var info = this.fields[f];
                 var key = info.name;
                 if (info.type == "boolean") {
-                    var $cb = $("input[name=" + key + "]:checked", $form);
+                    var $cb = $("input[name=" + key + "]:checked", this.form);
                     data[key] = ($cb && $cb.length != 0);
                 } else {
-                    data[key] = $("input[name=" + key + "]", $form).val(); 
+                    data[key] = $("input[name=" + key + "]", this.form).val(); 
                 }
             }
-        }
+        },
 
-        function buildFormData () {
+        buildFormData: function buildFormData () {
             /* Supports either simple fields, or fieldsets */
-            var parent = $form;
+            var parent = this.form;
 
-            if (guide.fieldsets) {
-                for (var fn = 0; fn < guide.fieldsets.length; fn++) {
-                    var fs = guide.fieldsets[fn];
-                    buildFieldSet(parent, fs.fields, true, idgen++, fs.legend);
+            if (this.guide.fieldsets) {
+                for (var fn = 0; fn < this.guide.fieldsets.length; fn++) {
+                    var fs = this.guide.fieldsets[fn];
+                    this.buildFieldSet(parent, fs.fields, true, idgen++,
+                                       fs.legend);
                 }
             } else {
-                buildFieldSet(parent, fields, false, idgen++);
+                this.buildFieldSet(parent, this.fields, false, idgen++);
             }
-        }
+        },
 
-        function buildFieldSet (parent, fields, save_fields, id, legend) {
+        buildFieldSet: function buildFieldSet (parent, fields, save_fields,
+                                               id, legend) {
             var $fs = $("<fieldset id='" + id
                         + "' class='ui-yf-fieldset'></fieldset>");
             $fs.appendTo(parent);
@@ -307,7 +368,7 @@ jQuery(function ($) {
                 } else {
                     content += "<label for='" + lid + "'>"
                         + info.title + "</label>";
-
+                
                     content += "<input name='" + key + "' id='" + lid
                         + "' type='text'/>";
                 }
@@ -324,74 +385,17 @@ jQuery(function ($) {
                 }
 
                 if (is_input && save_fields)
-                    yform.fields.push(info);
+                    this.fields.push(info);
             }
-        }
+        },
 
-        yform.open = function () {
-            if (guide.preferences) {
-                yform.buildForm();
-                loadForm(yform.data);
-                $wrapper.dialog("open");
-            }
-        }
-
-        yform.close = function () {
-            if (guide.preferences) {
-                $wrapper.dialog("close");
-            }
-        }
-
-        yform.focus = function (selector) {
-            if (selector === undefined)
-                selector = "input[type='text']";
-            var $in = $(selector, yform.form);
-            if ($in.length > 0)
-                $in.get(0).focus();
-        }
-
-        yform.getData = function () {
-            return yform.data;
-        }
-
-        yform.buildRpc = function () {
-            var rpc = "<" + yform.guide.command.rpc + ">";
-
-            for (var f = 0; f < fields.length; f++) {
-                var info = fields[f];
-                var key = info.name;
-                var value;
-
-                if (info.type == "boolean") {
-                    value = $("input[name=" + key + "]:checked", $form);
-                    value = (value && value.length != 0);
-                    if (value)
-                        rpc += "<" + key + "/>";
-                } else {
-                    value = $("input[name=" + key + "]", $form).val();
-                    if (value != "")
-                        rpc += "<" + key + ">" + value + "</" + key + ">";
-                }
-            }
-
-            rpc += "</" + yform.guide.command.rpc + ">";
-            return rpc;
-        }
-
-        function addFile (list, name, func) {
+        addFile: function addFile (list, name, func) {
             if (list[name] === undefined) {
                 list[name] = 1;
                 func(name);
             } else {
                 list[name] += 1;
             }
-        }
-
-        /*
-         * (We are still in the constructor)
-         * Return the object we made as a handle for future work
-         */
-        yform.restore(true);
-        return yform;
-    }
+        },
+    });
 });
