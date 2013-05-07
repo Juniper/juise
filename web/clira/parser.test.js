@@ -381,6 +381,7 @@ jQuery(function ($) {
             $.clira.executeCommand(command);
 
             $.clira.cmdHistory.markUsed(command);
+            $.clira.commandOutputTrim(1);
         },
 
         buildWrapper: function buildWrapper (cmd, html) {

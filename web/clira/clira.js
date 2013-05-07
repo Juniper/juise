@@ -387,7 +387,7 @@ jQuery(function ($) {
         }
 
         $.clira.cmdHistory.markUsed(command);
-        commandOutputTrim(count);
+        $.clira.commandOutputTrim(count);
 
         return false;
     }
@@ -682,7 +682,31 @@ jQuery(function ($) {
         },
 
         commandOutputTrimChanged: function commandOutputTrimChanged () {
-            commandOutputTrim(0);
+            $.clira.commandOutputTrim(0);
+        },
+
+        commandOutputTrim: function commandOutputTrim (fresh_count) {
+            var last = $output.get(0);
+            if (!last)
+                return;
+
+            var keep = 0;
+            for (var i = 0; last.children[i]; i++) {
+                var $child = $(last.children[i]);
+                if ($child.hasClass("keeper-active")) {
+                    keep += 1;
+                } else if (i < fresh_count) {
+                    // do nothing
+                } else if (i >= $.clira.prefs.output_remove_after + keep) {
+                    divRemove($child);
+                } else if (i >= $.clira.prefs.output_close_after + keep) {
+                    if (!divIsHidden($child))
+                        divHide($child);
+                } else {
+                    if (divIsHidden($child))
+                        divUnhide($child);
+                }
+            }
         },
     });
 
@@ -764,30 +788,6 @@ jQuery(function ($) {
         return val.replace(/&/g, "&amp;")
                   .replace(/</g, "&lt;")
                   .replace(/>/g, "&gt;");
-    }
-
-    function commandOutputTrim (fresh_count) {
-        var last = $output.get(0);
-        if (!last)
-            return;
-
-        var keep = 0;
-        for (var i = 0; last.children[i]; i++) {
-            var $child = $(last.children[i]);
-            if ($child.hasClass("keeper-active")) {
-                keep += 1;
-            } else if (i < fresh_count) {
-                // do nothing
-            } else if (i >= $.clira.prefs.output_remove_after + keep) {
-                divRemove($child);
-            } else if (i >= $.clira.prefs.output_close_after + keep) {
-                if (!divIsHidden($child))
-                    divHide($child);
-            } else {
-                if (divIsHidden($child))
-                    divUnhide($child);
-            }
-        }
     }
 
     function divRemove ($wrapper) {
