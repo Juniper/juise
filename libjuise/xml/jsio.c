@@ -1413,6 +1413,7 @@ js_session_open (js_session_opts_t *jsop, int flags)
     char *argv[max_argc];
     char *port_str = NULL;
     char *timeout_str = NULL;
+    char *conn_timeout_str = NULL;
     int i;
     js_session_opts_t jso;
 
@@ -1453,6 +1454,11 @@ js_session_open (js_session_opts_t *jsop, int flags)
     if (jsop->jso_timeout) {
 	timeout_str = strdupf("-oServerAliveInterval=%u", jsop->jso_timeout);
 	argv[argc++] = timeout_str;
+    }
+
+    if (jsop->jso_connect_timeout) {
+	conn_timeout_str = strdupf("-oConnectTimeout=%u", jsop->jso_connect_timeout);
+	argv[argc++] = conn_timeout_str;
     }
 
     for (i = 0; i < jsio_ssh_options_count; i++)
@@ -1527,6 +1533,8 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	free(port_str);
     if (timeout_str)
 	free(timeout_str);
+    if (conn_timeout_str)
+	free(conn_timeout_str);
 
     /*
      * Add the session details to patricia tree
