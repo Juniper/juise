@@ -87,3 +87,12 @@ mx_nonblocking (int sock);
 void
 mx_sock_close (mx_sock_t *msp);
 
+/*
+ * Looks like the _SAFE macros are missing from some linux distros
+ */
+#ifndef TAILQ_FOREACH_SAFE
+#define TAILQ_FOREACH_SAFE(var, head, field, tvar)                      \
+        for ((var) = TAILQ_FIRST((head));                               \
+            (var) && ((tvar) = TAILQ_NEXT((var), field), 1);            \
+            (var) = (tvar))
+#endif /* TAILQ_FOREACH_SAFE */
