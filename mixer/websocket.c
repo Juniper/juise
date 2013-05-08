@@ -60,6 +60,10 @@ typedef struct mx_header_s {
 #define MX_HEADER_VERSION_0 '0'
 #define MX_HEADER_VERSION_1 '1'
 
+/* Forward declaration */
+static void
+mx_websocket_error (MX_TYPE_ERROR_ARGS);
+
 static unsigned long
 strntoul (const char *buf, size_t bufsiz)
 {
@@ -73,8 +77,8 @@ strntoul (const char *buf, size_t bufsiz)
 }
 
 static int
-mx_websocket_test_hostkey (mx_sock_session_t *mswp UNUSED,
-			      mx_request_t *mrp UNUSED, mx_buffer_t *mbp)
+mx_websocket_test_hostkey (mx_sock_session_t *mssp,
+			      mx_request_t *mrp, mx_buffer_t *mbp)
 {
     const char *response = mbp->mb_data + mbp->mb_start;
     unsigned len = mbp->mb_len;
@@ -87,7 +91,7 @@ mx_websocket_test_hostkey (mx_sock_session_t *mswp UNUSED,
     }
 
     if (rc)
-	mx_session_approve_hostkey(mswp, mrp);
+	mx_session_approve_hostkey(mssp, mrp);
 
     return rc;
 }
@@ -176,7 +180,10 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 						      mrp, mbp)) {
 		    mx_log("R%u hostkey was declined; closing request",
 			   mrp->mr_id);
+		    mx_websocket_error(&mswp->msw_base, mrp,
+				       "host key was declined");
 		    mx_request_release(mrp);
+
 		} else if (mx_session_check_auth(mrp->mr_session, mrp)) {
 		    mx_log("R%u waiting for check auth", mrp->mr_id);
 		} else {
