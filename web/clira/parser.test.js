@@ -138,6 +138,11 @@ jQuery(function ($) {
                 execute: function ($output, cmd, parse, poss) {
                     parse.dbgpr("working command: " + poss.command.command);
                     $output.html("<div> tada </div>");
+                    $.clira.targetListMarkUsed(poss.data.target,
+                                               poss.data.target,
+                                               function ($target, target) {
+                                                   $.clira.cmdHistory.select("on " + target + " ");
+                                               });
                     $.clira.runCommand($output, poss.data.target,
                                        poss.data.command);
                 },

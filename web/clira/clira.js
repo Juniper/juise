@@ -383,53 +383,13 @@ jQuery(function ($) {
             tname = tname.substr(1);
             cname = cname.substr(1);
             if (cname && cname != "")
-                targetListMarkUsed(this, tname, cname);
+                $.clira.targetListMarkUsed(tname, cname, null);
         }
 
         $.clira.cmdHistory.markUsed(command);
         $.clira.commandOutputTrim(count);
 
         return false;
-    }
-
-    function targetListMarkUsed (form, target, cname) {
-        var $tset = $("#target-contents");
-        var id = "target-is-" + cname;
-        var $target = $("#" + id, $tset);
-
-        if ($target && $target.length > 0) {
-            $target.remove();
-            $tset.prepend($target);
-
-        } else {
-
-            var content = "<div id='" + id + "' class='target " + id 
-                + " target-info rounded buttonish green'>"
-                + target
-                + "</div>";
-
-            $target = jQuery(content);
-            $tset.prepend($target);
-            targetListTrim($tset);
-        }
-
-        $target.click(function (event) {
-            tgtHistory.close();
-            tgtHistory.select(target);
-            $.clira.cmdHistory.focus();
-        });
-
-        $("#target-contents-none").css({ display: "none" });
-    }
-
-    function targetListTrim ($tset) {
-        $(".target", $tset).each(function (index, target) {
-            var delta = $(target).position().top -
-                        $(target).parent().position().top;
-            if ( delta > $.clira.prefs.max_target_position) {
-                $(target).remove();
-            }
-        });     
     }
 
     function parseParams (cmdline) {
@@ -707,6 +667,47 @@ jQuery(function ($) {
                         divUnhide($child);
                 }
             }
+        },
+
+        targetListMarkUsed: function targetListMarkUsed (target, cname,
+                                                        callback) {
+            var $tset = $("#target-contents");
+            var id = "target-is-" + cname;
+            var $target = $("#" + id, $tset);
+
+            if ($target && $target.length > 0) {
+                $target.remove();
+                $tset.prepend($target);
+
+            } else {
+
+                var content = "<div id='" + id + "' class='target " + id 
+                    + " target-info rounded buttonish green'>"
+                    + target
+                    + "</div>";
+
+                $target = jQuery(content);
+                $tset.prepend($target);
+                $(".target", $tset).each(function (index, target) {
+                    var delta = $(target).position().top -
+                        $(target).parent().position().top;
+                    if ( delta > $.clira.prefs.max_target_position) {
+                        $(target).remove();
+                    }
+                });     
+            }
+
+            $target.click(function (event) {
+                if (tgtHistory) {
+                    tgtHistory.close();
+                    tgtHistory.select(target);
+                }
+                if (callback)
+                    callback($target, target);
+                $.clira.cmdHistory.focus();
+            });
+
+            $("#target-contents-none").css({ display: "none" });
         },
     });
 
