@@ -104,7 +104,7 @@ div.indentxxx {
    padding-left: 2em;
 }
 
-div.output {
+div.output, configuration-output, configuration-information {
     font-family: monospace;
     white-space: pre-wrap;
 }
@@ -598,7 +598,7 @@ div.parse-mandatory-value {
     display: inline-block;
 }
 
-div.output-content can-hide div.parse {
+div.output-content div.parse:first-of-type {
     display: none;
 }
 
