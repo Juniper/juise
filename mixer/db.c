@@ -392,7 +392,7 @@ cleanup:
 mx_boolean_t
 mx_db_target_lookup (const char *target, mx_request_t *mrp)
 {
-    int rc, retval = FALSE;
+    int rc, retval = FALSE, port = -1;
     sqlite3_stmt *stmt;
     char *cp;
 
@@ -419,12 +419,14 @@ mx_db_target_lookup (const char *target, mx_request_t *mrp)
      */
     cp = index(mrp->mr_target, ':');
     if (cp) {
-	mrp->mr_port = strtol(cp + 1, NULL, 10);
+	port = strtol(cp + 1, NULL, 10);
 	*cp = '\0';
     }
 
-    if (mrp->mr_port == 0) {
+    if (port == -1) {
 	mrp->mr_port = opt_destport;
+    } else {
+	mrp->mr_port = port;
     }
 
     if (opt_no_db)
@@ -460,7 +462,7 @@ mx_db_target_lookup (const char *target, mx_request_t *mrp)
 	    mrp->mr_password = nstrdup((const char *) sqlite3_column_text(stmt,
 			5));
 	}
-	if (mrp->mr_port == 0) {
+	if (port == -1) {
 	    mrp->mr_port = sqlite3_column_int(stmt, 3);
 	}
 
