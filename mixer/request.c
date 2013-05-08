@@ -286,7 +286,7 @@ mx_request_print_all (int indent, const char *prefix)
 	   TAILQ_EMPTY(&mx_request_list) ? " none" : "");
 
     TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
-	mx_request_print(mrp, indent, prefix);
+	mx_request_print(mrp, indent + INDENT, prefix);
     }
 }
 
