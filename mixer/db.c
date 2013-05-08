@@ -682,15 +682,6 @@ mx_db_init (void)
 	    MX_DB_CURRENT_VERSION);
     sqlite3_exec(mx_db_handle, buf, NULL, NULL, NULL);
 
-    /* Debugging!!!!!!! XXX RKJ */
-    sqlite3_exec(mx_db_handle,
-	    "INSERT INTO \"devices\" VALUES (\"1\",\"olive0\",\"127."
-	    "0.0.1\",\"5000\",\"regress\",\"\",\"0\")", NULL, NULL,
-	    NULL);
-    sqlite3_exec(mx_db_handle,
-	    "INSERT INTO \"devices\" VALUES (\"2\",\"o\",\"127."
-	    "0.0.1\",\"5000\",\"foo\",\"\",\"1\")", NULL, NULL, NULL);
-
     return TRUE;
 }
 

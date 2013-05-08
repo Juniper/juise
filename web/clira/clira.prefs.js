@@ -333,7 +333,7 @@ jQuery(function ($) {
                         },
                         editoptions: {
                             multiple: true,
-                            dataUrl: '/clira/db.php?p=device',
+                            dataUrl: '/clira/db.php?p=devices',
                             buildSelect: function (data) {
                                 var j = $.parseJSON(data);
                                 var s = '<select>';
