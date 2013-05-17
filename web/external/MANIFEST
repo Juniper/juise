@@ -30,4 +30,8 @@ version: 1.7
 date: ?
 license: Dual licensed under the MIT or GPL Version 2 licenses
 notes:
+  Don't upgrade to 2.0, since it removes some IE support.
+  Don't upgrade to 1.9, since it might break how we load CSS files, since
+  it changes script loading.   Needs to be tested.....
+
 
