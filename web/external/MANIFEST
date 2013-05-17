@@ -1,0 +1,33 @@
+#
+# This file lists all the external javascript libraries used by CLIRA,
+# along with their source and the data when they were fetched.
+#
+
+name: gmap.js
+site: http://hpneo.github.io/gmaps/
+version: 0.4.2
+date: 2013-05-17
+license: MIT
+notes:
+
+name: jqgrid
+site: http://trirand.com/blog/
+version: 4.4.4
+date: ?
+license: Dual licensed under the MIT and GPL licenses
+notes:
+
+name: jQuery UI
+site: http://jqueryui.com/
+version: 1.8.16
+date: ?
+license: Dual licensed under the MIT or GPL Version 2 licenses
+notes:
+
+name: jQuery
+site: http://jquery.com/
+version: 1.7
+date: ?
+license: Dual licensed under the MIT or GPL Version 2 licenses
+notes:
+
