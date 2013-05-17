@@ -612,3 +612,8 @@ img.rendered {
     max-width: 16px;
     vertical-align: middle;
 }
+
+div.map-small {
+    width: 300px;
+    height: 200px;
+}
