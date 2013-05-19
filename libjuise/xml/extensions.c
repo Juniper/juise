@@ -593,7 +593,9 @@ ext_jcs_close (xmlXPathParserContext *ctxt, int nargs)
     }
 
     xop = valuePop(ctxt);
-    if (xop == NULL) {
+    if (xop == NULL || xop->nodesetval == NULL) {
+	if (xop)
+	    xmlXPathFreeObject(xop);
 	LX_ERR("xnm:invoke: null argument\n");
 	return;
     }
@@ -1282,6 +1284,9 @@ ext_jcs_dampen (xmlXPathParserContext *ctxt, int nargs)
     if (old_fp) {
 	while (fgets(buf, sizeof(buf), old_fp)) {
 	    cp = strchr(buf, '-');
+	    if (cp == NULL)
+		continue;
+
 	    *cp = '\0';
 	    rec_tv.tv_sec = strtol(buf, NULL, 10);
 	    cp++;
