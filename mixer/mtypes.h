@@ -288,6 +288,9 @@ mx_sock_isreadable (int sock);
 const char *
 mx_sock_type (mx_sock_t *msp);
 
+void
+mx_close_byname (const char *name);
+
 static inline void *
 mx_sock (mx_sock_t *msp, mx_type_t type)
 {

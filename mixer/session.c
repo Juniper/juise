@@ -19,6 +19,8 @@
 #include "request.h"
 #include "db.h"
 
+static char *known_hosts;
+
 static void
 mx_session_print (MX_TYPE_PRINT_ARGS)
 {
@@ -86,33 +88,102 @@ mx_session_check_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp)
     const char *fingerprint;
     int i;
     char buf[BUFSIZ], *bp = buf, *ep = buf + sizeof(buf);
+    size_t len = 0;
+    int type = 0;
+    const char *typename = NULL;
+    int check = 0;
+    const char *hostname = mssp->mss_canonname ?: mssp->mss_target;
+
+    const char line0[] = "WARNING: Host key for '%s' was found, "
+	"but the keys do not match!\n";
+    const char line1[] = "The authenticity of host '%s' can't "
+	"be established.\n";
+    const char line2[] = "%s key fingerprint is ";
+    
+    fingerprint = libssh2_session_hostkey(mssp->mss_session, &len, &type);
+    if (fingerprint) {
+	switch (type) {
+	case LIBSSH2_HOSTKEY_TYPE_RSA:
+	    typename = "RSA";
+	    break;
+
+	case LIBSSH2_HOSTKEY_TYPE_DSS:
+	    typename = "DSA";
+	    break;
+
+	case LIBSSH2_HOSTKEY_TYPE_UNKNOWN:
+	    typename = "unknown";
+	    break;
+	}
+    }
+
+    if (opt_knownhosts && fingerprint && known_hosts) {
+	LIBSSH2_KNOWNHOSTS *nh = libssh2_knownhost_init(mssp->mss_session);
+
+	if (nh) {
+	    /* Read all hosts from here */ 
+	    libssh2_knownhost_readfile(nh, known_hosts,
+				       LIBSSH2_KNOWNHOST_FILE_OPENSSH);
+	    struct libssh2_knownhost *host;
+
+	    check = libssh2_knownhost_checkp(nh, hostname, 22,
+					     fingerprint, len,
+					     LIBSSH2_KNOWNHOST_TYPE_PLAIN|
+                                             LIBSSH2_KNOWNHOST_KEYENC_RAW,
+                                             &host);
+	    switch (check) {
+	    case LIBSSH2_KNOWNHOST_CHECK_FAILURE:
+		/* something prevented the check to be made */
+		bp += snprintf_safe(bp, ep - bp,
+				    "Known host check failure\n");
+		check = 0;
+		break;
+
+	    case LIBSSH2_KNOWNHOST_CHECK_NOTFOUND:
+		/* no host match was found */
+		check = 0;
+		break;
+
+	    case LIBSSH2_KNOWNHOST_CHECK_MATCH:
+		/* hosts and keys match */
+		return FALSE;
+
+	    case LIBSSH2_KNOWNHOST_CHECK_MISMATCH:
+		/* host was found, but the keys didn't match! */
+		bp += snprintf_safe(bp, ep - bp, line0, hostname);
+		break;
+	    }
+
+	    libssh2_knownhost_free(nh);
+	}
+    }
 
     fingerprint = libssh2_hostkey_hash(mssp->mss_session,
-				       LIBSSH2_HOSTKEY_HASH_SHA1);
-    
+				       LIBSSH2_HOSTKEY_HASH_MD5);
+
     /*
      * Check our hostkey database for this keymatch.
      */
-    switch (mx_db_check_hostkey(mssp, mrp)) {
-	case DB_CHECK_HOSTKEY_NOMATCH:
-	    bp += snprintf_safe(bp, ep - bp, "Host key for '%s' is not "
-		    "known\n    The key's fingerprint is '", mrp->mr_target);
-	    break;
-	case DB_CHECK_HOSTKEY_MISMATCH:
-	    bp += snprintf_safe(bp, ep - bp, "WARNING!!! Host key for '%s'"
-		    " was found, but the keys do not match!!\n    The new "
-		    "key's fingerprint is '", mrp->mr_target);
-	    break;
-
+    if (check == 0) {
+	switch (mx_db_check_hostkey(mssp, mrp)) {
 	case DB_CHECK_HOSTKEY_MATCH:
 	    return FALSE;
+
+	case DB_CHECK_HOSTKEY_MISMATCH:
+	    bp += snprintf_safe(bp, ep - bp, line0, hostname);
+	    /* fallthru */
+
+	case DB_CHECK_HOSTKEY_NOMATCH:
+	    bp += snprintf_safe(bp, ep - bp, line1, hostname);
+	    bp += snprintf_safe(bp, ep - bp, line2, typename);
+	}
     }
 
     for (i = 0; i < 20; i++)
         bp += snprintf_safe(bp, ep - bp, "%02X%s",
 			    (unsigned char) fingerprint[i], 
-			    i < 19 ? " " : "");
-    bp += snprintf_safe(bp, ep - bp, "'\n");
+			    i < 19 ? ":" : "");
+    bp += snprintf_safe(bp, ep - bp, ".\n");
     bp += snprintf_safe(bp, ep - bp, "Do you want to accept this host key?");
 
     mx_log("S%u hostkey check [%s]", mssp->mss_base.ms_id, buf);
@@ -450,6 +521,9 @@ mx_session_open (mx_request_t *mrp)
         return NULL;
     }
 
+    if (opt_keepalive)
+	libssh2_keepalive_config(session, 1, opt_keepalive);
+
     /*
      * We allocate the mx_sock_session_t now, knowing that we may
      * still have problems.  If we don't make it thru, we use the
@@ -589,6 +663,19 @@ mx_session_prep (MX_TYPE_PREP_ARGS)
     pollp->fd = msp->ms_sock;
     pollp->events = (buf_input ? 0 : POLLIN) | (buf_output ? POLLOUT : 0);
 
+    if (opt_keepalive) {
+	int next = 0;
+	int rc = libssh2_keepalive_send(mssp->mss_session, &next);
+	if (rc == 0) {
+	    next *= 1000;
+	    if (0 && *timeout > next)
+		*timeout = next;
+	} else {
+	    mx_log("S%u keepalive failed: %d", msp->ms_sock, rc);
+	    mssp->mss_base.ms_state = MSS_FAILED;
+	}
+    }
+
     return TRUE;
 }
 
@@ -603,6 +690,7 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
 	     msp->ms_id, pollp, pollp ? pollp->revents : 0,
 	     mx_sock_isreadable(msp->ms_sock) ? "yes" : "no");
 
+#if 0
     if (mx_sock_isreadable(msp->ms_sock) && TAILQ_EMPTY(&mssp->mss_channels)
 	    && TAILQ_EMPTY(&mssp->mss_released)) {
 	/*
@@ -613,6 +701,7 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
 	mssp->mss_base.ms_state = MSS_FAILED;
 	return TRUE;
     }
+#endif
 
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
 
@@ -665,6 +754,12 @@ mx_session_init (void)
     mti_poller: mx_session_poller,
     mti_close: mx_session_close,
     };
+
+    char buf[MAXPATHLEN];
+
+    buf[0] = '\0';
+    getcwd(buf, sizeof(buf));
+    known_hosts = strdupf("%s/.ssh/known_hosts", buf);
 
     mx_type_info_register(MX_TYPE_INFO_VERSION, &mti);
 }

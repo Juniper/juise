@@ -183,6 +183,7 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 		    mx_websocket_error(&mswp->msw_base, mrp,
 				       "host key was declined");
 		    mx_request_release(mrp);
+		    mx_sock_close(&mrp->mr_session->mss_base);
 
 		} else if (mx_session_check_auth(mrp->mr_session, mrp)) {
 		    mx_log("R%u waiting for check auth", mrp->mr_id);

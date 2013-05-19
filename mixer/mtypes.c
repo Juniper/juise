@@ -76,3 +76,21 @@ mx_sock_type (mx_sock_t *msp)
 	return "null";
     return mx_sock_type_number(msp->ms_type);
 }
+
+void
+mx_close_byname (const char *name)
+{
+    mx_sock_t *msp;
+    unsigned id;
+
+    if (*name == 's' || *name == 'S')
+	name += 1;
+    id = atoi(name);
+
+    TAILQ_FOREACH(msp, &mx_sock_list, ms_link) {
+	if (msp->ms_id != id)
+	    continue;
+	if (mx_mti(msp)->mti_close)
+	    mx_mti(msp)->mti_close(msp);
+    }
+}

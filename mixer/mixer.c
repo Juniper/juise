@@ -63,6 +63,8 @@ unsigned opt_destport = 22;
 int opt_no_agent;
 int opt_no_known_hosts;
 int opt_no_db;
+int opt_keepalive;
+int opt_knownhosts;
 
 static int opt_login;
 static int opt_fork;
@@ -327,6 +329,12 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--home")) {
 	    opt_home = *++argv;
+
+	} else if (streq(cp, "--keep-alive") || streq(cp, "-k")) {
+	    opt_keepalive = atoi(*++argv);
+
+	} else if (streq(cp, "--use-known-hosts") || streq(cp, "-K")) {
+	    opt_knownhosts = TRUE;
 
 	} else if (streq(cp, "--login")) {
 	    opt_login = TRUE;
