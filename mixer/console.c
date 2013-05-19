@@ -118,6 +118,9 @@ mx_console_poller (MX_TYPE_POLLER_ARGS)
 		} else if (strabbrev("list", cp) || strabbrev("ls", cp)) {
 		    mx_console_list(argv);
 
+		} else if (strabbrev("close", cp)) {
+		    mx_close_byname(argv[1]);
+
 		} else if (strabbrev("don", cp)) {
 		    mx_debug_flags(TRUE, argv[1]);
 
