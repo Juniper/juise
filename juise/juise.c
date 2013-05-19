@@ -957,6 +957,8 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 
     slaxDataListInit(&lines);
 
+    chdir(JUISE_WEB_DIR);
+
     lx_document_t *docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
     if (docp == NULL)
 	errx(1, "op: out of memory");

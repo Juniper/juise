@@ -38,7 +38,8 @@ endif
 AM_CFLAGS += \
  -DJUISE_DIR=\"${JUISE_DIR}\" \
  -DJUISE_SCRIPT_DIR=\"${JUISE_SCRIPT_DIR}\" \
- -DJUISE_CGI_DIR=\"${JUISE_CGI_DIR}\"
+ -DJUISE_CGI_DIR=\"${JUISE_CGI_DIR}\" \
+ -DJUISE_WEB_DIR=\"${JUISE_WEB_DIR}\"
 
 if HAVE_READLINE
 LIBS += -L/opt/local/lib -lreadline
