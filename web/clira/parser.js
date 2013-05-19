@@ -13,6 +13,9 @@ jQuery(function ($) {
     if ($.clira == undefined)
         $.clira = { };
 
+    var commandFiles = { };
+    var commandFilesCleanup = [ ];
+
     $.extend($.clira, {
         debug: true,           // Have debug output use $.dbgpr()
         commands:  [ ],
@@ -111,6 +114,73 @@ jQuery(function ($) {
                 });
             } else {
                 $.clira.bundles[bundle.name] = bundle;
+            }
+        },
+        loadCommandFiles: function loadCommandFiles () {
+            $.ajax("/bin/list-command-files.slax")
+            .success(function loadCommandFilesDone (data, status, jqxhr) {
+
+                if (data.files == undefined || data.files.length == 0) {
+                    $.dbgpr("load command files: list is empty, ignored");
+                    return;
+                }
+
+                $.each(commandFilesCleanup, function (i, o) {
+                    $.dbgpr("commandFileCleanup: calling " + o.name);
+                    o.func();
+                });
+
+                $.clira.commands = [ ];
+                $.clira.loadBuiltins();
+
+                commandFiles = [ ];
+                commandFilesCleanup = [ ];
+
+                // Remove all the old command script files
+                $("script.commandFile").remove();
+
+                $.dbgpr("load command files success: " + data.files.length);
+                $.each(data.files, function (i, file) {
+                    $.clira.addFile(file);
+                });
+            })
+            .fail(function loadCommandFilesFail (jqxhr, settings, exception) {
+                $.dbgpr("load command files failed");
+            });
+        },
+        addFile: function addFile (file) {
+            commandFiles[file] = file;
+
+            // jQuery's getScript/ajax logic will get a script and
+            // eval it, but when there's a problem, you don't get
+            // any information about it.  So we use <script>s in the
+            // <head> to get 'er done.
+            var html = "<scr" + "ipt " + "type='text/javascript'"
+                + " class='commandFile'"
+                + " src='" + file + "'></scr" + "ipt>";
+
+            $(html).insertBefore("script#last");
+        },
+        addFileCleanup: function addFileCleanup (name, func) {
+            $.dbgpr("addFileCleanup: register " + name);
+            commandFilesCleanup.push({ func: func, name: name });
+        },
+        onload: function onload (name, data) {
+            $.dbgpr("clira: load: " + name);
+            if ($.isArray(data)) {
+                // We have an array of commands
+                $.clira.addCommand(data);
+            } else if (typeof data == "function") {
+                // We have a callback
+                data($);
+            } else if (typeof data == "object") {
+                if (data.command) {
+                    // We have a single command (assumably)
+                    $.clira.addCommand(data);
+                } else {
+                    // We have a set of commands (maybe?)
+                    $.each(data, $.clira.addCommand);
+                }
             }
         },
     });

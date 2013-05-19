@@ -52,7 +52,6 @@ div.data {
 }
 
 div.line {
-    border: 1px solid #ffd0d0;
     display: block;
 }
 
@@ -64,10 +63,27 @@ div.indent {
     display: inline;
 }
 
+/* BEGIN LINES */
+div.line {
+    border: 1px solid #ffd0d0;
+}
+
 div.item {
     border: 1px solid #d0d0ff;
+}
+
+div.pad {
+    border: 1px solid orange;
+}
+
+div.blank-line {
+    border: 1px inset;
+}
+
+div.item {
     white-space: pre;
 }
+/* END LINES */
 
 div.muxer-prompt {
     padding: 2em;
@@ -76,6 +92,7 @@ div.muxer-prompt {
 div.muxer-message, div.muxer-prompt form {
     white-space: pre;
     display: inline-block;
+    vertical-align: middle;
 }
 
 div.muxer-buttons {
@@ -91,12 +108,7 @@ div.text, div.decoration, div.data, div.header, div.pad, div.item {
     /* border: 1px solid orange; */
 }
 
-div.pad {
-    border: 1px solid orange;
-}
-
 div.blank-line {
-    border: 1px inset;
     margin: 5px;
 }
 
