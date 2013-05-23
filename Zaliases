@@ -1,0 +1,29 @@
+set libjuise=`pwd`
+setenv LIBJUISE $libjuise
+alias Zautoreconf "(cd $libjuise ; autoreconf --install)"
+
+set opts=' \
+--enable-clira \
+--enable-debug  \
+--enable-warnings \
+--enable-readline \
+--enable-printflike \
+--prefix /Users/phil/work/root \
+--with-libxml-prefix=/Users/phil/work/root \
+--with-libxslt-prefix=/Users/phil/work/root \
+--with-libslax-prefix=/Users/phil/work/root \
+--with-lighttpd-obj=/Users/phil/work/slax/lighttpd-1.4.28-with-mod_websocket/build \
+--with-lighttpd-src=/Users/phil/work/slax/lighttpd-1.4.28-with-mod_websocket \
+--with-libssh2-prefix=/Users/phil/work/root \
+--with-sqlite3-prefix=/opt/local \
+--with-lighttpd-lib=/Users/phil/work/root/lib \
+--with-php-cgi=/opt/local/bin/php-cgi53 \
+'
+set opts=`echo $opts`
+
+alias Zconfigure "(cd $libjuise/build; ../configure $opts )"
+
+alias Zbuild "(cd $libjuise/build; make \!* )"
+
+mkdir -p build
+cd build
