@@ -23,7 +23,7 @@ endif
 bin_SCRIPTS=juise-config
 dist_doc_DATA = Copyright
 
-EXTRA_DIST = juise-config.in warnings.mk README INSTALL
+EXTRA_DIST = juise-config.in warnings.mk README.md INSTALL
 
 .PHONY: test tests
 
