@@ -268,21 +268,20 @@ top_srcdir = @top_srcdir@
 EXTRA_DIST = Makefile.am Makefile.in lighttpd.conf.in ${WEB_FILES}
 BASE_FILES = \
     favicon.ico \
-    icons/loading.png \
+    images/icons/loading.png \
     images/logo.png \
-    jquery/jquery-ui.js \
-    jquery/jquery-ui.min.js \
+    external/jquery-ui/jquery-ui.js \
+    external/jquery-ui/jquery-ui.min.js \
     jquery/jquery.dbgpr.js \
-    jquery/jquery.js \
-    jquery/jquery.min.js \
+    external/jquery/jquery.js \
+    external/jquery/jquery.min.js \
     jquery/jquery.mruPulldown.js \
     clira/clira.html \
     clira/clira.css \
     clira/clira.js \
     clira/parser.js \
     clira/parser-test.js \
-    clira/clira.slax \
-    static/drag-test.html
+    clira/clira.slax
 
 THEME_BLACK_TIE = \
     themes/black-tie/jquery-ui-black-tie.css \

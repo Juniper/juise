@@ -23,10 +23,6 @@ juise.assign = (
 
 cgi.assign = ( ".php" => "@PHP_CGI@" )
 
-url.rewrite-once = (
-  "^/ubiquity/chrome/locale/(.*)" => "/ubiquity/chrome/locale/en-US/$1",
-)
-
 debug.log-request-header = "enable"
 debug.log-response-header = "enable"
 debug.log-file-not-found = "enable"
