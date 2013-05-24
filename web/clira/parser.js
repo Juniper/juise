@@ -159,7 +159,20 @@ jQuery(function ($) {
                 + " class='commandFile'"
                 + " src='" + file + "'></scr" + "ipt>";
 
-            $(html).insertBefore("script#last");
+            if (true) {
+                $(html).insertBefore("script#last-script-in-header");
+            } else if (false) {
+                (function () {
+                    document.write(html);
+                }).call(window);
+
+            } else {
+                var $html = $(html);
+                var tag = $html.get(0);
+                var $last = $("script#last-script-in-header");
+                var last = $last.get(0);
+                last.parentNode.insertBefore(tag, last);
+            }
         },
         addFileCleanup: function addFileCleanup (name, func) {
             $.dbgpr("addFileCleanup: register " + name);

@@ -20,7 +20,7 @@ jQuery.clira.onload("fancy", [
             },
         ],
         execute: function fancyBox ($output, cmd, parse, poss) {
-            var color = poss.data.color ?: "#0000ff";
+            var color = poss.data.color ? poss.data.color : "#0000ff";
             var svg = "<svg xmlns='http://www.w3.org/2000/svg'\
     xmlns:xlink='http://www.w3.org/1999/xlink'>\
     \
