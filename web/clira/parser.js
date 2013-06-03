@@ -9,37 +9,60 @@
  * LICENSE.
  */
 
+//
+// The CLIRA parser turns input text into a set of possible valid
+// parses, sorted by scores.  Commands are add using the
+// $.clira.addCommand() function (typically called from dynamically
+// loaded javascript files) and parsing is done using $.clira.parser.
+//
+//    var parse = $.clira.parse(cmd);
+//
+
 jQuery(function ($) {
-    if ($.clira == undefined)
+    if ($.clira == undefined)   // $.clira is our namespace object
         $.clira = { };
 
-    var commandFiles = { };
-    var commandFilesCleanup = [ ];
+    // Command files are dynmically loaded javascript files
+    var commandFilenames = [ ];
+    var commandFiles = [ ];
 
     $.extend($.clira, {
         debug: true,           // Have debug output use $.dbgpr()
-        commands:  [ ],
-        types: { },
-        bundles: { },
-        scoring: {
-            enum: 3,
-            keyword: 15,
-            multiple_words: 0,
-            order: 5,
-            name: 5,
-            name_exact: 10,
-            needs_data: 5,
-            nokeyword: 2,
-            missing_keyword: 5,
+        commands:  [ ],         // The set of commands we accept
+        types: { },             // Set of builtin types
+        bundles: { },           // Define a set of bundled arguments
+        scoring: {              // Scoring constants
+            enum: 3,            // When we see an enumeration value
+            keyword: 15,        // When we see a keyword
+            multiple_words: 0,  // When we add a word to a multi-word arg
+            order: 5,           // When the args are in order
+            name: 5,            // When we see a match
+            name_exact: 10,     // When the match is exact
+            needs_data: 5,      // When an argument needs data
+            nokeyword: 2,       // When an argument is nokeyword
+            missing_keyword: 5, // What we lose when are missing a keyword
         },
         lang: {
+            //
+            // $.clira.lang: Contains functions and constants needed
+            // by the current language.  This will eventually be
+            // pluggable as a means of supporting multiple languages.
+            //
             match: function langMatch (name, token) {
+                // Match a input token against a command token
                 if (name.substring(0, token.length) == token)
                     return true;
                 else false;
             },
         },
         buildObject: function buildObject (obj, base, defaults, adds) {
+            // Simple but flexible means of building an object.  The
+            // arguments have different precedences:
+            //     adds > base > defaults > obj
+            // Typically base is passed to the constructor, base are
+            // fields the base can override, and adds are fields that
+            // it cannot.
+
             if (defaults)
                 $.extend(obj, defaults);
             if (base)
@@ -90,7 +113,9 @@ jQuery(function ($) {
 
     $.extend($.clira, {
         addCommand: function addCommand (command) {
-            if (Array.isArray(command)) {
+            if (typeof command == "Command") {
+                $.clira.commands.push(command);
+            } else if (Array.isArray(command)) {
                 $.each(command, function (x,c) {
                     $.clira.commands.push(new Command(c));
                 });
@@ -99,6 +124,7 @@ jQuery(function ($) {
             }
         },
         addType: function addType (type) {
+            // A type extends the list of built-in types
             if (Array.isArray(type)) {
                 $.each(type, function (n, t) {
                     $.clira.types[t.name] = t;
@@ -108,6 +134,8 @@ jQuery(function ($) {
             }
         },
         addBundle: function addBundle (bundle) {
+            // A bundle is a set of arguments that can be referenced
+            // as a single chunk, for simplicity and consistency
             if (Array.isArray(bundle)) {
                 $.each(bundle, function (n, b) {
                     $.clira.bundles[b.name] = b;
@@ -117,39 +145,46 @@ jQuery(function ($) {
             }
         },
         loadCommandFiles: function loadCommandFiles () {
+            // Load (or reload) the set of command files, which we
+            // get from our web server.
             $.ajax("/bin/list-command-files.slax")
-            .success(function loadCommandFilesDone (data, status, jqxhr) {
+                .success(function loadCommandFilesDone (data, status, jqxhr) {
 
-                if (data.files == undefined || data.files.length == 0) {
-                    $.dbgpr("load command files: list is empty, ignored");
-                    return;
-                }
+                    if (data.files == undefined || data.files.length == 0) {
+                        $.dbgpr("load command files: list is empty, ignored");
+                        return;
+                    }
 
-                $.each(commandFilesCleanup, function (i, o) {
-                    $.dbgpr("commandFileCleanup: calling " + o.name);
-                    o.func();
+                    $.each(commandFiles, function (i, o) {
+                        if (o.deinit) {
+                            $.dbgpr("commandFileCleanup: calling " + o.name);
+                            o.deinit();
+                        }
+                    });
+
+                    $.clira.commands = [ ];
+                    $.clira.loadBuiltins();
+
+                    commandFilenames = [ ];
+                    commandFiles = [ ];
+
+                    // Remove all the old command script files
+                    $("script.commandFile").remove();
+
+                    $.dbgpr("load command files success: " + data.files.length);
+                    $.each(data.files, function (i, file) {
+                        $.each(data.files, function (i, filename) {
+                            $.clira.loadFile(filename);
+                        });
+                    });
+                })
+                .fail(function loadCommandFilesFail (jqxhr, settings,
+                                                     exception) {
+                    $.dbgpr("load command files failed");
                 });
-
-                $.clira.commands = [ ];
-                $.clira.loadBuiltins();
-
-                commandFiles = [ ];
-                commandFilesCleanup = [ ];
-
-                // Remove all the old command script files
-                $("script.commandFile").remove();
-
-                $.dbgpr("load command files success: " + data.files.length);
-                $.each(data.files, function (i, file) {
-                    $.clira.addFile(file);
-                });
-            })
-            .fail(function loadCommandFilesFail (jqxhr, settings, exception) {
-                $.dbgpr("load command files failed");
-            });
         },
-        addFile: function addFile (file) {
-            commandFiles[file] = file;
+        loadFile: function loadFile (filename) {
+            commandFilenames.push(filename);
 
             // jQuery's getScript/ajax logic will get a script and
             // eval it, but when there's a problem, you don't get
@@ -157,9 +192,19 @@ jQuery(function ($) {
             // <head> to get 'er done.
             var html = "<scr" + "ipt " + "type='text/javascript'"
                 + " class='commandFile'"
-                + " src='" + file + "'></scr" + "ipt>";
+                + " src='" + filename + "'></scr" + "ipt>";
 
             if (true) {
+                (function() {
+                    var ga = document.createElement('script');
+                    ga.type = 'text/javascript';
+                    ga.setAttribute("class", "commandFile");
+                    ga.async = true;
+                    ga.src = filename;
+                    var s = document.getElementById('last-script-in-header');
+                    s.parentNode.insertBefore(ga, s);
+                })();
+            } else if (true) {
                 $(html).insertBefore("script#last-script-in-header");
             } else if (false) {
                 (function () {
@@ -173,10 +218,6 @@ jQuery(function ($) {
                 var last = $last.get(0);
                 last.parentNode.insertBefore(tag, last);
             }
-        },
-        addFileCleanup: function addFileCleanup (name, func) {
-            $.dbgpr("addFileCleanup: register " + name);
-            commandFilesCleanup.push({ func: func, name: name });
         },
         onload: function onload (name, data) {
             $.dbgpr("clira: load: " + name);
@@ -195,6 +236,19 @@ jQuery(function ($) {
                     $.each(data, $.clira.addCommand);
                 }
             }
+        },
+        commandToHtml: function commandToHtml (text, full) {
+            // Turn command text into a fancy representation
+
+            var p = new Parse(options);
+            p.commandText = text; // Only match one command
+            p.parse(text);
+
+            p.possibilities.sort(function sortPossibilities (a, b) {
+                return b.score - a.score;
+            });
+
+            var html = parse.render({ full: true });
         },
     });
 
@@ -226,6 +280,27 @@ jQuery(function ($) {
         return equal;
     }
 
+    function CommandFile (base) {
+        $.clira.buildObject(this, base, null, null);
+    }
+    $.clira.commandFile = function (base) {
+        var me = new CommandFile(base);
+        if (me.init)
+            me.init();
+        me.onload();
+        commandFiles.push(me);
+        return me;
+    }
+    $.extend(CommandFile.prototype, {
+        onload: function () {
+            $.dbgpr("clira: load: " + this.name);
+
+            // We have an array of commands
+            if (this.commands)
+                $.clira.addCommand(this.commands);
+        },
+    });
+
     var parse_id = 1;
     function Parse (base) {
         $.clira.buildObject(this, base, null, { id: parse_id++, });
@@ -255,7 +330,7 @@ jQuery(function ($) {
             }
 
             // Start with a set of empty possibilities, one for each command
-            var possibilities = buildInitialPossibilities();
+            var possibilities = buildInitialPossibilities(this.commandText);
 
             // For each input token, look for new possibilities
             $.each(this.input.tokens, function (argn, tok) {
@@ -499,6 +574,22 @@ jQuery(function ($) {
                 fn.call(this, n, p);
             });
         },
+        render: function renderParse (opts) {
+            var parse = this;
+            var res = "<div class='parse'>"
+                + "<div class='input-debug'>Input: "
+                + parse.input.string + "</div>";
+            var that = this;
+
+            parse.eachPossibility(function (x, p) {
+                p.render(that, opts);
+                res += p.html;
+            });
+
+            res += "</div>";
+
+            return res;
+        },
     });
 
     var poss_id = 1;
@@ -562,6 +653,67 @@ jQuery(function ($) {
                 fn.call(this, n, m);
             });
         },
+        render: function renderPossibility (parse, opts) {
+            var details = "";
+            var html = "<div class='possibility'>";
+            html += "<div class='command-line'>";
+            var poss = this;
+
+            if (opts == undefined)
+                opts = { };
+
+            if (opts.details) {
+                details = "<div class='details'>Possibility Id: " + this.id
+                    + ", Score: " + this.score
+                    + ", Command: '" + this.command.command + "'</div>";
+                details += "<div class='details'>";
+            }
+
+            var emitted = { };
+
+            this.eachMatch(function eachMatch (x, m) {
+                var title = "Id: " + m.id + " " + m.arg.name
+                    + " (" + m.arg.type + ")";
+                if (m.enum)
+                    title += " (" + m.enum.name + ")";
+                if (m.data)
+                    title += " data";
+                if (m.needs_data)
+                    title += " needs_data";
+                if (m.multiple_words)
+                    title += " multiple_words";
+
+                if (opts.details) {
+                    details += "<div class='match-details' title='" + title
+                        + "'>" + m.token + "</div> ";
+                }
+
+                html += emitMissingTokens(poss, m, emitted, false);
+                html += "<div class='command-token' title='" + title + "'>";
+
+                var full = m.enum ? m.enum.name : m.data ? "" : m.arg.name;
+
+                html += commandToken(poss, m, m.token, full);
+                html += "</div> ";
+            });
+
+            html += emitMissingTokens(this, null, emitted, opts);
+
+            html += "</div>";
+            if (opts.details) {
+                details += "</div>";
+                details += "<div class='details'>Data: {" + dump(this.data)
+                    + "}, Seen: {" + dump(this.seen) + "}</div>";
+                html += "<div class='parse-details'>" + details + "</div>";
+            }
+            
+            html += "</div>";
+
+            this.html = html;
+            var text = renderAsText(html);
+            this.text = text;
+            return text;
+        },
     });
 
     var match_id = 1;
@@ -579,9 +731,16 @@ jQuery(function ($) {
         },
     });
 
-    function buildInitialPossibilities () {
+    function buildInitialPossibilities (commandText) {
         var possibilities = [ ];
         $.each($.clira.commands, function (n, c) {
+            //
+            // If we have a commandText value, then we use that
+            // to pick the command to parse against
+            //
+            if (commandText && c != commandText)
+                return;
+
             var p = new Possibility({
                 command: c,
                 matches: [ ],
@@ -589,6 +748,7 @@ jQuery(function ($) {
             });
             possibilities.push(p);
         });
+
         return possibilities;
     }
 
@@ -607,23 +767,6 @@ jQuery(function ($) {
             s += "'" + key + "': '" + value + "', ";
         });
         return s;
-    }
-
-    Parse.prototype.render = function renderParse (opts) {
-        var parse = this;
-        var res = "<div class='parse'>"
-            + "<div class='input-debug'>Input: "
-            + parse.input.string + "</div>";
-        var that = this;
-
-        parse.eachPossibility(function (x, p) {
-            p.render(that, opts);
-            res += p.html;
-        });
-
-        res += "</div>";
-
-        return res;
     }
 
     function commandToken(poss, match, token, value) {
@@ -656,71 +799,8 @@ jQuery(function ($) {
         return res;
     }
 
-    Possibility.prototype.render = function renderPossibility (parse, opts) {
-        var details = "";
-        var html = "<div class='possibility'>";
-        html += "<div class='command-line'>";
-        var poss = this;
-
-        if (opts == undefined)
-            opts = { };
-
-        if (opts.details) {
-            details = "<div class='details'>Possibility Id: " + this.id
-                + ", Score: " + this.score
-                + ", Command: '" + this.command.command + "'</div>";
-            details += "<div class='details'>";
-        }
-
-        var emitted = { };
-
-        this.eachMatch(function eachMatch (x, m) {
-            var title = "Id: " + m.id + " " + m.arg.name
-                + " (" + m.arg.type + ")";
-            if (m.enum)
-                title += " (" + m.enum.name + ")";
-            if (m.data)
-                title += " data";
-            if (m.needs_data)
-                title += " needs_data";
-            if (m.multiple_words)
-                title += " multiple_words";
-
-            if (opts.details) {
-                details += "<div class='match-details' title='" + title
-                    + "'>" + m.token + "</div> ";
-            }
-
-            html += emitMissingTokens(poss, m, emitted, false);
-
-            html += "<div class='command-token' title='" + title + "'>";
-
-            var full = m.enum ? m.enum.name : m.data ? "" : m.arg.name;
-
-            html += commandToken(poss, m, m.token, full);
-            html += "</div> ";
-        });
-
-        html += emitMissingTokens(this, null, emitted, true);
-
-        html += "</div>";
-        if (opts.details) {
-            details += "</div>";
-            details += "<div class='details'>Data: {" + dump(this.data)
-                + "}, Seen: {" + dump(this.seen) + "}</div>";
-            html += "<div class='parse-details'>" + details + "</div>";
-        }
-
-        html += "</div>";
-
-        this.html = html;
-        var text = renderAsText(html);
-        this.text = text;
-        return text;
-    }
-
     // If there are missing token (keywords) then emit them now.
-    function emitMissingTokens (poss, match, emitted, final) {
+    function emitMissingTokens (poss, match, emitted, opts) {
         var res = "";
         var all_keywords = true;
 
@@ -733,11 +813,21 @@ jQuery(function ($) {
             if (emitted[arg.name])
                 return true;
 
-            if (arg.mandatory && !poss.seen[arg.name]) {
-                res += "<div class='parse-mandatory'>" + arg.name + "</div> ";
-                res += "<div class='parse-mandatory-value'>"
-                    + arg.name + "</div> ";
-                emitted[arg.name] = true;
+            if (!poss.seen[arg.name]) {
+                var cl;
+
+                if (arg.mandatory)
+                    cl = "mandatory";
+                else if (opts.full)
+                    cl = "not-seen";
+
+                if (cl) {
+                    res += "<div class='parse-" + cl + "'>"
+                        + arg.name + "</div> ";
+                    res += "<div class='parse-" + cl + "-value'>"
+                        + arg.name + "</div> ";
+                    emitted[arg.name] = true;
+                }
             }
 
             // If it's a keyword that we haven't seen, emit it
