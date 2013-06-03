@@ -9,19 +9,21 @@
  * LICENSE.
  */
 
-jQuery.clira.onload("fancy", [
-    {
-        command: "show fancy box",
-
-        arguments: [
-            {
-                name: "color",
-                type: "string",
-            },
-        ],
-        execute: function fancyBox ($output, cmd, parse, poss) {
-            var color = poss.data.color ?: "#0000ff";
-            var svg = "<svg xmlns='http://www.w3.org/2000/svg'\
+jQuery.clira.commandFile({
+    name: "fancy",
+    commands: [
+        {
+            command: "show fancy box",
+            help: "Demo: display spinning boxes using SVG",
+            arguments: [
+                {
+                    name: "color",
+                    type: "string",
+                },
+            ],
+            execute: function fancyBox ($output, cmd, parse, poss) {
+                var color = poss.data.color ? poss.data.color : "#0000ff";
+                var svg = "<svg xmlns='http://www.w3.org/2000/svg'\
     xmlns:xlink='http://www.w3.org/1999/xlink'>\
     \
     <rect x='10' y='10' height='110' width='110'\
@@ -40,7 +42,8 @@ jQuery.clira.onload("fancy", [
 \
 </svg>\
 ";
-            $output.html(svg);
+                $output.html(svg);
+            },
         },
-    },
-]);
+    ],
+});

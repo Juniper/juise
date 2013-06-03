@@ -278,10 +278,22 @@ print_help (const char *opt)
     if (opt)
 	fprintf(stderr, "invalid option: %s\n\n", opt);
 
-    fprintf(stderr, "syntax: mixer [options]\n\n"
-	    "    --console          Enable console mode\n"
-	    "    --db <dbname>      Specify mixer database file\n"
-	    "    --verbose          Enable verbose logs\n"
+    fprintf(stderr,
+	    "Usage: mixer [options]\n\n"
+	    "\t--console or -C: enable console mode\n"
+	    "\t--db <dbname>: Specify mixer database file\n"
+	    "\t--debug <flag>: turn on specified debug flag\n"
+	    "\t--fork: force fork\n"
+	    "\t--help: display this message\n"
+	    "\t--home <dir>: specify home directory\n"
+	    "\t--keep-alive <secs> OR -k <secs>: keep-alive timeout\n"
+	    "\t--login: require use login\n"
+	    "\t--no-db: do not use device database\n"
+	    "\t--password <xxx>: use password for device logins\n"
+	    "\t--port <n>: use alternative port for websocket\n"
+	    "\t--use-known-hosts OR -K: use openssh .known_hosts files\n"
+	    "\t--verbose: Enable verbose logs\n"
+	    "\nProject juise home page: http://juise.googlecode.com\n"
 	    "\n");
 	        
     exit(1);
@@ -324,17 +336,23 @@ main (int argc UNUSED, char **argv UNUSED)
 	} else if (streq(cp, "--db")) {
 	    opt_db = *++argv;
 
+	} else if (streq(cp, "--debug")) {
+	    cp  = *++argv;
+	    if (cp == NULL)
+		print_help(NULL);
+	    mx_debug_flags(TRUE, cp);
+
 	} else if (streq(cp, "--fork")) {
-	    opt_login = TRUE;
+	    opt_fork = TRUE;
+
+	} else if (streq(cp, "--help") || streq(cp, "-h")) {
+	    print_help(NULL);
 
 	} else if (streq(cp, "--home")) {
 	    opt_home = *++argv;
 
 	} else if (streq(cp, "--keep-alive") || streq(cp, "-k")) {
 	    opt_keepalive = atoi(*++argv);
-
-	} else if (streq(cp, "--use-known-hosts") || streq(cp, "-K")) {
-	    opt_knownhosts = TRUE;
 
 	} else if (streq(cp, "--login")) {
 	    opt_login = TRUE;
@@ -360,17 +378,11 @@ main (int argc UNUSED, char **argv UNUSED)
 	} else if (streq(cp, "--user") || streq(cp, "-u")) {
 	    opt_user = *++argv;
 
+	} else if (streq(cp, "--use-known-hosts") || streq(cp, "-K")) {
+	    opt_knownhosts = TRUE;
+
 	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
 	    opt_verbose = TRUE;
-
-	} else if (streq(cp, "--debug")) {
-	    cp  = *++argv;
-	    if (cp == NULL)
-		print_help(NULL);
-	    mx_debug_flags(TRUE, cp);
-
-	} else if (streq(cp, "--help") || streq(cp, "-h")) {
-	    print_help(NULL);
 
 	} else {
 	    print_help(cp);

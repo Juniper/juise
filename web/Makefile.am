@@ -16,7 +16,9 @@ EXTRA_DIST = \
     lighttpd.conf.in
 
 BASE_FILES = \
-    favicon.ico \
+    favicon.ico
+
+OTHER_FILES = \
     icons/loading.png \
     images/logo.png \
     jquery/jquery-ui.js \

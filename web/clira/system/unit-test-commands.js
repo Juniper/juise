@@ -9,243 +9,246 @@
  * LICENSE.
  */
 
-jQuery.clira.onload("unit-test-commands", function ($) {
-    $.clira.addCommand([
-        {
-            command: "show interfaces",
-            arguments: [
-                {
-                    name: "interface",
-                    type: "interface",
-                    help: "Interface name",
+jQuery(function($) {
+    jQuery.clira.commandFile({
+        name: "unit-test-commands",
+        commands: [
+            {
+                command: "show interfaces",
+                arguments: [
+                    {
+                        name: "interface",
+                        type: "interface",
+                        help: "Interface name",
+                    },
+                    {
+                        name: "type",
+                        type: "media-type",
+                        help: "Media type",
+                    },
+                    {
+                        name: "statistics",
+                        type: "empty",
+                        help: "Show statistics only",
+                    },
+                    {
+                        name: "color",
+                        type: "enumeration",
+                        help: "Color of interface",
+                        enums: [
+                            {
+                                name: "blue",
+                                help: "Blue like the sea after a storm",
+                            },
+                            {
+                                name: "black",
+                                help: "Black line the night",
+                            },
+                            {
+                                name: "red",
+                                help: "Red",
+                            }
+                        ],
+                    },
+                ],
+                execute: function () {
+                    $.dbgpr("got it");
                 },
-                {
-                    name: "type",
-                    type: "media-type",
-                    help: "Media type",
-                },
-                {
-                    name: "statistics",
-                    type: "empty",
-                    help: "Show statistics only",
-                },
-                {
-                    name: "color",
-                    type: "enumeration",
-                    help: "Color of interface",
-                    enums: [
-                        {
-                            name: "blue",
-                            help: "Blue like the sea after a storm",
-                        },
-                        {
-                            name: "black",
-                            help: "Black line the night",
-                        },
-                        {
-                            name: "red",
-                            help: "Red",
-                        }
-                    ],
-                },
-            ],
-            execute: function () {
-                $.dbgpr("got it");
             },
-        },
-        {
-            command: "show alarms",
-            bundle: [ "affecting", "since", "location", ],
-            arguments: [
-                {
-                    name: "interface",
-                    type: "interface",
-                    help: "Interface name",
+            {
+                command: "show alarms",
+                bundle: [ "affecting", "since", "location", ],
+                arguments: [
+                    {
+                        name: "interface",
+                        type: "interface",
+                        help: "Interface name",
+                    },
+                    {
+                        name: "type",
+                        type: "media-type",
+                        help: "Media type",
+                    },
+                ],
+                execute: function () {
+                    $.dbgpr("got it");
                 },
-                {
-                    name: "type",
-                    type: "media-type",
-                    help: "Media type",
-                },
-            ],
-            execute: function () {
-                $.dbgpr("got it");
             },
-        },
-        {
-            command: "show alarms critical extensive",
-            arguments: [
-                {
-                    name: "interface",
-                    type: "interface",
-                    help: "Interface name",
+            {
+                command: "show alarms critical extensive",
+                arguments: [
+                    {
+                        name: "interface",
+                        type: "interface",
+                        help: "Interface name",
+                    },
+                    {
+                        name: "type",
+                        type: "media-type",
+                        help: "Media type",
+                    },
+                ],
+                execute: function () {
+                    $.dbgpr("got it");
                 },
-                {
-                    name: "type",
-                    type: "media-type",
-                    help: "Media type",
-                },
-            ],
-            execute: function () {
-                $.dbgpr("got it");
             },
-        },
-        {
-            command: "tell",
-            arguments: [
-                {
-                    name: "user",
-                    type: "string",
-                    help: "User to send message to",
-                    nokeyword: true,
-                    mandatory: true,
+            {
+                command: "tell",
+                arguments: [
+                    {
+                        name: "user",
+                        type: "string",
+                        help: "User to send message to",
+                        nokeyword: true,
+                        mandatory: true,
+                    },
+                    {
+                        name: "message",
+                        type: "string",
+                        multiple_words: true,
+                        help: "Message to send to user",
+                        nokeyword: true,
+                        mandatory: true,
+                    },
+                ],
+                execute: function ($output, cmd, parse, poss) {
+                    $.dbgpr("got it");
+                    $output.html("<div><span>Executing </span>"
+                                 + poss.html + "<span> ...</span></div>");
                 },
-                {
-                    name: "message",
-                    type: "string",
-                    multiple_words: true,
-                    help: "Message to send to user",
-                    nokeyword: true,
-                    mandatory: true,
-                },
-            ],
-            execute: function ($output, cmd, parse, poss) {
-                $.dbgpr("got it");
-                $output.html("<div><span>Executing </span>"
-                             + poss.html + "<span> ...</span></div>");
             },
-        },
-        {
-            command: "on",
-            arguments: [
-                {
-                    name: "target",
-                    type: "string",
-                    help: "Remote device name",
-                    nokeyword: true,
+            {
+                command: "on",
+                arguments: [
+                    {
+                        name: "target",
+                        type: "string",
+                        help: "Remote device name",
+                        nokeyword: true,
+                    },
+                    {
+                        name: "command",
+                        type: "string",
+                        multiple_words: true,
+                        help: "Command to execute",
+                        nokeyword: true,
+                    },
+                ],
+                execute: function ($output, cmd, parse, poss) {
+                    parse.dbgpr("working command: " + poss.command.command);
+                    $output.html("<div>Running.... </div>");
+                    
+                    var cname = poss.data.target;
+                    // cname.replace("_", "__", "g"); // Maybe not needed?
+                    // classnames can't have periods
+                    cname = cname.replace(".", "_", "g");
+                    
+                    $.clira.targetListMarkUsed(poss.data.target, cname,
+                        function ($target, target) {
+                            $.clira.cmdHistory.select("on " + target + " ");
+                        });
+                    $.clira.runCommand($output, poss.data.target,
+                                       poss.data.command);
                 },
-                {
-                    name: "command",
-                    type: "string",
-                    multiple_words: true,
-                    help: "Command to execute",
-                    nokeyword: true,
+            },
+            {
+                command: "show outages",
+                bundle: [ "location", "since", ],
+            },
+            {
+                command: "map outages",
+                bundle: [ "affecting", "since", ],
+            },
+            {
+                command: "list outages",
+                bundle: [ "affecting", "since", "between-locations", ],
+            },
+            {
+                command: "list flaps",
+                bundle: [ "affecting", "since", "between-locations", ],
+            },
+            {
+                command: "show latency issues",
+                bundle: [ "affecting", "since", "location" ],
+            },
+            {
+                command: "show drop issues",
+                bundle: [ "affecting", "since", ],
+            },
+            {
+                command: "map paths",
+                bundle: [ "between-locations", ],
+            },
+            {
+                command: "list flags",
+                bundle: [ "affecting", "since",
+                          "between-locations", "location", ],
+            },
+            {
+                command: "test lsp",
+                arguments: [
+                    {
+                        name: "lsp-name",
+                        type: "lsp",
+                        nokeyword: true,
+                    },
+                ],
+            },
+            {
+                command: "route lsp away from device",
+                arguments: [
+                    {
+                        name: "lsp-name",
+                        type: "lsp",
+                        nokeyword: true,
+                    },
+                    {
+                        name: "device-name",
+                        type: "device",
+                        nokeyword: true,
+                    },
+                ],
+            },
+            {
+                command: "configure new lsp",
+                bundle: [ "between-devices", ],
+                arguments: [
+                    {
+                        name: "lsp-name",
+                        type: "lsp",
+                        nokeyword: true,
+                    },
+                ],
+            },
+            {
+                command: "add device to vpn",
+                arguments: [
+                    {
+                        name: "device-name",
+                        type: "device",
+                        nokeyword: true,
+                    },
+                    {
+                        name: "interface",
+                        type: "interface",
+                    },
+                    {
+                        name: "vpn-name",
+                        type: "vpn",
+                    },
+                ],
+                execute: function ($output, cmd, parse, poss) {
                 },
-            ],
-            execute: function ($output, cmd, parse, poss) {
-                parse.dbgpr("working command: " + poss.command.command);
-                $output.html("<div>Running.... </div>");
+            },
+            {
+                command: "run parse tests",
+                execute: function ($output, cmd, parse, poss) {
+                    runParsingTests($output);
+                },
+            },
+        ],
+    });
 
-                var cname = poss.data.target;
-                // cname.replace("_", "__", "g"); // Maybe not needed?
-                // classnames can't have periods
-                cname = cname.replace(".", "_", "g");
-
-                $.clira.targetListMarkUsed(poss.data.target, cname,
-                     function ($target, target) {
-                         $.clira.cmdHistory.select("on " + target + " ");
-                     });
-                $.clira.runCommand($output, poss.data.target,
-                                   poss.data.command);
-            },
-        },
-        {
-            command: "show outages",
-            bundle: [ "location", "since", ],
-        },
-        {
-            command: "map outages",
-            bundle: [ "affecting", "since", ],
-        },
-        {
-            command: "list outages",
-            bundle: [ "affecting", "since", "between-locations", ],
-        },
-        {
-            command: "list flaps",
-            bundle: [ "affecting", "since", "between-locations", ],
-        },
-        {
-            command: "show latency issues",
-            bundle: [ "affecting", "since", "location" ],
-        },
-        {
-            command: "show drop issues",
-            bundle: [ "affecting", "since", ],
-        },
-        {
-            command: "map paths",
-            bundle: [ "between-locations", ],
-        },
-        {
-            command: "list flags",
-            bundle: [ "affecting", "since",
-                      "between-locations", "location", ],
-        },
-        {
-            command: "test lsp",
-            arguments: [
-                {
-                    name: "lsp-name",
-                    type: "lsp",
-                    nokeyword: true,
-                },
-            ],
-        },
-        {
-            command: "route lsp away from device",
-            arguments: [
-                {
-                    name: "lsp-name",
-                    type: "lsp",
-                    nokeyword: true,
-                },
-                {
-                    name: "device-name",
-                    type: "device",
-                    nokeyword: true,
-                },
-            ],
-        },
-        {
-            command: "configure new lsp",
-            bundle: [ "between-devices", ],
-            arguments: [
-                {
-                    name: "lsp-name",
-                    type: "lsp",
-                    nokeyword: true,
-                },
-            ],
-        },
-        {
-            command: "add device to vpn",
-            arguments: [
-                {
-                    name: "device-name",
-                    type: "device",
-                    nokeyword: true,
-                },
-                {
-                    name: "interface",
-                    type: "interface",
-                },
-                {
-                    name: "vpn-name",
-                    type: "vpn",
-                },
-            ],
-            execute: function ($output, cmd, parse, poss) {
-            },
-        },
-        {
-            command: "run parse tests",
-            execute: function ($output, cmd, parse, poss) {
-                runParsingTests($output);
-            },
-        },
-    ]);
-    
     function runParsingTests ($wrapper) {
 
         if ($wrapper == undefined)
@@ -302,5 +305,4 @@ jQuery.clira.onload("unit-test-commands", function ($) {
             ], function (x, cmd) { $.clira.executeCommand(cmd); }
         );
     }
-
 });

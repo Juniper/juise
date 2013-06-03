@@ -1417,30 +1417,32 @@ print_version (void)
 static void
 print_help (void)
 {
-    printf("Usage: juise [@target] [options] [script] [param value]*\n");
-    printf("\t--agent OR -A: enable ssh-agent forwarding\n");
-    printf("\t--commit-script OR -c: test a commit script\n");
-    printf("\t--debug OR -d: use the libslax debugger\n");
-    printf("\t--directory <dir> OR -D <dir>: set the directory for server scripts\n");
-    printf("\t--include <dir> OR -I <dir>: search directory for includes/imports\n");
-    printf("\t--input <file> OR -i <file>: use given file for input\n");
-    printf("\t--indent OR -g: indent output ala output-method/indent\n");
-    printf("\t--junoscript OR -J: use junoscript API protocol\n");
-    printf("\t--load OR -l: load commit script changes in test mode\n");
-    printf("\t--lib <dir> OR -L <dir>: search directory for extension libraries\n");
-    printf("\t--no-randomize: do not initialize the random number generator\n");
-    printf("\t--param <name> <value> OR -a <name> <value>: pass parameters\n");
-    printf("\t--protocol <name> OR -P <name>: use the given API protocol\n");
-    printf("\t--run-server OR -R: run in juise server mode\n");
-    printf("\t--script <name> OR -S <name>: run the given script\n");
-    printf("\t--target <name> OR -T <name>: specify the default target device\n");
-    printf("\t--trace <file> OR -t <file>: write trace data to a file\n");
-    printf("\t--user <name> OR -u <name>: specify the user name for API connections\n");
-    printf("\t--verbose OR -v: enable debugging output (slaxLog())\n");
-    printf("\t--version OR -V: show version information (and exit)\n");
-    printf("\t--wait <seconds>: wait after starting (for gdb to attach)\n");
+    fprintf(stderr,
+	    "Usage: juise [@target] [options] [script] [param value]*\n"
+	    "\t--agent OR -A: enable ssh-agent forwarding\n"
+	    "\t--commit-script OR -c: test a commit script\n"
+	    "\t--debug OR -d: use the libslax debugger\n"
+	    "\t--directory <dir> OR -D <dir>: set the directory for server scripts\n"
+	    "\t--include <dir> OR -I <dir>: search directory for includes/imports\n"
+	    "\t--input <file> OR -i <file>: use given file for input\n"
+	    "\t--indent OR -g: indent output ala output-method/indent\n"
+	    "\t--junoscript OR -J: use junoscript API protocol\n"
+	    "\t--load OR -l: load commit script changes in test mode\n"
+	    "\t--lib <dir> OR -L <dir>: search directory for extension libraries\n"
+	    "\t--no-randomize: do not initialize the random number generator\n"
+	    "\t--param <name> <value> OR -a <name> <value>: pass parameters\n"
+	    "\t--protocol <name> OR -P <name>: use the given API protocol\n"
+	    "\t--run-server OR -R: run in juise server mode\n"
+	    "\t--script <name> OR -S <name>: run the given script\n"
+	    "\t--target <name> OR -T <name>: specify the default target device\n"
+	    "\t--trace <file> OR -t <file>: write trace data to a file\n"
+	    "\t--user <name> OR -u <name>: specify the user name for API connections\n"
+	    "\t--verbose OR -v: enable debugging output (slaxLog())\n"
+	    "\t--version OR -V: show version information (and exit)\n"
+	    "\t--wait <seconds>: wait after starting (for gdb to attach)\n"
 
-    printf("\nProject juise home page: http://juise.googlecode.com\n");
+	    "\nProject juise home page: http://juise.googlecode.com\n"
+	    "\n");
 }
 
 int

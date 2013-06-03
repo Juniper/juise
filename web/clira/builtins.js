@@ -17,10 +17,19 @@ jQuery(function ($) {
                 help: "Display a list of all available commands currently "
                     + "loaded in CLIRA",
                 execute: function ($output, cmd, parse, poss) {
-                    $.each($.clira.commands, function (n, c) {
-                        var html = "<div>" + c.command + "</div>";
-                        $output.append(html);
-                    });
+                    var html = "\
+<div class='show-command-top'>\
+    {{#each commands}}\
+        <div class='show-command'>\
+            <div class='show-command-name'>{{command}}</div>\
+            <div class='command-help'>{{help}}</div>\
+        </div>\
+    {{/each}}\
+</div>\
+";
+                    var template = Handlebars.compile(html);
+                    var content = template({ commands: $.clira.commands});
+                    $output.html(content);
                 },
             },
             {
@@ -29,6 +38,40 @@ jQuery(function ($) {
                 execute: function ($output, cmd, parse, poss) {
                     $output.text("Reloading commands");
                     $.clira.loadCommandFiles();
+                },
+            },
+            {
+                command: "test something",
+                help: "mumble mumble",
+                execute: function ($output, cmd, parse, poss) {
+                    $output.text("Testing....");
+                    var filename = "/clira/test.js";
+
+                    $.ajax({
+                        url: filename,
+                        dataType: "text",
+                        success: function (data, status, jqxhr) {
+                            $.dbgpr("test: success:" + status);
+                            try {
+                                var res = eval(data);
+                                if ($.isArray(res)) {
+                                    $.clira.addCommand(res);
+                                }
+                            } catch (e) {
+                                $.dbgpr("error: " + e.toString() + " at " +
+                                        filename + ":" + e.lineNumber);
+                                if (console && console.exception) {
+                                    console.log("error: " + e.toString()
+                                                + " at " +
+                                                filename + ":" + e.lineNumber);
+                                    console.exception(e);
+                                }
+                            }
+                        },
+                        error: function (jqxhr, status, message) {
+                            $.dbgpr("test: error: " + status + "::" + message);
+                        },
+                    });
                 },
             },
         ]);
