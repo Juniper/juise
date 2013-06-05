@@ -16,7 +16,7 @@ jQuery(function ($) {
     var tgtHistory;
     var renderBuffer = {};
 
-    var loadingMessage = "<img src='/icons/loading.png'>"
+    var loadingMessage = "<img src='/images/icons/loading.png'>"
         + "    ....loading...\n";
 
     if ($.clira == undefined)
