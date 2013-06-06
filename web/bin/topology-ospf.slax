@@ -1,0 +1,409 @@
+version 1.1;
+/*
+ * $Id$
+ *  -*-  indent-tabs-mode:nil -*-
+ * Copyright 2013, Juniper Network Inc, All rights reserved
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
+ */
+
+ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns os extension = "http://xml.libslax.org/os";
+ns xutil extension = "http://xml.libslax.org/xutil";
+ns set extension = "http://exslt.org/sets";
+
+output-method text;
+
+var $json-opts = {
+    <pretty>;
+}
+
+param $input = "../data/ospf.xml";
+match / {
+    <cgi Content-type="application/json"> {
+	var $doc = document($input);
+	var $data := {
+	    for-each ($doc) {
+		call first-pass();
+	    }
+	}
+	var $two := {
+	    call second-pass($data);
+	}
+	copy-of xutil:xml-to-json($two, $json-opts);
+    }
+}
+
+template second-pass ($data) {
+    var $node-set := {
+	var $id-set = set:distinct($data/areas/area/routers/router/id);
+	trace "ids: " _ count($id-set);
+
+	var $router-set := {
+	    for-each ($id-set) {
+		var $id = .;
+		var $matches = $data/areas/area/routers/router[id == $id];
+
+		<node type="member"> {
+		    <name> .;
+		    <type> "router";
+		    <areas type="array"> {
+			for-each ($matches) {
+			    <area type="member"> {
+				<id> ../../name;
+				copy-of *[name() != "id"];
+			    }
+			}
+		    }
+		}
+	    }
+	}
+	copy-of $router-set;
+
+	var $network-set := {
+	    for-each ($data/areas/area/networks/network) {
+		<node type="member"> {
+		    <name> prefix;
+		    <type> "network";
+		    <data> {
+			copy-of *;
+		    }
+		}
+	    }
+	}
+	copy-of $network-set;
+
+	var $summary-set := {
+	    for-each ($data/areas/area/summaries/summary) {
+		var $prefix = prefix;
+		if (not($network-set/node[name == $prefix])) {
+		    <node type="member"> {
+			<name> prefix;
+			<type> "summary";
+			<data> {
+			    copy-of *;
+			}
+		    }
+		}
+	    }
+	}
+	/* copy-of $summary-set; */
+
+	var $extern-set := {
+	    for-each ($data/areas/area/externs/extern) {
+		var $prefix = prefix;
+		if (not($network-set/node[name == $prefix])
+		        && not($summary-set/node[name == $prefix])) {
+		    <node type="member"> {
+			<name> prefix;
+			<type> "extern";
+			<data> {
+			    copy-of *;
+			}
+		    }
+		}
+	    }
+	}
+	/* copy-of $extern-set; */
+    }
+
+    var $nodes := {
+	for-each ($node-set/node) {
+	    copy-node {
+		<position type="number"> position() - 1;
+		copy-of *;
+	    }
+	}
+    }
+
+    <json> {
+	<nodes type="array"> {
+	    copy-of $nodes;
+	}
+	<links type="array"> {
+	    for-each ($data/areas/area/networks/network) {
+		/* 
+		      | $data/areas/area/summaries/summary
+		      | $data/areas/area/externs/extern
+		*/
+		var $prefix = prefix;
+		var $matches = $nodes/node[name == $prefix];
+		var $source = count($matches[1]/preceding-sibling::node);
+
+		var $attached = attached-routers/attached-router;
+		if ($attached) {
+		    var $routers = $nodes/node[name == $attached];
+		    var $area-set = $routers/areas/area/id;
+		    var $uniq = set:distinct($area-set);
+		    var $different = count($uniq) > 1;
+
+		    for-each (attached-routers/attached-router) {
+			var $router = .;
+			var $target = count($nodes/node[name == $router][1]
+					    /preceding-sibling::node);
+
+			<links type="member"> {
+			    <source type="number"> $source;
+			    <target type="number"> $target;
+			    <type> "network";
+			    <prefix> $prefix;
+			    <router> $router;
+			    if ($different) {
+				<different> "true";
+			    }
+			}
+		    }
+		} else {
+		    var $router = advertising-router;
+		    var $target-list := {
+			for-each ($nodes/node[name == $router]) {
+			    expr count(preceding-sibling::node) + 1;
+			}
+		    }
+		    var $target = $target-list[1];
+
+		    <links type="member"> {
+			<source type="number"> $source;
+			<target type="number"> $target;
+			<type> name();
+		    }
+		}
+	    }
+	}
+    }
+}
+
+template first-pass () {
+    <areas type="array"> {
+	for-each (ospf-database-information/ospf-area-header) {
+	    var $next = following-sibling::ospf-area-header[1];
+	    var $stopx = {
+		if ($next) {
+		    expr count($next/preceding-sibling::*);
+		} else {
+		    expr count(following-sibling::*);
+		}
+	    }
+	    var $stop = number($stopx);
+	    var $db-set = following-sibling::ospf-database[position() < $stop];
+
+	    var $area = .;
+	    trace "area: " _ $area/ospf-area;
+	    trace "  total: " _ count($db-set);
+
+	    <area type="member"> {
+		<name> $area/ospf-area;
+
+		var $networks := {
+		    <networks type="array"> {
+			call networks($db-set = $db-set[lsa-type == "Network"],
+				      $area);
+		    }
+		}
+
+		var $routers := {
+		    <routers type="array"> {
+			call routers($db-set = $db-set[lsa-type == "Router"],
+				     $area, $networks);
+		    }
+		}
+		if ($routers/routers/router) {
+		    copy-of $routers;
+		}
+
+		if ($networks/networks/network) {
+		    copy-of $networks;
+		}
+
+		var $summaries := {
+		    <summaries type="array"> {
+			call summaries($db-set = $db-set[lsa-type == "Summary"],
+				       $area);
+		    }
+		}
+		if ($summaries/summaries/summary) {
+		    copy-of $summaries;
+		}
+
+		var $externs := {
+		    <externs type="array"> {
+			call externs($db-set = $db-set[lsa-type == "Extern"],
+				     $area);
+		    }
+		}
+		if ($externs/externs/extern) {
+		    copy-of $externs;
+		}
+	    }
+	}
+    }
+}
+
+template routers ($area, $db-set, $networks) {
+    trace "  routers: " _ count($db-set);
+    for-each ($db-set) {
+	<router type="member"> {
+	    <id> lsa-id;
+	    
+	    var $transits = ospf-router-lsa/ospf-link
+	    				[link-type-name == "Transit"];
+	    if (count($transits)) {
+		<transits type="array"> {
+		    for $link ($transits) {
+			    call transit($link, $area, $networks);
+		    }
+		}
+	    }
+
+	    var $stubs = ospf-router-lsa/ospf-link[link-type-name == "Stub"];
+	    if (count($stubs) > 0) {
+		<stubs type="array"> {
+		    for $link ($stubs) {
+			if ($link/link-id != lsa-id) {
+			    call stub($link, $area);
+			}
+		    }
+		}
+	    }
+	}
+    }
+}
+
+template networks ($area, $db-set) {
+    trace "  networks: " _ count($db-set);
+    for-each ($db-set) {
+	<network type="member"> {
+	    var $lsa = ospf-network-lsa;
+	    var $plen = {
+		call prefix-length($address = $lsa/address-mask);
+	    }
+	    var $res = jcs:parse-ip(lsa-id _ "/" _ $plen);
+	    var $address = $res[4];
+	    <prefix> $address _ "/" _ $plen;
+	    <advertising-router> advertising-router;
+	    <attached-routers type="array"> {
+		for-each ($lsa/attached-router) {
+		    <attached-router type="member"> .;
+		}
+	    }
+	}
+    }
+}
+
+template summaries ($area, $db-set) {
+    trace "  summaries: " _ count($db-set);
+    for-each ($db-set) {
+	<summary type="member"> {
+	    var $lsa = ospf-summary-lsa;
+	    var $plen = {
+		call prefix-length($address = $lsa/address-mask);
+	    }
+	    <prefix> lsa-id _ "/" _ $plen;
+	    <advertising-router> advertising-router;
+	}
+    }
+}
+
+template externs ($area, $db-set) {
+    trace "  externs: " _ count($db-set);
+    for-each ($db-set) {
+	<extern type="member"> {
+	    var $lsa = ospf-external-lsa;
+	    var $plen = {
+		call prefix-length($address = $lsa/address-mask);
+	    }
+	    <prefix> lsa-id _ "/" _ $plen;
+	    <advertising-router> advertising-router;
+	}
+    }
+}
+
+template transit ($link, $area, $networks) {
+    <transit type="member"> {
+	<link-adddress> $link/link-data;
+	<dr> $link/link-id;
+
+	for-each ($networks/networks/network) {
+	    /*
+	     * Check that we are in the attached-router list
+	     * and that the prefix matches our own address.
+	     */
+	    if (attached-routers/attached-router[. == $link/../../lsa-id]
+		    && prefix) {
+		var $res = jcs:parse-ip(prefix);
+		var $r2 = jcs:parse-ip($link/link-data _ "/" _ $res[3]);
+		if ($r2[4] == $res[4]) {
+		    <prefix> prefix;
+		}
+	    }
+	}
+
+	if (not(slax:is-empty($link/metric))) {
+	    <metric> $link/metric;
+	}
+    }
+}
+
+template stub ($link, $area) {
+    var $address = $link/link-id;
+    var $plen = {
+	call prefix-length($address = $link/link-data);
+    }
+    <stub type="member"> {
+	<prefix> $address _ "/" _ $plen;
+	if (not(slax:is-empty($link/metric))) {
+	    <metric> $link/metric;
+	}
+    }
+}
+
+template prefix-length ($address) {
+    var $masks := {
+	<mask> "128.0.0.0";
+	<mask> "192.0.0.0";
+	<mask> "224.0.0.0";
+	<mask> "240.0.0.0";
+
+	<mask> "248.0.0.0";
+	<mask> "252.0.0.0";
+	<mask> "254.0.0.0";
+	<mask> "255.0.0.0";
+
+	<mask> "255.128.0.0";
+	<mask> "255.192.0.0";
+	<mask> "255.224.0.0";
+	<mask> "255.240.0.0";
+
+	<mask> "255.248.0.0";
+	<mask> "255.252.0.0";
+	<mask> "255.254.0.0";
+	<mask> "255.255.0.0";
+
+	<mask> "255.255.128.0";
+	<mask> "255.255.192.0";
+	<mask> "255.255.224.0";
+	<mask> "255.255.240.0";
+
+	<mask> "255.255.248.0";
+	<mask> "255.255.252.0";
+	<mask> "255.255.254.0";
+	<mask> "255.255.255.0";
+
+	<mask> "255.255.255.128";
+	<mask> "255.255.255.192";
+	<mask> "255.255.255.224";
+	<mask> "255.255.255.240";
+
+	<mask> "255.255.255.248";
+	<mask> "255.255.255.252";
+	<mask> "255.255.255.254";
+	<mask> "255.255.255.255";
+    }
+
+    var $match = $masks/mask[$address == .];
+    var $plen = count($match/preceding-sibling::mask) + 1;
+    expr $plen;
+}
