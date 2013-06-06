@@ -636,3 +636,20 @@ div.map-small {
 div#debug-container {
     background-color: blue;
 }
+
+.node {
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+.link {
+    stroke: #444;
+    stroke-opacity: 0.6;
+    stroke-width: 2px;
+}
+
+g.node text {
+    pointer-events: none;
+    font: 8px;
+    stroke: #000080;
+}
