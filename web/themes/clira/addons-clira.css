@@ -1,0 +1,21 @@
+/*
+ * $Id$
+ *  -*-  indent-tabs-mode:nil -*-
+ * Copyright 2013, Juniper Network Inc.
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
+ */
+
+
+@import
+url(http://fonts.googleapis.com/css?family=PT+Sans:400,700,400italic,700italic);
+
+body {
+    font-family: 'PT Sans', sans-serif;
+    font-size: 14px;
+    margin: 0;
+    min-width: 980px;
+}
