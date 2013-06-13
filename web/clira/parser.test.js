@@ -27,6 +27,7 @@ jQuery(function ($) {
             $command = $("#command");
             $command.focus();
             $command.autocomplete({
+                appendTo: $("#command-input-box"),
                 source: function (value, response) {
                     $.dbgpr("test: input: [" + value.term + "]");
                     var parse = $.clira.parse(value.term);
@@ -50,6 +51,17 @@ jQuery(function ($) {
                         }
                     });
                     response(res);
+                },
+                open: function () {
+                    $inputbox = $("#command-input-box");
+                    var position = $inputbox.position(),
+                        left = position.left,
+                        top = position.top;
+
+                    $("#command-input-box > ul").css({
+                        left: left + "px", width: $inputbox.width() + "px",
+                        top: top + $inputbox.parent().height() + "px"
+                    });
                 },
             }).data('autocomplete')._renderItem = $.clira.renderItemOverride;
 
