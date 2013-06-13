@@ -256,6 +256,31 @@ jQuery(function ($) {
             }
             return this;
         },
+        record: function (value) {
+            if (value == null)
+                return;
+
+            var cmdHistory = localStorage.getItem('cmdHistory');
+
+            if (cmdHistory == null)
+                cmdHistory = new Array();
+            else
+                cmdHistory = JSON.parse(cmdHistory);
+            
+            cmdHistory.push({'command': value, 'on': new Date().getTime()});
+            localStorage.setItem('cmdHistory', JSON.stringify(cmdHistory));
+        },
+        show: function () {
+            var cmdHistory = localStorage.getItem('cmdHistory');
+
+            if (cmdHistory == null)
+                return [];
+            else
+                return JSON.parse(cmdHistory);
+        },
+        clear: function () {
+            localStorage.setItem('cmdHistory', '[]');
+        },
     });
 
     $.mruPulldown = function (info) {

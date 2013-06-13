@@ -84,6 +84,7 @@ jQuery(function ($) {
             $.clira.executeCommand(command);
 
             $.clira.cmdHistory.markUsed(command);
+            $.clira.cmdHistory.record(command);
             $.clira.commandOutputTrim(1);
         },
 
