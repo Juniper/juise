@@ -337,6 +337,7 @@ div#command-top {
     display: inline-block;
     float: left;
     margin: 10px 5px 10px 5px;
+    width: 70%;
 }
 
 div#command-top .input-box {
@@ -344,6 +345,7 @@ div#command-top .input-box {
     min-width: 500px;
     padding: 1px;
     background-color: #fff;
+    width: 100%;
 }
 
 div#command-top .focus-off {
@@ -451,6 +453,7 @@ input.text-entry {
     border: 0;
     outline: 0;
     height: 20px;
+    width: 100%;
 }
 
 .rounded {
