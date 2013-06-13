@@ -5,22 +5,8 @@
  * See ../Copyright for more information
  */
 
-body {
-    min-height: 100%;
-}
-
 #content-wrapper {
     margin: 0 4px;
-}
-
-button.ui-button-icon-only {
-    height: 16px;
-    width: 16px;
-    vertical-align: middle;
-}
-
-div.ui-widget-header {
-    padding: 4px;
 }
 
 #target-history .empty {
@@ -31,10 +17,6 @@ div.ui-widget-header {
 #command-history .empty {
     color: grey;
     padding-left: 20px;
-}
-
-.ui-widget {
-    font-size: 100%;
 }
 
 #prefs {
@@ -105,7 +87,6 @@ div.text, div.decoration, div.data, div.header, div.pad, div.item {
     display: inline;
     vertical-align: middle;
     white-space: pre-wrap;
-    /* border: 1px solid orange; */
 }
 
 div.blank-line {
@@ -135,7 +116,9 @@ div.header-line {
  * juise rendering
  */
 
-div.hidden, img.hidden, button.hidden {
+div.hidden, 
+img.hidden, 
+button.hidden {
     display: none;
 }
 
@@ -165,25 +148,11 @@ div#debug-log {
     white-space: pre-wrap;
     background-color: #ffffff;
     margin-bottom: 20px;
-/*    font-size: 66%;*/
 }
 
 div#header {
-/*    width: 100%; */
     height: 30px;
     padding: 0px 0px 40px 30px ;
-/*    padding-left: 30px; */
-/*    margin-bottom: 4px; */
-}
-
-div.ui-state-error {
-    margin: 1em;
-    padding: 1em;
-/*    padding: 0 .7em; */
-}
-span.ui-icon-alert {
-    float: left; 
-    margin-right: .3em;
 }
 
 div#header-logo {
@@ -203,11 +172,21 @@ div#header-info {
 }
 
 div#prefsbtn {
-    background: url(/images/gear.png) no-repeat left center;
-    height 30px;
-    min-height: 30px;
-    width: 30px;
+    background: rgb(230, 230, 230) url(/images/gear.png) no-repeat center;
+    margin-top: 5px; 
+    min-height: 40px;
+    width: 40px;
+    border-radius: 2px;
+    cursor: pointer;
     float: right;
+    box-shadow: 0 1px 1px #fff, 
+		0 -1px 1px #666, 
+		inset 0 -1px 1px rgba(0,0,0,0.5), 
+		inset 0 1px 1px rgba(255,255,255,0.8); 
+}
+
+div#prefsbtn:hover {
+    background-color: #dde;
 }
 
 div#header-actions {
@@ -217,12 +196,14 @@ div#header-actions {
     padding-left: 10px;
 }
 
-xdiv#header-actions div, xdiv#header-info div {
+xdiv#header-actions div, 
+xdiv#header-info div {
     display: inline-block;
 }
 
 div#target-list {
-    display: block;
+    display: none;
+    clear: both;
 }
 
 div#target-title {
@@ -278,7 +259,8 @@ div.target-info {
     padding: 5px 10px 5px 10px;
 }
 
-div#target-contents, div#target-contents-none {
+div#target-contents, 
+div#target-contents-none {
     display: table-cell;
     font-family: Verdana, Arial, Helvetica, sans-serif ;
 }
@@ -320,25 +302,6 @@ div.command-history-entry {
     padding-right: 8px;
 }
 
-div#prefs-title {
-    font-size: 120%;
-    font-weight: 600;
-}
-
-div.prefs-item, div.ui-yf-item {
-    display: table-row;
-}
-
-div.prefs-item label, div.ui-yf-item label {
-    padding-left: 10px;
-    padding-right: 5px;
-}
-
-div.prefs-item label, div.prefs-item input, div.prefs-item div,
-div.ui-yf-item label, div.ui-yf-item input, div.ui-yf-item div {
-    display: table-cell;
-}
-
 div#footer {
     padding-top: 100px;
     clear: both;
@@ -351,17 +314,50 @@ div#footer {
 
 div#input-top {
     display: block;
+    height: 70px;
     padding: 10px;
-}
-
-form#target-input-form, form#command-input-form {
-    display: inline-block;
-}
-
-div#target-top, div#command-top {
-    display: inline-block;
-    margin: 0px;
     margin-bottom: 10px;
+    background-color: rgb(245, 245, 245);
+    border-bottom: rgb(200, 200, 200) solid 1px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+div#input-top .logo {
+    float: left;
+    margin: 0px 10px 0px 10px;
+}
+
+form#target-input-form, 
+form#command-input-form {
+    display: inline-block;
+}
+
+div#target-top, 
+div#command-top {
+    display: inline-block;
+    float: left;
+    margin: 10px 5px 10px 5px;
+}
+
+div#command-top .input-box {
+    height: 30px;
+    min-width: 500px;
+    padding: 2px;
+    background-color: #fff;
+}
+
+div#command-top .focus-off {
+    border: solid 1px rgb(180, 180, 200);
+}
+
+div#command-top .focus-on {
+    border: solid 1px rgb(180, 180, 200);
+    box-shadow: 0px 0px 8px rgba(100, 100, 200, 0.5);
+}
+
+div#input-top .input-enter {
+    margin: 10px 0px 10px 0px;
+    float: left;
 }
 
 input.command-input {
@@ -393,12 +389,14 @@ div.output-header div.command-value {
     margin-right: 4px;
 }
 
-div.output-header div.target-value, div.output-header div.command-value {
+div.output-header div.target-value, 
+div.output-header div.command-value {
     font-weight: normal;
     font-size: 12px;
 }
 
-div.target-value, input.target-value {
+div.target-value, 
+input.target-value {
     display: inline-block;
     font-size: 12px;
     font-family: Verdana, Arial, Helvetica, sans-serif ;
@@ -411,10 +409,10 @@ div.label {
     font-size: 12px;
 }
 
-div.command-value, input.command-value {
+div.command-value, 
+input.command-value {
     display: inline-block;
-    font-family: monospace;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 div.command-number {
@@ -424,7 +422,6 @@ div.command-number {
 }
 
 div.output-content {
-    font-family: monospace;
     font-size: 12px;
     padding: 10px;
 }
@@ -451,10 +448,9 @@ img.icon {
 }
 
 input.text-entry {
-    border-style: inset;
-    border-width: 2px;
-/*    border-radius: 10px; */
-    border-color: black #444444 #555555 #444444;
+    border: 0px;
+    outline: 0;
+    height: 20px;
 }
 
 .rounded {
@@ -563,7 +559,8 @@ div.match-debug {
     padding: 5px;
 }
 
-div.command-token, div.command-token div {
+div.command-token, 
+div.command-token div {
     display: inline-block;
 }
 
@@ -585,12 +582,16 @@ div.possibility {
     border-bottom: 1px dotted red;
 }
 
-div.parse-implicit-keyword, div.parse-token, 
-        div.parse-trailing, div.parse-missing {
+div.parse-implicit-keyword, 
+div.parse-token, 
+div.parse-trailing, 
+div.parse-missing {
     display: inline-block;
 }
 
-div.parse-implicit-keyword, div.parse-trailing, div.parse-missing {
+div.parse-implicit-keyword, 
+div.parse-trailing, 
+div.parse-missing {
     font-style: italic;
     font-weight: normal;
 }
@@ -635,4 +636,38 @@ div.map-small {
 
 div#debug-container {
     background-color: blue;
+}
+
+div#prefs-title {
+    font-size: 120%;
+    font-weight: 600;
+}
+
+div.prefs-item, 
+div.ui-yf-item {
+    display: table-row;
+}
+
+div.prefs-item label, 
+div.ui-yf-item label {
+    padding-left: 10px;
+    padding-right: 5px;
+}
+
+div.prefs-item label, 
+div.prefs-item input, 
+div.prefs-item div,
+div.ui-yf-item label, 
+div.ui-yf-item input, 
+div.ui-yf-item div {
+    display: table-cell;
+}
+
+.history-element .command {
+    font-size: 16px;
+}
+
+.history-element .date {
+    color: rgb(130, 130, 130);
+    font-style: italic;
 }
