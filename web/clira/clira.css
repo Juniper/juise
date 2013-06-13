@@ -340,9 +340,9 @@ div#command-top {
 }
 
 div#command-top .input-box {
-    height: 30px;
+    height: 32px;
     min-width: 500px;
-    padding: 2px;
+    padding: 1px;
     background-color: #fff;
 }
 
@@ -448,7 +448,7 @@ img.icon {
 }
 
 input.text-entry {
-    border: 0px;
+    border: 0;
     outline: 0;
     height: 20px;
 }
