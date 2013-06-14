@@ -653,3 +653,33 @@ g.node text {
     font: 8px;
     stroke: #000080;
 }
+
+some.day {
+    background: -moz-linear-gradient(center top , #4B90C3, #0D63A3) 
+                repeat scroll 0 0 transparent;
+}
+
+.ui-autocomplete-divider {
+    border-bottom: 1px solid black;
+}
+
+.ui-autocomplete {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 20px;
+    width: 650px;
+}
+
+ul.ui-autocomplete li.ui-menu-item {
+    font-family: monospace;
+}
+
+ul.ui-autocomplete li.ui-menu-item a.label {
+    float: left;
+    font-weight: bold;
+}
+
+ul.ui-autocomplete li.ui-menu-item a.help {
+    float: right;
+}
