@@ -118,40 +118,6 @@ jQuery(function($) {
                 },
             },
             {
-                command: "on",
-                arguments: [
-                    {
-                        name: "target",
-                        type: "string",
-                        help: "Remote device name",
-                        nokeyword: true,
-                    },
-                    {
-                        name: "command",
-                        type: "string",
-                        multiple_words: true,
-                        help: "Command to execute",
-                        nokeyword: true,
-                    },
-                ],
-                execute: function ($output, cmd, parse, poss) {
-                    parse.dbgpr("working command: " + poss.command.command);
-                    $output.html("<div>Running.... </div>");
-                    
-                    var cname = poss.data.target;
-                    // cname.replace("_", "__", "g"); // Maybe not needed?
-                    // classnames can't have periods
-                    cname = cname.replace(".", "_", "g");
-                    
-                    $.clira.targetListMarkUsed(poss.data.target, cname,
-                        function ($target, target) {
-                            $.clira.cmdHistory.select("on " + target + " ");
-                        });
-                    $.clira.runCommand($output, poss.data.target,
-                                       poss.data.command);
-                },
-            },
-            {
                 command: "show outages",
                 bundle: [ "location", "since", ],
             },
