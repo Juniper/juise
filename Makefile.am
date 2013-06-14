@@ -48,5 +48,8 @@ upload: dist
 	@${UPLOAD} -s 'Full Documentation' -l Type-Docs,Featured \
 		doc/juise-manual-${PACKAGE_VERSION}.html
 
-svnignore:
-	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
+get-wiki:
+	git clone https://github.com/Juniper/juise.wiki.git wiki
+
+get-gh-pages:
+	git clone https://github.com/Juniper/juise.git gh-pages -b gh-pages
