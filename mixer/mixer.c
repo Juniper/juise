@@ -200,7 +200,7 @@ main_loop (void)
 	}
 
 	if (opt_debug & DBG_FLAG_POLL) {
-	    mx_log("poll: nfd %d, timeout %d", nfd, timeout);
+	    mx_log("%ld: poll: nfd %d, timeout %d", time(NULL), nfd, timeout);
 	    int i;
 	    for (i = 0; i < nfd; i++) {
 		mx_log("    %d: fd %d%s%s", i, mx_pollfd[i].fd,
