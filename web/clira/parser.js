@@ -170,12 +170,11 @@ jQuery(function ($) {
 
                     // Remove all the old command script files
                     $("script.commandFile").remove();
+                    $("script.prereq").remove();
 
                     $.dbgpr("load command files success: " + data.files.length);
-                    $.each(data.files, function (i, file) {
-                        $.each(data.files, function (i, filename) {
-                            $.clira.loadFile(filename);
-                        });
+                    $.each(data.files, function (i, filename) {
+                        $.clira.loadFile(filename, "commandFile");
                     });
                 })
                 .fail(function loadCommandFilesFail (jqxhr, settings,
@@ -183,7 +182,7 @@ jQuery(function ($) {
                     $.dbgpr("load command files failed");
                 });
         },
-        loadFile: function loadFile (filename) {
+        loadFile: function loadFile (filename, classname) {
             commandFilenames.push(filename);
 
             // jQuery's getScript/ajax logic will get a script and
@@ -191,15 +190,15 @@ jQuery(function ($) {
             // any information about it.  So we use <script>s in the
             // <head> to get 'er done.
             var html = "<scr" + "ipt " + "type='text/javascript'"
-                + " class='commandFile'"
+                + " class='" + classname + "'"
                 + " src='" + filename + "'></scr" + "ipt>";
 
             if (true) {
                 (function() {
                     var ga = document.createElement('script');
                     ga.type = 'text/javascript';
-                    ga.setAttribute("class", "commandFile");
-                    ga.async = true;
+                    ga.setAttribute("class", classname);
+                    ga.async = "true";
                     ga.src = filename;
                     var s = document.getElementById('last-script-in-header');
                     s.parentNode.insertBefore(ga, s);
@@ -298,6 +297,14 @@ jQuery(function ($) {
             // We have an array of commands
             if (this.commands)
                 $.clira.addCommand(this.commands);
+
+            if (this.prereqs) {
+                $.each(this.prereqs, function (i, filename) {
+                    var $p = $("script.prereq[src = '" + filename + "']");
+                    if ($p.length == 0)
+                        $.clira.loadFile(filename, "prereq");
+                });
+            }
         },
     });
 

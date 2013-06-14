@@ -679,3 +679,20 @@ div.ui-yf-item div {
     color: rgb(130, 130, 130);
     font-style: italic;
 }
+
+.node {
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+.link {
+    stroke: #444;
+    stroke-opacity: 0.6;
+    stroke-width: 2px;
+}
+
+g.node text {
+    pointer-events: none;
+    font: 8px;
+    stroke: #000080;
+}
