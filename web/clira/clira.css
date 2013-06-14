@@ -137,17 +137,22 @@ div.icon-box img.keeper {
 }
 
 div#debug-container {
-    margin: 0 4px;
-    font-size: 70%;
-    display: block;
-    color: blue;
+    background-color: #ccc;
     border: 1px solid #d0d0ff;
+    bottom: 0;
+    color: blue;
+    display: box;
+    font-size: 70%;
+    position: fixed;
+    width: 100%;
 }
 
 div#debug-log {
-    white-space: pre-wrap;
     background-color: #ffffff;
-    margin-bottom: 20px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0 5px;
+    white-space: pre-wrap;
 }
 
 div#header {
@@ -366,6 +371,10 @@ input.command-input {
     font-family: Verdana, Arial, Helvetica, sans-serif ;
     font-family: monospace;
     font-size: 12px;
+}
+
+div#output-top {
+    margin-bottom: 20px;
 }
 
 div.output-wrapper {
@@ -635,10 +644,6 @@ img.rendered {
 div.map-small {
     width: 300px;
     height: 200px;
-}
-
-div#debug-container {
-    background-color: blue;
 }
 
 div#prefs-title {
