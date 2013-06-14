@@ -130,7 +130,7 @@ jQuery(function ($) {
         if (this.opening)
             this.ws.close();
         this.ws = undefined;
-        muxer.opening = muxer.opened = false;
+        this.opening = this.opened = false;
     }
 
     function muxerMessage () {
@@ -232,6 +232,42 @@ jQuery(function ($) {
             op = "rpc";
 
         options.muxid = muxid;
+        if (options.output) {
+            $.extend(options, {
+                onhostkey: function (data) {
+                    var self = this;
+                    promptForHostKey(this.output, data, function (response) {
+                        muxer.hostkey(self, response);
+                    });
+                },
+                onpsphrase: function (data) {
+                    var self = this;
+                    promptForSecret(this.output, data, function (response) {
+                        muxer.psphrase(self, response);
+                    });
+                },
+                onpsword: function (data) {
+                    var self = this;
+                    promptForSecret(this.output, data, function (response) {
+                        muxer.psword(self, response);
+                    });
+                },
+                onclose: function (event, message) {
+                    $.dbgpr("muxer: rpc onclose");
+                    if (full.length == 0) {
+                        $.clira.makeAlert(this.output, message,
+                                          "internal failure (websocket)");
+                    }
+                },
+                onerror: function (message) {
+                    $.dbgpr("muxer: rpc onerror");
+                    if (full.length == 0) {
+                        $.clira.makeAlert(this.output, message,
+                                          "internal failure (websocket)");
+                    }
+                },
+            });
+        }
 
         this.muxMap[muxid] = options;
 
@@ -299,23 +335,25 @@ jQuery(function ($) {
         this.id = ++mx_id;
     }
 
-    Muxer.prototype.rpc = muxerRpc;
-    Muxer.prototype.open = muxerOpen;
-    Muxer.prototype.close = muxerClose;
-    Muxer.prototype.onerror = muxerError;
-    Muxer.prototype.onmessage = muxerMessage;
-    Muxer.prototype.hostkey = muxerHostkey;
-    Muxer.prototype.psphrase = muxerPsPhrase;
-    Muxer.prototype.psword = muxerPsWord;
-    Muxer.prototype.sendMessage = muxerSendMessage;
+    $.extend(Muxer.prototype, {
+        rpc: muxerRpc,
+        open: muxerOpen,
+        close:  muxerClose,
+        onerror: muxerError,
+        onmessage: muxerMessage,
+        hostkey: muxerHostkey,
+        psphrase: muxerPsPhrase,
+        psword: muxerPsWord,
+        sendMessage: muxerSendMessage,
+        isOpen: function () {
+            return (this.ws != undefined
+                    && this.ws.readyState == WebSocket.OPEN)
+        },
 
-    Muxer.prototype.isOpen = function () {
-        return (this.ws != undefined && this.ws.readyState == WebSocket.OPEN)
-    }
-
-    Muxer.prototype.isOpening = function () {
-        return this.opening;
-    }
+        isOpening: function () {
+            return this.opening;
+        },
+    });
 
     $.Muxer = function (options) {
         return new Muxer(options);
