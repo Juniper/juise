@@ -122,6 +122,11 @@ jQuery(function ($) {
             });
 
             $("#juise").button();
+
+            if (localStorage['debug'] 
+                    && JSON.parse(localStorage['debug']) == false) {
+                $("#debug-container").css({ display: "none" });
+            }
         },
     });
 

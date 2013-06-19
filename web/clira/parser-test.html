@@ -2,16 +2,16 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
   <head>
+    <title>CLIRA</title>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
 
-    <link rel="icon" href="/favicon.ico" type="image/png"/>
-    <link rel="shortcut icon" href="/favicon.ico" type="image/png"/>
+    <link rel="shortcut icon" href="/images/clira_icon.png" type="image/png"/>
 
-    <link href="/themes/black-tie/jquery-ui-black-tie.css" type="text/css" rel="Stylesheet" class="ui-theme"/>
+    <link href="/themes/clira/jquery-ui-clira.css" type="text/css" rel="Stylesheet" class="ui-theme"/>
     <link href="/external/jquery-checkbox/jquery.checkbox.css" type="text/css" rel="Stylesheet" class="ui-checkbox"/>
     <link href="/clira/clira.css" type="text/css" rel="Stylesheet" class="ui-main"/>
-    <link href="/themes/black-tie/addons-black-tie.css" type="text/css" rel="Stylesheet" class="ui-addon"/>
+    <link href="/themes/clira/addons-clira.css" type="text/css" rel="Stylesheet" class="ui-addon"/>
     
     <link href="/external/jqgrid/ui.jqgrid.css" type="text/css" rel="Stylesheet"/>
 
@@ -39,15 +39,44 @@
     <script type="text/javascript" src="/clira/builtins.js"></script>
     <script type="text/javascript" src="/clira/parser.test.js"></script>
 
-    <script type="text/javascript" id="last-script-in-header"></script>
+    <script type="text/javascript" id="last-script-in-header">
+      $(document).ready(function() {
+        $("#command").focus(function() {
+          $("#command-input-box").attr('class', 'input-box focus-on');
+        }).focusout(function() {
+          $("#command-input-box").attr('class', 'input-box focus-off');
+        });
+      }); 
+    </script>
 
   </head>
 
   <body>
-    <div id="header">
-       <div id="header-logo"></div>
+    <div id="input-top">
+      <div class="logo">
+	    <img src="/images/logo.png" height="50px" border="0" />
+      </div>
+      <div id="command-top">
+        <table id="command-input-box" class="input-box focus-on" cellpadding="1px" cellspacing="1px">
+	      <div id="command-history" style="display: none" class="history command-value">
+	        <div class="empty">No commands</div>
+	        <div class="contents" style="display: none"></div>
+	      </div>
+	      <tr>
+	        <form id="command-input-form" action="#">
+	        <td><input spellcheck="false" autocomplete="off" id="command"
+                    class="command-value input text-entry" autofocus="on"
+        			maxlength="2048" name="command" size="70"  
+    			    type="text"/></td>
+	        </form>
+	        <td width="16px"><button id="command-pulldown" class="icon-pulldown"></button></td>
+	      </tr>
+	    </table>
+      </div>
+      <div class="input-enter"><button id="input-enter" class="icon-enter"></button></div>
+
       <div id="prefsbtn"></div>
-      
+
       <div id="prefs-main-form" title="Preferences">
         <div class="setupgrid">
           <ul class="setupgrid">
@@ -63,58 +92,35 @@
         <table id="prefs-devices-grid"></table>
         <div id="prefs-devices-pager"></div>
       </div>
-      
+
       <div id="prefs-groups-form" title="Groups">
         <p>Groups of devices that CLIRA can access are listed below.</p>
         <table id="prefs-groups-grid"></table>
         <div id="prefs-groups-pager"></div>
       </div>
 
-      <div id="prefs-general-form" title="General">
-      </div>
+      <div id="prefs-general-form" title="General"></div>
 
-      <div id="prefs-dialog" title="Preferences" style="display: none">
-      </div>
-    </div>
+      <div id="prefs-dialog" title="Preferences" style="display: none"></div>
 
-    <div id="input-top">
       <div id="target-list">
-	<div id="target-title">Recent Targets:</div>
-	<div id="target-contents-none">None</div>
-	<div id="target-contents"></div>
+	    <div id="target-title">Recent Targets:</div>
+	    <div id="target-contents-none">None</div>
+	    <div id="target-contents"></div>
       </div>
-
-      <div id="command-top">
-	<div id="command-history" style="display: none"
-	     class="history command-value">
-	  <div class="empty">No commands</div>
-	  <div class="contents" style="display: none"></div>
-	</div>
-	<button id="command-clear" class="icon-clear"></button>
-	<div class="label">clira&gt;</div>
-	<form id="command-input-form" action="#">
-	  <input spellcheck="false" autocomplete="off" id="command"
-		 class="command-value input text-entry" autofocus="on"
-		 maxlength="2048" name="command" size="120"
-		 type="text"/>
-	</form>
-	<button id="command-pulldown" class="icon-pulldown"></button>
-      </div>
-      <button id="input-enter" class="icon-enter"></button>
     </div>
 
     <div id="output-top"></div>
 
     <div id="debug-container" class="ui-widget ui-corner-all">
       <div class="ui-state-default ui-widget-header ui-corner-all">
-	<button class="icon-remove-section"></button>
-	<button class="icon-hide-section"></button>
-	<button class="icon-unhide-section"></button>
-	<button class="icon-clear-section"></button>
-	<div id="debug-title" class="ui-corner-all">Debug Log:</div>
+	    <button class="icon-remove-section"></button>
+	    <button class="icon-hide-section"></button>
+	    <button class="icon-unhide-section"></button>
+	    <button class="icon-clear-section"></button>
+	    <div id="debug-title" class="ui-corner-all">Debug Log:</div>
       </div>
       <div id="debug-log" class="can-hide">&nbsp;</div>
     </div>
-
   </body>
 </html>
