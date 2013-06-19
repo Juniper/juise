@@ -52,7 +52,7 @@ jQuery(function ($) {
                             // If the command defines a custom completion,
                             // use it.
                             //
-                            if (p.command.complete) {
+                            if (false && p.command.complete) {
                                 $.dbgpr("calling custom completion");
                                 p.command.complete(p, res, value);
                             }
