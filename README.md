@@ -12,5 +12,10 @@ jcs:execute functions.  Commit scripts can be tested against a JUNOS
 device's configuration and the results of those script tested on that
 device.
 
-More information is available on the
+Our download page is hosted on
+[dropbox.com](https://www.dropbox.com/sh/krw6ddg5sdkf97z/3KoP-2fLaL)
+
+Please visit the 
 [juise wiki](https://github.com/Juniper/juise/wiki)
+for more information, documentation, examples, and notes on
+JUISE and CLIRA.
