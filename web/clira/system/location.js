@@ -23,12 +23,12 @@ jQuery(function ($) {
                         nokeyword: true,
                         mandatory: true,
                         multiple_words: true,
-                        help: "Name of a location to resolve",
-                    },
+                        help: "Name of a location to resolve"
+                    }
                 ],
-                execute: geolocate,
-            },
-        ],
+                execute: geolocate
+            }
+        ]
     });
 
     function geolocate ($output, cmd, parse, poss) {
@@ -38,7 +38,7 @@ jQuery(function ($) {
         if (me.data.location) {
             var opts = {
                 sensor: "false",
-                address: me.data.location,
+                address: me.data.location
             }
 
             $.getJSON(url, opts, function (json) {
@@ -69,7 +69,7 @@ jQuery(function ($) {
                         var $map = $("div.map-small", $output);
                         $("button.link", $output).button({
                             label: "Map it",
-                            icons: { primary: "ui-icon-flag" },
+                            icons: { primary: "ui-icon-flag" }
                         })
                         .click(function (e) {
                             if ($map.hasClass("hidden")) {
@@ -78,12 +78,12 @@ jQuery(function ($) {
                                 var map = new GMaps({
                                     div: $map.get(0),
                                     lat: lat,
-                                    lng: lng,
+                                    lng: lng
                                 });
                                 map.addMarker({
                                     lat: lat,
                                     lng: lng,
-                                    title: me.data.location,
+                                    title: me.data.location
                                 });
                             } else
                                 $map.addClass("hidden");

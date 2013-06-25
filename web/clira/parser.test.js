@@ -21,7 +21,7 @@ jQuery(function ($) {
                 name: "command-history",
                 top: $("#command-top"),
                 clearIcon: $("#command-clear"),
-                entryClass: "command-history-entry",
+                entryClass: "command-history-entry"
             });
 
             $command = $("#command");
@@ -44,7 +44,7 @@ jQuery(function ($) {
                                 html:  p.html,
                                 help: p.command.help,
                                 image: p.command.image,
-                                image_class: p.command.image_class,
+                                image_class: p.command.image_class
                             }
 
                             res.push(r);
@@ -62,7 +62,7 @@ jQuery(function ($) {
                         left: left + "px", width: $inputbox.width() + "px",
                         top: top + $inputbox.parent().height() + "px"
                     });
-                },
+                }
             }).data('autocomplete')._renderItem = $.clira.renderItemOverride;
 
             $("#command-input-form").submit($.clira.commandSubmit);
@@ -188,7 +188,7 @@ jQuery(function ($) {
                 .data("item.autocomplete", item)
                 .append(append)
                 .appendTo(ul);
-        },
+        }
     });
 
     $.clira.loadCommandFiles();

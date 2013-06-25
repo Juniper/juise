@@ -22,12 +22,12 @@ jQuery(function ($) {
                 arguments: [
                     {
                         name: "data",
-                        type: "string",
-                    },
+                        type: "string"
+                    }
                 ],
-                execute: topology,
+                execute: topology
             }
-        ],
+        ]
     });
 
     var image = {
@@ -35,7 +35,7 @@ jQuery(function ($) {
         network: "/images/icons/100baset_hub.jpg",
         stub: "/images/icons/cloud.jpg",
         transit: "/images/icons/arrows_motion.jpg",
-        router: "/images/icons/router.jpg",
+        router: "/images/icons/router.jpg"
     }
     var colors = { };
 

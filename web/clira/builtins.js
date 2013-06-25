@@ -30,7 +30,7 @@ jQuery(function ($) {
                     var template = Handlebars.compile(html);
                     var content = template({ commands: $.clira.commands});
                     $output.html(content);
-                },
+                }
             },
             {
                 command: "reload commands",
@@ -38,7 +38,7 @@ jQuery(function ($) {
                 execute: function ($output, cmd, parse, poss) {
                     $output.text("Reloading commands");
                     $.clira.loadCommandFiles();
-                },
+                }
             },
             {
                 command: "test something",
@@ -70,10 +70,10 @@ jQuery(function ($) {
                         },
                         error: function (jqxhr, status, message) {
                             $.dbgpr("test: error: " + status + "::" + message);
-                        },
+                        }
                     });
-                },
-            },
+                }
+            }
         ]);
     }
 });

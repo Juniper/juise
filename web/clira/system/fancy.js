@@ -18,8 +18,8 @@ jQuery.clira.commandFile({
             arguments: [
                 {
                     name: "color",
-                    type: "string",
-                },
+                    type: "string"
+                }
             ],
             execute: function fancyBox ($output, cmd, parse, poss) {
                 var color = poss.data.color ? poss.data.color : "#0000ff";
@@ -43,7 +43,7 @@ jQuery.clira.commandFile({
 </svg>\
 ";
                 $output.html(svg);
-            },
-        },
-    ],
+            }
+        }
+    ]
 });

@@ -13,50 +13,50 @@ jQuery(function ($) {
     $.clira.addType([
         {
             name: "date-and-time",
-            needs_data: true,
+            needs_data: true
         },
         {
             name: "device",
-            needs_data: true,
+            needs_data: true
         },
         {
             name: "empty",
-            needs_data: false,
+            needs_data: false
         },
         {
             name: "enumeration",
-            needs_data: true,
+            needs_data: true
         },
         {
             name: "interface",
-            needs_data: true,
+            needs_data: true
         },
         {
             name: "location",
-            needs_data: true,
+            needs_data: true
         },
         {
             name: "lsp",
-            needs_data: true,
+            needs_data: true
         },
         {
             name: "keyword",
             needs_data: false,
             score: $.clira.scoring.keyword,
-            order: $.clira.scoring.order,
+            order: $.clira.scoring.order
         },
         {
             name: "media-type",
-            needs_data: true,
+            needs_data: true
         },
         {
             name: "string",
-            needs_data: true,
+            needs_data: true
         },
         {
             name: "vpn",
-            needs_data: true,
-        },
+            needs_data: true
+        }
     ]);
 
     $.clira.addBundle([
@@ -65,65 +65,65 @@ jQuery(function ($) {
             arguments: [
                 {
                     name: "near",
-                    type: "location",
+                    type: "location"
                 },
                 {
                     name: "for",
-                    type: "location",
-                },
-            ],
+                    type: "location"
+                }
+            ]
         },
         {
             name: "since",
             arguments: [
                 {
                     name: "since",
-                    type: "date-and-time",
-                },
-            ],
+                    type: "date-and-time"
+                }
+            ]
         },
         {
             name: "affecting",
             arguments: [
                 {
                     name: "affecting",
-                    type: "empty",
+                    type: "empty"
                 },
                 {
                     name: "lsp",
-                    type: "lsp",
+                    type: "lsp"
                 },
                 {
                     name: "customer",
-                    type: "string",
-                },
-            ],
+                    type: "string"
+                }
+            ]
         },
         {
             name: "between-locations",
             arguments: [
                 {
                     name: "between",
-                    type: "location",
+                    type: "location"
                 },
                 {
                     name: "and",
-                    type: "location",
-                },
-            ],
+                    type: "location"
+                }
+            ]
         },
         {
             name: "between-devices",
             arguments: [
                 {
                     name: "between",
-                    type: "device",
+                    type: "device"
                 },
                 {
                     name: "and",
-                    type: "device",
-                },
-            ],
-        },
+                    type: "device"
+                }
+            ]
+        }
     ]);
 });

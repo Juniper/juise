@@ -37,7 +37,7 @@ jQuery(function ($) {
             selector: selector,
             fields: fields,
             wrapper: $(selector),
-            data: { },
+            data: { }
         });
     }
 
@@ -101,7 +101,7 @@ jQuery(function ($) {
                         Apply: function() {
                             that.apply();
                             that.close();
-                        },
+                        }
                     },
                     close: function() {
                         that.showing = false;
@@ -121,12 +121,14 @@ jQuery(function ($) {
             var data = this.data;
             for (var f = 0; f < this.fields.length; f++) {
                 var info = this.fields[f];
-                var key = info.name;
-                var prev = data[key];
-                var value = info.def;
-                if (info.type == "boolean")
-                    value = (value === true || value == "true");
-                this.prefsSetValue(info, key, value, info.type, initial);
+                if (info && info.name) {
+                    var key = info.name;
+                    var prev = data[key];
+                    var value = info.def;
+                    if (info.type == "boolean")
+                        value = (value === true || value == "true");
+                    this.prefsSetValue(info, key, value, info.type, initial);
+                }
             }
 
             return data;
@@ -396,6 +398,6 @@ jQuery(function ($) {
             } else {
                 list[name] += 1;
             }
-        },
+        }
     });
 });
