@@ -559,6 +559,7 @@ jQuery(function ($) {
                 muxer.failed = true;
             }
         });
+
         muxer.open();
     }
 
@@ -569,6 +570,12 @@ jQuery(function ($) {
     }
 
     $.extend($.clira, {
+        muxer: function () {
+            if (muxer == undefined || muxer.failed) {
+                openMuxer();
+            }
+            return muxer;
+        },
         runCommand: function runCommand ($output, target, command) {
             $output.html(loadingMessage);
             $output.slideUp(0).slideDown($.clira.prefs.slide_speed);

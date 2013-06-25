@@ -48,6 +48,16 @@ jQuery(function ($) {
                             }
 
                             res.push(r);
+
+                            //
+                            // If the command defines a custom completion,
+                            // use it.
+                            //
+                            if (false && p.command.complete) {
+                                $.dbgpr("calling custom completion");
+                                p.command.complete(p, res, value);
+                            }
+
                         }
                     });
                     response(res);

@@ -39,7 +39,7 @@ docs:
 USER_INFO := $(shell if [ -f .upload ]; then cat .upload; fi )
 
 UPLOAD = python ~/bin/googlecode_upload.py -p juise ${USER_INFO}
-upload: dist
+upload-google: dist
 	@echo "Uploading juise-${PACKAGE_VERSION}.tar.gz ... "
 	@${UPLOAD} -s 'Release ${PACKAGE_VERSION}' \
 		-l Type-Source,OpSys-All,Featured \
@@ -48,5 +48,21 @@ upload: dist
 	@${UPLOAD} -s 'Full Documentation' -l Type-Docs,Featured \
 		doc/juise-manual-${PACKAGE_VERSION}.html
 
-svnignore:
-	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
+DIST_FILES_DIR = ~/Dropbox/dist-files/
+GH_PAGES_DIR = gh-pages/
+upload: dist
+	@echo "Uploading juise-${PACKAGE_VERSION}.tar.gz ... "
+	@cp juise-${PACKAGE_VERSION}.tar.gz ${DIST_FILES_DIR}
+	@echo "Uploading juise-manual.html ... "
+	@cp doc/juise-manual.html ${DIST_FILES_DIR}
+	@-[ -d ${GH_PAGES_DIR} ] \
+		&& cp doc/juise-manual.html ${GH_PAGES_DIR} \
+		&& (cd ${GH_PAGES_DIR} \
+			&& git commit -m 'new docs' juise-manual.html \
+			&& git push origin gh-pages )
+
+get-wiki:
+	git clone https://github.com/Juniper/juise.wiki.git wiki
+
+get-gh-pages:
+	git clone https://github.com/Juniper/juise.git gh-pages -b gh-pages

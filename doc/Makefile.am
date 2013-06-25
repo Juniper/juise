@@ -39,7 +39,7 @@ OX_CMD = ${PERL} ${PERLOPTS} ${OXTRADOC} ${OX_ARGS}
 OXTRADOC_CMD = ${OX_CMD}
 
 
-OUTPUT = juise-manual-${PACKAGE_VERSION}
+OUTPUT = juise-manual
 INPUT = juise.txt
 
 EXTRA_DIST = \

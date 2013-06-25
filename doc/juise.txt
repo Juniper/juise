@@ -726,7 +726,7 @@ functions and element of those libraries.
 
 {{note::
 The jcs extension library is not a dynamic extension library and is
-is only available when using the juise command.  This needs to change,
+only available when using the juise command.  This needs to change,
 but is low priority.
 }}
 

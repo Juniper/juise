@@ -42,6 +42,7 @@ jQuery(function ($) {
             nokeyword: 2,       // When an argument is nokeyword
             missing_keyword: 5  // What we lose when are missing a keyword
         },
+
         lang: {
             //
             // $.clira.lang: Contains functions and constants needed

@@ -45,3 +45,25 @@ version: 1.3.0 Beta 1
 date: ?
 license: MIT
 notes:
+
+name: handlebars
+site: handlebarsjs.com
+version: 1.0.0.rc4
+date: 2013-05-24
+license: MIT
+url: https://raw.github.com/wycats/handlebars.js/1.0.0-rc.4/dist/handlebars.js
+
+name: ember
+site: emberjs.com
+version: 1.0.0.rc.3
+date: 2013-05-24
+license: MIT
+url: https://raw.github.com/emberjs/ember.js/release-builds/ember-1.0.0-rc.3.js
+
+name: d3
+site: https://github.com/mbostock/d3
+version: v3
+date: 2013-06-04
+license: ???
+url: http://d3js.org/d3.v3.js
+url: http://d3js.org/d3.v3.min.js

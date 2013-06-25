@@ -14,6 +14,7 @@ ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
 ns os extension = "http://xml.libslax.org/os";
 ns xutil extension = "http://xml.libslax.org/xutil";
 ns set extension = "http://exslt.org/sets";
+ns math extension = "http://exslt.org/math";
 
 output-method text;
 
@@ -177,6 +178,7 @@ template second-pass ($data) {
 }
 
 template first-pass () {
+    var $doc = .;
     <areas type="array"> {
 	for-each (ospf-database-information/ospf-area-header) {
 	    var $next = following-sibling::ospf-area-header[1];
@@ -220,8 +222,9 @@ template first-pass () {
 
 		var $summaries := {
 		    <summaries type="array"> {
-			call summaries($db-set = $db-set[lsa-type == "Summary"],
-				       $area);
+			call summaries($doc,
+				     $db-set = $db-set[lsa-type == "Summary"],
+				     $area);
 		    }
 		}
 		if ($summaries/summaries/summary) {
@@ -293,16 +296,26 @@ template networks ($area, $db-set) {
     }
 }
 
-template summaries ($area, $db-set) {
+template summaries ($doc, $area, $db-set) {
     trace "  summaries: " _ count($db-set);
     for-each ($db-set) {
-	<summary type="member"> {
-	    var $lsa = ospf-summary-lsa;
-	    var $plen = {
-		call prefix-length($address = $lsa/address-mask);
+	var $lsa-id = lsa-id;
+	var $metrics = $doc/ospf-database-information
+	    /ospf-database[lsa-type == "Summary" && lsa-id == $lsa-id]
+	    /ospf-summary-lsa/ospf-summary-lsa-topology/ospf-topology-metric;
+	var $min = math:min($metrics);
+
+	if ($min == ospf-summary-lsa/ospf-summary-lsa-topology
+	    /ospf-topology-metric) {
+
+	    <summary type="member"> {
+		var $lsa = ospf-summary-lsa;
+		var $plen = {
+		    call prefix-length($address = $lsa/address-mask);
+		}
+		<prefix> lsa-id _ "/" _ $plen;
+		<advertising-router> advertising-router;
 	    }
-	    <prefix> lsa-id _ "/" _ $plen;
-	    <advertising-router> advertising-router;
 	}
     }
 }

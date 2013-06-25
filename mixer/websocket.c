@@ -162,7 +162,16 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	    goto fatal;
 	}
 
-	if (streq(operation, MX_OP_RPC)) {
+	if (streq(operation, MX_OP_ERROR)) {
+	    mx_request_t *mrp = mx_request_find(muxid);
+	    if (mrp) {
+		mx_request_release(mrp);
+		mx_sock_close(&mrp->mr_session->mss_base);
+	    } else {
+		mx_log("S%u websocket error ignored", mswp->msw_base.ms_id);
+	    }
+
+	} else if (streq(operation, MX_OP_RPC)) {
 	    /* Build an request instance */
 	    mx_request_t *mrp = mx_request_create(mswp, mbp, len, muxid,
 						  operation, attrs);
