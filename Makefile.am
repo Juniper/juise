@@ -50,7 +50,7 @@ upload-google: dist
 
 DIST_FILES_DIR = ~/Dropbox/dist-files/
 GH_PAGES_DIR = gh-pages/
-upload: dist
+upload-dropbox: dist
 	@echo "Uploading juise-${PACKAGE_VERSION}.tar.gz ... "
 	@cp juise-${PACKAGE_VERSION}.tar.gz ${DIST_FILES_DIR}
 	@echo "Uploading juise-manual.html ... "
@@ -60,6 +60,15 @@ upload: dist
 		&& (cd ${GH_PAGES_DIR} \
 			&& git commit -m 'new docs' juise-manual.html \
 			&& git push origin gh-pages )
+
+upload: dist
+	@-[ -d ${GH_PAGES_DIR} ] \
+		&& echo "Updating manual on gh-pages ..." \
+		&& cp doc/juise-manual.html ${GH_PAGES_DIR} \
+		&& (cd ${GH_PAGES_DIR} \
+			&& git commit -m 'new docs' juise-manual.html \
+			&& git push origin gh-pages )
+	@echo "Remember to run: gt tag ${PACKAGE_VERSION}"
 
 get-wiki:
 	git clone https://github.com/Juniper/juise.wiki.git wiki
