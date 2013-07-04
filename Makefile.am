@@ -28,7 +28,7 @@ EXTRA_DIST = juise-config.in warnings.mk README.md INSTALL
 .PHONY: test tests
 
 test tests:
-	@(cd tests ; ${MAKE} tests)
+	@(cd tests ; ${MAKE} test)
 
 errors:
 	@(cd tests/errors ; ${MAKE} test)
