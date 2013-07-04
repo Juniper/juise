@@ -27,35 +27,35 @@ jQuery(function ($) {
             // Our container decorations (which need some of our functions)
             $(".icon-remove-section", $wrapper).text("Close").button({
                 text: false,
-                icons: { primary: "ui-icon-closethick" },
+                icons: { primary: "ui-icon-closethick" }
             }).click(function () {
                 divRemove($wrapper);
             });
 
             $(".icon-hide-section", $wrapper).text("Hide").button({
                 text: false,
-                icons: { primary: "ui-icon-minusthick" },
+                icons: { primary: "ui-icon-minusthick" }
             }).click(function () {
                 divHide($wrapper);
             });
 
             $(".icon-unhide-section", $wrapper).text("Unhide").button({
                 text: false,
-                icons: { primary: "ui-icon-plusthick" },
+                icons: { primary: "ui-icon-plusthick" }
             }).click(function () {
                 divUnhide($wrapper);
             }).addClass("hidden");
 
             $(".icon-clear-section", $wrapper).text("Clear").button({
                 text: false,
-                icons: { primary: "ui-icon-trash" },
+                icons: { primary: "ui-icon-trash" }
             }).click(function () {
                 $(".can-hide", $wrapper).text("");
             });
 
             $(".icon-keeper-section", $wrapper).text("Keep").button({
                 text: false,
-                icons: { primary: "ui-icon-star" },
+                icons: { primary: "ui-icon-star" }
             }).click(function () {
                 $wrapper.toggleClass("keeper-active");
                 $(this).toggleClass("ui-state-highlight");
@@ -91,7 +91,7 @@ jQuery(function ($) {
                     click: function (me) {
                         if (tgtHistory)
                             tgtHistory.close();
-                    },
+                    }
                 });
 
                 tgtHistory = $.mruPulldown({
@@ -105,7 +105,7 @@ jQuery(function ($) {
                     click: function (me) {
                         if ($.clira.cmdHistory)
                             $.clira.cmdHistory.close();
-                    },
+                    }
                 });
             }
 
@@ -113,7 +113,7 @@ jQuery(function ($) {
             $("#command-input-form").submit(submit);
 
             $("#input-enter").text("Enter").button({
-                text: true,
+                text: true
             }).click(function (e) {
                 submit(e);
                 $.clira.cmdHistory.focus();
@@ -127,7 +127,7 @@ jQuery(function ($) {
                     && JSON.parse(localStorage['debug']) == false) {
                 $("#debug-container").css({ display: "none" });
             }
-        },
+        }
     });
 
     $.dbgpr("document is ready");
@@ -136,7 +136,7 @@ jQuery(function ($) {
         first: {
             title: "Ping Options",
             command: {
-                rpc: "ping",
+                rpc: "ping"
             },
             tabs: { },
             css: "/clira/ping.css",
@@ -147,40 +147,40 @@ jQuery(function ($) {
                         {
                             name: "host",
                             title: "Hostname or IP address of remote host",
-                            type: "text",
+                            type: "text"
                         },
                         {
                             name: "count",
                             title: "Number of ping requests to send",
                             type: "number",
                             range: "1..2000000000",
-                            units: "packets",
+                            units: "packets"
                         },
                         {
                             name: "interval",
                             title: "Delay between ping requests",
                             units: "seconds",
-                            type: "number",
+                            type: "number"
                         },
                         {
                             name: "no-resolve",
                             title: "Don't attempt to print addresses symbolically",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "size",
                             title: "Size of request packets",
                             type: "number",
                             units: "bytes",
-                            range: "0..65468",
+                            range: "0..65468"
                         },
                         {
                             name: "wait",
                             title: "Delay after sending last packet",
                             type: "number",
-                            units: "seconds",
-                        },
-                    ],
+                            units: "seconds"
+                        }
+                    ]
                 },
                 {
                     legend: "Outgoing",
@@ -188,44 +188,44 @@ jQuery(function ($) {
                         {
                             name: "bypass-routing",
                             title: "Bypass routing table, use specified interface",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "do-not-fragment",
                             title: "Don't fragment echo request packets (IPv4)",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "inet",
                             title: "Force ping to IPv4 destination",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "inet6",
                             title: "Force ping to IPv6 destination",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "logical-system",
                             title: "Name of logical system",
-                            type: "string",
+                            type: "string"
                         },
                         {
                             name: "interface",
                             title: "Source interface (multicast, all-ones, unrouted packets)",
-                            type: "interface-name",
+                            type: "interface-name"
                         },
                         {
                             name: "routing-instance",
                             title: "Routing instance for ping attempt",
-                            type: "string",
+                            type: "string"
                         },
                         {
                             name: "source",
                             title: "Source address of echo request",
-                            type: "ip-address",
-                        },
-                    ],
+                            type: "ip-address"
+                        }
+                    ]
                 },
                 {
                     legend: "ICMP",
@@ -233,24 +233,24 @@ jQuery(function ($) {
                         {
                             name: "loose-source",
                             title: "Intermediate loose source route entry (IPv4)",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "record-route",
                             title: "Record and report packet's path (IPv4)",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "strict",
                             title: "Use strict source route option (IPv4)",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "strict-source",
                             title: "Intermediate strict source route entry (IPv4)",
-                            type: "boolean",
-                        },
-                    ],
+                            type: "boolean"
+                        }
+                    ]
                 },
                 {
                     legend: "Advanced",
@@ -258,46 +258,46 @@ jQuery(function ($) {
                         {
                             name: "detail",
                             title: "Display incoming interface of received packet",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "verbose",
                             title: "Display detailed output",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "mac-address",
                             title: "MAC address of the nexthop in xx:xx:xx:xx:xx:xx format",
-                            type: "mac-address",
+                            type: "mac-address"
                         },
                         {
                             name: "pattern",
                             title: "Hexadecimal fill pattern",
-                            type: "string",
+                            type: "string"
                         },
                         {
                             name: "rapid",
                             title: "Send requests rapidly (default count of 5)",
-                            type: "boolean",
+                            type: "boolean"
                         },
                         {
                             name: "tos",
                             title: "IP type-of-service value",
                             type: "number",
-                            range: "0..255",
+                            range: "0..255"
                         },
                         {
                             name: "ttl",
                             title: "IP time-to-live value (IPv6 hop-limit value)",
                             type: "number",
                             units: "hops",
-                            range: "0..63",
-                        },
+                            range: "0..63"
+                        }
 
-                    ],
-                },
-            ],
-        },
+                    ]
+                }
+            ]
+        }
     }
 
     function cliInit () {
@@ -309,7 +309,7 @@ jQuery(function ($) {
             click: function (me) {
                 if (tgtHistory)
                     tgtHistory.close();
-            },
+            }
         });
 
         tgtHistory = $.mruPulldown({
@@ -323,14 +323,14 @@ jQuery(function ($) {
             click: function (me) {
                 if (cmdHistory)
                     cmdHistory.close();
-            },
+            }
         });
 
         $("#target-input-form").submit(commandSubmit);
         $("#command-input-form").submit(commandSubmit);
 
         $("#input-enter").text("Enter").button({
-            text: true,
+            text: true
         }).click(function (e) {
             commandSubmit(e);
             cmdHistory.focus();
@@ -639,7 +639,7 @@ jQuery(function ($) {
                         $.clira.makeAlert($output, message,
                                           "internal failure (websocket)");
                     }
-                },
+                }
             });
         },
 
@@ -720,7 +720,7 @@ jQuery(function ($) {
             });
 
             $("#target-contents-none").css({ display: "none" });
-        },
+        }
     });
 
     function promptForHostKey ($parent, prompt, onclick) {
@@ -835,7 +835,7 @@ jQuery(function ($) {
 
             $(".icon-show-form", $bar).text("Show Form").button({
                 text: false,
-                icons: { primary: "ui-icon-circle-arrow-s" },
+                icons: { primary: "ui-icon-circle-arrow-s" }
             }).click(function () {
                 $(".icon-hide-form", $bar).removeClass("hidden");
                 $(".icon-show-form", $bar).addClass("hidden");
@@ -844,7 +844,7 @@ jQuery(function ($) {
 
             $(".icon-hide-form", $bar).text("Hide Form").button({
                 text: false,
-                icons: { primary: "ui-icon-circle-arrow-n" },
+                icons: { primary: "ui-icon-circle-arrow-n" }
             }).addClass("hidden").click(function () {
                 $(".icon-show-form", $bar).removeClass("hidden");
                 $(".icon-hide-form", $bar).addClass("hidden");
@@ -865,7 +865,7 @@ jQuery(function ($) {
                          {
                              target: target, // target is optional
                              rpc: rpc,       // rpc is in string form
-                             form: "false",  // don't want form in reply
+                             form: "false"   // don't want form in reply
                          },
                          function (text, status, http) {
                              loadHttpReply(text, status, http,

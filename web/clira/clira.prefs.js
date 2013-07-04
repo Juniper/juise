@@ -19,44 +19,44 @@ jQuery(function ($) {
             def: 5,
             type: "number",
             change: $.clira.commandOutputTrimChanged,
-            title: "Number of open commands",
+            title: "Number of open commands"
         },
         {
             name: "output_remove_after",
             def: 10,
             type: "number",
             change: $.clira.commandOutputTrimChanged,
-            title: "Total number of commands",
+            title: "Total number of commands"
         },
         {
             name: "slide_speed",
             def: 0, // "fast",
             type: "number-plus",
-            title: "Speed of slide animations",
+            title: "Speed of slide animations"
         },
         {
             name: "max_commands_list",
             def: 40,
             type: "number",
-            title: "Number of commands kept in list",
+            title: "Number of commands kept in list"
         },
         {
             name: "max_targets_inline",
             def: 10,
             type: "number",
-            title: "Number of targets kept on screen",
+            title: "Number of targets kept on screen"
         },
         {
             name: "max_targets_list",
             def: 40,
             type: "number",
-            title: "Number of targets kept in list",
+            title: "Number of targets kept in list"
         },
         {
             name: "max_target_position",
             def: 10,
             type: "number",
-            title: "Target button rows",
+            title: "Target button rows"
         },
         {
             name: "stay_on_page",
@@ -64,29 +64,29 @@ jQuery(function ($) {
             type: "boolean",
             label: "Stay",
             change: prefsSetupConfirmExit,
-            title: "Give warning if leaving this page",
+            title: "Give warning if leaving this page"
         },
         {
             name: "theme",
             def: "black-tie",
             type: "string",
             title: "UI Theme",
-            change: prefsSwitchTheme,
+            change: prefsSwitchTheme
         },
         {
             name: "live_action",
             def: true,
             type: "boolean",
             label: "Live",
-            title: "Interact with real devices",
+            title: "Interact with real devices"
         },
         {
             name: "mixer",
-            def: "ws://127.0.0.1:3000/mixer",
+            def: "ws://10.10.10.40:3000/mixer",
             type: "string",
             label: "Mixer Location",
             title: "Address of the Mixer server",
-            change: $.clira.prefsChangeMuxer,
+            change: $.clira.prefsChangeMuxer
         },
     ];
 
@@ -99,7 +99,7 @@ jQuery(function ($) {
             }
         },
         title: "Preferences",
-        dialog : { },
+        dialog : { }
     }
 
     $.extend($.clira, {
@@ -109,7 +109,7 @@ jQuery(function ($) {
                                          prefs_fields);
             $.clira.prefs = $.clira.prefs_form.getData();
             buildForms();
-        },
+        }
     });
 
     function buildForms () {
@@ -137,7 +137,7 @@ jQuery(function ($) {
                 }
             },
             close: function() {
-            },
+            }
         });
 
         $("#prefsbtn").click(function() {
@@ -157,7 +157,7 @@ jQuery(function ($) {
                 }
             },
             close: function() {
-            },
+            }
         });
 
         $("#prefs-devices").click(function() {
@@ -177,7 +177,7 @@ jQuery(function ($) {
                         editable: true,
                         editrules: {
                             required: true
-                        },
+                        }
                     },
                     {
                         name: 'hostname',
@@ -186,7 +186,7 @@ jQuery(function ($) {
                         editable: true,
                         editrules: {
                             required: true
-                        },
+                        }
                     },
                     {
                         name: 'port',
@@ -201,7 +201,7 @@ jQuery(function ($) {
                         editable: true,
                         editrules: {
                             required: true
-                        },
+                        }
                     },
                     {
                         name: 'password',
@@ -212,8 +212,8 @@ jQuery(function ($) {
                         hidden: true,
                         hidedlg: true,
                         editrules: {
-                            edithidden: true,
-                        },
+                            edithidden: true
+                        }
                     },
                     {
                         name: 'save_password',
@@ -223,9 +223,9 @@ jQuery(function ($) {
                         edittype: 'checkbox',
                         editoptions: {
                             value: 'yes:no',
-                            defaultValue: 'no',
+                            defaultValue: 'no'
                         },
-                        formatter: 'checkbox',
+                        formatter: 'checkbox'
                     },
                     {
                         name: 'action',
@@ -258,9 +258,9 @@ jQuery(function ($) {
                                     
                                     $dialog.offset(coord);
                                 }
-                            },
-                        },
-                    },
+                            }
+                        }
+                    }
                 ],
                 rowNum: 10,
                 sortname: 'name',
@@ -274,12 +274,12 @@ jQuery(function ($) {
                         // Do our row delete
                         alert('delete row ' + rowid);
                     }
-                },
+                }
             }).navGrid('#prefs-devices-pager', {
                 edit:false,
                 add:true,
                 del:false,
-                search:false,
+                search:false
             }, {
                 //prmEdit
                 closeAfterEdit: true
@@ -321,7 +321,7 @@ jQuery(function ($) {
                         editable: true,
                         editrules: {
                             required: true
-                        },
+                        }
                     },
                     {
                         name: 'members',
@@ -329,7 +329,7 @@ jQuery(function ($) {
                         editable: true,
                         edittype: 'select',
                         editrules: {
-                            required: true,
+                            required: true
                         },
                         editoptions: {
                             multiple: true,
@@ -343,8 +343,8 @@ jQuery(function ($) {
                                     });
                                 }
                                 return $(s)[0];
-                            },
-                        },
+                            }
+                        }
                     },
                     {
                         name: 'action',
@@ -377,9 +377,9 @@ jQuery(function ($) {
                                     
                                     $dialog.offset(coord);
                                 }
-                            },
-                        },
-                    },
+                            }
+                        }
+                    }
                 ],
                 rowNum: 10,
                 sortname: 'name',
@@ -393,12 +393,12 @@ jQuery(function ($) {
                         // Do our row delete
                         alert('delete row ' + rowid);
                     }
-                },
+                }
             }).navGrid('#prefs-groups-pager', {
                 edit:false,
                 add:true,
                 del:false,
-                search:false,
+                search:false
             }, {
                 //prmEdit
                 closeAfterEdit: true

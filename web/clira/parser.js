@@ -32,7 +32,7 @@ jQuery(function ($) {
         types: { },             // Set of builtin types
         bundles: { },           // Define a set of bundled arguments
         scoring: {              // Scoring constants
-            enum: 3,            // When we see an enumeration value
+            enumeration: 3,     // When we see an enumeration value
             keyword: 15,        // When we see a keyword
             multiple_words: 0,  // When we add a word to a multi-word arg
             order: 5,           // When the args are in order
@@ -40,7 +40,7 @@ jQuery(function ($) {
             name_exact: 10,     // When the match is exact
             needs_data: 5,      // When an argument needs data
             nokeyword: 2,       // When an argument is nokeyword
-            missing_keyword: 5, // What we lose when are missing a keyword
+            missing_keyword: 5  // What we lose when are missing a keyword
         },
 
         lang: {
@@ -54,7 +54,7 @@ jQuery(function ($) {
                 if (name.substring(0, token.length) == token)
                     return true;
                 else false;
-            },
+            }
         },
         buildObject: function buildObject (obj, base, defaults, adds) {
             // Simple but flexible means of building an object.  The
@@ -70,7 +70,7 @@ jQuery(function ($) {
                 $.extend(obj, base);
             if (adds)
                 $.extend(obj, adds);
-        },
+        }
     });
 
     function Command (options) {
@@ -86,7 +86,7 @@ jQuery(function ($) {
             var t = toks.pop();
             this.arguments.unshift({
                 name: t,
-                type: "keyword",
+                type: "keyword"
             });
         }
 
@@ -116,7 +116,7 @@ jQuery(function ($) {
         addCommand: function addCommand (command) {
             if (typeof command == "Command") {
                 $.clira.commands.push(command);
-            } else if (Array.isArray(command)) {
+            } else if ($.isArray(command)) {
                 $.each(command, function (x,c) {
                     $.clira.commands.push(new Command(c));
                 });
@@ -126,7 +126,7 @@ jQuery(function ($) {
         },
         addType: function addType (type) {
             // A type extends the list of built-in types
-            if (Array.isArray(type)) {
+            if ($.isArray(type)) {
                 $.each(type, function (n, t) {
                     $.clira.types[t.name] = t;
                 });
@@ -137,7 +137,7 @@ jQuery(function ($) {
         addBundle: function addBundle (bundle) {
             // A bundle is a set of arguments that can be referenced
             // as a single chunk, for simplicity and consistency
-            if (Array.isArray(bundle)) {
+            if ($.isArray(bundle)) {
                 $.each(bundle, function (n, b) {
                     $.clira.bundles[b.name] = b;
                 });
@@ -249,11 +249,11 @@ jQuery(function ($) {
             });
 
             var html = parse.render({ full: true });
-        },
+        }
     });
 
     function splitTokens (input) {
-        return input.trim().split(/\s+/);
+        return $.trim(input).split(/\s+/);
     }
 
     function clone (obj) {
@@ -306,12 +306,12 @@ jQuery(function ($) {
                         $.clira.loadFile(filename, "prereq");
                 });
             }
-        },
+        }
     });
 
     var parse_id = 1;
     function Parse (base) {
-        $.clira.buildObject(this, base, null, { id: parse_id++, });
+        $.clira.buildObject(this, base, null, { id: parse_id++ });
         this.possibilities = [ ];
         this.debug_log = "";
     }
@@ -327,7 +327,7 @@ jQuery(function ($) {
             // Attempt a parse of the given input string
             this.input = {
                 string: inputString,
-                tokens:  splitTokens(inputString),
+                tokens:  splitTokens(inputString)
             }
             var that = this;
 
@@ -389,7 +389,7 @@ jQuery(function ($) {
                 match = {
                     token: tok,
                     arg: poss.last.arg,
-                    data: tok,
+                    data: tok
                 }
                 if (poss.last.arg.multiple_words)
                     match.multiple_words = true;
@@ -398,11 +398,11 @@ jQuery(function ($) {
                     $.each(poss.last.arg.enums, function (n, e) {
                         if ($.clira.lang.match(e.name, tok)) {
                             that.dbgpr("enumeration match for " + e.name);
-                            match.enum = e;
+                            match.enumeration = e;
                             match.data = e.name;
                             that.addPossibility(res, poss, match,
                                                 $.clira.scoring.needs_data
-                                                + $.clira.scoring.enum);
+                                                + $.clira.scoring.enumeration);
                         }
                     });
                 } else {
@@ -431,7 +431,7 @@ jQuery(function ($) {
                     not_seen = false;
                     match = {
                         token: tok,
-                        arg: arg,
+                        arg: arg
                     }
 
                     // If the argument needs a data value, then mark it as such
@@ -467,7 +467,7 @@ jQuery(function ($) {
                         token: tok,
                         arg: arg,
                         data: tok,
-                        nokeyword: true,
+                        nokeyword: true
                     }
 
                     // If the argument allows multiple tokens, mark it as such
@@ -488,7 +488,7 @@ jQuery(function ($) {
                     token: tok,
                     arg: poss.last.arg,
                     data: tok,
-                    multiple_words: true,
+                    multiple_words: true
                 }
 
                 // Add a possibility using this match
@@ -597,12 +597,12 @@ jQuery(function ($) {
             res += "</div>";
 
             return res;
-        },
+        }
     });
 
     var poss_id = 1;
     function Possibility (base) {
-        $.clira.buildObject(this, base, null, { id: poss_id++, });
+        $.clira.buildObject(this, base, null, { id: poss_id++ });
 
         /* We need our own copy of the matches and data */
         this.matches = clone(base.matches);
@@ -682,8 +682,8 @@ jQuery(function ($) {
             this.eachMatch(function eachMatch (x, m) {
                 var title = "Id: " + m.id + " " + m.arg.name
                     + " (" + m.arg.type + ")";
-                if (m.enum)
-                    title += " (" + m.enum.name + ")";
+                if (m.enumeration)
+                    title += " (" + m.enumeration.name + ")";
                 if (m.data)
                     title += " data";
                 if (m.needs_data)
@@ -699,7 +699,7 @@ jQuery(function ($) {
                 html += emitMissingTokens(poss, m, emitted, false);
                 html += "<div class='command-token' title='" + title + "'>";
 
-                var full = m.enum ? m.enum.name : m.data ? "" : m.arg.name;
+                var full = m.enumeration ? m.enumeration.name : m.data ? "" : m.arg.name;
 
                 html += commandToken(poss, m, m.token, full);
                 html += "</div> ";
@@ -721,13 +721,13 @@ jQuery(function ($) {
             var text = renderAsText(html);
             this.text = text;
             return text;
-        },
+        }
     });
 
     var match_id = 1;
     function Match (base) {
         $.clira.buildObject(this, base, { },
-                    { id: match_id++, });
+                    { id: match_id++ });
     }
     $.extend(Match.prototype, {
         dump: function dumpMatch(dbgpr, indent) {
@@ -736,7 +736,7 @@ jQuery(function ($) {
                        + (this.data ? " data" : "")
                        + (this.needs_data ? " needs_data" : "")
                        + (this.multiple_words ? " multiple_words" : ""));
-        },
+        }
     });
 
     function buildInitialPossibilities (commandText) {
@@ -752,7 +752,7 @@ jQuery(function ($) {
             var p = new Possibility({
                 command: c,
                 matches: [ ],
-                score: 0,
+                score: 0
             });
             possibilities.push(p);
         });

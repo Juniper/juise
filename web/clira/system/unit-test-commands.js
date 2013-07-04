@@ -19,17 +19,17 @@ jQuery(function($) {
                     {
                         name: "interface",
                         type: "interface",
-                        help: "Interface name",
+                        help: "Interface name"
                     },
                     {
                         name: "type",
                         type: "media-type",
-                        help: "Media type",
+                        help: "Media type"
                     },
                     {
                         name: "statistics",
                         type: "empty",
-                        help: "Show statistics only",
+                        help: "Show statistics only"
                     },
                     {
                         name: "color",
@@ -38,41 +38,41 @@ jQuery(function($) {
                         enums: [
                             {
                                 name: "blue",
-                                help: "Blue like the sea after a storm",
+                                help: "Blue like the sea after a storm"
                             },
                             {
                                 name: "black",
-                                help: "Black line the night",
+                                help: "Black line the night"
                             },
                             {
                                 name: "red",
-                                help: "Red",
+                                help: "Red"
                             }
-                        ],
-                    },
+                        ]
+                    }
                 ],
                 execute: function () {
                     $.dbgpr("got it");
-                },
+                }
             },
             {
                 command: "show alarms",
-                bundle: [ "affecting", "since", "location", ],
+                bundle: [ "affecting", "since", "location" ],
                 arguments: [
                     {
                         name: "interface",
                         type: "interface",
-                        help: "Interface name",
+                        help: "Interface name"
                     },
                     {
                         name: "type",
                         type: "media-type",
-                        help: "Media type",
-                    },
+                        help: "Media type"
+                    }
                 ],
                 execute: function () {
                     $.dbgpr("got it");
-                },
+                }
             },
             {
                 command: "show alarms critical extensive",
@@ -80,17 +80,17 @@ jQuery(function($) {
                     {
                         name: "interface",
                         type: "interface",
-                        help: "Interface name",
+                        help: "Interface name"
                     },
                     {
                         name: "type",
                         type: "media-type",
-                        help: "Media type",
-                    },
+                        help: "Media type"
+                    }
                 ],
                 execute: function () {
                     $.dbgpr("got it");
-                },
+                }
             },
             {
                 command: "tell",
@@ -100,7 +100,7 @@ jQuery(function($) {
                         type: "string",
                         help: "User to send message to",
                         nokeyword: true,
-                        mandatory: true,
+                        mandatory: true
                     },
                     {
                         name: "message",
@@ -108,47 +108,47 @@ jQuery(function($) {
                         multiple_words: true,
                         help: "Message to send to user",
                         nokeyword: true,
-                        mandatory: true,
-                    },
+                        mandatory: true
+                    }
                 ],
                 execute: function ($output, cmd, parse, poss) {
                     $.dbgpr("got it");
                     $output.html("<div><span>Executing </span>"
                                  + poss.html + "<span> ...</span></div>");
-                },
+                }
             },
             {
                 command: "show outages",
-                bundle: [ "location", "since", ],
+                bundle: [ "location", "since" ]
             },
             {
                 command: "map outages",
-                bundle: [ "affecting", "since", ],
+                bundle: [ "affecting", "since" ]
             },
             {
                 command: "list outages",
-                bundle: [ "affecting", "since", "between-locations", ],
+                bundle: [ "affecting", "since", "between-locations" ]
             },
             {
                 command: "list flaps",
-                bundle: [ "affecting", "since", "between-locations", ],
+                bundle: [ "affecting", "since", "between-locations" ]
             },
             {
                 command: "show latency issues",
-                bundle: [ "affecting", "since", "location" ],
+                bundle: [ "affecting", "since", "location" ]
             },
             {
                 command: "show drop issues",
-                bundle: [ "affecting", "since", ],
+                bundle: [ "affecting", "since" ]
             },
             {
                 command: "map paths",
-                bundle: [ "between-locations", ],
+                bundle: [ "between-locations" ]
             },
             {
                 command: "list flags",
                 bundle: [ "affecting", "since",
-                          "between-locations", "location", ],
+                          "between-locations", "location" ]
             },
             {
                 command: "test lsp",
@@ -156,9 +156,9 @@ jQuery(function($) {
                     {
                         name: "lsp-name",
                         type: "lsp",
-                        nokeyword: true,
-                    },
-                ],
+                        nokeyword: true
+                    }
+                ]
             },
             {
                 command: "route lsp away from device",
@@ -166,25 +166,25 @@ jQuery(function($) {
                     {
                         name: "lsp-name",
                         type: "lsp",
-                        nokeyword: true,
+                        nokeyword: true
                     },
                     {
                         name: "device-name",
                         type: "device",
-                        nokeyword: true,
-                    },
-                ],
+                        nokeyword: true
+                    }
+                ]
             },
             {
                 command: "configure new lsp",
-                bundle: [ "between-devices", ],
+                bundle: [ "between-devices" ],
                 arguments: [
                     {
                         name: "lsp-name",
                         type: "lsp",
-                        nokeyword: true,
-                    },
-                ],
+                        nokeyword: true
+                    }
+                ]
             },
             {
                 command: "add device to vpn",
@@ -192,27 +192,27 @@ jQuery(function($) {
                     {
                         name: "device-name",
                         type: "device",
-                        nokeyword: true,
+                        nokeyword: true
                     },
                     {
                         name: "interface",
-                        type: "interface",
+                        type: "interface"
                     },
                     {
                         name: "vpn-name",
-                        type: "vpn",
-                    },
+                        type: "vpn"
+                    }
                 ],
                 execute: function ($output, cmd, parse, poss) {
-                },
+                }
             },
             {
                 command: "run parse tests",
                 execute: function ($output, cmd, parse, poss) {
                     runParsingTests($output);
-                },
-            },
-        ],
+                }
+            }
+        ]
     });
 
     function runParsingTests ($wrapper) {

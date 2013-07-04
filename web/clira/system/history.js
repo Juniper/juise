@@ -27,7 +27,7 @@ jQuery(function($) {
                               + new Date(history[i]['on']) + "</span></div>";
                     }
                     $output.html(html);
-                },
+                }
             },
             {
                 command: "clear command history",
@@ -35,8 +35,8 @@ jQuery(function($) {
                 execute: function ($output, cmd, parse, poss) {
                     $.clira.cmdHistory.clear();
                     $output.html("Cleared command history");
-                },
-            },
-        ],
+                }
+            }
+        ]
     });
 });

@@ -20,15 +20,15 @@ jQuery(function($) {
                         name: "target",
                         type: "string",
                         help: "Remote device name",
-                        nokeyword: true,
+                        nokeyword: true
                     },
                     {
                         name: "command",
                         type: "string",
                         multiple_words: true,
                         help: "Command to execute",
-                        nokeyword: true,
-                    },
+                        nokeyword: true
+                    }
                 ],
                 execute: function ($output, cmd, parse, poss) {
                     parse.dbgpr("working command: " + poss.command.command);
@@ -55,9 +55,9 @@ jQuery(function($) {
 
                     addCompletions(poss.data.target, poss.data.command,
                                    results);
-                },
-            },
-        ],
+                }
+            }
+        ]
     });
 
     function addCompletions(target, command, results) {
@@ -77,7 +77,7 @@ jQuery(function($) {
                         help: $(this).find("help").text(),
                         expandable: $(this).find("expandable").text(),
                         enter: $(this).find("enter").text(),
-                        data: $(this).find("data").text(),
+                        data: $(this).find("data").text()
                     };
 
                     var r = {
@@ -87,12 +87,12 @@ jQuery(function($) {
                         help: complete.help,
                         image: p.command.image,
                         image_class: p.command.image_class,
-                        complete: complete,
+                        complete: complete
                     }
 
                     var scores = {
                         complete: 10,
-                        enter: 5,
+                        enter: 5
                     }
 
                     r.score = scores.complete;
@@ -112,7 +112,7 @@ jQuery(function($) {
             onclose: function (event, message) {
             },
             onerror: function (message) {
-            },
+            }
         });
     }
 });

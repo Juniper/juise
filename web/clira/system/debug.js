@@ -20,7 +20,7 @@ jQuery(function($) {
                     localStorage['debug'] = true;
                     $("#debug-container").css({ display: "inline" });
                     $output.html("Enabled debugging");
-                },
+                }
             },
             {
                 command: "disable debugging",
@@ -30,7 +30,7 @@ jQuery(function($) {
                     $("#debug-log").empty();
                     $("#debug-container").css({ display: "none" });
                     $output.html("Disabled debugging");
-                },
+                }
             },
             {
                 command: "pause debugging",
@@ -38,7 +38,7 @@ jQuery(function($) {
                 execute: function ($output, cmd, parse, poss) {
                     localStorage['debug'] = false;
                     $output.html("Paused debugging");
-                },
+                }
             },
             {
                 command: "resume debugging",
@@ -47,8 +47,8 @@ jQuery(function($) {
                     localStorage['debug'] = true;
                     $("#debug-container").css({ display: "inline" });
                     $output.html("Resumed debugging");
-                },
-            },
-        ],
+                }
+            }
+        ]
     });
 });

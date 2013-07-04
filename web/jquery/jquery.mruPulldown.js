@@ -38,7 +38,7 @@ jQuery(function ($) {
         $.extend(this, {
             depth: 40,
             version: "0.0.1",
-            shown: false,
+            shown: false
         });
         $.extend(this, info);
         var that = this;
@@ -74,7 +74,7 @@ jQuery(function ($) {
 
         this.clearIcon.text("Clear").button({
             text: false,
-            icons: { primary: 'ui-icon-trash' },
+            icons: { primary: 'ui-icon-trash' }
         }).attr("tabindex", "-1").click(function () {
             $.dbgpr("pulldown: clear:", that.name);
             that.select("");
@@ -83,14 +83,14 @@ jQuery(function ($) {
 
         this.pulldownIcon.button({
             text: false,
-            icons: { primary: 'ui-icon-triangle-1-s' },
+            icons: { primary: 'ui-icon-triangle-1-s' }
         }).attr("tabindex", "-1").click(function (e) {
             that.pulldown(e);
         });
 
         if (this.multiple) {
             $("input", this.multiple).button({
-                text: true,
+                text: true
             });
 
             this.multiple.submit(function (e) {
@@ -136,7 +136,7 @@ jQuery(function ($) {
                     top: top,
                     left: left,
                     width: width,
-                    display: "block",
+                    display: "block"
                 });
 
             } else {
@@ -280,7 +280,7 @@ jQuery(function ($) {
         },
         clear: function () {
             localStorage.setItem('cmdHistory', '[]');
-        },
+        }
     });
 
     $.mruPulldown = function (info) {
