@@ -10,5 +10,5 @@
 
 SUBDIRS=
 
-svnignore:
-	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
+tests:
+	@echo "Regression testing is not available (yet)"
