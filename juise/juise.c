@@ -1441,7 +1441,7 @@ print_help (void)
 	    "\t--version OR -V: show version information (and exit)\n"
 	    "\t--wait <seconds>: wait after starting (for gdb to attach)\n"
 
-	    "\nProject juise home page: http://juise.googlecode.com\n"
+	    "\nProject juise home page: https://github.com/Juniper/juise\n"
 	    "\n");
 }
 
