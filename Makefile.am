@@ -71,9 +71,11 @@ upload: dist
 		&& echo "Updating manual on gh-pages ..." \
 		&& cp doc/juise-manual.html ${GH_PAGES_DIR} \
 		&& (cd ${GH_PAGES_DIR} \
-			&& git commit -m 'new docs' juise-manual.html \
-			&& git push origin gh-pages )
-	@echo "Remember to run: gt tag ${PACKAGE_VERSION}"
+			&& git commit -m 'new docs' \
+                               juise-manual.html \
+			&& git push origin gh-pages ) ; true
+	@echo "Remember to run:"
+	@echo "        gt tag ${PACKAGE_VERSION}"
 
 get-wiki:
 	git clone https://github.com/Juniper/juise.wiki.git wiki
