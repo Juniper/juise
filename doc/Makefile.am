@@ -43,6 +43,7 @@ OUTPUT = juise-manual
 INPUT = juise.txt
 
 EXTRA_DIST = \
+    ${INPUT} \
     ${OUTPUT}.html \
     ${OUTPUT}.txt
 
