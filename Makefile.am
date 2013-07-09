@@ -10,7 +10,7 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libjuise juise juise-askpass extensions doc import
+SUBDIRS = libjuise juise juise-askpass extensions doc import tests
 
 if NEED_MIXER
 SUBDIRS += mixer
@@ -23,7 +23,12 @@ endif
 bin_SCRIPTS=juise-config
 dist_doc_DATA = Copyright
 
-EXTRA_DIST = juise-config.in warnings.mk README.md INSTALL
+EXTRA_DIST = \
+    juise-config.in \
+    warnings.mk \
+    README.md \
+    INSTALL \
+    bin/setup.sh
 
 .PHONY: test tests
 

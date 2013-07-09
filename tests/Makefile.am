@@ -10,5 +10,5 @@
 
 SUBDIRS=
 
-tests:
+test tests:
 	@echo "Regression testing is not available (yet)"

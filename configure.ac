@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.5.1], [phil@juniper.net])
+AC_INIT([juise], [0.5.2], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 AC_DISABLE_SHARED
 
@@ -608,11 +608,11 @@ AC_SUBST(RELDATE)
 
 AC_MSG_RESULT(Using configure dir $ac_abs_confdir)
 
-if test -d $ac_abs_confdir/.svn ; then
-  extra=`svn info $ac_abs_confdir | grep Revision | sed 's+Revision: ++'`
-  if test "$extra" != ""
+if test -d $ac_abs_confdir/.git ; then
+  extra=`git branch | awk '/\*/ { print $2 }'`
+  if test "$extra" != "" -a "$extra" != "master"
   then
-      LIBJUISE_VERSION_EXTRA="-SVN$extra"
+      LIBJUISE_VERSION_EXTRA="-git-$extra"
   fi
 fi
 
