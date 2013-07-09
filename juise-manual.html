@@ -21975,7 +21975,7 @@ jQuery(function ($) {
 </tr>
 <tr>
 <td class="header left"></td>
-<td class="header right">July 4, 2013</td>
+<td class="header right">July 9, 2013</td>
 </tr>
 </table></div>
 <p id="title" class="title">The JUISE Project: JUNOS User Interface Scripting Environment<br><span class="filename">juise-manual</span></p>
@@ -21995,7 +21995,7 @@ jQuery(function ($) {
 <div class="section-number" id="toc_doc_section_2">2   </div>
 <a href="#doc_section_2">The "juise" Command</a><ul class="toc top-toc"><li class="tocline1">
 <div class="section-number" id="toc_doc_section_2_1">2.1   </div>
-<a href="#doc_section_2_1">Syntax</a><ul class="toc"><li class="tocline1">
+<a href="#syntax">Syntax</a><ul class="toc"><li class="tocline1">
 <div class="section-number" id="toc_doc_section_2_1_1">2.1.1   </div>
 <a href="#doc_section_2_1_1">The Target Argument</a>
 </li></ul>
@@ -22006,7 +22006,7 @@ jQuery(function ($) {
 <a href="#doc_section_3">Commit Scripts</a><ul class="toc top-toc">
 <li class="tocline1">
 <div class="section-number" id="toc_doc_section_3_1">3.1   </div>
-<a href="#doc_section_3_1">Overview (Function and History)</a>
+<a href="#history">Overview (Function and History)</a>
 </li>
 <li class="tocline1">
 <div class="section-number" id="toc_doc_section_3_2">3.2   </div>
@@ -22165,7 +22165,9 @@ jQuery(function ($) {
 <div class="content">
 <h2 id="doc_section_2_1">
 <div class="self-section-number">
-<a href="#doc_section_2_1">2.1</a> </div>Syntax</h2>
+<a href="#doc_section_2_1">2.1</a> </div>
+<a id="syntax" href="#syntax">Syntax</a>
+</h2>
 <p id="doc_section_2_1_p_1">The juise command line interface is as follows:</p>
 <div id="doc_figure_u.2"></div> <pre>
   Usage: juise [[user]@target] [options] [script] [param value]*
@@ -22190,7 +22192,9 @@ jQuery(function ($) {
 <div class="content">
 <h2 id="doc_section_3_1">
 <div class="self-section-number">
-<a href="#doc_section_3_1">3.1</a> </div>Overview (Function and History)</h2>
+<a href="#doc_section_3_1">3.1</a> </div>
+<a id="history" href="#history">Overview (Function and History)</a>
+</h2>
 <p id="doc_section_3_1_p_1">Commit scripts were introduced in JUNOS-7.2 as a means of adding custom rules to the "commit check" process, allowing customers to define additional validation rules which the incoming configuration must satisfy. Commit scripts can find and report configuration statements that do not follow these rules.</p>
 <p id="doc_section_3_1_p_2">Commit script can also change the configuration in two distinct ways. Normal changes are added to the candidate configuration before it is passed to the rest of the JUNOS subcomponents for validation. These changes are normal parts of the configuration data set.</p>
 <p id="doc_section_3_1_p_3">In contrast, transient changes are not part of the normal configuration data set, since they are not visible in the candidate configuration nor are they saved in rollback data sets. But they are exposed to JUNOS subcomponents during validation, allowing the commit script to create second order configuration information based on the first order data in the candidate configuration.</p>
@@ -22467,12 +22471,12 @@ jQuery(function ($) {
     version 1.1;
     match / {
         &lt;chassis-hardware&gt; {
-        &lt;mumble&gt; {
-            &lt;dink&gt;;
-        }
-        &lt;grumble&gt; {
-            &lt;splat&gt;;
-        }
+            &lt;mumble&gt; {
+                &lt;dink&gt;;
+            }
+            &lt;grumble&gt; {
+                &lt;splat&gt;;
+            }
         }
     }
     % cat /tmp/foo.netconf
@@ -22753,11 +22757,11 @@ jQuery(function ($) {
 <div class="self-section-number">
 <a href="#doc_section_11">11_</a> </div>Extension Libraries for juise</h1>
 <p id="doc_section_11_p_1">The JUISE project includes the jcs extension library which allows invocation of NETCONF RPCs. This library is identical to the jcs library available under JUNOS. This section details the extension functions and element of those libraries.</p>
-<div class="digress tooltip note:" id="idp17509648"><table class="tooltip" cellpadding="0" cellspacing="0" id="table-idp17509648">
+<div class="digress tooltip note:" id="idp17512336"><table class="tooltip" cellpadding="0" cellspacing="0" id="table-idp17512336">
 <tr><td><div class="fancy-tooltip-header">note:: </div></td></tr>
 <tr><td><div class="fancy-tooltip-body"> <p>The jcs extension library is not a dynamic extension library and is only available when using the juise command. This needs to change, but is low priority.</p> </div></td></tr>
 </table></div>
-<a href="?" tabindex="9999" class="digress-anchor" onClick="return popClick(event, 'idp17509648'); " onmouseover="popUp(event, 'idp17509648')" onmouseout="popDown(event, 'idp17509648')"><span class="digress digress-anchor">[note:]</span></a><div class="content">
+<a href="?" tabindex="9999" class="digress-anchor" onClick="return popClick(event, 'idp17512336'); " onmouseover="popUp(event, 'idp17512336')" onmouseout="popDown(event, 'idp17512336')"><span class="digress digress-anchor">[note:]</span></a><div class="content">
 <h2 id="doc_section_11_1">
 <div class="self-section-number">
 <a href="#doc_section_11_1">11.1</a> </div>jcs</h2>
