@@ -1,5 +1,6 @@
 #
 # $Id$
+#  -*-  indent-tabs-mode:nil -*-
 #
 # Copyright 2011, Juniper Networks, Inc.
 # All rights reserved.
@@ -73,7 +74,7 @@ discussed in this section.
 - server mode
 - cgi mode
 
-** Syntax
+** Syntax @syntax@
 
 The juise command line interface is as follows:
 
@@ -100,7 +101,7 @@ or "@device" (with the current login name used as the user name).
 
 This section describes how commit scripts can be used inside juise. 
 
-** Overview (Function and History)
+** Overview (Function and History) @history@
 
 Commit scripts were introduced in JUNOS-7.2 as a means of adding
 custom rules to the "commit check" process, allowing customers to
@@ -449,12 +450,12 @@ command.
     version 1.1;
     match / {
         <chassis-hardware> {
-    	<mumble> {
-    	    <dink>;
-    	}
-    	<grumble> {
-    	    <splat>;
-    	}
+            <mumble> {
+                <dink>;
+            }
+            <grumble> {
+                <splat>;
+            }
         }
     }
     % cat /tmp/foo.netconf
