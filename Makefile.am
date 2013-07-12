@@ -41,30 +41,9 @@ errors:
 docs:
 	@(cd doc ; ${MAKE} docs)
 
-USER_INFO := $(shell if [ -f .upload ]; then cat .upload; fi )
-
-UPLOAD = python ~/bin/googlecode_upload.py -p juise ${USER_INFO}
-upload-google: dist
-	@echo "Uploading juise-${PACKAGE_VERSION}.tar.gz ... "
-	@${UPLOAD} -s 'Release ${PACKAGE_VERSION}' \
-		-l Type-Source,OpSys-All,Featured \
-		juise-${PACKAGE_VERSION}.tar.gz
-	@echo "Uploading juise-manual-${PACKAGE_VERSION}.html ... "
-	@${UPLOAD} -s 'Full Documentation' -l Type-Docs,Featured \
-		doc/juise-manual-${PACKAGE_VERSION}.html
-
 DIST_FILES_DIR = ~/Dropbox/dist-files/
 GH_PAGES_DIR = gh-pages/
-upload-dropbox: dist
-	@echo "Uploading juise-${PACKAGE_VERSION}.tar.gz ... "
-	@cp juise-${PACKAGE_VERSION}.tar.gz ${DIST_FILES_DIR}
-	@echo "Uploading juise-manual.html ... "
-	@cp doc/juise-manual.html ${DIST_FILES_DIR}
-	@-[ -d ${GH_PAGES_DIR} ] \
-		&& cp doc/juise-manual.html ${GH_PAGES_DIR} \
-		&& (cd ${GH_PAGES_DIR} \
-			&& git commit -m 'new docs' juise-manual.html \
-			&& git push origin gh-pages )
+PACKAGE_FILE = ${PACKAGE_TARNAME}-${PACKAGE_VERSION}.tar.gz
 
 upload: dist
 	@-[ -d ${GH_PAGES_DIR} ] \
@@ -77,8 +56,33 @@ upload: dist
 	@echo "Remember to run:"
 	@echo "        gt tag ${PACKAGE_VERSION}"
 
+pkgconfigdir=$(libdir)/pkgconfig
+pkgconfig_DATA = packaging/${PACKAGE_NAME}.pc
+
 get-wiki:
-	git clone https://github.com/Juniper/juise.wiki.git wiki
+	git clone https://github.com/Juniper/${PACKAGE_NAME}.wiki.git wiki
 
 get-gh-pages:
-	git clone https://github.com/Juniper/juise.git gh-pages -b gh-pages
+	git clone https://github.com/Juniper/${PACKAGE_NAME}.git \
+		gh-pages -b gh-pages
+
+UPDATE_PACKAGE_FILE = -e "s/__SHA1__/$$SHA1/"
+GH_PACKAGING_DIR = packaging/${PACKAGE_VERSION}
+GH_PAGES_PACKAGE_DIR = ${GH_PAGES_DIR}/${GH_PACKAGING_DIR}
+
+packages:
+	@-[ -d ${GH_PAGES_DIR} ] \
+		&& echo "Updating packages on gh-pages ..." \
+		&& SHA1=`openssl sha1 ${PACKAGE_FILE} | awk '{print $$2}'` \
+		&& mkdir -p ${GH_PAGES_PACKAGE_DIR} \
+		&& echo "... ${GH_PAGES_PACKAGE_DIR}/${PACKAGE_NAME}.rb ..." \
+		&& sed ${UPDATE_PACKAGE_FILE} \
+			packaging/${PACKAGE_NAME}.rb.base \
+			> ${GH_PAGES_PACKAGE_DIR}/${PACKAGE_NAME}.rb \
+		&& cp packaging/${PACKAGE_NAME}.spec \
+			${GH_PAGES_PACKAGE_DIR}/${PACKAGE_NAME}.spec \
+		&& (cd ${GH_PAGES_DIR} \
+			&& git add ${GH_PACKAGING_DIR} \
+			&& git commit -m 'new packaging data' \
+                               ${GH_PACKAGING_DIR} \
+			&& git push origin gh-pages ) ; true
