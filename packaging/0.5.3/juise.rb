@@ -6,7 +6,7 @@
 require 'formula'
 
 class Juise < Formula
-  homepage 'https://github.com/Juniper/@PACKAGE-NAME@'
+  homepage 'https://github.com/Juniper/juise'
   url 'https://github.com/Juniper/juise/releases/0.5.3/juise-0.5.3.tar.gz'
   sha1 '57b1d7d5d978434497afd3325e77d7db1e1dca36'
 
