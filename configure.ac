@@ -429,7 +429,7 @@ then
                 AC_MSG_ERROR(Version $LIBSSH2_VERSION found. You need at least libssh2 $LIBSSH2_REQUIRED_VERSION for this version of juise)
         fi
 else
-    AC_MSG_NOTICE([Could not find libssh2 anywhere, check http://www.libssh2.org/.])
+    AC_MSG_NOTICE([libssh2 not found; see http://www.libssh2.org/.])
     NEED_MIXER=no
 fi
 
@@ -472,7 +472,7 @@ then
                 AC_MSG_ERROR(Version $SQLITE3_VERSION found. You need at least sqlite3 $SQLITE3_REQUIRED_VERSION for this version of juise)
         fi
 else
-	AC_MSG_ERROR([Could not find sqlite3 anywhere, check http://www.sqlite.org/.])
+	AC_MSG_NOTICE([sqlite3 not found; see http://www.sqlite.org/.])
 fi
 
 AC_SUBST(SQLITE3_CFLAGS)
@@ -648,6 +648,9 @@ AC_CONFIG_FILES([
   web/lighttpd.conf
   import/Makefile
   tests/Makefile
+  packaging/juise.pc
+  packaging/juise.spec
+  packaging/juise.rb.base
 ])
 AC_OUTPUT
 
