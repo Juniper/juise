@@ -618,7 +618,7 @@ line to your lighttpd.conf file:
 
     juise.assign = ( ".slax" => "juise.cgi" )
 
-** juise.cgi
+** juise.cgi @juise-cgi@
 
 When a file ending in ".slax" is requested, lighttpd will pass the
 request to mod_juise which will invoke juise using the "juise.cgi"
@@ -700,25 +700,25 @@ Additional attributes and elements may be defined under the <cgi>
 element.  For future proofing, script should avoid attributes and
 elements whose names being with "junos", "cgi", or "juise".
 
-* The MUXER Daemon
+* The MIXER Daemon @mixer@
 
-The MUXER daemon provides persistent SSH connections, allowing
+The MIXER daemon provides persistent SSH connections, allowing
 multiple jcs:open calls to return more quickly by avoiding most of the
 SSH connection establishment and negotiation expense.
 
-MUXER can be used to forward normal SSH connections, but also gateways
+MIXER can be used to forward normal SSH connections, but also gateways
 WebSocket calls into NETCONF connections, allowing browser-based
 software access to NETCONF services.
 
-MUXER is currently under development.
+MIXER is currently under development.
 
-* The CLIRA Project
+* The CLIRA Project @clira@
 
 CLIRA is the CLI Remote Access project.
 
 CLIRA is currently under development.
 
-* Extension Libraries for juise
+* Extension Libraries for juise @extensions@
 
 The JUISE project includes the jcs extension library which allows
 invocation of NETCONF RPCs.  This library is identical to the jcs
@@ -731,7 +731,7 @@ only available when using the juise command.  This needs to change,
 but is low priority.
 }}
 
-** jcs
+** jcs @jcs-extensions@
 
 The "jcs" namespace is used for JUNOS-specific extension function, but
 many of the functions are no longer JUNOS specific.  "jcs" was
@@ -769,7 +769,7 @@ namespaces.   The following table lists these dual-homed functions.
 |---------------|
 
 
-*** jcs:open
+*** jcs:open @jcs-open@
 
 The jcs:open() function creates a connection to either the local
 machine (for on-box JUNOS scripts) or a remote device using the
@@ -817,7 +817,7 @@ following members.
 | passphrase         | SSH passphrase                        |
 | password           | User password                         |
 | port               | Transport port number                 |
-| timeout            | Connection timeout                    |
+| timeout            | Connection timeout (in seconds)       |
 | username           | User login name                       |
 |--------------------+---------------------------------------|
 
@@ -838,7 +838,7 @@ is the password.
         }
         var $conn = jcs:open($target, $info);
 
-*** jcs:execute
+*** jcs:execute @jcs-execute@
 
 The jcs:execute() function invokes RPCs using a connection returned by
 jcs:open().  RPCs are invoked and their results returned using a
@@ -862,7 +862,7 @@ to be invoked.
         var $res = jcs:execute($conn, $rpc);
         var $sw = jcs:execute($conn, "get-software-information");
 
-*** jcs:invoke
+*** jcs:invoke @jcs-invoke@
 
 The jcs:invoke() function invokes RPCs but does not use or require a
 persistent connection.  RPCs are stateless, since any connection
@@ -886,7 +886,7 @@ operation to be invoked.
         var $res = jcs:invoke($rpc);
         var $sw = jcs:invoke("get-software-information");
 
-*** jcs:close
+*** jcs:close @jcs-close@
 
 The jcs:close() function closes a connection opened by jcs:open(),
 releasing any resources on both the local and remote side.
