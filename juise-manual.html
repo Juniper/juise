@@ -21954,7 +21954,7 @@ jQuery(function ($) {
 <link rel="Chapter" title="6 NETCONF Server" href="#doc_section_6">
 <link rel="Chapter" title='7 The "juise" Command Reference' href="#doc_section_7">
 <link rel="Chapter" title="8 mod_juise" href="#doc_section_8">
-<link rel="Chapter" title="9 The MUXER Daemon" href="#doc_section_9">
+<link rel="Chapter" title="9 The MIXER Daemon" href="#doc_section_9">
 <link rel="Chapter" title="10 The CLIRA Project" href="#doc_section_10">
 <link rel="Chapter" title="11 Extension Libraries for juise" href="#doc_section_11">
 <meta name="generator" content="http://greenbytes.de/tech/webdav/rfc2629.xslt, Revision 1.389, 2008-08-20 14:21:35, XSLT vendor: libxslt http://xmlsoft.org/XSLT/">
@@ -21975,7 +21975,7 @@ jQuery(function ($) {
 </tr>
 <tr>
 <td class="header left"></td>
-<td class="header right">July 12, 2013</td>
+<td class="header right">July 13, 2013</td>
 </tr>
 </table></div>
 <p id="title" class="title">The JUISE Project: JUNOS User Interface Scripting Environment<br><span class="filename">juise-manual</span></p>
@@ -22080,7 +22080,7 @@ jQuery(function ($) {
 <a href="#doc_section_8">mod_juise</a><ul class="toc top-toc">
 <li class="tocline1">
 <div class="section-number" id="toc_doc_section_8_1">8.1   </div>
-<a href="#doc_section_8_1">juise.cgi</a>
+<a href="#juise-cgi">juise.cgi</a>
 </li>
 <li class="tocline1">
 <div class="section-number" id="toc_doc_section_8_2">8.2   </div>
@@ -22094,32 +22094,32 @@ jQuery(function ($) {
 </li>
 <li class="tocline0">
 <div class="section-number" id="toc_doc_section_9">9   </div>
-<a href="#doc_section_9">The MUXER Daemon</a>
+<a href="#mixer">The MIXER Daemon</a>
 </li>
 <li class="tocline0">
 <div class="section-number" id="toc_doc_section_10">10   </div>
-<a href="#doc_section_10">The CLIRA Project</a>
+<a href="#clira">The CLIRA Project</a>
 </li>
 <li class="tocline0">
 <div class="section-number" id="toc_doc_section_11">11   </div>
-<a href="#doc_section_11">Extension Libraries for juise</a><ul class="toc top-toc"><li class="tocline1">
+<a href="#extensions">Extension Libraries for juise</a><ul class="toc top-toc"><li class="tocline1">
 <div class="section-number" id="toc_doc_section_11_1">11.1   </div>
-<a href="#doc_section_11_1">jcs</a><ul class="toc">
+<a href="#jcs-extensions">jcs</a><ul class="toc">
 <li class="tocline1">
 <div class="section-number" id="toc_doc_section_11_1_1">11.1.1   </div>
-<a href="#doc_section_11_1_1">jcs:open</a>
+<a href="#jcs-open">jcs:open</a>
 </li>
 <li class="tocline1">
 <div class="section-number" id="toc_doc_section_11_1_2">11.1.2   </div>
-<a href="#doc_section_11_1_2">jcs:execute</a>
+<a href="#jcs-execute">jcs:execute</a>
 </li>
 <li class="tocline1">
 <div class="section-number" id="toc_doc_section_11_1_3">11.1.3   </div>
-<a href="#doc_section_11_1_3">jcs:invoke</a>
+<a href="#jcs-invoke">jcs:invoke</a>
 </li>
 <li class="tocline1">
 <div class="section-number" id="toc_doc_section_11_1_4">11.1.4   </div>
-<a href="#doc_section_11_1_4">jcs:close</a>
+<a href="#jcs-close">jcs:close</a>
 </li>
 </ul>
 </li></ul>
@@ -22600,7 +22600,9 @@ jQuery(function ($) {
 	    </pre> <div class="content">
 <h2 id="doc_section_8_1">
 <div class="self-section-number">
-<a href="#doc_section_8_1">8.1</a> </div>juise.cgi</h2>
+<a href="#doc_section_8_1">8.1</a> </div>
+<a id="juise-cgi" href="#juise-cgi">juise.cgi</a>
+</h2>
 <p id="doc_section_8_1_p_1">When a file ending in ".slax" is requested, lighttpd will pass the request to mod_juise which will invoke juise using the "juise.cgi" driver. This driver will fetch the CGI-defined variables and make them available to the script as both global parameters and as elements inside the "$cgi" global parameter. Scripts are free to use either method to retrieve these values. The following table list the CGI parameter name and the $cgi element name.</p>
 <div id="doc_table_u.2"><table summary="" class="tt full" cellpadding="3" cellspacing="0">
 <thead><tr>
@@ -22738,16 +22740,20 @@ jQuery(function ($) {
 <div class="content">
 <h1 id="doc_section_9" class="np">
 <div class="self-section-number">
-<a href="#doc_section_9">9_</a> </div>The MUXER Daemon</h1>
-<p id="doc_section_9_p_1">The MUXER daemon provides persistent SSH connections, allowing multiple jcs:open calls to return more quickly by avoiding most of the SSH connection establishment and negotiation expense.</p>
-<p id="doc_section_9_p_2">MUXER can be used to forward normal SSH connections, but also gateways WebSocket calls into NETCONF connections, allowing browser-based software access to NETCONF services.</p>
-<p id="doc_section_9_p_3">MUXER is currently under development.</p>
+<a href="#doc_section_9">9_</a> </div>
+<a id="mixer" href="#mixer">The MIXER Daemon</a>
+</h1>
+<p id="doc_section_9_p_1">The MIXER daemon provides persistent SSH connections, allowing multiple jcs:open calls to return more quickly by avoiding most of the SSH connection establishment and negotiation expense.</p>
+<p id="doc_section_9_p_2">MIXER can be used to forward normal SSH connections, but also gateways WebSocket calls into NETCONF connections, allowing browser-based software access to NETCONF services.</p>
+<p id="doc_section_9_p_3">MIXER is currently under development.</p>
 </div>
 <hr class="noprint">
 <div class="content">
 <h1 id="doc_section_10" class="np">
 <div class="self-section-number">
-<a href="#doc_section_10">10_</a> </div>The CLIRA Project</h1>
+<a href="#doc_section_10">10_</a> </div>
+<a id="clira" href="#clira">The CLIRA Project</a>
+</h1>
 <p id="doc_section_10_p_1">CLIRA is the CLI Remote Access project.</p>
 <p id="doc_section_10_p_2">CLIRA is currently under development.</p>
 </div>
@@ -22755,16 +22761,20 @@ jQuery(function ($) {
 <div class="content">
 <h1 id="doc_section_11" class="np">
 <div class="self-section-number">
-<a href="#doc_section_11">11_</a> </div>Extension Libraries for juise</h1>
+<a href="#doc_section_11">11_</a> </div>
+<a id="extensions" href="#extensions">Extension Libraries for juise</a>
+</h1>
 <p id="doc_section_11_p_1">The JUISE project includes the jcs extension library which allows invocation of NETCONF RPCs. This library is identical to the jcs library available under JUNOS. This section details the extension functions and element of those libraries.</p>
-<div class="digress tooltip note:" id="idp17510592"><table class="tooltip" cellpadding="0" cellspacing="0" id="table-idp17510592">
+<div class="digress tooltip note:" id="idp17510880"><table class="tooltip" cellpadding="0" cellspacing="0" id="table-idp17510880">
 <tr><td><div class="fancy-tooltip-header">note:: </div></td></tr>
 <tr><td><div class="fancy-tooltip-body"> <p>The jcs extension library is not a dynamic extension library and is only available when using the juise command. This needs to change, but is low priority.</p> </div></td></tr>
 </table></div>
-<a href="?" tabindex="9999" class="digress-anchor" onClick="return popClick(event, 'idp17510592'); " onmouseover="popUp(event, 'idp17510592')" onmouseout="popDown(event, 'idp17510592')"><span class="digress digress-anchor">[note:]</span></a><div class="content">
+<a href="?" tabindex="9999" class="digress-anchor" onClick="return popClick(event, 'idp17510880'); " onmouseover="popUp(event, 'idp17510880')" onmouseout="popDown(event, 'idp17510880')"><span class="digress digress-anchor">[note:]</span></a><div class="content">
 <h2 id="doc_section_11_1">
 <div class="self-section-number">
-<a href="#doc_section_11_1">11.1</a> </div>jcs</h2>
+<a href="#doc_section_11_1">11.1</a> </div>
+<a id="jcs-extensions" href="#jcs-extensions">jcs</a>
+</h2>
 <p id="doc_section_11_1_p_1">The "jcs" namespace is used for JUNOS-specific extension function, but many of the functions are no longer JUNOS specific. "jcs" was originally for "JUNOS Commit Scripts", but these functions can be used for other sorts of scripting as well.</p>
 <p id="doc_section_11_1_p_2">In addition, many of the extension functions in the "slax" namespace were originally in the "jcs" namespace, and are now available in both namespaces. The following table lists these dual-homed functions.</p>
 <div id="doc_table_u.3"><table summary="" class="tt full" cellpadding="3" cellspacing="0">
@@ -22786,7 +22796,9 @@ jQuery(function ($) {
 <div class="content">
 <h3 id="doc_section_11_1_1">
 <div class="self-section-number">
-<a href="#doc_section_11_1_1">11.1.1</a> </div>jcs:open</h3>
+<a href="#doc_section_11_1_1">11.1.1</a> </div>
+<a id="jcs-open" href="#jcs-open">jcs:open</a>
+</h3>
 <p id="doc_section_11_1_1_p_1">The jcs:open() function creates a connection to either the local machine (for on-box JUNOS scripts) or a remote device using the NETCONF or JUNOScript API. This connection can be passed to jcs:execute() to invoke RPCs and to jcs:close() to close the connection.</p>
 <p id="doc_section_11_1_1_p_2">Three protocols can be used for network access:</p>
 <p id="doc_section_11_1_1_p_3"> </p>
@@ -22859,7 +22871,9 @@ jQuery(function ($) {
 <div class="content">
 <h3 id="doc_section_11_1_2">
 <div class="self-section-number">
-<a href="#doc_section_11_1_2">11.1.2</a> </div>jcs:execute</h3>
+<a href="#doc_section_11_1_2">11.1.2</a> </div>
+<a id="jcs-execute" href="#jcs-execute">jcs:execute</a>
+</h3>
 <p id="doc_section_11_1_2_p_1">The jcs:execute() function invokes RPCs using a connection returned by jcs:open(). RPCs are invoked and their results returned using a persistent connection, allowing stateful RPCs, such as locking the configuration database.</p>
 <p id="doc_section_11_1_2_p_2">The first argument is the connection, as returned by jcs:open(). If the second argument is a string, it is the name of an RPC operation. Otherwise the second argument is a node-set containing the operation to be invoked.</p>
 <div id="doc_figure_u.32"></div> <pre>
@@ -22878,7 +22892,9 @@ jQuery(function ($) {
 <div class="content">
 <h3 id="doc_section_11_1_3">
 <div class="self-section-number">
-<a href="#doc_section_11_1_3">11.1.3</a> </div>jcs:invoke</h3>
+<a href="#doc_section_11_1_3">11.1.3</a> </div>
+<a id="jcs-invoke" href="#jcs-invoke">jcs:invoke</a>
+</h3>
 <p id="doc_section_11_1_3_p_1">The jcs:invoke() function invokes RPCs but does not use or require a persistent connection. RPCs are stateless, since any connection needed is temporary, so operations like locking the configuration database should be avoided since the lock will be immediately released.</p>
 <p id="doc_section_11_1_3_p_2">If the argument to jcs:invoke is a string, it is the name of an RPC operation. Otherwise the argument is a node-set containing the operation to be invoked.</p>
 <div id="doc_figure_u.33"></div> <pre>
@@ -22897,7 +22913,9 @@ jQuery(function ($) {
 <div class="content">
 <h3 id="doc_section_11_1_4">
 <div class="self-section-number">
-<a href="#doc_section_11_1_4">11.1.4</a> </div>jcs:close</h3>
+<a href="#doc_section_11_1_4">11.1.4</a> </div>
+<a id="jcs-close" href="#jcs-close">jcs:close</a>
+</h3>
 <p id="doc_section_11_1_4_p_1">The jcs:close() function closes a connection opened by jcs:open(), releasing any resources on both the local and remote side.</p>
 <div id="doc_figure_u.34"></div> <pre>
     SYNTAX::
