@@ -45,7 +45,11 @@ DIST_FILES_DIR = ~/Dropbox/dist-files/
 GH_PAGES_DIR = gh-pages/
 PACKAGE_FILE = ${PACKAGE_TARNAME}-${PACKAGE_VERSION}.tar.gz
 
-upload: dist
+upload: dist upload-docs
+	@echo "Remember to run:"
+	@echo "        gt tag ${PACKAGE_VERSION}"
+
+upload-docs: docs
 	@-[ -d ${GH_PAGES_DIR} ] \
 		&& echo "Updating manual on gh-pages ..." \
 		&& cp doc/juise-manual.html ${GH_PAGES_DIR} \
@@ -53,8 +57,6 @@ upload: dist
 			&& git commit -m 'new docs' \
                                juise-manual.html \
 			&& git push origin gh-pages ) ; true
-	@echo "Remember to run:"
-	@echo "        gt tag ${PACKAGE_VERSION}"
 
 pkgconfigdir=$(libdir)/pkgconfig
 pkgconfig_DATA = packaging/${PACKAGE_NAME}.pc
