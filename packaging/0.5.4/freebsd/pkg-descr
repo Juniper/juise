@@ -1,0 +1,8 @@
+juise is the JUNOS User Interface Scripting Environment, as
+set of utilities for developing, testing, and executing
+SLAX scripts for JUNOS.
+
+The package includes the libjuise library and the juise command line
+utility.
+
+WWW: https://github.com/Juniper/juise

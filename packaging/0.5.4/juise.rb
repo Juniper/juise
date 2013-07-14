@@ -8,7 +8,7 @@ require 'formula'
 class Juise < Formula
   homepage 'https://github.com/Juniper/juise'
   url 'https://github.com/Juniper/juise/releases/0.5.4/juise-0.5.4.tar.gz'
-  sha1 'fb2af1327a44c4302dabf50f89e8b5f004cec2d6'
+  sha1 '42056f6b6db2ec3f493335568e5b4e61dd6f24da'
 
   depends_on 'libtool' => :build
   depends_on 'libslax'
