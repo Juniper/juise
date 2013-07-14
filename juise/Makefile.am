@@ -49,10 +49,6 @@ if HAVE_LIBEDIT
 LIBS += -ledit
 endif
 
-if HAVE_LIBDL
-LIBS += -ldl
-endif
-
 if HAVE_LIBM
 LIBS += -lm
 endif
