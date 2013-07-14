@@ -38,7 +38,7 @@ AC_PROG_INSTALL
 AC_CONFIG_MACRO_DIR([m4])
 
 # Must be after AM_PROG_AR
-LT_INIT([])
+LT_INIT([dlopen])
 
 AC_PATH_PROG(BASENAME, basename, /usr/bin/basename)
 AC_PATH_PROG(CAT, cat, /bin/cat)
@@ -83,9 +83,6 @@ AC_CHECK_HEADERS([string.h sys/param.h unistd.h])
 AC_CHECK_HEADERS([sys/sysctl.h])
 AC_CHECK_HEADERS([stdint.h sys/statfs.h])
 
-
-AC_CHECK_LIB([dl], [dlopen])
-AM_CONDITIONAL([HAVE_LIBDL], [test "$HAVE_LIBDL" != "no"])
 
 AC_CHECK_LIB([crypto], [MD5_Init])
 AM_CONDITIONAL([HAVE_LIBCRYPTO], [test "$HAVE_LIBCRYPTO" != "no"])
@@ -593,6 +590,8 @@ AC_ARG_WITH(php-cgi,
 )
 AC_SUBST(PHP_CGI)
 
+JUISE_LIBS=-ljuise
+AC_SUBST(JUISE_LIBS)
 JUISE_SRCDIR='${srcdir}'
 AC_SUBST(JUISE_SRCDIR)
 JUISE_LIBDIR='${libdir}'
@@ -651,6 +650,7 @@ AC_CONFIG_FILES([
   packaging/juise.pc
   packaging/juise.spec
   packaging/juise.rb.base
+  packaging/freebsd/port-Makefile
 ])
 AC_OUTPUT
 
