@@ -11,7 +11,6 @@
 AC_PREREQ(2.2)
 AC_INIT([juise], [0.5.5], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
-AC_DISABLE_SHARED
 
 case $prefix in
      NONE)
