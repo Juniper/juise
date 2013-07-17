@@ -163,6 +163,7 @@ typedef struct mx_sock_session_s {
     mx_channel_list_t mss_channels; /* Set of channels */
     mx_channel_list_t mss_released; /* Set of channels free to use */
     int mss_pwfail;		    /* Number of password failures */
+    int mss_keepalive_next;	    /* Number of seconds til next keepalive */
 } mx_sock_session_t;
 
 typedef struct mx_sock_websocket_s {
