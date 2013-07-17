@@ -32,10 +32,10 @@ jQuery(function ($) {
 
     var image = {
         unknown: "/images/icons/dot-dot.jpg",
-        network: "/images/icons/100baset_hub.jpg",
+        network: "/images/network.png",
         stub: "/images/icons/cloud.jpg",
         transit: "/images/icons/arrows_motion.jpg",
-        router: "/images/icons/router.jpg"
+        router: "/images/puck.png"
     }
     var colors = { };
 
