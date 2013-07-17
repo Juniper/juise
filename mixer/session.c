@@ -31,6 +31,10 @@ mx_session_print (MX_TYPE_PRINT_ARGS)
 	   mssp->mss_target, mssp->mss_session,
 	   mssp->mss_canonname ?: "???");
 
+    if (mssp->mss_keepalive_next)
+	mx_log("%*s%sKeepalive next: %d", indent, "", prefix,
+	       mssp->mss_keepalive_next);
+
     mx_log("%*s%sChannels in use:%s", indent, "", prefix,
 	   TAILQ_EMPTY(&mssp->mss_channels) ? " none" : "");
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
@@ -667,6 +671,7 @@ mx_session_prep (MX_TYPE_PREP_ARGS)
 	int next = 0;
 	int rc = libssh2_keepalive_send(mssp->mss_session, &next);
 	if (rc == 0) {
+	    mssp->mss_keepalive_next = next;
 	    next *= 1000;
 	    if (0 && *timeout > next)
 		*timeout = next;
