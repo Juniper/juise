@@ -139,7 +139,7 @@ jQuery(function ($) {
                 rpc: "ping"
             },
             tabs: { },
-            css: "/clira/ping.css",
+            css: "/css/ping.css",
             fieldsets: [
                 {
                     legend: "Basic",
