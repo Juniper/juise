@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<title>CLIRA</title>
+  <link rel="shortcut icon" href="/images/clira_icon.png" type="image/png"/>
+  <link rel="stylesheet" href="/css/clira.css" class="ui-main">
+  <link rel="stylesheet" href="/themes/clira/jquery-ui-clira.css" class="ui-theme">
+  <link rel="stylesheet" href="/themes/clira/addons-clira.css" class="ui-addon">
+</head>
+<body>
+  <script type="text/x-handlebars">
+    <div id="input-top">
+      <div class="logo">
+        <img src="/images/logo.png" height="50px" border="0" />
+      </div>
+      <div id="command-top">
+        <table id="command-input-box" class="input-box focus-on" cellpadding="1px" cellspacing="1px">
+          <tr>
+            <td>{{render 'commandInput'}}</td>
+            <td width="16px">{{render 'pulldown'}}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div id="output-top">
+      {{render 'outputs'}}
+    </div>
+  </script>
+  
+  <script type="text/x-handlebars" data-template-name="pulldown">
+    {{view Clira.Pulldown}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="command_input">
+    {{view Clira.AutoComplete valueBinding="command"}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="outputs">
+    {{each controller itemViewClass="Clira.OutputContainerView"}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="output_container">
+    {{outlet 'outputHeader'}}
+    {{outlet 'outputContent'}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="output_header">
+    <div class="output-header ui-state-default ui-widget-header ui-corner-all">
+      {{controller.command}}
+    </div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="output_content">
+    <div class="output-content">
+      {{{controller.output}}}
+    </div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="output_content_layout">
+    <div class="output-content">
+      {{yield}}
+    </div>
+  </script>
+
+  <script src="/external/jquery/jquery.js"></script>
+  <script src="/external/jquery-ui/jquery-ui-1.10.2.js"></script>
+  <script src="/external/handlebars/handlebars.js"></script>
+  <script src="/external/ember/ember-1.0.0-rc.6.1.js"></script>
+  <script src="/jquery/jquery.dbgpr.js"></script>
+  <script src="parser.js"></script>
+  <script src="parser.types.js"></script>
+  <script src="builtins.js"></script>
+  <script src="app.js"></script>
+  <script src="views.js"></script>
+  <script src="controllers.js" id="last-script-in-header"></script>
+</body>
+</html>
