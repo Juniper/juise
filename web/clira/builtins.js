@@ -29,7 +29,7 @@ jQuery(function ($) {
 ";
                     var template = Handlebars.compile(html);
                     var content = template({ commands: $.clira.commands});
-                    $output.html(content);
+                    return content;
                 }
             },
             {
