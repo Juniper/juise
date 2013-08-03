@@ -51,7 +51,7 @@ Clira.CommandInputController = Em.ObjectController.extend({
         response(res);
     },
 
-    // Runs the command and appends output to outputs view
+    // Runs the command and appends output to outputs controller
     executeCommand: function() {
         $.dbgpr("execute: input: [" + this.command + "]");
         var parse = $.clira.parse(this.command);
@@ -81,12 +81,14 @@ Clira.CommandInputController = Em.ObjectController.extend({
     }
 });
 
+
 /*
  * OutputsController is an ArrayController that holds outputs from commands.
  * For each command run, we create an array item of type OutputContainer and
  * add OutputsController.
  */
 Clira.OutputsController = Em.ArrayController.extend();
+
 
 /*
  * Controller for the OutputContainerView. Container view gets output data and
