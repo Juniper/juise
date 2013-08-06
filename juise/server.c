@@ -180,16 +180,16 @@ srv_run_script (js_session_t *jsp, const char *scriptname,
     if (opt_debugger) {
 	slaxDebugInit();
 	slaxDebugSetStylesheet(script);
-	slaxDebugApplyStylesheet(scriptname, script, "input",
+	res = slaxDebugApplyStylesheet(scriptname, script, "input",
 				 indoc, NULL);
     } else {
 	res = xsltApplyStylesheet(script, indoc, NULL);
 
 	xsltSaveResultToFile(jsp->js_fpout, res, script);
-
-	if (res)
-	    xmlFreeDoc(res);
     }
+
+    if (res)
+	xmlFreeDoc(res);
 
     if (indoc != input)
 	xmlFreeDoc(indoc);
