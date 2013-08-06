@@ -609,10 +609,10 @@ jQuery(function ($) {
                     $output.html(full.join(""));
 
                     $output.find('[class~="data"]').each(function() {
-                        var help = $(this).attr('data-help');
-                        var type = $(this).attr('data-type');
-                        var xpath = $(this).attr('data-xpath');
-                        var tag = $(this).attr('data-tag');
+                        var help = $(this).attr("data-help");
+                        var type = $(this).attr("data-type");
+                        var xpath = $(this).attr("data-xpath");
+                        var tag = $(this).attr("data-tag");
                         var output = "<div>";
                         if (help) {
                             output += "<b>Help</b>: " + help  + "<br/>";
