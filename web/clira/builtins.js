@@ -16,20 +16,9 @@ jQuery(function ($) {
                 command: "show commands",
                 help: "Display a list of all available commands currently "
                     + "loaded in CLIRA",
+                templateFile: '/clira/templates/show-commands.hbs',
                 execute: function ($output, cmd, parse, poss) {
-                    var html = "\
-<div class='show-command-top'>\
-    {{#each commands}}\
-        <div class='show-command'>\
-            <div class='show-command-name'>{{command}}</div>\
-            <div class='command-help'>{{help}}</div>\
-        </div>\
-    {{/each}}\
-</div>\
-";
-                    var template = Handlebars.compile(html);
-                    var content = template({ commands: $.clira.commands});
-                    return content;
+                    return { commands: $.clira.commands};
                 }
             },
             {
