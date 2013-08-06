@@ -947,7 +947,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
     };
 
     int len = 0;
-    int i;
+    int i, rc;
     lx_node_t *nodep, *paramp = NULL;
     char *method = NULL, *uri = NULL;
     char *cp;
@@ -957,7 +957,10 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 
     slaxDataListInit(&lines);
 
-    chdir(JUISE_WEB_DIR);
+    rc = chdir(JUISE_WEB_DIR);
+    if (rc < 0)
+        trace(trace_file, TRACE_ALL, "cannot change directory to %s: %s",
+              JUISE_WEB_DIR, strerror(errno));
 
     lx_document_t *docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
     if (docp == NULL)

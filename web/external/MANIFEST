@@ -67,3 +67,9 @@ date: 2013-06-04
 license: ???
 url: http://d3js.org/d3.v3.js
 url: http://d3js.org/d3.v3.min.js
+
+name: qtip2
+site: http://qtip2.com/
+version: v2.1.1
+date: 2013-08-06
+license: MIT

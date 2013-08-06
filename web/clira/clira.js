@@ -607,6 +607,48 @@ jQuery(function ($) {
                 oncomplete: function () {
                     $.dbgpr("rpc: complete");
                     $output.html(full.join(""));
+
+                    $output.find('[class~="data"]').each(function() {
+                        var help = $(this).attr("data-help");
+                        var type = $(this).attr("data-type");
+                        var xpath = $(this).attr("data-xpath");
+                        var tag = $(this).attr("data-tag");
+                        var output = "<div>";
+                        if (help) {
+                            output += "<b>Help</b>: " + help  + "<br/>";
+                        }
+                        if (type) {
+                            output += "<b>Type</b>: " + type  + "<br/>";
+                        }
+                        if (xpath) {
+                            output += "<div class='xpath-wrapper'><a class='xpath-link' href='#'>show xpath</a><div class='xpath'>" + xpath + "</div></div><br/>";
+                        }
+                        output += "</div>";
+                        $(this).qtip({
+                            content: {
+                                title: "<b>" + tag + ":</b>",
+                                text: function () {
+                                    var div = $(output);
+                                    div.find(".xpath-link").click(function() {
+                                        var xpath = $(this).next();
+                                        if (xpath.is(":hidden")) {
+                                            xpath.show();
+                                            $(this).text("hide xpath");
+                                        } else {
+                                            xpath.hide();
+                                            $(this).text("show xpath");
+                                        }
+                                    });
+                                    return div;
+                                }
+                            },
+                            hide: {
+                                fixed: true,
+                                delay: 300
+                            },
+                            style: "qtip-tipped"
+                        });
+                    });
                 },
                 onhostkey: function (data) {
                     var self = this;

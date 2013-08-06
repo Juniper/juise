@@ -28,7 +28,8 @@ EXTRA_DIST = \
     warnings.mk \
     README.md \
     INSTALL \
-    bin/setup.sh
+    bin/setup.sh \
+    packaging/juise.spec
 
 .PHONY: test tests
 
