@@ -457,7 +457,6 @@ trace_msg (trace_file_t *traceptr, char *trace_buffer, u_int trace_it, int *msg_
     char *return_buffer;
     int  trace_buf_remaining;
     int  trace_msg_len;
-    int  trace_msg_start;
     int  fmt_len;
 #ifdef HAVE_STATFS
     struct statfs fs_stat;
@@ -488,7 +487,6 @@ trace_msg (trace_file_t *traceptr, char *trace_buffer, u_int trace_it, int *msg_
     trace_buffer[trace_msg_len] = ' ';
     trace_msg_len++;
     trace_buf_remaining--;
-    trace_msg_start = trace_msg_len;
 
     /* Format the string.  Deal with overflows. */
 
@@ -605,7 +603,6 @@ tracev_event (trace_file_t *traceptr, u_int32_t type, const char *tag,
     char trace_buffer[TRACE_BUFSIZE];
     u_int log_it, trace_it = 0;
     int log_level;
-    char *message;
     int msg_len;
     va_list newap;
 
@@ -624,7 +621,7 @@ tracev_event (trace_file_t *traceptr, u_int32_t type, const char *tag,
 
     /* Format the trace message. */
     va_copy(newap, ap);
-    message = trace_msg(traceptr, trace_buffer, trace_it, &msg_len, fmt, newap);
+    trace_msg(traceptr, trace_buffer, trace_it, &msg_len, fmt, newap);
     va_end(newap);
 
     /* If logging, log it as well */
