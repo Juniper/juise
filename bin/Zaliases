@@ -21,6 +21,8 @@ set opts=' \
 '
 set opts=`echo $opts`
 
+setenv CONFIGURE_OPTS "$opts"
+
 alias Zconfigure "(cd $libjuise/build; ../configure $opts )"
 
 alias Zbuild "(cd $libjuise/build; make \!* )"
