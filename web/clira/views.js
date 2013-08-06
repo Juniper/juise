@@ -129,6 +129,7 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
      */
     didInsertElement: function() {
         var contentView = Ember.View.create({
+            context: this.get('controller').output,
             layoutName: 'output_content_layout',
             templateName: this.get('controller').contentTemplate
         });

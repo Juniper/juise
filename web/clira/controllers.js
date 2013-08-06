@@ -64,7 +64,10 @@ Clira.CommandInputController = Em.ObjectController.extend({
 
         // Template for outputContent child defaults to 'output_content'
         var templateName = "output_content";
-       
+
+        if (poss.command.templateName)
+            templateName = poss.command.templateName;
+
         var content = {
             contentTemplate: templateName,
             command: this.command,
