@@ -726,3 +726,18 @@ ul.ui-autocomplete li.ui-menu-item a.label {
 ul.ui-autocomplete li.ui-menu-item a.help {
     float: right;
 }
+
+a.xpath-link {
+    text-decoration: none;
+}
+
+div.xpath-wrapper {
+    margin-top: 8px;
+    padding-top: 5px;
+    border-top: solid 1px #c8c8c8;
+}
+
+div.xpath {
+    display: none;
+    margin-top: 8px;
+}
