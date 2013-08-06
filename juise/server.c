@@ -208,6 +208,7 @@ run_server (int fdin, int fdout, session_type_t stype)
     js_session_t *jsp;
     lx_document_t *rpc;
     const char *name;
+    int rc;
 
     jsp = js_session_open_server(fdin, fdout, stype, 0);
     if (jsp == NULL)
@@ -227,7 +228,10 @@ run_server (int fdin, int fdout, session_type_t stype)
 		trace(trace_file, TRACE_ALL, "error writing reply: %m");
 
 	    if (srv_run_script(jsp, name, rpc)) {
-		(void) write(fdout, rpc_error, sizeof(rpc_error) - 1);
+		rc = write(fdout, rpc_error, sizeof(rpc_error) - 1);
+                if (rc < 0)
+                    trace(trace_file, TRACE_ALL, "error writing error: %m");
+
 	    }
 	    if (write(fdout, rpc_reply_close, sizeof(rpc_reply_close) - 1) < 0)
 		trace(trace_file, TRACE_ALL, "error writing reply: %m");
