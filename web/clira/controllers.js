@@ -53,6 +53,9 @@ Clira.CommandInputController = Em.ObjectController.extend({
 
     // Runs the command and appends output to outputs controller
     executeCommand: function() {
+        if (!this.command)
+            return;
+
         $.dbgpr("execute: input: [" + this.command + "]");
         var parse = $.clira.parse(this.command);
         $.dbgpr("parse: " + parse.possibilities.length);
