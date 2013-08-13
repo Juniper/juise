@@ -23,6 +23,7 @@
           </tr>
         </table>
       </div>
+      <div class="input-enter">{{view Clira.EnterButton}}</div>
     </div>
     <div id="output-top">
       {{render 'outputs'}}
@@ -30,11 +31,11 @@
   </script>
   
   <script type="text/x-handlebars" data-template-name="pulldown">
-    {{view Clira.Pulldown}}
+    {{view Clira.PulldownIcon}}
   </script>
 
   <script type="text/x-handlebars" data-template-name="command_input">
-    {{view Clira.AutoComplete valueBinding="command"}}
+    {{view Clira.AutoComplete valueBinding="command" viewName="CommandInput"}}
   </script>
 
   <script type="text/x-handlebars" data-template-name="outputs">

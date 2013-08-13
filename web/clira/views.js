@@ -140,10 +140,21 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
 /*
  * Extend ButtonView to define a pulldown icon/button
  */
-Clira.Pulldown = JQ.ButtonView.extend({
+Clira.PulldownIcon = JQ.ButtonView.extend({
     label: null,
     text: false,
     icons: {
         primary: 'ui-icon-triangle-1-s'
     }
 });
+
+/*
+ * Extend ButtonView to defined Enter button with label
+ */
+Clira.EnterButton = JQ.ButtonView.extend({
+    label: 'Enter',
+
+    click: function() {
+        this.get('parentView').CommandInput.insertNewline();
+    }
+})
