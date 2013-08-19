@@ -3,6 +3,12 @@ Version:     @PACKAGE_VERSION@
 Release:     1%{?dist}
 Summary:     JUNOS User Interface Scripting Environment
 
+Prefix:      /usr
+
+Vender:      Juniper Networks, Inc.
+Packager:    Phil Shafer <phil@juniper.net>
+License:     BSD
+
 Group:       Development/Libraries
 License:     MIT
 URL:         https://github.com/Juniper/libslax
@@ -46,3 +52,4 @@ rm -rf $RPM_BUILD_ROOT
 %{_libexecdir}/juise/*
 %{_datadir}/juise/import/*
 %{_mandir}/*/*
+%docdir %{_mandir}/*/*
