@@ -47,7 +47,7 @@ mx_forwarder_spawn (MX_TYPE_SPAWN_ARGS)
 
     mx_sock_session_t *mssp = mx_session(mslp->msl_request);
     if (mssp == NULL) {
-	mx_log("S%u could not open session", msfp->msf_base.ms_id);
+	mx_log("%s could not open session", mx_sock_title(&msfp->msf_base));
 	/* XXX fail nicely */
 	return NULL;
     }
@@ -57,7 +57,7 @@ mx_forwarder_spawn (MX_TYPE_SPAWN_ARGS)
     mcp = mx_channel_direct_tcpip(mssp, &msfp->msf_base,
 				  mrp->mr_desthost, mrp->mr_destport);
     if (mcp == NULL) {
-	mx_log("S%u could not open channel", msfp->msf_base.ms_id);
+	mx_log("%s could not open channel", mx_sock_title(&msfp->msf_base));
 	/* XXX close msfp */
 	return NULL;
     }
@@ -86,18 +86,20 @@ mx_forwarder_prep (MX_TYPE_PREP_ARGS)
     if (mbp->mb_len) {
 	pollp->fd = mx_channel_sock(msfp->msf_channel);
 	pollp->events = POLLOUT;
-	DBG_POLL("S%u blocking pollout for fd %d", msp->ms_id, pollp->fd);
+	DBG_POLL("%s blocking pollout for fd %d",
+                 mx_sock_title(msp), pollp->fd);
 
     } else if (mx_channel_has_buffered(msfp->msf_channel)) {
 	pollp->fd = mx_channel_sock(msfp->msf_channel);
 	pollp->events = POLLOUT;
-	DBG_POLL("S%u blocking pollout for fd %d (channel)",
-		 msp->ms_id, pollp->fd);
+	DBG_POLL("%s blocking pollout for fd %d (channel)",
+		 mx_sock_title(msp), pollp->fd);
 
     } else {
 	pollp->fd = msp->ms_sock;
 	pollp->events = POLLIN;
-	DBG_POLL("S%u blocking pollin for fd %d", msp->ms_id, pollp->fd);
+	DBG_POLL("%s blocking pollin for fd %d",
+                 mx_sock_title(msp), pollp->fd);
     }
 
     return TRUE;
@@ -118,13 +120,15 @@ mx_forwarder_poller (MX_TYPE_POLLER_ARGS)
 	    len = recv(msp->ms_sock, mbp->mb_data, mbp->mb_size, 0);
 	    if (len < 0) {
 		if (errno != EWOULDBLOCK) {
-		    mx_log("S%u: read error: %s", msp->ms_id, strerror(errno));
+		    mx_log("%s: read error: %s",
+                           mx_sock_title(msp), strerror(errno));
 		    msp->ms_state = MSS_FAILED;
 		    return TRUE;
 		}
 
 	    } else if (len == 0) {
-		mx_log("S%u: disconnect (%s)", msp->ms_id, mx_sock_sin(msp));
+		mx_log("%s: disconnect (%s)",
+                       mx_sock_title(msp), mx_sock_sin(msp));
 		return TRUE;
 	    } else {
 		mbp->mb_len = len;
@@ -150,8 +154,8 @@ mx_forwarder_write (MX_TYPE_WRITE_ARGS)
 		  mbp->mb_data + mbp->mb_start, len, 0);
 	if (rc <= 0) {
 	    if (errno != EWOULDBLOCK) {
-		mx_log("S%u: write error: %s",
-		       msfp->msf_base.ms_id, strerror(errno));
+		mx_log("%s: write error: %s",
+		       mx_sock_title(&msfp->msf_base), strerror(errno));
 		msfp->msf_base.ms_state = MSS_FAILED;
 	    }
 
@@ -188,6 +192,7 @@ mx_forwarder_init (void)
     static mx_type_info_t mti = {
     mti_type: MST_FORWARDER,
     mti_name: "forwarder",
+    mti_letter: "F",
     mti_print: mx_forwarder_print,
     mti_prep: mx_forwarder_prep,
     mti_poller: mx_forwarder_poller,
