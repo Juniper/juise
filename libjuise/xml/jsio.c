@@ -99,6 +99,9 @@ jsio_session_type_name (session_type_t stype)
     if (stype == ST_JUNOS_NETCONF)
 	return "junos-netconf";
 
+    if (stype == ST_RAW)
+	return "raw";
+
     return NULL;
 }
 
@@ -113,6 +116,9 @@ jsio_session_type (const char *name)
 
     if (streq(name, "junos-netconf"))
 	return ST_JUNOS_NETCONF;
+
+    if (streq(name, "raw"))
+	return ST_RAW;
 
     return ST_MAX;
 }
@@ -702,6 +708,7 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
     int sin = jsp->js_stdin, serr = jsp->js_stderr, smax, rc;
     int askpassfd = jsp->js_askpassfd ?: jsio_askpass_socket;
 
+
     do {
 	smax = MAX(sin, serr);
 
@@ -725,12 +732,14 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 	    jsio_trace("error from rpc session: %m");
 	    return -1;
 	}
-	    
+
+
 	if (rc == 0) {
 	    if (secs)
 		jsio_trace("timeout from rpc session");
 	    return -1;
-	}
+	} 
+
 
 	if (serr >= 0 && (FD_ISSET(serr, &rfds) || FD_ISSET(serr, &xfds))) {
 	    char buf[BUFSIZ];
@@ -812,6 +821,13 @@ js_session_create (const char *host_name, char **argv,
     sigemptyset(&sigblocked);
     sigaddset(&sigblocked, SIGCHLD);
     sigprocmask(SIG_BLOCK, &sigblocked, &sigblocked_old);
+
+#if 0
+    for (i = 0; argv[i] != 0; i++) {
+	LX_ERR("%s ", argv[i]);
+    }
+    LX_ERR("\"\n");
+#endif
 
     if ((pid = fork()) == 0) {	/* Child process */
 
@@ -904,6 +920,34 @@ js_session_create (const char *host_name, char **argv,
     close(ev[1]);
     close(sv[1]);
     return NULL;
+}
+
+/*
+ * Initialize RAW session.
+ */
+int
+js_raw_session_init (js_session_t *jsp)
+{
+
+    /*
+     * Drain any initial input, such as a login banner.
+     */
+    char *cp = js_gets_timed(jsp, JS_READ_TIMEOUT, 0);
+    jsio_trace("ignoring login banner: %s", cp);
+    for (;;) {
+	char *cp1 = js_gets_timed(jsp, 0, JS_READ_QUICK);
+	if (cp1 == NULL)
+	    break;
+
+	jsio_trace("ignoring login banner: %s", cp1);
+    }
+
+    /*
+     * Set the "credentials" to NULL, the RAW session type has no use for this information
+     */
+    jsp->js_creds = NULL;
+
+    return FALSE;
 }
 
 /*
@@ -1133,7 +1177,7 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 {
     FILE *fp = jsp->js_fpout;
 
-    jsio_trace("rpc name: %s", rpc_name);
+    jsio_trace("rpc name: %s\n", rpc_name);
 
     switch (jsp->js_key.jss_type) {
     case ST_JUNOSCRIPT:
@@ -1161,6 +1205,9 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 		++jsp->js_msgid, rpc_name);
 	break;
 
+    case ST_RAW:
+        /* send the string */
+	fprintf(fp, "%s", rpc_name); 
     case ST_DEFAULT:		/* Avoid compiler errors */
     case ST_MAX:
 	break;
@@ -1203,6 +1250,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 			++jsp->js_msgid); 
 		break;
 
+	case ST_RAW:		/* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
 	    break;
@@ -1229,6 +1277,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 	    fprintf(fp, "</rpc>\n");
 	    break;
 
+	case ST_RAW:		/* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
 	    break;
@@ -1500,6 +1549,8 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	argv[argc++] = ALLOCADUP("xml-mode");
 	argv[argc++] = ALLOCADUP("netconf");
 	argv[argc++] = ALLOCADUP("need-trailer");
+    } else if (jsop->jso_stype == ST_RAW) {
+        /* raw requires no options */
     } else {
 	argv[argc++] = ALLOCADUP("xml-mode");
 	argv[argc++] = ALLOCADUP("need-trailer");
@@ -1519,6 +1570,11 @@ js_session_open (js_session_opts_t *jsop, int flags)
 
     if (jsop->jso_stype == ST_JUNOSCRIPT) {
 	if (js_session_init(jsp)) {
+	    js_session_terminate(jsp);
+	    return NULL;
+	}
+    } else if (jsop->jso_stype == ST_RAW) {
+	if (js_raw_session_init(jsp)) {
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
@@ -1545,6 +1601,67 @@ js_session_open (js_session_opts_t *jsop, int flags)
     }
 
     return jsp;
+}
+/*
+ * Send the given string in the given host_name's JUNOScript session.
+ */
+void
+js_session_send (const char *host_name, const xmlChar *rpc_name)
+{
+    js_session_t *jsp;
+    int rc;
+
+    if (host_name == NULL || *host_name == '\0') {
+	host_name = js_default_server;
+	if (host_name == NULL || *host_name == '\0')
+	    return;
+    }
+
+    session_type_t stype = ST_RAW;
+
+    jsp = js_session_find(host_name, stype);
+    if (!jsp) { 
+	LX_ERR("Session for server \"%s\" does not exist\n",
+	   host_name ?: "local");
+	return;
+    }
+
+    rc = js_rpc_send_simple(jsp, (const char *) rpc_name);
+
+    if (rc) {
+	jsio_trace("could not send request");
+       	patricia_delete(&js_session_root, &jsp->js_node);
+	js_session_terminate(jsp);
+	return;
+    }
+}
+
+/*
+ * Receive a string in the given host_name's JUNOScript session.
+ */
+char *
+js_session_receive (const char *host_name)
+{
+    js_session_t *jsp;
+
+    if (host_name == NULL || *host_name == '\0') {
+	host_name = js_default_server;
+	if (host_name == NULL || *host_name == '\0')
+	    return "";
+    }
+
+    session_type_t stype = ST_RAW;
+
+    jsp = js_session_find(host_name, stype);
+    if (!jsp) { 
+	LX_ERR("Session for server \"%s\" does not exist\n",
+	   host_name ?: "local");
+	return "";
+    }
+
+    char *cp = js_gets_timed(jsp, JS_READ_TIMEOUT, 0);
+
+    return cp;
 }
 
 /*
@@ -1799,6 +1916,8 @@ js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
+    } else if (stype == ST_RAW) {
+        /* do nothing */
     } else {
 	if (js_session_init(jsp)) {
 	    js_session_terminate(jsp);

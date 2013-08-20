@@ -349,6 +349,7 @@ ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, js_session_opts_t *jsop)
 	    key = xmlNodeName(cop);
 	    if (!key)
 		continue;
+
 	    value = xmlNodeValue(cop);
 
 	    if (streq(key, "connection-timeout")) {
@@ -415,6 +416,8 @@ ext_jcs_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
 		    *stype = ST_JUNOS_NETCONF;
 		} else if (value && streq(value, "junoscript")) {
 		    *stype = ST_JUNOSCRIPT;
+		} else if (value && streq(value, "raw")) {
+		    *stype = ST_RAW;
 		}
 	    }
 	}
@@ -448,7 +451,7 @@ jsopts_free (js_session_opts_t *jsop)
  *    var $connection = jcs:open($server, $username, $passphrase);  
  *    var $connection = jcs:open($server, $blob);
  *             where $blob := {
- *                       <method> "junoscript" | "netconf";
+ *                       <method> "junoscript" | "netconf" | "raw";
  *                       <username> $username;
  *                       <passphrase> $passphrase;
  *                  }
@@ -612,6 +615,136 @@ ext_jcs_close (xmlXPathParserContext *ctxt, int nargs)
 
 /*
  * Usage:
+ *     var $results = jcs:send($connection,  $str);
+ *
+ * Takes the connection handle,  writes the given string in the connection
+ * context and returns the results.  Multiple stirngs can be sent in the
+ * given connection context till the connection is closed.
+ *
+ * e.g) $results = jcs:send($connection, 'ifconfig -a');
+ *
+ * var $cmd = "ifconfig -a";
+ * $results = jcs:send($connection, $cmd);
+ */
+static void
+ext_jcs_send (xmlXPathParserContext *ctxt, int nargs)
+{
+    xmlChar *server = NULL;
+    session_type_t stype = ST_DEFAULT; /* Default session */
+
+    if (nargs != 2) {
+	xmlXPathSetArityError(ctxt);
+	return;
+    }
+
+    xmlXPathObject *xop = valuePop(ctxt);
+    if (xop == NULL) {
+	LX_ERR("jcs:send: null argument\n");
+	return;
+    }
+
+    xmlXPathObject *sop = valuePop(ctxt);
+    if (sop == NULL) {
+	xmlXPathFreeObject(xop);
+	LX_ERR("jcs:send: null argument\n");
+	return;
+    }
+    ext_jcs_extract_scookie(sop->nodesetval, &server, &stype);
+    if (server == NULL) {
+	xmlXPathFreeObject(xop);
+	xmlXPathFreeObject(sop);
+	LX_ERR("jcs:execute: null argument\n");
+	return;
+	
+    }
+    if (stype != ST_RAW) {
+	xmlXPathFreeObject(xop);
+	xmlXPathFreeObject(sop);
+	xmlFree(server);
+	LX_ERR("jcs:send: only connections with protocol \"raw\" supported\n");
+        return;
+    }
+
+    /*
+     * Invoked with a simple string argument?  Handle it.
+     */
+    if (xop->stringval) {
+	js_session_send((char *) server, xop->stringval);
+
+	xmlXPathFreeObject(xop);
+	xmlXPathFreeObject(sop);
+	xmlFree(server);
+
+	valuePush(ctxt, xmlXPathNewNodeSet(NULL));
+	return;
+    }
+
+    xmlXPathFreeObject(xop);
+    xmlXPathFreeObject(sop);
+    xmlFree(server);
+
+    LX_ERR("jcs:send: second argument must be a string\n");
+    return;
+}
+
+/*
+ * Usage:
+ *     var $results = jcs:receive($connection, int nargs);
+ *
+ * Takes the connection handle,  receives any data on the connection
+ * context and returns the results.  
+ *
+ * e.g) $results = jcs:receive($connection);
+ *
+ */
+static void
+ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
+{
+    xmlChar *server = NULL;
+    session_type_t stype = ST_DEFAULT; /* Default session */
+
+    if (nargs != 1) {
+	xmlXPathSetArityError(ctxt);
+	return;
+    }
+
+    xmlXPathObject *sop = valuePop(ctxt);
+    if (sop == NULL) {
+	LX_ERR("jcs:execute: null argument\n");
+	return;
+    }
+    ext_jcs_extract_scookie(sop->nodesetval, &server, &stype);
+    if (server == NULL) {
+	xmlXPathFreeObject(sop);
+	LX_ERR("jcs:execute: null argument\n");
+	return;
+	
+    }
+    if (stype != ST_RAW) {
+	xmlXPathFreeObject(sop);
+	xmlFree(server);
+	LX_ERR("jcs:execute: only connections with protocol \"raw\" supported\n");
+        return;
+    }
+
+    /*
+     * Read a line of text from the socket
+     */
+    char *cp = js_session_receive((char *)server);
+    if (cp) {
+	xmlXPathReturnString(ctxt, xmlStrdup((const xmlChar *) cp));
+    } else {
+	xmlXPathReturnString(ctxt, xmlStrdup((const xmlChar *) ""));
+    }
+
+    xmlXPathFreeObject(sop);
+    xmlFree(server);
+
+    return;
+}
+
+/*
+ * Usage:
  *     var $results = jcs:execute($connection,  $rpc);
  *
  * Takes the connection handle,  execute the given rpc in the connection
@@ -658,6 +791,13 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
 	LX_ERR("jcs:execute: null argument\n");
 	return;
 	
+    }
+    if (stype == ST_RAW) {
+	xmlXPathFreeObject(xop);
+	xmlXPathFreeObject(sop);
+	xmlFree(server);
+	LX_ERR("jcs:execute: connections with protocol \"raw\" not supported\n");
+        return;
     }
 
     /*
@@ -1350,6 +1490,8 @@ ext_jcs_register_all (void)
 {
     slaxExtRegisterOther (JCS_FULL_NS);
 
+    slaxRegisterFunction(JCS_FULL_NS, "receive", ext_jcs_receive);
+    slaxRegisterFunction(JCS_FULL_NS, "send", ext_jcs_send);
     slaxRegisterFunction(JCS_FULL_NS, "close", ext_jcs_close);
     slaxRegisterFunction(JCS_FULL_NS, "dampen", ext_jcs_dampen);
     slaxRegisterFunction(JCS_FULL_NS, "execute", ext_jcs_execute);
