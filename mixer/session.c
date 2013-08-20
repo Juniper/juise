@@ -18,6 +18,7 @@
 #include "forwarder.h"
 #include "request.h"
 #include "db.h"
+#include <sys/ioctl.h>
 
 static char *known_hosts;
 
@@ -71,12 +72,21 @@ mx_session_create (LIBSSH2_SESSION *session, int sock,
     TAILQ_INSERT_HEAD(&mx_sock_list, &mssp->mss_base, ms_link);
     mx_sock_count += 1;
 
-    MX_LOG("S%u new %s, fd %u, target %s/%s",
-	   mssp->mss_base.ms_id, mx_sock_type(&mssp->mss_base),
+    MX_LOG("%s new %s, fd %u, target %s/%s",
+	   mx_sock_title(&mssp->mss_base), mx_sock_type(&mssp->mss_base),
 	   mssp->mss_base.ms_sock, mssp->mss_target,
 	   mssp->mss_canonname ?: "");
 
     return mssp;
+}
+
+static void
+mx_session_establish (mx_sock_session_t *mssp, mx_request_t *mrp)
+{
+    mx_request_set_state(mrp, MSS_ESTABLISHED);
+
+    if (opt_keepalive)
+	libssh2_keepalive_config(mssp->mss_session, 1, opt_keepalive);
 }
 
 /*
@@ -190,7 +200,7 @@ mx_session_check_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp)
     bp += snprintf_safe(bp, ep - bp, ".\n");
     bp += snprintf_safe(bp, ep - bp, "Do you want to accept this host key?");
 
-    mx_log("S%u hostkey check [%s]", mssp->mss_base.ms_id, buf);
+    mx_log("%s hostkey check [%s]", mx_sock_title(&mssp->mss_base), buf);
 
     if (client && mx_mti(client)->mti_check_hostkey)
 	return mx_mti(client)->mti_check_hostkey(client, mrp, buf);
@@ -234,14 +244,14 @@ mx_session_check_agent (mx_sock_session_t *session, mx_request_t *mrp UNUSED,
 	}
 
 	if (libssh2_agent_userauth(agent, user, identity) == 0) {
-	    mx_log("S%u ssh auth username %s, public key %s succeeded",
-		   session->mss_base.ms_id, user, identity->comment);
+	    mx_log("%s ssh auth username %s, public key %s succeeded",
+		   mx_sock_title(&session->mss_base), user, identity->comment);
 	    /* Rah!!  We're authenticated now */
 	    return TRUE;
 	}
 
-	mx_log("S%u ssh auth username %s, public key %s failed",
-	       session->mss_base.ms_id, user, identity->comment);
+	mx_log("%s ssh auth username %s, public key %s failed",
+	       mx_sock_title(&session->mss_base), user, identity->comment);
 
 	prev_identity = identity;
     }
@@ -250,7 +260,7 @@ mx_session_check_agent (mx_sock_session_t *session, mx_request_t *mrp UNUSED,
 }
 
 static int
-mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
+mx_session_check_keyfile (mx_sock_session_t *mssp, mx_request_t *mrp,
 			  const char *user)
 {
     mx_sock_t *msp = mrp->mr_client;
@@ -268,7 +278,7 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
 	 * We got here with no passphrase; must be the initial attempt.
 	 * Try to decrypt with no (empty) passphrase.
 	 */
-	if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
+	if (libssh2_userauth_publickey_fromfile(mssp->mss_session, user,
 						keyfile1, keyfile2, NULL)) {
 	    /* Ignore failure */
 	} else {
@@ -279,7 +289,7 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
     }
 
     if (passphrase && *passphrase) {
-	if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
+	if (libssh2_userauth_publickey_fromfile(mssp->mss_session, user,
 						keyfile1, keyfile2,
 						passphrase)) {
 	    mx_log("R%u Authentication by new public key failed", mrp->mr_id);
@@ -292,7 +302,7 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
     }
 
     if (db_passphrase) {
-	if (libssh2_userauth_publickey_fromfile(session->mss_session, user,
+	if (libssh2_userauth_publickey_fromfile(mssp->mss_session, user,
 						keyfile1, keyfile2,
 						db_passphrase)) {
 	    mx_log("R%u Authentication by existing public key failed",
@@ -323,32 +333,33 @@ mx_session_check_keyfile (mx_sock_session_t *session, mx_request_t *mrp,
     return FALSE;
 
  success:
-    mx_request_set_state(mrp, MSS_ESTABLISHED);
+    mx_session_establish(mssp, mrp);
+
     return FALSE;
 }
 
 static int
-mx_session_check_password (mx_sock_session_t *session, mx_request_t *mrp,
+mx_session_check_password (mx_sock_session_t *mssp, mx_request_t *mrp,
 			  const char *user)
 {
     mx_sock_t *msp = mrp->mr_client;
     const char *password = mrp->mr_password;
 
     if (password == NULL)
-	password = mx_password(session->mss_target, user);
+	password = mx_password(mssp->mss_target, user);
 
     if (password && *password) {
-        if (libssh2_userauth_password(session->mss_session, user, password)) {
-	    session->mss_pwfail += 1;
-            mx_log("S%u authentication by password failed (%u)",
-		   session->mss_base.ms_id, session->mss_pwfail);
-	    if (session->mss_pwfail > MAX_PWFAIL)
+        if (libssh2_userauth_password(mssp->mss_session, user, password)) {
+	    mssp->mss_pwfail += 1;
+            mx_log("%s authentication by password failed (%u)",
+		   mx_sock_title(&mssp->mss_base), mssp->mss_pwfail);
+	    if (mssp->mss_pwfail > MAX_PWFAIL)
 		return FALSE;
         } else {
-	    mx_log("S%u ssh auth username %s, password succeeded",
-		   session->mss_base.ms_id, user);
+	    mx_log("%s ssh auth username %s, password succeeded",
+		   mx_sock_title(&mssp->mss_base), user);
 	    /* We're authenticated now */
-	    mx_request_set_state(mrp, MSS_ESTABLISHED);
+            mx_session_establish(mssp, mrp);
 
 	    /* Save to in-memory cache as well as db */
 	    mx_password_save(mrp->mr_target, user, password);
@@ -419,8 +430,8 @@ mx_session_check_auth (mx_sock_session_t *mssp, mx_request_t *mrp)
 	    goto success;
     }
 
-    mx_log("S%u no supported authentication methods found",
-	   mssp->mss_base.ms_id);
+    mx_log("%s no supported authentication methods found",
+	   mx_sock_title(&mssp->mss_base));
 
     mx_request_set_state(mrp, MSS_FAILED);
     return TRUE;
@@ -428,7 +439,8 @@ mx_session_check_auth (mx_sock_session_t *mssp, mx_request_t *mrp)
  success:
     mx_log("R%u auth'd session is established; S%u",
 	   mrp->mr_id, mssp->mss_base.ms_id);
-    mx_request_set_state(mrp, MSS_ESTABLISHED);
+    mx_session_establish(mssp, mrp);
+
     return FALSE;
 }
 
@@ -525,9 +537,6 @@ mx_session_open (mx_request_t *mrp)
         return NULL;
     }
 
-    if (opt_keepalive)
-	libssh2_keepalive_config(session, 1, opt_keepalive);
-
     /*
      * We allocate the mx_sock_session_t now, knowing that we may
      * still have problems.  If we don't make it thru, we use the
@@ -547,16 +556,19 @@ mx_session_open (mx_request_t *mrp)
 
     if (mx_session_check_hostkey(mssp, mrp)) {
 	mx_request_set_state(mrp, MSS_HOSTKEY);
-	mx_log("S%u R%u waiting for hostkey check; client S%u",
-	       mssp->mss_base.ms_id, mrp->mr_id, mrp->mr_client->ms_id);
+	mx_log("%s R%u waiting for hostkey check; client S%u",
+	       mx_sock_title(&mssp->mss_base), mrp->mr_id,
+               mrp->mr_client->ms_id);
 	return mssp;
     }
 
     if (mx_session_check_auth(mssp, mrp)) {
-	mx_log("S%u R%u waiting for auth; client S%u",
-	       mssp->mss_base.ms_id, mrp->mr_id, mrp->mr_client->ms_id);
-    } else
-	mx_request_set_state(mrp, MSS_ESTABLISHED);
+	mx_log("%s R%u waiting for auth; client S%u",
+	       mx_sock_title(&mssp->mss_base), mrp->mr_id,
+               mrp->mr_client->ms_id);
+    } else {
+	mx_session_establish(mssp, mrp);
+    }
 
     return mssp;
 }
@@ -625,8 +637,9 @@ mx_session_prep (MX_TYPE_PREP_ARGS)
     unsigned long read_avail = 0;
     int buf_input = FALSE, buf_output = FALSE;
 
-    DBG_POLL("S%u prep: readable %s",
-	     msp->ms_id, mx_sock_isreadable(msp->ms_id) ? "yes" : "no");
+    DBG_POLL("%s prep: readable %s",
+	     mx_sock_title(msp),
+             mx_sock_isreadable(msp->ms_sock) ? "yes" : "no");
 
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
 	if (!buf_input) {
@@ -676,7 +689,7 @@ mx_session_prep (MX_TYPE_PREP_ARGS)
 	    if (0 && *timeout > next)
 		*timeout = next;
 	} else {
-	    mx_log("S%u keepalive failed: %d", msp->ms_sock, rc);
+	    mx_log("%s keepalive failed: %d", mx_sock_title(msp), rc);
 	    mssp->mss_base.ms_state = MSS_FAILED;
 	}
     }
@@ -685,15 +698,48 @@ mx_session_prep (MX_TYPE_PREP_ARGS)
 }
 
 static int
+mx_channel_count (mx_channel_list_t *what)
+{
+    mx_channel_t *mcp;
+    int count = 0;
+
+    TAILQ_FOREACH(mcp, what, mc_link) {
+        count += 1;
+    }
+
+    return count;
+}
+
+static inline int
+mx_sock_bytes_outstanding (mx_sock_t *msp UNUSED)
+{
+#ifdef FIONREAD
+    int readable;
+
+    if (ioctl(msp->ms_sock, FIONREAD, &readable) < 0)
+        return -1;
+    return readable;
+
+#else /* FIONREAD */
+    return 1024;                /* XXX Pathetic fake */
+#endif /* FIONREAD */
+}
+
+static int
 mx_session_poller (MX_TYPE_POLLER_ARGS)
 {
     mx_sock_session_t *mssp = mx_sock(msp, MST_SESSION);
     mx_channel_t *mcp;
     mx_channel_t *dead = NULL;
+    int rc;
 
-    DBG_POLL("S%u processing (%p/0x%x) readable %s",
-	     msp->ms_id, pollp, pollp ? pollp->revents : 0,
-	     mx_sock_isreadable(msp->ms_sock) ? "yes" : "no");
+    DBG_POLL("%s processing (%p/0x%x) readable %s, channels %d, release %d, "
+             "outstanding: %d",
+	     mx_sock_title(msp), pollp, pollp ? pollp->revents : 0,
+	     mx_sock_isreadable(msp->ms_sock) ? "yes" : "no",
+             mx_channel_count(&mssp->mss_channels),
+             mx_channel_count(&mssp->mss_released),
+             mx_sock_bytes_outstanding(msp));
 
 #if 0
     if (mx_sock_isreadable(msp->ms_sock) && TAILQ_EMPTY(&mssp->mss_channels)
@@ -702,16 +748,17 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
 	 * Interesting development; we have no channels, but the
 	 * socket is readable.  Something must be going very wrong.
 	 */
-	mx_log("S%u input with no channels, failed", msp->ms_id);
+	mx_log("%s input with no channels, failed", mx_sock_title(msp));
 	mssp->mss_base.ms_state = MSS_FAILED;
 	return TRUE;
     }
 #endif
 
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
-
 	for (;;) {
-	    if (mx_channel_handle_input(mcp))
+            rc = mx_channel_handle_input(mcp);
+            mx_log("C%u: handle input returns %d", mcp->mc_id, rc);
+	    if (rc)
 		break;
 	}
 
@@ -725,6 +772,10 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
     TAILQ_FOREACH(mcp, &mssp->mss_released, mc_link) {
 	unsigned long read_avail = 0;
 	libssh2_channel_window_read_ex(mcp->mc_channel, &read_avail, NULL);
+        mx_log("C%u check released: %lu%s",
+               mcp->mc_id, read_avail,
+               libssh2_channel_eof(mcp->mc_channel) ? " EOF" : "");
+
 	if (read_avail) {
 	    DBG_POLL("C%u read avail on released channel: %lu",
 		     mcp->mc_id, read_avail);
@@ -735,6 +786,11 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
 	    mx_log("C%u: disconnect, eof", mcp->mc_id);
 	    dead = mcp;
 	}
+
+        rc = mx_channel_handle_input(mcp);
+        if (rc < 0)
+            mx_log("C%u: handle input returns %d for released channel",
+                   mcp->mc_id, rc);
     }
 
     if (dead) {
@@ -742,7 +798,7 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
 	mx_channel_close(dead);
     }
 
-    DBG_POLL("S%u done, readable %s", msp->ms_id,
+    DBG_POLL("%s poll done, readable %s", mx_sock_title(msp),
 	     mx_sock_isreadable(msp->ms_sock) ? "yes" : "no");
 
     return FALSE;
@@ -754,6 +810,7 @@ mx_session_init (void)
     static mx_type_info_t mti = {
     mti_type: MST_SESSION,
     mti_name: "session",
+    mti_letter: "S",
     mti_print: mx_session_print,
     mti_prep: mx_session_prep,
     mti_poller: mx_session_poller,
