@@ -417,7 +417,7 @@ ext_jcs_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
 		} else if (value && streq(value, "junoscript")) {
 		    *stype = ST_JUNOSCRIPT;
 		} else if (value && streq(value, "shell")) {
-		    *stype = ST_RAW;
+		    *stype = ST_SHELL;
 		}
 	    }
 	}
@@ -653,11 +653,11 @@ ext_jcs_send (xmlXPathParserContext *ctxt, int nargs)
     if (server == NULL) {
 	xmlXPathFreeObject(xop);
 	xmlXPathFreeObject(sop);
-	LX_ERR("jcs:execute: null argument\n");
+	LX_ERR("jcs:send: null argument\n");
 	return;
 	
     }
-    if (stype != ST_RAW) {
+    if (stype != ST_SHELL) {
 	xmlXPathFreeObject(xop);
 	xmlXPathFreeObject(sop);
 	xmlFree(server);
@@ -720,7 +720,7 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
 	return;
 	
     }
-    if (stype != ST_RAW) {
+    if (stype != ST_SHELL) {
 	xmlXPathFreeObject(sop);
 	xmlFree(server);
 	LX_ERR("jcs:execute: only connections with protocol \"shell\" supported\n");
@@ -792,7 +792,7 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
 	return;
 	
     }
-    if (stype == ST_RAW) {
+    if (stype == ST_SHELL) {
 	xmlXPathFreeObject(xop);
 	xmlXPathFreeObject(sop);
 	xmlFree(server);
