@@ -50,6 +50,8 @@ mx_console_split_args (char *buf, const char **args, int max_args)
     int i;
     char *s;
 
+    buf += strspn(buf, wsp);
+
     for (i = 0; (s = strsep(&buf, wsp)) && i < max_args - 1; i++) {
 	args[i] = s;
 
@@ -146,6 +148,7 @@ mx_console_init (void)
     static mx_type_info_t mti = {
     mti_type: MST_CONSOLE,
     mti_name: "console",
+    mti_letter: "P",
     mti_poller: mx_console_poller,
     };
 
