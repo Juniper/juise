@@ -703,34 +703,47 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
     xmlChar *server = NULL;
     session_type_t stype = ST_DEFAULT; /* Default session */
 
-    if (nargs != 1) {
+    if ((nargs < 1) || (nargs > 2)) {
 	xmlXPathSetArityError(ctxt);
 	return;
     }
 
+    char *timeout;
+    time_t secs = JS_READ_TIMEOUT;
+    if (nargs == 2) {
+	timeout = (char *) xmlXPathPopString(ctxt);
+	if (timeout == NULL) {
+	    LX_ERR("jcs:receive: null argument\n");
+	    return;
+	}
+        secs = atoi(timeout);
+        xmlFree(timeout);
+    } 
+
     xmlXPathObject *sop = valuePop(ctxt);
     if (sop == NULL) {
-	LX_ERR("jcs:execute: null argument\n");
+	LX_ERR("jcs:receive: null argument\n");
 	return;
     }
     ext_jcs_extract_scookie(sop->nodesetval, &server, &stype);
     if (server == NULL) {
 	xmlXPathFreeObject(sop);
-	LX_ERR("jcs:execute: null argument\n");
+	LX_ERR("jcs:receive: null argument\n");
 	return;
 	
     }
     if (stype != ST_SHELL) {
 	xmlXPathFreeObject(sop);
 	xmlFree(server);
-	LX_ERR("jcs:execute: only connections with protocol \"shell\" supported\n");
+	LX_ERR("jcs:receive: only connections with protocol \"shell\" "
+	       "supported\n");
         return;
     }
 
     /*
      * Read a line of text from the socket
      */
-    char *cp = js_session_receive((char *)server);
+    char *cp = js_session_receive((char *)server, secs);
     if (cp) {
 	xmlXPathReturnString(ctxt, xmlStrdup((const xmlChar *) cp));
     } else {

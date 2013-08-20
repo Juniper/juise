@@ -1640,7 +1640,7 @@ js_session_send (const char *host_name, const xmlChar *rpc_name)
  * Receive a string in the given host_name's JUNOScript session.
  */
 char *
-js_session_receive (const char *host_name)
+js_session_receive (const char *host_name, time_t secs)
 {
     js_session_t *jsp;
 
@@ -1659,7 +1659,7 @@ js_session_receive (const char *host_name)
 	return "";
     }
 
-    char *cp = js_gets_timed(jsp, JS_READ_TIMEOUT, 0);
+    char *cp = js_gets_timed(jsp, secs, 0);
 
     return cp;
 }
