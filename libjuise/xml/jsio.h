@@ -25,7 +25,7 @@ typedef enum session_type_s {
     ST_JUNOSCRIPT,
     ST_NETCONF,
     ST_JUNOS_NETCONF,
-    ST_RAW,
+    ST_SHELL,
     ST_MAX,
 } session_type_t;
 
@@ -225,7 +225,7 @@ js_session_t *
 js_session_open_server (int fdin, int fdout, session_type_t stype, int flags);
 
 int
-js_raw_session_init (js_session_t *jsp);
+js_shell_session_init (js_session_t *jsp);
 
 int
 js_session_init (js_session_t *jsp);

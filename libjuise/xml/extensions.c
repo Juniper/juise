@@ -416,7 +416,7 @@ ext_jcs_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
 		    *stype = ST_JUNOS_NETCONF;
 		} else if (value && streq(value, "junoscript")) {
 		    *stype = ST_JUNOSCRIPT;
-		} else if (value && streq(value, "raw")) {
+		} else if (value && streq(value, "shell")) {
 		    *stype = ST_RAW;
 		}
 	    }
@@ -451,7 +451,7 @@ jsopts_free (js_session_opts_t *jsop)
  *    var $connection = jcs:open($server, $username, $passphrase);  
  *    var $connection = jcs:open($server, $blob);
  *             where $blob := {
- *                       <method> "junoscript" | "netconf" | "raw";
+ *                       <method> "junoscript" | "netconf" | "shell";
  *                       <username> $username;
  *                       <passphrase> $passphrase;
  *                  }
@@ -661,7 +661,7 @@ ext_jcs_send (xmlXPathParserContext *ctxt, int nargs)
 	xmlXPathFreeObject(xop);
 	xmlXPathFreeObject(sop);
 	xmlFree(server);
-	LX_ERR("jcs:send: only connections with protocol \"raw\" supported\n");
+	LX_ERR("jcs:send: only connections with protocol \"shell\" supported\n");
         return;
     }
 
@@ -723,7 +723,7 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
     if (stype != ST_RAW) {
 	xmlXPathFreeObject(sop);
 	xmlFree(server);
-	LX_ERR("jcs:execute: only connections with protocol \"raw\" supported\n");
+	LX_ERR("jcs:execute: only connections with protocol \"shell\" supported\n");
         return;
     }
 
@@ -796,7 +796,7 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
 	xmlXPathFreeObject(xop);
 	xmlXPathFreeObject(sop);
 	xmlFree(server);
-	LX_ERR("jcs:execute: connections with protocol \"raw\" not supported\n");
+	LX_ERR("jcs:execute: connections with protocol \"shell\" not supported\n");
         return;
     }
 

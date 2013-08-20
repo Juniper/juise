@@ -99,8 +99,8 @@ jsio_session_type_name (session_type_t stype)
     if (stype == ST_JUNOS_NETCONF)
 	return "junos-netconf";
 
-    if (stype == ST_RAW)
-	return "raw";
+    if (stype == ST_SHELL)
+	return "shell";
 
     return NULL;
 }
@@ -117,8 +117,8 @@ jsio_session_type (const char *name)
     if (streq(name, "junos-netconf"))
 	return ST_JUNOS_NETCONF;
 
-    if (streq(name, "raw"))
-	return ST_RAW;
+    if (streq(name, "shell"))
+	return ST_SHELL;
 
     return ST_MAX;
 }
@@ -923,10 +923,10 @@ js_session_create (const char *host_name, char **argv,
 }
 
 /*
- * Initialize RAW session.
+ * Initialize SHELL session.
  */
 int
-js_raw_session_init (js_session_t *jsp)
+js_shell_session_init (js_session_t *jsp)
 {
 
     /*
@@ -943,7 +943,7 @@ js_raw_session_init (js_session_t *jsp)
     }
 
     /*
-     * Set the "credentials" to NULL, the RAW session type has no use for this information
+     * Set the "credentials" to NULL, the SHELL session type has no use for this information
      */
     jsp->js_creds = NULL;
 
@@ -1205,7 +1205,7 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 		++jsp->js_msgid, rpc_name);
 	break;
 
-    case ST_RAW:
+    case ST_SHELL:
         /* send the string */
 	fprintf(fp, "%s", rpc_name); 
     case ST_DEFAULT:		/* Avoid compiler errors */
@@ -1250,7 +1250,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 			++jsp->js_msgid); 
 		break;
 
-	case ST_RAW:		/* Avoid compiler errors */
+	case ST_SHELL:		/* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
 	    break;
@@ -1277,7 +1277,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 	    fprintf(fp, "</rpc>\n");
 	    break;
 
-	case ST_RAW:		/* Avoid compiler errors */
+	case ST_SHELL:		/* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
 	    break;
@@ -1549,8 +1549,8 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	argv[argc++] = ALLOCADUP("xml-mode");
 	argv[argc++] = ALLOCADUP("netconf");
 	argv[argc++] = ALLOCADUP("need-trailer");
-    } else if (jsop->jso_stype == ST_RAW) {
-        /* raw requires no options */
+    } else if (jsop->jso_stype == ST_SHELL) {
+        /* shell requires no options */
     } else {
 	argv[argc++] = ALLOCADUP("xml-mode");
 	argv[argc++] = ALLOCADUP("need-trailer");
@@ -1573,8 +1573,8 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
-    } else if (jsop->jso_stype == ST_RAW) {
-	if (js_raw_session_init(jsp)) {
+    } else if (jsop->jso_stype == ST_SHELL) {
+	if (js_shell_session_init(jsp)) {
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
@@ -1617,7 +1617,7 @@ js_session_send (const char *host_name, const xmlChar *rpc_name)
 	    return;
     }
 
-    session_type_t stype = ST_RAW;
+    session_type_t stype = ST_SHELL;
 
     jsp = js_session_find(host_name, stype);
     if (!jsp) { 
@@ -1650,7 +1650,7 @@ js_session_receive (const char *host_name)
 	    return "";
     }
 
-    session_type_t stype = ST_RAW;
+    session_type_t stype = ST_SHELL;
 
     jsp = js_session_find(host_name, stype);
     if (!jsp) { 
@@ -1916,7 +1916,7 @@ js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
-    } else if (stype == ST_RAW) {
+    } else if (stype == ST_SHELL) {
         /* do nothing */
     } else {
 	if (js_session_init(jsp)) {
