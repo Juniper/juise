@@ -287,6 +287,7 @@ print_help (const char *opt)
 	    "\t--help: display this message\n"
 	    "\t--home <dir>: specify home directory\n"
 	    "\t--keep-alive <secs> OR -k <secs>: keep-alive timeout\n"
+	    "\t--log <file>: send log message to file\n"
 	    "\t--login: require use login\n"
 	    "\t--no-db: do not use device database\n"
 	    "\t--password <xxx>: use password for device logins\n"
