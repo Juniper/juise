@@ -22,6 +22,8 @@ extern unsigned opt_verbose;
     do { if (opt_debug & _flag) mx_log(_fmt); } while(0)
 #define DBG_POLL(_fmt...) DBG_FLAG(DBG_FLAG_POLL, _fmt)
 
+FILE *
+mx_log_file (FILE *fp);
 
 void
 #ifdef HAVE_PRINTFLIKE
