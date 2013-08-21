@@ -5,3 +5,12 @@ script: uname -a && /bin/sh ./bin/setup.sh && cd build && ../configure && make &
 notifications:
   recipients:
     - libslax-noise@googlegroups.com
+
+before_install:
+  - git clone git://github.com/Juniper/libslax.git
+  - cd libslax && uname -a && /bin/sh ./bin/setup.sh && cd build && ../configure && make && sudo make install
+
+branches:
+  only:
+    - master
+    - stable
