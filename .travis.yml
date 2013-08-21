@@ -13,4 +13,4 @@ before_install:
 branches:
   only:
     - master
-    - stable
+    - develop
