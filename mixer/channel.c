@@ -280,8 +280,9 @@ mx_channel_netconf (mx_sock_session_t *mssp, mx_sock_t *client, int xml_mode)
 
     mcp = TAILQ_FIRST(&mssp->mss_released);
     if (mcp) {
-	mx_log("S%u reusing channel C%u for client S%u",
-	       mssp->mss_base.ms_id, mcp->mc_id, client->ms_id);
+	mx_log("%s reusing channel C%u for client S%u",
+               mx_sock_title(&mssp->mss_base),
+	       mcp->mc_id, client->ms_id);
 
 	TAILQ_REMOVE(&mssp->mss_released, mcp, mc_link);
 	TAILQ_INSERT_HEAD(&mssp->mss_channels, mcp, mc_link);
@@ -299,18 +300,19 @@ mx_channel_netconf (mx_sock_session_t *mssp, mx_sock_t *client, int xml_mode)
 
     channel = libssh2_channel_open_session(mssp->mss_session);
     if (channel == NULL) {
-	mx_log("S%u could not open netconf channel", mssp->mss_base.ms_id);
+	mx_log("%s could not open netconf channel",
+               mx_sock_title(&mssp->mss_base));
 	return NULL;
     }
 
     if (!xml_mode) {
 	if (libssh2_channel_subsystem(channel, "netconf") != 0) {
-	    mx_log("S%u could not open netconf subsystem",
-		   mssp->mss_base.ms_id);
+	    mx_log("%s could not open netconf subsystem",
+		   mx_sock_title(&mssp->mss_base));
 	    goto try_xml_mode;
 	}
-	mx_log("S%u opened netconf subsystem channel to %s",
-	       mssp->mss_base.ms_id, mssp->mss_target);
+	mx_log("%s opened netconf subsystem channel to %s",
+	       mx_sock_title(&mssp->mss_base), mssp->mss_target);
     } else {
 	static const char command[] = "xml-mode netconf need-trailer";
 
@@ -318,20 +320,21 @@ mx_channel_netconf (mx_sock_session_t *mssp, mx_sock_t *client, int xml_mode)
 	if (libssh2_channel_process_startup(channel,
 					    "exec", sizeof("exec") - 1,
 					    command, strlen(command)) != 0) {
-	    mx_log("S%u could not open netconf xml-mode",
-		   mssp->mss_base.ms_id);
+	    mx_log("%s could not open netconf xml-mode",
+		   mx_sock_title(&mssp->mss_base));
 	    libssh2_channel_free(channel);
 	    channel = NULL;
 	} else {
-	    mx_log("S%u opened netconf xml-mode channel to %s",
-		   mssp->mss_base.ms_id, mssp->mss_target);
+	    mx_log("%s opened netconf xml-mode channel to %s",
+		   mx_sock_title(&mssp->mss_base), mssp->mss_target);
 	}
     }
 
     libssh2_session_set_blocking(mssp->mss_session, 0);
 
     if (channel == NULL) {
-	mx_log("S%u could not open netconf channel", mssp->mss_base.ms_id);
+	mx_log("%s could not open netconf channel",
+               mx_sock_title(&mssp->mss_base));
 	return NULL;
     }
 
@@ -505,14 +508,14 @@ mx_channel_handle_input (mx_channel_t *mcp)
 	if (len == LIBSSH2_ERROR_EAGAIN) {
 	    /* Nothing to read, nothing to write; move on */
 	    DBG_POLL("C%u is drained", mcp->mc_id);
-	    return TRUE;
+	    return 1;
 
 	} else if (libssh2_channel_eof(mcp->mc_channel)) {
 	    DBG_POLL("C%u is at eof", mcp->mc_id);
-	    return TRUE;
+	    return 1;
 
 	} else if (len < 0) {
-	    return TRUE;
+	    return len;
 
 	} else {
 	    mbp->mb_len = len;
@@ -527,7 +530,7 @@ mx_channel_handle_input (mx_channel_t *mcp)
      */
     if (mcp->mc_client == NULL
 	    || mx_mti(mcp->mc_client)->mti_write(mcp->mc_client, mcp, mbp))
-	return TRUE;
+	return 1;
 
     /*
      * If we're in IDLE/INIT state and we're seen the end-of-frame
@@ -550,7 +553,7 @@ mx_channel_handle_input (mx_channel_t *mcp)
 	mx_channel_release(mcp);
     }
 
-    return FALSE;
+    return 0;
 }
 
 int

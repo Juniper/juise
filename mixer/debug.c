@@ -14,6 +14,18 @@
 unsigned opt_debug;
 unsigned opt_verbose;
 
+static FILE *mx_log_fp;
+
+FILE *
+mx_log_file (FILE *fp)
+{
+    FILE *old = mx_log_fp;
+    mx_log_fp = fp;
+    if (fp)
+        setlinebuf(fp);
+    return old;
+}
+
 void
 #ifdef HAVE_PRINTFLIKE
 __printflike(1, 2)
@@ -29,7 +41,7 @@ mx_log (const char *fmt, ...)
     cfmt[len + 1] = '\0';
 
     va_start(vap, fmt);
-    vfprintf(stderr, cfmt, vap);
+    vfprintf(mx_log_fp ?: stderr, cfmt, vap);
     va_end(vap);
 }
 
@@ -43,7 +55,7 @@ mx_log_callback (void *opaque UNUSED, const char *fmt, va_list vap)
     cfmt[len] = '\n';
     cfmt[len + 1] = '\0';
 
-    vfprintf(stderr, cfmt, vap);
+    vfprintf(mx_log_fp ?: stderr, cfmt, vap);
 }
 
 static void
