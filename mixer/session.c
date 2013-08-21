@@ -772,9 +772,9 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
     TAILQ_FOREACH(mcp, &mssp->mss_released, mc_link) {
 	unsigned long read_avail = 0;
 	libssh2_channel_window_read_ex(mcp->mc_channel, &read_avail, NULL);
-        mx_log("C%u check released: %lu%s",
-               mcp->mc_id, read_avail,
-               libssh2_channel_eof(mcp->mc_channel) ? " EOF" : "");
+        DBG_POLL("C%u check released: %lu%s",
+                 mcp->mc_id, read_avail,
+                 libssh2_channel_eof(mcp->mc_channel) ? " EOF" : "");
 
 	if (read_avail) {
 	    DBG_POLL("C%u read avail on released channel: %lu",
