@@ -204,7 +204,7 @@ main_loop (void)
 		goto failure;
 	}
 
-        mx_log("poll<: nfd %d, timeout %d", nfd, timeout);
+        DBG_POLL("poll<: nfd %d, timeout %d", nfd, timeout);
 
 	struct timeval tv_begin, tv_end;
 	gettimeofday(&tv_begin, NULL);
