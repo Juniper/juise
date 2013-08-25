@@ -115,6 +115,7 @@ typedef struct mx_request_s {
     unsigned mr_id;		/* Request ID (our ID) */
     unsigned mr_state;		/* State of this request */
     mx_muxid_t mr_muxid;	/* Muxer ID (client's ID) */
+    unsigned mr_flags;          /* Flags for this request */
     char *mr_name;		/* Request name (tag) */
     char *mr_target;		/* Target name (could be alias) */
     char *mr_fulltarget;        /* Full target name (user@host:port) */
@@ -131,6 +132,9 @@ typedef struct mx_request_s {
     struct mx_channel_s *mr_channel; /* Our SSH channel */
     mx_buffer_t *mr_rpc;	     /* The RPC we're attempting */
 } mx_request_t;
+
+/* Flags for mr_flags */
+#define MRF_NOCREATE      (1<<0)  /* Do not create a new session */
 
 typedef struct mx_sock_s {
     mx_sock_link_t ms_link;	/* List of all open sockets */
