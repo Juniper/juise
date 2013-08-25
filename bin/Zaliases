@@ -17,7 +17,7 @@ set opts=' \
 --with-libssh2-prefix=/Users/phil/work/root \
 --with-sqlite3-prefix=/opt/local \
 --with-lighttpd-lib=/Users/phil/work/root/lib \
---with-php-cgi=/opt/local/bin/php-cgi53 \
+--with-php-cgi=/opt/local/bin/php-cgi \
 '
 set opts=`echo $opts`
 
