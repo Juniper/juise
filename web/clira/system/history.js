@@ -17,16 +17,14 @@ jQuery(function($) {
                 command: "show command history",
                 help: "Display list of all the commands executed along with "
                     + "timestamp",
+                templateFile: '/clira/templates/show-history.hbs',
                 execute: function ($output, cmd, parse, poss) {
-                    var history = $.clira.cmdHistory.show(),
-                        html = '';
-                    for (var i = history.length - 1; i >= 0; i--) {
-                        html += "<div class='history-element'><span "
-                              + "class='command'>" + history[i]['command'] 
-                              + "</span> - <span class='date'>"
-                              + new Date(history[i]['on']) + "</span></div>";
-                    }
-                    $output.html(html);
+                    var output = {
+                        history: Clira.CommandHistoryController.create({
+                            content: Clira.CommandHistory.find()
+                        })
+                    };
+                    return output;
                 }
             },
             {
