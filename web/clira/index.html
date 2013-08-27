@@ -15,13 +15,18 @@
       <div class="logo">
         <img src="/images/logo.png" height="50px" border="0" />
       </div>
-      <div id="command-top">
-        <table id="command-input-box" class="input-box focus-on" cellpadding="1px" cellspacing="1px">
-          <tr>
-            <td>{{render 'commandInput'}}</td>
-            <td width="16px">{{render 'pulldown'}}</td>
-          </tr>
-        </table>
+      <div id="input-history">
+        <div id="command-top">
+          <table id="command-input-box" class="input-box focus-on" cellpadding="1px" cellspacing="1px">
+            <tr>
+              <td>{{render 'commandInput'}}</td>
+              <td width="16px">{{render 'pulldown'}}</td>
+            </tr>
+          </table>
+        </div>
+        <div id="mru-pulldown">
+          {{render 'mruPulldown'}}
+        </div>
       </div>
       <div class="input-enter">{{view Clira.EnterButton}}</div>
     </div>
@@ -65,15 +70,23 @@
     </div>
   </script>
 
+  <script type="text/x-handlebars" data-template-name="mru_pulldown">
+    {{#each mru itemViewClass="Clira.MruItemView"}}
+      {{this}}
+    {{/each}}
+  </script>
+
   <script src="/external/jquery/jquery.js"></script>
   <script src="/external/jquery-ui/jquery-ui-1.10.2.js"></script>
   <script src="/external/handlebars/handlebars.js"></script>
   <script src="/external/ember/ember-1.0.0-rc.6.1.js"></script>
+  <script src="/external/ember-restless/ember-restless+extras.js"></script>
   <script src="/jquery/jquery.dbgpr.js"></script>
   <script src="parser.js"></script>
   <script src="parser.types.js"></script>
   <script src="builtins.js"></script>
   <script src="app.js"></script>
+  <script src="models.js"></script>
   <script src="views.js"></script>
   <script src="controllers.js" id="last-script-in-header"></script>
 </body>

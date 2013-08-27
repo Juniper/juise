@@ -84,6 +84,16 @@ Clira.CommandInputController = Em.ObjectController.extend({
          */
         this.get('controllers.outputs')
             .unshiftObject(Clira.OutputContainerController.create(content));
+
+        // Save command into history
+        var history = Clira.CommandHistory.create({
+            command: $.trim(this.command),
+            on: new Date().getTime()
+        });
+        history.saveRecord();
+
+        // Reset command input field 
+        this.set('command', '');
     }
 });
 
@@ -108,4 +118,69 @@ Clira.OutputContainerController = Em.ObjectController.extend({
         // Set template name to be used for output content
         this.contentTemplate = this.get('contentTemplate');
     }
+});
+
+
+/*
+ * Controller for pulldown icon to toggle the visibility of pulldown view
+ */
+Clira.PulldownController = Em.ObjectController.extend({
+    needs: ['mruPulldown'],
+
+    toggleMruPulldown: function() {
+        this.get('controllers.mruPulldown').toggleProperty('visible');
+    }
+});
+
+
+/*
+ * Controller for mru pulldown view
+ */
+Clira.MruPulldownController = Em.ArrayController.extend({
+    needs: ['commandInput'],
+    visible: false,
+
+    // Get the history from CommandHistory model and set it to content on init
+    init: function() {
+        this.set('content', Clira.CommandHistory.find());
+    },
+   
+    // Most recently used command list as a computed property on content
+    mru: function() {
+        var ru = Em.A(),
+            command;
+        
+        // Iterate over command history and maintain mru list
+        this.content.uniq().forEach(function(item) {
+            command = item.get('command');
+            if (command) {
+                /*
+                 * If we are seeing this the first time, insert it into the 
+                 * array, otherwise pull it to the top
+                 */
+                if (ru.contains(command)) {
+                    ru.removeObject(command);
+                }
+                ru.insertAt(0, command);
+            }
+        });
+        return ru;
+    }.property('content'),
+
+    /*
+     * Observe command input field for changes and update content which will 
+     * then update computed property mru
+     */
+    updateMru: function() {
+        this.set('content', Clira.CommandHistory.find());
+    }.observes('controllers.commandInput.command')
+ });
+
+
+/*
+ * Controller to order commands saved in CommandHistory model
+ */
+Clira.CommandHistoryController = Em.ArrayController.extend({
+    sortAscending: false,
+    sortProperties: ['on']
 });

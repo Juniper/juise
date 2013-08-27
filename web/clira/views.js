@@ -98,6 +98,7 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
     }
 });
 
+
 /*
  * Extending Ember's ContainerView, this view deals with the output from each
  * command run. This view houses two child views, one for the header and the
@@ -137,6 +138,7 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
     }
 });
 
+
 /*
  * Extend ButtonView to define a pulldown icon/button
  */
@@ -145,8 +147,13 @@ Clira.PulldownIcon = JQ.ButtonView.extend({
     text: false,
     icons: {
         primary: 'ui-icon-triangle-1-s'
+    },
+
+    click: function() {
+        this.get('controller').toggleMruPulldown();
     }
 });
+
 
 /*
  * Extend ButtonView to defined Enter button with label
@@ -158,3 +165,41 @@ Clira.EnterButton = JQ.ButtonView.extend({
         this.get('parentView').CommandInput.insertNewline();
     }
 })
+
+
+/*
+ * View to handle most recently used commands list pulldown. This view is 
+ * displayed when user clicks on pulldown icon.
+ */
+Clira.MruPulldownView = Ember.View.extend({
+    classNames: ['ui-menu', 'pulldown'],
+
+    // Hide the view when not in focus
+    mouseLeave: function() {
+        this.set('isVisible', false);
+    },
+
+    // Observe controller's visible property and change visibility
+    toggleVisibility: function() {
+        this.toggleProperty('isVisible');
+    }.observes('controller.visible')
+});
+
+
+/*
+ * View to display commands in mru pulldown list
+ */
+Clira.MruItemView = Ember.View.extend({
+    classNames: ['mru-item'],
+
+    click: function() {
+        var commandInputView = this.get('parentView').get('parentView')
+                                   .CommandInput;
+        // Set the command
+        commandInputView.get('controller').set('command',this.content);
+        commandInputView.$().focus();
+
+        // Hide mru pulldown view
+        this.get('parentView').get('controller').toggleProperty('visible');
+    }
+});
