@@ -84,6 +84,9 @@ Clira.CommandInputController = Em.ObjectController.extend({
                 on: new Date().getTime()
             });
             history.saveRecord();
+
+            // Set parseErrors to null so we don't render it
+            parseErrors = null;
         }
 
         var content = {
