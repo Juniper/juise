@@ -1,9 +1,15 @@
-<div class='show-command-top'>
-    {{#each history}}
-        <div class='history-element'>
-            <span class='show-command-name'>{{command}}</span>
-             - 
-            <span class='date'>{{on}}</span>
-        </div>
-    {{/each}}
-</div>
+<script type="text/x-handlebars" data-template-name="show-history">
+  {{#each history}}
+    <div class='history-element'>
+      <span class='show-command-name'>{{command}}</span>
+        - 
+      <span class='date'>{{on}}</span>
+    </div>
+  {{/each}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="clear-history">
+  {{#if message}}
+    {{view Clira.MessageView contentBinding="this"}}
+  {{/if}}
+</script>

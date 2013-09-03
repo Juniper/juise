@@ -12,12 +12,13 @@
 jQuery(function($) {
     jQuery.clira.commandFile({
         name: "history",
+        templatesFile: '/clira/templates/history.hbs',
         commands: [
             {
                 command: "show command history",
                 help: "Display list of all the commands executed along with "
                     + "timestamp",
-                templateFile: '/clira/templates/show-history.hbs',
+                templateName: "show-history",
                 execute: function ($output, cmd, parse, poss) {
                     var output = {
                         history: Clira.CommandHistoryController.create({
@@ -30,9 +31,17 @@ jQuery(function($) {
             {
                 command: "clear command history",
                 help: "Clears history of executed commands",
+                templateName: "clear-history",
                 execute: function ($output, cmd, parse, poss) {
-                    $.clira.cmdHistory.clear();
-                    $output.html("Cleared command history");
+                    var output = {};
+                    Clira.CommandHistory.deleteAll().then($.proxy(function() {
+                        output.message = "Successfully cleared history";
+                        output.type = "success";
+                    }, this), function(err) {
+                        output.message = "Failed to clear history";
+                        output.type = "error";
+                    });
+                    return output;
                 }
             }
         ]
