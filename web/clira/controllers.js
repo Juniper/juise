@@ -62,18 +62,27 @@ Clira.CommandInputController = Em.ObjectController.extend({
 
         var poss = parse.possibilities[0];
 
-        var output = poss.command.execute.call(poss.command, this.command, 
-                                                parse,  poss);
+        var parseErrors = this._emitParseErrors(parse, poss);
 
         // Template for outputContent child defaults to 'output_content'
-        var templateName = "output_content";
+        var templateName = "output_content",
+            finalCommand = this.command,
+            output = null;
+        
+        if (parseErrors.length == 0) {
+            output = poss.command.execute.call(poss.command, this.command, 
+                                                parse,  poss);
 
-        if (poss.command.templateName)
-            templateName = poss.command.templateName;
+            if (poss.command.templateName)
+                templateName = poss.command.templateName;
+
+            finalCommand = poss.command.command;
+        }
 
         var content = {
             contentTemplate: templateName,
-            command: this.command,
+            command: finalCommand,
+            messages: parseErrors,
             output: output
         };
 
@@ -94,6 +103,33 @@ Clira.CommandInputController = Em.ObjectController.extend({
 
         // Reset command input field 
         this.set('command', '');
+    },
+
+    // Parses the possibilities and returns an array containing error messages
+    _emitParseErrors: function(parse, poss) {
+        var messages = [];
+
+        if (poss == undefined) {
+            messages.push({message: "unknown command", type: "error"});
+            return messages;
+        }
+
+        $.each(poss.command.arguments, function (n, arg) {
+            var message;
+
+            if (arg.mandatory && !poss.seen[arg.name]) {
+                message = "Missing mandatory argument: " + arg.name;
+            } else if ($.clira.types[arg.type].needs_data
+                    && poss.seen[arg.name] && !poss.data[arg.name]) {
+                message = "Missing argument value: " + arg.name;
+            }
+
+            if (message) {
+                messages.push({message: message, type: "error"});
+            }
+        });
+
+        return messages;
     }
 });
 

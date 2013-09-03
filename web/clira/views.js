@@ -129,12 +129,24 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
      * container.
      */
     didInsertElement: function() {
-        var contentView = Ember.View.create({
-            context: this.get('controller').output,
-            layoutName: 'output_content_layout',
-            templateName: this.get('controller').contentTemplate
-        });
-        this.pushObject(contentView);
+        // Emit messages if there are any
+        if (this.get('controller').messages) {
+            var messagesView = Ember.View.create({
+                context: this.get('controller').messages,
+                templateName: "clira_messages"
+            });
+            this.pushObject(messagesView);
+        }
+
+        // Insert output child if output is not null
+        if (this.get('controller').output) {
+            var contentView = Ember.View.create({
+                context: this.get('controller').output,
+                layoutName: 'output_content_layout',
+                templateName: this.get('controller').contentTemplate
+            });
+            this.pushObject(contentView);
+        }
     }
 });
 
