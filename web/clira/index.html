@@ -76,6 +76,15 @@
     {{/each}}
   </script>
 
+  <script type="text/x-handlebars" data-template-name="clira_message">
+    <div {{bindAttr class="view.uiType"}}>
+      {{#unless noIcon}}
+        <span class="ui-icon ui-icon-alert"></span>
+      {{/unless}}
+      {{message}}
+    </div>
+  </script>
+
   <script src="/external/jquery/jquery.js"></script>
   <script src="/external/jquery-ui/jquery-ui-1.10.2.js"></script>
   <script src="/external/handlebars/handlebars.js"></script>

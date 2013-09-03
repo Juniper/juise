@@ -203,3 +203,18 @@ Clira.MruItemView = Ember.View.extend({
         this.get('parentView').get('controller').toggleProperty('visible');
     }
 });
+
+
+/*
+ * View to display message along with an icon. Content passed to this view
+ * should contain a 'message', 'type' and optional 'noIcon' boolean. Types 
+ * 'error' and 'highlight' comes default with jquery-ui. When other types 
+ * are used, make sure we define corresponding ui-state-<type> class in 
+ * stylesheet
+ */
+Clira.MessageView = Ember.View.extend({
+    templateName: "clira_message",
+    uiType: function() {
+        return "ui-state-" + this.get('content').type;
+    }.property('content.type')
+});
