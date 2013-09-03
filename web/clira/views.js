@@ -133,6 +133,7 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
         if (this.get('controller').messages) {
             var messagesView = Ember.View.create({
                 context: this.get('controller').messages,
+                layoutName: "output_content_layout",
                 templateName: "clira_messages"
             });
             this.pushObject(messagesView);
@@ -142,7 +143,7 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
         if (this.get('controller').output) {
             var contentView = Ember.View.create({
                 context: this.get('controller').output,
-                layoutName: 'output_content_layout',
+                layoutName: "output_content_layout",
                 templateName: this.get('controller').contentTemplate
             });
             this.pushObject(contentView);
