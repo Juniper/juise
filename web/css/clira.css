@@ -756,3 +756,30 @@ ul.ui-autocomplete li.ui-menu-item a.label {
 ul.ui-autocomplete li.ui-menu-item a.help {
     float: right;
 }
+
+/*
+ * Additional styles for messages
+ */
+.ui-state-info {
+    color: rgb(0, 94, 196);
+}
+
+.ui-state-info .ui-icon {
+    background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
+}
+
+.ui-state-success {
+    color: rgb(45, 126, 0);
+}
+
+.ui-state-success .ui-icon {
+    background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
+}
+
+.ui-state-warning {
+    color: rgb(179, 146, 14);
+}
+
+.ui-state-warning .ui-icon {
+    background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
+}
