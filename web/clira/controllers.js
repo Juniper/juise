@@ -77,6 +77,13 @@ Clira.CommandInputController = Em.ObjectController.extend({
                 templateName = poss.command.templateName;
 
             finalCommand = poss.command.command;
+
+            // Save command into history
+            var history = Clira.CommandHistory.create({
+                command: $.trim(finalCommand),
+                on: new Date().getTime()
+            });
+            history.saveRecord();
         }
 
         var content = {
@@ -93,13 +100,6 @@ Clira.CommandInputController = Em.ObjectController.extend({
          */
         this.get('controllers.outputs')
             .unshiftObject(Clira.OutputContainerController.create(content));
-
-        // Save command into history
-        var history = Clira.CommandHistory.create({
-            command: $.trim(this.command),
-            on: new Date().getTime()
-        });
-        history.saveRecord();
 
         // Reset command input field 
         this.set('command', '');
