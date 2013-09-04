@@ -29,6 +29,7 @@
         </div>
       </div>
       <div class="input-enter">{{view Clira.EnterButton}}</div>
+      {{view Clira.PrefsButtonView}}
     </div>
     <div id="output-top">
       {{render 'outputs'}}
@@ -89,6 +90,14 @@
     {{#each this}}
       {{view Clira.MessageView contentBinding="this"}}
     {{/each}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="preferences">
+    <ul class="setupgrid">
+      <li><a id="prefs-devices" href="#">Set Up Devices</a></li>
+      <li><a id="prefs-groups" href="#">Set Up Groups</a></li>
+      <li><a id="prefs-general" href="#">General Preferences</a></li>
+    </ul>
   </script>
 
   <script src="/external/jquery/jquery.js"></script>

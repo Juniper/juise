@@ -176,7 +176,7 @@ div#header-info {
     padding-left: 10px;
 }
 
-div#prefsbtn {
+.prefsbtn {
     background: rgb(230, 230, 230) url(/images/gear.png) no-repeat center;
     margin-top: 5px; 
     min-height: 40px;
@@ -190,7 +190,7 @@ div#prefsbtn {
 		inset 0 1px 1px rgba(255,255,255,0.8); 
 }
 
-div#prefsbtn:hover {
+.prefsbtn:hover {
     background-color: #dde;
 }
 

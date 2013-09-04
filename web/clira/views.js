@@ -29,6 +29,14 @@ JQ.ButtonView = Em.View.extend(JQ.Widget, {
     tagName: 'button'
 });
 
+// Emebr view for jQuery UI Dialog widget
+JQ.Dialog = Em.View.extend(JQ.Widget, {
+    uiType: 'dialog',
+    uiOptions: ['autoOpen', 'buttons', 'height', 'modal', 'resizable',
+                'width'],
+    uiEvents: ['open', 'close']
+});
+
 
 /*
  * Extendable Clira specific Ember views.
@@ -230,4 +238,34 @@ Clira.MessageView = Ember.View.extend({
     uiType: function() {
         return "ui-state-" + this.get('content').type;
     }.property('content.type')
+});
+
+
+/*
+ * View for clira preferences button
+ */
+Clira.PrefsButtonView = Ember.View.extend({
+    classNames: ['prefsbtn'],
+
+    // Create a preferences dialog as childView and append
+    click: function() {
+        this.createChildView(Clira.PreferencesDialog).append();
+    }
+});
+
+
+/*
+ * View extending jQuery dialog to handle preference groups
+ */
+Clira.PreferencesDialog = JQ.Dialog.extend({
+    buttons: {
+        'close': function() {
+            $(this).dialog("close");
+        }
+    },
+    height: 210,
+    modal: true,
+    resizable: false,
+    width: 320,
+    templateName: "preferences"
 });
