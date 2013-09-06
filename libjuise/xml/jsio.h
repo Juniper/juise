@@ -87,6 +87,7 @@ typedef struct js_session_opts_s {
     uint jso_port;		/* Port number */
     uint jso_timeout;		/* Session timeout */
     uint jso_connect_timeout;	/* Connect timeout */
+    uint jso_header_timeout;	/* Header read timeout for SHELL*/
 } js_session_opts_t;
 
 /*
@@ -226,7 +227,7 @@ js_session_t *
 js_session_open_server (int fdin, int fdout, session_type_t stype, int flags);
 
 int
-js_shell_session_init (js_session_t *jsp);
+js_shell_session_init (js_session_t *jsp, time_t secs);
 
 int
 js_session_init (js_session_t *jsp);

@@ -926,16 +926,16 @@ js_session_create (const char *host_name, char **argv,
  * Initialize SHELL session.
  */
 int
-js_shell_session_init (js_session_t *jsp)
+js_shell_session_init (js_session_t *jsp, time_t secs)
 {
 
     /*
      * Drain any initial input, such as a login banner.
      */
-    char *cp = js_gets_timed(jsp, JS_SHELL_HEADER_TIMEOUT, 0);
+    char *cp = js_gets_timed(jsp, secs, 0);
     jsio_trace("ignoring login banner: %s", cp);
     for (;;) {
-	cp = js_gets_timed(jsp, JS_SHELL_HEADER_TIMEOUT, 0);
+	cp = js_gets_timed(jsp, secs, 0);
 	if (cp == NULL)
 	    break;
     }
@@ -1206,6 +1206,8 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
     case ST_SHELL:
         /* send the string */
 	fprintf(fp, "%s", rpc_name); 
+        break;
+
     case ST_DEFAULT:		/* Avoid compiler errors */
     case ST_MAX:
 	break;
@@ -1572,7 +1574,7 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	    return NULL;
 	}
     } else if (jsop->jso_stype == ST_SHELL) {
-	if (js_shell_session_init(jsp)) {
+	if (js_shell_session_init(jsp, jsop->jso_header_timeout)) {
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
