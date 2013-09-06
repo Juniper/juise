@@ -63,7 +63,7 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
         this._super.apply(this, arguments);
 
         // Set the source as controller's autoComplete function
-        this.ui.source = this.get('controller').autoComplete;
+        this.ui.source = this.get('targetObject').autoComplete;
 
         // Handle focus events
         this.$().focus(function() {
@@ -102,7 +102,7 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
     // Execute the command when the user hits return
     insertNewline: function() {
         this.ui.close();
-        this.get('controller').executeCommand();
+        this.get('targetObject').executeCommand();
     }
 });
 
@@ -217,7 +217,7 @@ Clira.MruItemView = Ember.View.extend({
         var commandInputView = this.get('parentView').get('parentView')
                                    .CommandInput;
         // Set the command
-        commandInputView.get('controller').set('command',this.content);
+        commandInputView.get('targetObject').set('command',this.content);
         commandInputView.$().focus();
 
         // Hide mru pulldown view
