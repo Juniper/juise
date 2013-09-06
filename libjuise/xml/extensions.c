@@ -703,6 +703,12 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
     xmlChar *server = NULL;
     session_type_t stype = ST_DEFAULT; /* Default session */
 
+    xsltTransformContextPtr tctxt;
+    xmlDocPtr container;
+    xmlNode *newp, *last = NULL;
+    xmlNodeSet *results;
+    xmlXPathObject *ret;
+
     if ((nargs < 1) || (nargs > 2)) {
 	xmlXPathSetArityError(ctxt);
 	return;
@@ -741,18 +747,106 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
     }
 
     /*
+     * Create a Result Value Tree container, and register it with RVT garbage
+     * collector.
+     */
+    results =  xmlXPathNodeSetCreate(NULL);
+    tctxt = xsltXPathGetTransformContext(ctxt);
+    container = xsltCreateRVT(tctxt);
+    xsltRegisterLocalRVT(tctxt, container);
+
+    /*
      * Read a line of text from the socket
      */
     char *cp = js_session_receive((char *)server, secs);
-    if (cp) {
-	xmlXPathReturnString(ctxt, xmlStrdup((const xmlChar *) cp));
+    if (cp != NULL) {
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "receive",
+				      (const xmlChar *) cp, strlen(cp));
+	if (newp) {
+	    xmlXPathNodeSetAdd(results, newp);
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "receive",
+				      (const xmlChar *) "1", strlen("1"));
+
+	if (newp) {
+	    xmlXPathNodeSetAdd(results, newp);
+
+	    if (last)
+		xmlAddSibling(last, newp);
+
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+/*
+
+	newp = xmlNewDocNode(container, NULL, "receive", NULL);
+	xmlNode *tp = xmlXPathNewBoolean(1);
+
+	if (newp && tp) {
+	    xmlAddChildList(newp, tp);
+
+	    xmlXPathNodeSetAdd(results, newp);
+
+	    if (last)
+		xmlAddSibling(last, newp);
+
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+*/
     } else {
-	xmlXPathReturnString(ctxt, xmlStrdup((const xmlChar *) ""));
-    }
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "receive",
+				      (const xmlChar *) "", strlen(""));
+	if (newp) {
+	    xmlXPathNodeSetAdd(results, newp);
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "receive",
+				      (const xmlChar *) "0", strlen("0"));
+
+	if (newp) {
+	    xmlXPathNodeSetAdd(results, newp);
+
+	    if (last)
+		xmlAddSibling(last, newp);
+
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+/*
+	newp = xmlNewDocNode(container, NULL, "receive", NULL);
+	xmlNode *tp = xmlXPathNewBoolean(0);
+
+	if (newp && tp) {
+	    xmlAddChildList(newp, tp);
+
+	    xmlXPathNodeSetAdd(results, newp);
+
+	    if (last)
+		xmlAddSibling(last, newp);
+
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+*/
+    } 
 
     xmlXPathFreeObject(sop);
     xmlFree(server);
 
+    ret = xmlXPathNewNodeSetList(results);
+    slaxSetPreserveFlag(tctxt, ret);
+    valuePush(ctxt, ret);
+    xmlXPathFreeNodeSet(results);
     return;
 }
 

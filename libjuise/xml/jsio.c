@@ -932,14 +932,12 @@ js_shell_session_init (js_session_t *jsp)
     /*
      * Drain any initial input, such as a login banner.
      */
-    char *cp = js_gets_timed(jsp, JS_READ_TIMEOUT, 0);
+    char *cp = js_gets_timed(jsp, JS_SHELL_HEADER_TIMEOUT, 0);
     jsio_trace("ignoring login banner: %s", cp);
     for (;;) {
-	char *cp1 = js_gets_timed(jsp, 0, JS_READ_QUICK);
-	if (cp1 == NULL)
+	cp = js_gets_timed(jsp, JS_SHELL_HEADER_TIMEOUT, 0);
+	if (cp == NULL)
 	    break;
-
-	jsio_trace("ignoring login banner: %s", cp1);
     }
 
     /*

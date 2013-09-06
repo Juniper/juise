@@ -33,6 +33,7 @@ typedef enum session_type_s {
 
 #define JS_READ_TIMEOUT		120 /* seconds of silence before breaking */
 #define JS_READ_QUICK		100 /* Microseconds of open delay */
+#define JS_SHELL_HEADER_TIMEOUT	1   /* seconds waiting for a shell header */
 
 typedef struct js_skey_s {
     session_type_t jss_type;	/* Session type (junoscript or netconf ?) */
