@@ -775,7 +775,7 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
 
 	newp = ext_jcs_make_text_node(container, NULL,
 				      (const xmlChar *) "receive",
-				      (const xmlChar *) "1", strlen("1"));
+				      (const xmlChar *) "true", strlen("true"));
 
 	if (newp) {
 	    xmlXPathNodeSetAdd(results, newp);
@@ -786,23 +786,7 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
 	    xmlAddChild((xmlNodePtr) container, newp);
 	    last = newp;
 	}
-/*
 
-	newp = xmlNewDocNode(container, NULL, "receive", NULL);
-	xmlNode *tp = xmlXPathNewBoolean(1);
-
-	if (newp && tp) {
-	    xmlAddChildList(newp, tp);
-
-	    xmlXPathNodeSetAdd(results, newp);
-
-	    if (last)
-		xmlAddSibling(last, newp);
-
-	    xmlAddChild((xmlNodePtr) container, newp);
-	    last = newp;
-	}
-*/
     } else {
 	newp = ext_jcs_make_text_node(container, NULL,
 				      (const xmlChar *) "receive",
@@ -812,36 +796,6 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
 	    xmlAddChild((xmlNodePtr) container, newp);
 	    last = newp;
 	}
-
-	newp = ext_jcs_make_text_node(container, NULL,
-				      (const xmlChar *) "receive",
-				      (const xmlChar *) "0", strlen("0"));
-
-	if (newp) {
-	    xmlXPathNodeSetAdd(results, newp);
-
-	    if (last)
-		xmlAddSibling(last, newp);
-
-	    xmlAddChild((xmlNodePtr) container, newp);
-	    last = newp;
-	}
-/*
-	newp = xmlNewDocNode(container, NULL, "receive", NULL);
-	xmlNode *tp = xmlXPathNewBoolean(0);
-
-	if (newp && tp) {
-	    xmlAddChildList(newp, tp);
-
-	    xmlXPathNodeSetAdd(results, newp);
-
-	    if (last)
-		xmlAddSibling(last, newp);
-
-	    xmlAddChild((xmlNodePtr) container, newp);
-	    last = newp;
-	}
-*/
     } 
 
     xmlXPathFreeObject(sop);
