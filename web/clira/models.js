@@ -11,6 +11,22 @@
 
 
 /*
+ * Use localStorage adapter to store our records
+ */
+Clira.LSAdapter = RL.LSAdapter.create();
+
+Clira.Client = RL.Client.create({
+    adapter: Clira.LSAdapter
+});
+
+/*
+ * Use 'name' as primary key in preference model
+ */
+Clira.LSAdapter.map("Clira.Preference", {
+    primaryKey: "name"
+});
+
+/*
  * Model to save command history
  */
 Clira.CommandHistory = RL.Model.extend({
@@ -19,10 +35,14 @@ Clira.CommandHistory = RL.Model.extend({
 });
 
 /*
- * Redefine adapter to LocalStorage as opposed to global Client adapter
+ * Model to save Clira preferencs
  */
-Clira.CommandHistory.reopenClass({
-    adapter: Ember.computed(function() {
-        return RL.LSAdapter.create();
-    }).property()
+Clira.Preference = RL.Model.extend({
+    change: RL.attr('string'),
+    def: RL.attr('string'),
+    label: RL.attr('string'),
+    name: RL.attr('string'),
+    title: RL.attr('string'),
+    type: RL.attr('string'),
+    value: RL.attr('string')
 });
