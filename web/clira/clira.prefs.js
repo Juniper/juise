@@ -109,48 +109,19 @@ jQuery(function ($) {
                                          prefs_fields);
             $.clira.prefs = $.clira.prefs_form.getData();
             buildForms();
+        },
+        buildPrefForms: function() {
+            return buildForms();
         }
     });
 
     function buildForms () {
-        $("#prefs").button().click(function (event) {
-            $.dbgpr("prefsEdit:", event.type);
-            if ($.clira.prefs_form.shown()) {
-                $.clira.prefs_form.close();
-
-                /* Put the focus back where it belongs */
-                $.clira.refocus();
-
-            } else {
-                $.clira.prefs_form.open();
-            }
-        });
-
-        $("#prefs-main-form").dialog({
-            autoOpen: false,
-            height: 300,
-            width: 350,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
-
-        $("#prefsbtn").click(function() {
-            $("#prefs-main-form").dialog("open");
-        });
-
         /* Set Up Devices */
         $("#prefs-devices-form").dialog({
             autoOpen: false,
             height: 600,
             width: 800,
             resizable: false,
-            modal: true,
             buttons: {
                 'Close': function() {
                     $(this).dialog("close");
@@ -295,7 +266,6 @@ jQuery(function ($) {
             height: 600,
             width: 800,
             resizable: false,
-            modal: true,
             buttons: {
                 'Close': function() {
                     $(this).dialog("close");
@@ -409,37 +379,6 @@ jQuery(function ($) {
         });
 
         $.extend(jQuery.jgrid.edit, { recreateForm: true });
-       
-        /* General Preferences */
-        $("#prefs-general").click(function() {
-            //$("#prefs-general-form").dialog("open");
-            // XXX: rkj    use new forms, decide what prefs we need?
-            if ($.clira.prefs_form.shown()) {
-                $.clira.prefs_form.close();
-                    
-                if (tgtHistory.value())
-                    cmdHistory.focus();
-                else tgtHistory.focus();
-
-            } else {
-                $.clira.prefs_form.open();
-            }
-        });
-        
-        $("#prefs-general-form").dialog({
-            autoOpen: false,
-            height: 600,
-            width: 800,
-            resizable: false,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
     }
 
     function prefsSetupConfirmExit () {

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/themes/clira/jquery-ui-clira.css" class="ui-theme">
   <link rel="stylesheet" href="/themes/clira/addons-clira.css" class="ui-addon">
   <link rel="stylesheet" href="/css/clira.css" class="ui-main">
+  <link rel="stylesheet" href="/external/jqgrid/ui.jqgrid.css"/>
 </head>
 <body>
   <script type="text/x-handlebars">
@@ -93,19 +94,38 @@
   </script>
 
   <script type="text/x-handlebars" data-template-name="preferences">
-    <ul class="setupgrid">
-      <li><a id="prefs-devices" href="#">Set Up Devices</a></li>
-      <li><a id="prefs-groups" href="#">Set Up Groups</a></li>
-      <li><a id="prefs-general" href="#">General Preferences</a></li>
-    </ul>
+    <div id="prefs-main-form" title="Preferences">
+      <div class="setupgrid">
+        <ul class="setupgrid">
+          <li><a id="prefs-devices" href="#">Set Up Devices</a></li>
+          <li><a id="prefs-groups" href="#">Set Up Groups</a></li>
+          <li><a id="prefs-general" href="#">General Preferences</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="prefs-devices-form" title="Devices">
+      <p>The devices that CLIRA can access are listed below.</p>
+      <table id="prefs-devices-grid"></table>
+      <div id="prefs-devices-pager"></div>
+    </div>
+
+    <div id="prefs-groups-form" title="Groups">
+      <p>Groups of devices that CLIRA can access are listed below.</p>
+      <table id="prefs-groups-grid"></table>
+      <div id="prefs-groups-pager"></div>
+    </div>
   </script>
 
   <script src="/external/jquery/jquery.js"></script>
-  <script src="/external/jquery-ui/jquery-ui-1.10.2.js"></script>
+  <script src="/external/jquery-ui/jquery-ui.js"></script>
   <script src="/external/handlebars/handlebars.js"></script>
   <script src="/external/ember/ember.js"></script>
   <script src="/external/ember-restless/ember-restless+extras.js"></script>
+  <script src="/external/jqgrid/grid.locale-en.js"></script>
+  <script src="/external/jqgrid/jquery.jqGrid.src.js"></script>
   <script src="/jquery/jquery.dbgpr.js"></script>
+  <script src="clira.prefs.js"></script>
   <script src="parser.js"></script>
   <script src="parser.types.js"></script>
   <script src="builtins.js"></script>

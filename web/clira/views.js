@@ -255,17 +255,35 @@ Clira.PrefsButtonView = Ember.View.extend({
 
 
 /*
- * View extending jQuery dialog to handle preference groups
+ * View to display preferences dialog and handle devices, group and general
+ * preferences
  */
-Clira.PreferencesDialog = JQ.Dialog.extend({
-    buttons: {
-        'close': function() {
-            $(this).dialog("close");
-        }
-    },
-    height: 210,
-    modal: true,
-    resizable: false,
-    width: 320,
-    templateName: "preferences"
+Clira.PreferencesDialog = Ember.View.extend({
+    templateName: "preferences",
+    isVisible: false,
+
+    /*
+     * We use jqGrid to read device and group config from db and display 
+     * them in corresponding preferences modal
+     */
+    didInsertElement: function() {
+        $.proxy($("#prefs-main-form").dialog({
+            buttons: {
+                'close': function() {
+                    $(this).dialog("close");
+                }
+            },
+            height: 210,
+            resizable: false,
+            width: 320,
+
+            // On close, destroy the view
+            close: $.proxy(function() {
+                this.destroy();
+            }, this)
+        }), this);
+
+        // Build devices and group preferences form dialogs using jqGrid
+        $.clira.buildPrefForms();
+    }
 });
