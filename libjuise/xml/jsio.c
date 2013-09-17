@@ -934,10 +934,8 @@ js_shell_session_init (js_session_t *jsp, time_t secs)
      */
     char *cp = js_gets_timed(jsp, secs, 0);
     jsio_trace("ignoring login banner: %s", cp);
-    for (;;) {
+    while (cp != NULL) {
 	cp = js_gets_timed(jsp, secs, 0);
-	if (cp == NULL)
-	    break;
     }
 
     /*
