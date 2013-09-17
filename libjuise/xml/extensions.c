@@ -762,7 +762,7 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
     /*
      * Read a line of text from the socket
      */
-    char *cp = js_session_receive((char *)server, secs);
+    char *cp = js_session_receive((char *) server, secs);
     if (cp != NULL) {
 	newp = ext_jcs_make_text_node(container, NULL,
 				      (const xmlChar *) "receive",
@@ -1555,8 +1555,6 @@ ext_jcs_register_all (void)
 {
     slaxExtRegisterOther (JCS_FULL_NS);
 
-    slaxRegisterFunction(JCS_FULL_NS, "receive", ext_jcs_receive);
-    slaxRegisterFunction(JCS_FULL_NS, "send", ext_jcs_send);
     slaxRegisterFunction(JCS_FULL_NS, "close", ext_jcs_close);
     slaxRegisterFunction(JCS_FULL_NS, "dampen", ext_jcs_dampen);
     slaxRegisterFunction(JCS_FULL_NS, "execute", ext_jcs_execute);
@@ -1566,6 +1564,8 @@ ext_jcs_register_all (void)
     slaxRegisterFunction(JCS_FULL_NS, "invoke", ext_jcs_invoke);
     slaxRegisterFunction(JCS_FULL_NS, "open", ext_jcs_open);
     slaxRegisterFunction(JCS_FULL_NS, "parse-ip", ext_jcs_parse_ip);
+    slaxRegisterFunction(JCS_FULL_NS, "receive", ext_jcs_receive);
+    slaxRegisterFunction(JCS_FULL_NS, "send", ext_jcs_send);
 
     return 0;
 }

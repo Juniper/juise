@@ -708,7 +708,6 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
     int sin = jsp->js_stdin, serr = jsp->js_stderr, smax, rc;
     int askpassfd = jsp->js_askpassfd ?: jsio_askpass_socket;
 
-
     do {
 	smax = MAX(sin, serr);
 
@@ -733,13 +732,11 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 	    return -1;
 	}
 
-
 	if (rc == 0) {
 	    if (secs)
 		jsio_trace("timeout from rpc session");
 	    return -1;
 	} 
-
 
 	if (serr >= 0 && (FD_ISSET(serr, &rfds) || FD_ISSET(serr, &xfds))) {
 	    char buf[BUFSIZ];
@@ -821,13 +818,6 @@ js_session_create (const char *host_name, char **argv,
     sigemptyset(&sigblocked);
     sigaddset(&sigblocked, SIGCHLD);
     sigprocmask(SIG_BLOCK, &sigblocked, &sigblocked_old);
-
-#if 0
-    for (i = 0; argv[i] != 0; i++) {
-	LX_ERR("%s ", argv[i]);
-    }
-    LX_ERR("\"\n");
-#endif
 
     if ((pid = fork()) == 0) {	/* Child process */
 
@@ -1173,7 +1163,7 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 {
     FILE *fp = jsp->js_fpout;
 
-    jsio_trace("rpc name: %s\n", rpc_name);
+    jsio_trace("rpc name: %s", rpc_name);
 
     switch (jsp->js_key.jss_type) {
     case ST_JUNOSCRIPT:
@@ -1248,7 +1238,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 			++jsp->js_msgid); 
 		break;
 
-	case ST_SHELL:		/* Avoid compiler errors */
+	case ST_SHELL:		        /* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
 	    break;
@@ -1275,7 +1265,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 	    fprintf(fp, "</rpc>\n");
 	    break;
 
-	case ST_SHELL:		/* Avoid compiler errors */
+	case ST_SHELL:		        /* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
 	    break;
@@ -1604,7 +1594,7 @@ js_session_open (js_session_opts_t *jsop, int flags)
  * Send the given string in the given host_name's JUNOScript session.
  */
 void
-js_session_send (const char *host_name, const xmlChar *rpc_name)
+js_session_send (const char *host_name, const xmlChar *text)
 {
     js_session_t *jsp;
     int rc;
@@ -1615,17 +1605,14 @@ js_session_send (const char *host_name, const xmlChar *rpc_name)
 	    return;
     }
 
-    session_type_t stype = ST_SHELL;
-
-    jsp = js_session_find(host_name, stype);
+    jsp = js_session_find(host_name, ST_SHELL);
     if (!jsp) { 
 	LX_ERR("Session for server \"%s\" does not exist\n",
 	   host_name ?: "local");
 	return;
     }
 
-    rc = js_rpc_send_simple(jsp, (const char *) rpc_name);
-
+    rc = js_rpc_send_simple(jsp, (const char *) text);
     if (rc) {
 	jsio_trace("could not send request");
        	patricia_delete(&js_session_root, &jsp->js_node);
@@ -1648,9 +1635,7 @@ js_session_receive (const char *host_name, time_t secs)
 	    return "";
     }
 
-    session_type_t stype = ST_SHELL;
-
-    jsp = js_session_find(host_name, stype);
+    jsp = js_session_find(host_name, ST_SHELL);
     if (!jsp) { 
 	LX_ERR("Session for server \"%s\" does not exist\n",
 	   host_name ?: "local");

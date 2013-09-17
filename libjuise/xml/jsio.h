@@ -100,7 +100,7 @@ js_session_open (js_session_opts_t *jsop, int flags);
  * Send the given string in the given host_name's JUNOScript session.
  */
 void
-js_session_send (const char *host_name, const xmlChar *rpc_name);
+js_session_send (const char *host_name, const xmlChar *text);
 
 /*
  * Receive a string in the given host_name's JUNOScript session.
