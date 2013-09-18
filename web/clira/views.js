@@ -368,12 +368,7 @@ Clira.PreferencesDialog = Ember.View.extend({
             },
             height: 210,
             resizable: false,
-            width: 320,
-
-            // On close, destroy the view
-            close: $.proxy(function() {
-                this.destroy();
-            }, this)
+            width: 320
         }), this);
 
         // Build devices and group preferences form dialogs using jqGrid
