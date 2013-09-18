@@ -117,6 +117,25 @@
     </div>
   </script>
 
+  <script type="text/x-handlebars" data-template-name="dyn_form">
+    {{#each field in fields}}
+      <div class="dyn-form-item">
+        <label>{{field.title}}</label>
+        {{#if field.boolean}}
+          <div class="dyn-form-boolean">
+            {{view Clira.DynCheckbox fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value"}}
+          </div>
+        {{else}}
+          {{#if field.secret}}
+            {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password"}}
+          {{else}}
+            {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value"}}
+          {{/if}}
+        {{/if}}
+      </div>
+    {{/each}}
+  </script>
+
   <script src="/external/jquery/jquery.js"></script>
   <script src="/external/jquery-ui/jquery-ui.js"></script>
   <script src="/external/handlebars/handlebars.js"></script>

@@ -33,8 +33,74 @@ JQ.ButtonView = Em.View.extend(JQ.Widget, {
 JQ.Dialog = Em.View.extend(JQ.Widget, {
     uiType: 'dialog',
     uiOptions: ['autoOpen', 'buttons', 'height', 'modal', 'resizable',
-                'width'],
+                'title', 'width'],
     uiEvents: ['open', 'close']
+});
+
+
+/*
+ * Views to handle dynamic forms. To create dynamic forms, we must extend this
+ * class and create a childView from the extended class by passing JSON object
+ * containing fields object. Fields object contains hash of fields which hold
+ * title, name, value, boolean values corresponding to each field. If boolean
+ * is set to true, we will render a checkbox instead of textfield. User can
+ * also specify an optional boolean flag 'secret' which will make the text
+ * inputbox be used to accept secret data. In the overridden class, user 
+ * should specify hash of buttons along with their click functions. view and 
+ * viewContext global variables will be available in the button action 
+ * functions. When the user modifies any value, it will be captured in 
+ * fieldValues as name:value and the same can be retrieved from 
+ * viewContext.get('fieldValues')
+ */
+Clira.DynFormView = JQ.Dialog.extend({
+    templateName: "dyn_form",
+    view: null,
+    viewContext: null,
+    width: "auto",
+
+    // Set view and view context as globals
+    didInsertElement: function() {
+        this._super.apply(this, arguments);
+        view = this;
+        viewContext = view.get('context');
+    },
+
+    /*
+     * Set fields and fieldValues as properties on controller so we can use
+     * them in template and to capture the modified values
+     */
+    willInsertElement: function() {
+        this.get('controller').set('fields', this.get('fields'));
+        this.get('controller').set('fieldValues', {});
+    }
+});
+
+/*
+ * View to handle text inputbox in dynamic forms
+ */
+Clira.DynTextField = Ember.TextField.extend({
+    // We observe on value changes and update fieldValues
+    valueChange: function() {
+        var fieldId = this.get('fieldId');
+        var values = this.get('values');
+        if (values && fieldId) {
+            values[fieldId] = this.get('value');
+        }
+    }.observes('value')
+});
+
+/*
+ * View to handle input checkbox in dynamic forms
+ */
+Clira.DynCheckbox = Ember.Checkbox.extend({
+    // We observe on value changes and update fieldValues
+    valueChange: function() {
+        var fieldId = this.get('fieldId');
+        var values = this.get('values');
+        if (values && fieldId) {
+            values[fieldId] = this.get('checked');
+        }
+    }.observes('checked')
 });
 
 
