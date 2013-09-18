@@ -328,6 +328,33 @@ Clira.PreferencesDialog = Ember.View.extend({
     templateName: "preferences",
     isVisible: false,
 
+    actions: {
+        generalPref: function() {
+            var prefs = Clira.Preference.find(),
+                fields = [];
+
+            // Sanitize before creating a form
+            if (prefs) {
+                prefs.forEach(function(item) {
+                    pref = item.__data;
+                    if (pref.type == "boolean") {
+                        pref['boolean'] = true;
+
+                        if (pref.value == "true") {
+                            pref['value'] = true;
+                        } else {
+                            pref['value'] = false;
+                        }
+                    } else {
+                        pref['boolean'] = false;
+                    }
+                    fields.push(pref);
+                });
+            }
+            this.createChildView(Clira.GeneralPrefView, {fields: fields}).append();
+        }
+    },
+
     /*
      * We use jqGrid to read device and group config from db and display 
      * them in corresponding preferences modal
@@ -352,4 +379,15 @@ Clira.PreferencesDialog = Ember.View.extend({
         // Build devices and group preferences form dialogs using jqGrid
         $.clira.buildPrefForms();
     }
+});
+
+
+Clira.GeneralPrefView = Clira.DynFormView.extend({
+    title: "Preferences",
+    buttons: {
+        save: function() {
+            console.log(viewContext.get('fieldValues'));
+            $(this).dialog('close');
+        }
+    },
 });

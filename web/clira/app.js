@@ -122,4 +122,5 @@ JQ.Widget = Em.Mixin.create({
 jQuery(function ($) {
     // Load command files
     $.clira.loadCommandFiles();
+    $.clira.prefsInit();
 });

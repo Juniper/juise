@@ -105,10 +105,29 @@ jQuery(function ($) {
     $.extend($.clira, {
         prefs: { },
         prefsInit: function prefsInit () {
-            $.clira.prefs_form = $.yform(prefs_options, "#prefs-dialog",
-                                         prefs_fields);
-            $.clira.prefs = $.clira.prefs_form.getData();
-            buildForms();
+            for (var i = 0; i < prefs_fields.length; i++) {
+                // Save the preference item if not already saved
+                var pref = Clira.Preference.find(prefs_fields[i]['name']);
+                if (Ember.isNone(pref)) {
+                    var item = prefs_fields[i];
+
+                    // We add a new field to hold the configured value
+                    item['value'] = item['def'];
+
+                    // Create and save as record
+                    pref = Clira.Preference.create(item);
+                    pref.saveRecord();
+                }
+            }
+
+            // Read preferences into $.clira.prefs to they can be used
+            // elsewhere
+            var prefs = Clira.Preference.findAll();
+            if (prefs) {
+                prefs.forEach(function(item) {
+                    $.clira.prefs[item.get('name')] = item.get('value');
+                });
+            }
         },
         buildPrefForms: function() {
             return buildForms();
