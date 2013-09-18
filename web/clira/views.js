@@ -382,12 +382,30 @@ Clira.PreferencesDialog = Ember.View.extend({
 });
 
 
+/*
+ * View extending dynamic forms to handle displaying and saving clira
+ * preferences using localStorage backed ember-restless
+ */
 Clira.GeneralPrefView = Clira.DynFormView.extend({
     title: "Preferences",
     buttons: {
+        cancel: function() {
+            $(this).dialog('close');
+        },
         save: function() {
-            console.log(viewContext.get('fieldValues'));
+            var clira_prefs = $.clira.prefs;
+            // Iterate fieldValues and save them back into Clira.Preference
+            $.each(viewContext.get('fieldValues'), function(k, v) {
+                var pref = Clira.Preference.find(k);
+                if (pref) {
+                    pref.set('value', v);
+                    pref.saveRecord();
+
+                    // Update $.clira.pref
+                    clira_prefs[k] = v;
+                }
+            });
             $(this).dialog('close');
         }
-    },
+    }
 });
