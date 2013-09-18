@@ -701,6 +701,31 @@ div.ui-yf-item div {
     display: table-cell;
 }
 
+div.dyn-form {
+    width: auto;
+}
+
+div.dyn-form-item {
+    display: table-row;
+}
+
+div.dyn-form-item label {
+    padding-left: 10px;
+    padding-right: 5px;
+}
+
+div.dyn-form-item label, 
+div.dyn-form-item input, 
+div.dyn-form-item div {
+    display: table-cell;
+    text-align: left;
+}
+
+div.dyn-form-boolean {
+    text-align: left;
+    vertical-align: middle;
+}
+
 .history-element .command {
     font-size: 16px;
 }
