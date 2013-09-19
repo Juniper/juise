@@ -336,8 +336,6 @@ ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, js_session_opts_t *jsop)
     if (jsop->jso_stype == 0)
 	jsop->jso_stype = ST_DEFAULT;    /* Default session */
 
-    jsop->jso_header_timeout = JS_SHELL_HEADER_TIMEOUT;
-
     for (i = 0; i < nodeset->nodeNr; i++) {
 	nop = nodeset->nodeTab[i];
 
@@ -356,8 +354,6 @@ ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, js_session_opts_t *jsop)
 
 	    if (streq(key, "connection-timeout")) {
 		jsop->jso_connect_timeout = atoi(value);
-	    } else if (streq(key, "header-timeout")) {
-		jsop->jso_header_timeout = atoi(value);
 
 	    } else if (streq(key,  "method")) {
 		jsop->jso_stype = jsio_session_type(value);

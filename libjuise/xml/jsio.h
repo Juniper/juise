@@ -33,7 +33,6 @@ typedef enum session_type_s {
 
 #define JS_READ_TIMEOUT		120 /* seconds of silence before breaking */
 #define JS_READ_QUICK		100 /* Microseconds of open delay */
-#define JS_SHELL_HEADER_TIMEOUT	1   /* seconds waiting for a shell header */
 
 typedef struct js_skey_s {
     session_type_t jss_type;	/* Session type (junoscript or netconf ?) */
@@ -87,7 +86,6 @@ typedef struct js_session_opts_s {
     uint jso_port;		/* Port number */
     uint jso_timeout;		/* Session timeout */
     uint jso_connect_timeout;	/* Connect timeout */
-    uint jso_header_timeout;	/* Header read timeout for SHELL*/
 } js_session_opts_t;
 
 /*
@@ -227,7 +225,7 @@ js_session_t *
 js_session_open_server (int fdin, int fdout, session_type_t stype, int flags);
 
 int
-js_shell_session_init (js_session_t *jsp, time_t secs);
+js_shell_session_init (js_session_t *jsp);
 
 int
 js_session_init (js_session_t *jsp);
