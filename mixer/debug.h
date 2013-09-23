@@ -14,6 +14,7 @@ extern unsigned opt_verbose;
 
 /* Flags for opt_debug: */
 #define DBG_FLAG_POLL	(1<<0)	/* poll()/poller related */
+#define DBG_FLAG_DUMP	(1<<1)	/* dump packet contents */
 
 #define MX_LOG(_fmt...) \
     do { if (opt_debug || opt_verbose) mx_log(_fmt); } while (0)
