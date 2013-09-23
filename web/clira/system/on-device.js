@@ -50,43 +50,49 @@ jQuery(function($) {
                     if (!(poss.data.target && poss.data.command))
                         return;
 
-                    if (poss.data.command.length < 2)
-                        return;
-
-                    addCompletions(poss.data.target, poss.data.command,
+                    addCompletions(poss, poss.data.target, poss.data.command,
                                    results);
+
+                    return 200; // Need a delay/timeout
                 }
             }
         ]
     });
 
-    function addCompletions(target, command, results) {
-        var completion = '';
+    function addCompletions(poss, target, command, results) {
+        var completion = "";
+        var payload = "<command expand='expand'>" + command + "?</command>";
+        $.dbgpr("on-device: rpc [" + payload + "]");
+
         $.clira.muxer().rpc({
+            create: "no",
             target: target,
-            payload: '<command expand="expand">' + command + '?</command>',
+            payload: payload,
             onreply: function (data) {
                 completion += data;
             },
             oncomplete: function () {
                 var $xmlDoc = $($.parseXML(completion));
-                $xmlDoc.find("expand-item").each(function() {
+                $xmlDoc.find("expand-item").each(function (n, item) {
+                    var $this = $(this);
                     var complete = {
                         command: command,
-                        name: $(this).find("name").text(),
-                        help: $(this).find("help").text(),
-                        expandable: $(this).find("expandable").text(),
-                        enter: $(this).find("enter").text(),
-                        data: $(this).find("data").text()
+                        name: $this.find("name").text(),
+                        help: $this.find("help").text(),
+                        expandable: $this.find("expandable").text(),
+                        enter: $this.find("enter").text(),
+                        data: $this.find("data").text()
                     };
 
+                    var cl = buildCommandLine(command, poss, complete);
+
                     var r = {
-                        label: p.text + complete.name,
-                        value: p.text + complete.name,
-                        html: p.html + complete.name,
+                        label: cl.text,
+                        value: cl.text,
+                        html:  cl.html,
                         help: complete.help,
-                        image: p.command.image,
-                        image_class: p.command.image_class,
+                        image: poss.command.image,
+                        image_class: poss.command.image_class,
                         complete: complete
                     }
 
@@ -99,8 +105,11 @@ jQuery(function($) {
                     if (r.complete.enter)
                         r.score += scores.enter;
 
-                    push(r);
+                    results.push(r);
+                    $.dbgpr("on-device.addCompletions: " + complete.name);
                 });
+
+                $.dbgpr("on-device.addCompletions done: " + results.length);
             },
             onhostkey: function (data) {
                 $.dbgpr("on-device: onhostkey (fails)");
@@ -112,7 +121,23 @@ jQuery(function($) {
             onclose: function (event, message) {
             },
             onerror: function (message) {
+                $.dbgpr("on-device: onerror (fails)");
             }
         });
+    }
+
+    function buildCommandLine (command, poss, complete) {
+        var leader = "on target " + poss.data.target + " command ";
+        var li = command.lastIndexOf(" ");
+        if (li > 1)
+            leader += command.substring(0, li + 1);
+        var cl = leader + complete.name;
+
+        var res = {
+            text: cl + " ",
+            html: "<div class='command-line command-line-on'>"
+                + cl + "</div>"
+        }
+        return res;
     }
 });
