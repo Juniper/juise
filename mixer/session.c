@@ -760,7 +760,7 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
 	for (;;) {
             rc = mx_channel_handle_input(mcp);
-            mx_log("C%u: handle input returns %d", mcp->mc_id, rc);
+            DBG_POLL("C%u: handle input returns %d", mcp->mc_id, rc);
 	    if (rc)
 		break;
 	}
