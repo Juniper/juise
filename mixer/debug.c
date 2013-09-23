@@ -77,6 +77,9 @@ mx_debug_parse_flag (const char *cp)
     if (streq(cp, "poll"))
 	rc |= DBG_FLAG_POLL;
 
+    if (streq(cp, "dump"))
+	rc |= DBG_FLAG_DUMP;
+
     if (streq(cp, "all"))
 	rc |= - 1;
 
