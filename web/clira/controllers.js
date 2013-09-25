@@ -157,7 +157,24 @@ Clira.OutputContainerController = Em.Controller.extend({
     init: function() {
         // Set template name to be used for output content
         this.contentTemplate = this.get('contentTemplate');
-    }
+    },
+
+    /*
+     * Observe change in output value and call onOutputChange function on the
+     * command if defined
+     */
+    valueDidChange: function() {
+        var command = this.get('command'),
+            output = this.get('output'),
+            parse = this.get('parse'),
+            poss = this.get('poss'),
+            view = this.get('view');
+
+        if (poss.command.onOutputChange && view && output) {
+            poss.command.onOutputChange.call(null, view, command, parse,
+                                            poss);
+        }
+    }.observes('output')
 });
 
 

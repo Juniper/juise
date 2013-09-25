@@ -228,6 +228,9 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
                     // Call execute function once we are in DOM
                     poss.command.execute.call(null, contentView, command, 
                                                 parse, poss);
+                    // Set view in controller so we can pass it to onUpdate
+                    // functions
+                    contentView.get('controller').set('view', this);
                 }
             });
             this.pushObject(contentView);
