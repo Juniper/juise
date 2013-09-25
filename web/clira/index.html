@@ -118,6 +118,9 @@
   </script>
 
   <script type="text/x-handlebars" data-template-name="dyn_form">
+    <div class="dyn-form-message">
+      {{message}}
+    </div>
     {{#each field in fields}}
       <div class="dyn-form-item">
         <label>{{field.title}}</label>
@@ -145,6 +148,8 @@
   <script src="/external/jqgrid/jquery.jqGrid.src.js"></script>
   <script src="/jquery/jquery.dbgpr.js"></script>
   <script src="clira.prefs.js"></script>
+  <script src="clira.muxer.js"></script>
+  <script src="clira.js"></script>
   <script src="parser.js"></script>
   <script src="parser.types.js"></script>
   <script src="builtins.js"></script>
