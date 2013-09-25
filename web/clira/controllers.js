@@ -73,7 +73,8 @@ Clira.CommandInputController = Em.ObjectController.extend({
             if (poss.command.templateName)
                 templateName = poss.command.templateName;
 
-            finalCommand = poss.command.command;
+            if (poss.command.command.length > finalCommand.length)
+                finalCommand = poss.command.command;
 
             // Save command into history
             var history = Clira.CommandHistory.create({
