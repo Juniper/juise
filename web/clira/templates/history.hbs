@@ -1,5 +1,5 @@
 <script type="text/x-handlebars" data-template-name="show-history">
-  {{#each history}}
+  {{#each output.history}}
     <div class='history-element'>
       <span class='show-command-name'>{{command}}</span>
         - 
@@ -9,7 +9,7 @@
 </script>
 
 <script type="text/x-handlebars" data-template-name="clear-history">
-  {{#if message}}
-    {{view Clira.MessageView contentBinding="this"}}
+  {{#if output.message}}
+    {{view Clira.MessageView contentBinding="output"}}
   {{/if}}
 </script>

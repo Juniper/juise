@@ -19,29 +19,30 @@ jQuery(function($) {
                 help: "Display list of all the commands executed along with "
                     + "timestamp",
                 templateName: "show-history",
-                execute: function ($output, cmd, parse, poss) {
+                execute: function (view, cmd, parse, poss) {
                     var output = {
                         history: Clira.CommandHistoryController.create({
                             content: Clira.CommandHistory.find()
                         })
                     };
-                    return output;
+                    view.get('controller').set('output', output);
                 }
             },
             {
                 command: "clear command history",
                 help: "Clears history of executed commands",
                 templateName: "clear-history",
-                execute: function ($output, cmd, parse, poss) {
+                execute: function (view, cmd, parse, poss) {
                     var output = {};
-                    Clira.CommandHistory.deleteAll().then($.proxy(function() {
+                    Clira.CommandHistory.deleteAll().then(function() {
                         output.message = "Successfully cleared history";
                         output.type = "success";
-                    }, this), function(err) {
+                        view.get('controller').set('output', output);
+                    }, function(err) {
                         output.message = "Failed to clear history";
                         output.type = "error";
+                        view.get('controller').set('output', output);
                     });
-                    return output;
                 }
             }
         ]
