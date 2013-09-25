@@ -133,8 +133,19 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
         this.ui.source = this.get('targetObject').autoComplete;
 
         // Handle focus events
-        this.$().focus(function() {
+        this.$().focus(function(event, ui) {
             $('#command-input-box').attr('class', 'input-box focus-on');        
+        });
+
+        var that = this;
+        
+        // When user hits enter, prevent default and execute command
+        this.$().keypress(function(e) {
+            var code = (e.keyCode ? e.keyCode : e.which);
+            if(code == 13) { //Enter keycode
+               e.preventDefault();
+               that.insertNewline(); 
+            }
         });
 
         // Decorate autocomplete list
