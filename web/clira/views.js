@@ -214,12 +214,21 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
             this.pushObject(messagesView);
         }
 
-        // Insert output child if output is not null
-        if (this.get('controller').output) {
+        var poss = this.get('controller').poss,
+            parse = this.get('controller').parse,
+            command = this.get('controller').command;
+
+        // Proceed with output generation only for valid commands
+        if (!this.get('controller').parseErrors) {
             var contentView = Ember.View.create({
-                context: this.get('controller').output,
                 layoutName: "output_content_layout",
-                templateName: this.get('controller').contentTemplate
+                templateName: this.get('controller').contentTemplate,
+
+                didInsertElement: function() {
+                    // Call execute function once we are in DOM
+                    poss.command.execute.call(null, contentView, command, 
+                                                parse, poss);
+                }
             });
             this.pushObject(contentView);
         }

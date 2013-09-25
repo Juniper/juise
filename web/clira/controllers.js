@@ -70,9 +70,6 @@ Clira.CommandInputController = Em.ObjectController.extend({
             output = null;
         
         if (parseErrors.length == 0) {
-            output = poss.command.execute.call(poss.command, this.command, 
-                                                parse,  poss);
-
             if (poss.command.templateName)
                 templateName = poss.command.templateName;
 
@@ -93,7 +90,10 @@ Clira.CommandInputController = Em.ObjectController.extend({
             contentTemplate: templateName,
             command: finalCommand,
             messages: parseErrors,
-            output: output
+            output: output,
+            parse: parse,
+            parseErrors: parseErrors,
+            poss: poss
         };
 
         /*
@@ -149,7 +149,7 @@ Clira.OutputsController = Em.ArrayController.extend();
  * Controller for the OutputContainerView. Container view gets output data and
  * template name for output content child view from here
  */
-Clira.OutputContainerController = Em.ObjectController.extend({
+Clira.OutputContainerController = Em.Controller.extend({
     data: null,
     contentTemplate: null,
 
