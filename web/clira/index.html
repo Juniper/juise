@@ -80,10 +80,17 @@
 
   <script type="text/x-handlebars" data-template-name="clira_message">
     <div {{bindAttr class="view.uiType"}}>
-      {{#unless noIcon}}
-        <span class="ui-icon ui-icon-alert"></span>
-      {{/unless}}
-      {{message}}
+      {{#if output}}
+        {{#unless output.noIcon}}
+          <span class="ui-icon ui-icon-alert"></span>
+        {{/unless}}
+        {{output.message}}
+      {{else}}
+        {{#unless noIcon}}
+          <span class="ui-icon ui-icon-alert"></span>
+        {{/unless}}
+        {{message}}
+      {{/if}}
     </div>
   </script>
 
