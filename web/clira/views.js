@@ -70,6 +70,7 @@ Clira.DynFormView = JQ.Dialog.extend({
      * them in template and to capture the modified values
      */
     willInsertElement: function() {
+        this.get('controller').set('message', this.get('message'));
         this.get('controller').set('fields', this.get('fields'));
         this.get('controller').set('fieldValues', {});
     }
