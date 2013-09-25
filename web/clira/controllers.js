@@ -183,6 +183,7 @@ Clira.MruPulldownController = Em.ArrayController.extend({
     // Get the history from CommandHistory model and set it to content on init
     init: function() {
         this.set('content', Clira.CommandHistory.find());
+        this.get('controllers.commandInput.command');
     },
    
     // Most recently used command list as a computed property on content
