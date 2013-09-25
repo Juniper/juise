@@ -62,14 +62,14 @@ jQuery(function ($) {
             });
         },
 
-        makeAlert: function makeAlert ($div, message, defmessage) {
+        makeAlert: function makeAlert (view, message, defmessage) {
             if (message == undefined || message.length == 0)
                 message = defmessage;
             var content = '<div class="ui-state-error ui-corner-all">'
                 + '<span><span class="ui-icon ui-icon-alert">'
                 + '</span>';
             content += '<strong>Error:</strong> ' + message + '</span></div>';
-            $div.html(content);
+            view.get('controller').set('output', content);
         },
 
         refocus: function () {
@@ -576,9 +576,8 @@ jQuery(function ($) {
             }
             return muxer;
         },
-        runCommand: function runCommand ($output, target, command) {
-            $output.html(loadingMessage);
-            $output.slideUp(0).slideDown($.clira.prefs.slide_speed);
+        runCommand: function runCommand (view, target, command) {
+            view.get('controller').set('output', loadingMessage);
 
             if (muxer == undefined)
                 openMuxer();
@@ -586,7 +585,7 @@ jQuery(function ($) {
             var full = [ ];
 
             muxer.rpc({
-                div: $output,
+                div: view.$(),
                 target: target,
                 payload: "<command format='html'>" + command + "</command>",
                 onreply: function (data) {
@@ -602,41 +601,41 @@ jQuery(function ($) {
                     // should also be a timer to render what we've got if
                     // the output RPC stalls.
                     if (full.length <= 2)
-                        $output.html(data);
+                        view.get('controller').set('output', data);
                 },
                 oncomplete: function () {
                     $.dbgpr("rpc: complete");
-                    $output.html(full.join(""));
+                    view.get('controller').set('output', full.join(""));
                 },
                 onhostkey: function (data) {
                     var self = this;
-                    promptForHostKey($output, data, function (response) {
+                    promptForHostKey(view, data, function (response) {
                         muxer.hostkey(self, response);
                     });
                 },
                 onpsphrase: function (data) {
                     var self = this;
-                    promptForSecret($output, data, function (response) {
+                    promptForSecret(view, data, function (response) {
                         muxer.psphrase(self, response);
                     });
                 },
                 onpsword: function (data) {
                     var self = this;
-                    promptForSecret($output, data, function (response) {
+                    promptForSecret(view, data, function (response) {
                         muxer.psword(self, response);
                     });
                 },
                 onclose: function (event, message) {
                     $.dbgpr("muxer: rpc onclose");
                     if (full.length == 0) {
-                        $.clira.makeAlert($output, message,
+                        $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
                     }
                 },
                 onerror: function (message) {
                     $.dbgpr("muxer: rpc onerror");
                     if (full.length == 0) {
-                        $.clira.makeAlert($output, message,
+                        $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
                     }
                 }
@@ -723,56 +722,44 @@ jQuery(function ($) {
         }
     });
 
-    function promptForHostKey ($parent, prompt, onclick) {
-        var content = "<div class='muxer-prompt ui-state-highlight'>"
-            + "<div class='muxer-message'>" + prompt + "</div>"
-            + "<div class='muxer-buttons'>" 
-            +   "<button class='accept'/>"
-            +   "<button class='decline'/>"
-            + "</div></div>";
-
-        var $div = $(content);
-        $parent.html($div);
-        $(".accept", $div).text("Accept").button({}).focus().click(function () {
-            onclick("yes");
-            restoreReplaceDiv($div);
-        });
-        $(".decline", $div).text("Decline").button({}).click(function () {
-            onclick("no");
-            restoreReplaceDiv($div);
-        });
+    function promptForHostKey (view, prompt, onclick) {
+        var hostKeyView = Clira.DynFormView.extend({
+            title: "Host key",
+            buttons: {
+                Accept: function() {
+                    onclick("yes");
+                    $(this).dialog("close");
+                },
+                Decline: function() {
+                    onclick("no");
+                    $(this).dialog("close");
+                }
+            }
+        }); 
+        view.createChildView(hostKeyView, {message: prompt}).append();
     }
 
-    function promptForSecret ($parent, prompt, onclick) {
-        var content = "<div class='muxer-prompt ui-state-highlight'>"
-            + "<div class='muxer-message'>" + prompt + "</div>"
-            + "<form action='#' class='form'>"
-            +   "<input name='value' type='password' class='value'></input>"
-            +   "<input type='submit' class='submit' hidden='yes'></input>"
-            + "</form>"
-            + "<div class='muxer-buttons'>" 
-            +   "<button class='enter'/>"
-            +   "<button class='cancel'/>"
-            + "</div></div>";
-
-        var $div = $(content);
-        $parent.html($div);
-        $(".form", $div).submit( function () {
-            var val = $(".value", $div).val();
-            onclick(val);
-            restoreReplaceDiv($div);
-        }).children("input.value").focus();
-        $(".enter", $div).text("Enter").button({}).click(function () {
-            var val = $(".value", $div).val();
-            onclick(val);
-            restoreReplaceDiv($div);
+    function promptForSecret (view, prompt, onclick) {
+        var secretView = Clira.DynFormView.extend({
+            title: "Password",
+            buttons: {
+                Enter: function() {
+                    onclick(viewContext.get('fieldValues').password);
+                    $(this).dialog("close")
+                },
+                Cancel: function() {
+                    onclick('');
+                    $(this).dialog("close");
+                }
+            }
         });
-        $(".cancel", $div).text("Cancel").button({}).click(function () {
-            var val = $(".value", $div).val();
-            onclick(val);
-            $div.remove();
-            $parent.html(loadingMessage);
-        });
+        var fields = [{
+            name: "password",
+            title: "",
+            secret: true
+        }];
+        view.createChildView(secretView, {fields: fields, message: prompt})
+                            .append();
     }
 
     function loadHttpReply (text, status, http, $this, $output) {
