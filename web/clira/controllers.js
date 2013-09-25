@@ -17,6 +17,7 @@ Clira.CommandInputController = Em.ObjectController.extend({
     // Need access to outputs controller to insert output after command run
     needs: ['outputs'],
     command: null,
+    commandNumber: 0,
 
     // This serves as 'source' that returns autocomplete list
     autoComplete: function (value, response) {
@@ -104,6 +105,13 @@ Clira.CommandInputController = Em.ObjectController.extend({
          */
         this.get('controllers.outputs')
             .unshiftObject(Clira.OutputContainerController.create(content));
+
+        if ($.clira.commandCount) {
+            this.set('commandNumber', ++$.clira.commandCount);
+        } else {
+            $.clira.commandCount = 1;
+            this.set('commandNumber', 1);
+        }
 
         // Reset command input field 
         this.set('command', '');
@@ -200,7 +208,7 @@ Clira.MruPulldownController = Em.ArrayController.extend({
     // Get the history from CommandHistory model and set it to content on init
     init: function() {
         this.set('content', Clira.CommandHistory.find());
-        this.get('controllers.commandInput.command');
+        this.get('controllers.commandInput.commandNumber');
     },
    
     // Most recently used command list as a computed property on content
@@ -231,7 +239,7 @@ Clira.MruPulldownController = Em.ArrayController.extend({
      */
     updateMru: function() {
         this.set('content', Clira.CommandHistory.find());
-    }.observes('controllers.commandInput.command')
+    }.observes('controllers.commandInput.commandNumber')
  });
 
 
