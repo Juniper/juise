@@ -598,6 +598,9 @@ mx_session (mx_request_t *mrp)
 {
     mx_sock_session_t *session = mx_session_find(mrp->mr_fulltarget);
 
+    if (session == NULL && (mrp->mr_flags & MRF_NOCREATE))
+        return NULL;
+
     if (session == NULL || session->mss_base.ms_state != MSS_ESTABLISHED)
 	session = mx_session_open(mrp);
 
@@ -757,7 +760,7 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
 	for (;;) {
             rc = mx_channel_handle_input(mcp);
-            mx_log("C%u: handle input returns %d", mcp->mc_id, rc);
+            DBG_POLL("C%u: handle input returns %d", mcp->mc_id, rc);
 	    if (rc)
 		break;
 	}

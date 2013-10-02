@@ -536,9 +536,6 @@ fi
 # just punt.  For now, we just pray for hangtime....
 #
 LIGHTTPD_REQUIRED_VERSION=1.4.28
-LIGHTTPD_VERSION=${LIGHTTPD_REQUIRED_VERSION}
-LIGHTTPD_VERSION_ID=`echo $LIGHTTPD_VERSION | $AWK -F '.' '{print "(" $1 " << 16 | " $2 " << 8 | " $3 ")"}'`
-AC_DEFINE_UNQUOTED([LIGHTTPD_VERSION_ID], [$LIGHTTPD_VERSION_ID], [lighttpd-version-id])
 
 AC_CHECK_TYPES(socklen_t,,,[#include <sys/types.h>
 #include <sys/socket.h>])

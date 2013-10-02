@@ -226,6 +226,8 @@ jQuery(function ($) {
         var payload = options.payload;
         if (payload == undefined && options.command)
             payload = "<command>" + options.command + "</command>";
+        if (options.create == "no")
+            attrs += " create=\"no\"";
 
         var op = options.op;
         if (op == undefined)

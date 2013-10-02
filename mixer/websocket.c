@@ -340,7 +340,8 @@ mx_websocket_poller (MX_TYPE_POLLER_ARGS)
 	}
 
 	mbp->mb_len = len;
-	slaxMemDump("wsread: ", mbp->mb_data, mbp->mb_len, ">", 0);
+	if (opt_debug & DBG_FLAG_DUMP)
+	    slaxMemDump("wsread: ", mbp->mb_data, mbp->mb_len, ">", 0);
 
 	mx_websocket_handle_request(mswp, mbp);
     }

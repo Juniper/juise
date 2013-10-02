@@ -15,6 +15,8 @@ JUISE_WARNINGS = HIGH
 endif
 include ${top_srcdir}/warnings.mk
 
+AUTOMAKE_OPTIONS = subdir-objects
+
 AM_CFLAGS = \
     -DLIBSLAX_XMLSOFT_NEED_PRIVATE \
     -DJUISE_LIBEXECDIR=\"${JUISE_LIBEXECDIR}\" \
