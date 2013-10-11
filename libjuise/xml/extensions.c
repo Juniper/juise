@@ -1348,7 +1348,7 @@ ext_jcs_dampen (xmlXPathParserContext *ctxt, int nargs)
 int
 ext_jcs_register_all (void)
 {
-    slaxExtRegisterOther (JCS_FULL_NS);
+    slaxExtRegisterOther(JCS_FULL_NS);
 
     slaxRegisterFunction(JCS_FULL_NS, "close", ext_jcs_close);
     slaxRegisterFunction(JCS_FULL_NS, "dampen", ext_jcs_dampen);
@@ -1361,4 +1361,70 @@ ext_jcs_register_all (void)
     slaxRegisterFunction(JCS_FULL_NS, "parse-ip", ext_jcs_parse_ip);
 
     return 0;
+}
+
+slax_function_table_t slaxJcsTable[] = {
+    {
+	"close", ext_jcs_close,
+	"Close a NETCONF (or other) connection",
+	"(connection)", XPATH_UNDEFINED,
+    },
+    {
+	"dampen", ext_jcs_dampen,
+	"Dampen an event by rate and time limiting it",
+	"(name, max-count, period-in-minutes)", XPATH_BOOLEAN,
+    },
+    {
+	"execute", ext_jcs_execute,
+	"Execute a NETCONF (or other) RPC",
+	"(connection, rpc)", XPATH_NODESET,
+    },
+    {
+	"get-hello", ext_jcs_gethello,
+	"Retrieve the 'hello' information for a connection",
+	"(connection)", XPATH_NODESET,
+    },
+    {
+	"get-protocol", ext_jcs_getprotocol,
+	"Retrieve the protocol in use for a connection",
+	"(connection)", XPATH_STRING,
+    },
+    {
+	"hostname", ext_jcs_hostname,
+	"Return a hostname for an ip address",
+	"(address)", XPATH_STRING,
+    },
+    {
+	"invoke", ext_jcs_invoke,
+	"Invoke an RPC on the local (or default) device",
+	"(rpc)", XPATH_NODESET,
+    },
+    {
+	"open", ext_jcs_open,
+	"Open a connection for NETCONF (or other) RPCs",
+	"(device?, options?)", XPATH_NODESET,
+    },
+    {
+	"parse-ip", ext_jcs_parse_ip,
+	"Parse an IP address or netmask into detailed information",
+	"(address-or-netmask)", XPATH_NODESET,
+    },
+    { NULL, NULL, NULL, NULL, XPATH_UNDEFINED }
+};
+
+SLAX_DYN_FUNC(slaxDynLibInit)
+{
+    arg->da_functions = slaxJcsTable; /* Fill in our function table */
+
+    slaxExtRegisterOther(JCS_FULL_NS);
+
+    return SLAX_DYN_VERSION;
+}
+
+SLAX_DYN_FUNC(slaxDynLibClean)
+{
+    /*
+    slaxExtUnRegisterOther(JCS_FULL_NS);
+    */
+    return SLAX_DYN_VERSION;
 }
