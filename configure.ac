@@ -609,6 +609,7 @@ AC_SUBST(SLAX_LIBEXT)
 dnl for the spec file
 RELDATE=`date +'%Y-%m-%d%n'`
 AC_SUBST(RELDATE)
+UNAME=`uname -a`
 
 AC_MSG_RESULT(Using configure dir $ac_abs_confdir)
 
@@ -661,6 +662,8 @@ AC_OUTPUT
 
 
 AC_MSG_NOTICE([summary of build options:
+
+  build system:     ${UNAME}
 
   juise version:    ${VERSION} ${LIBJUISE_VERSION_EXTRA}
   host type:        ${host}
