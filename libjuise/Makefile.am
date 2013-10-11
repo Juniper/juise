@@ -77,6 +77,7 @@ libjuise_la_SOURCES = \
     io/trace.c \
     io/logging.c \
     io/rotate_log.c \
+    xml/client.c \
     xml/xml_escape.c \
     xml/xml_escaped_size.c \
     xml/extensions.c \
@@ -94,3 +95,20 @@ LIBS = \
 
 svnignore:
 	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
+
+
+UGLY_NAME = jcs.prefix:http%3A%2F%2Fxml.juniper.net%2Fjunos%2Fcommit-scripts%2F1.0.ext
+
+install-exec-hook:
+	@DLNAME=`sh -c '. ./libjuise.la ; echo $$dlname'`; \
+		if [ x"$$DLNAME" = x ]; \
+                    then DLNAME=${LIBNAME}.${SLAX_LIBEXT}; fi ; \
+		echo Install link $$DLNAME "->" ${UGLY_NAME} "..." ; \
+		mkdir -p ${DESTDIR}${SLAX_EXTDIR} ; \
+		cd ${DESTDIR}${SLAX_EXTDIR} \
+		&& chmod +w . \
+		&& prefix=`echo ${UGLY_NAME} | awk -F: '{ print $$1 }'` \
+		&& url=`echo ${UGLY_NAME} | awk -F: '{ print $$2 }'` \
+		&& rm -f $$prefix $$url \
+		&& ${LN_S} ${JUISE_LIBDIR}/$$DLNAME $$url \
+		&& ${LN_S} $$url $$prefix
