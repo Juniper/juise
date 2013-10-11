@@ -543,9 +543,16 @@ AC_CHECK_TYPES(socklen_t,,,[#include <sys/types.h>
 case $host_os in
      darwin*)
         LIBTOOL=glibtool
+	SLAX_LIBEXT=dylib
+	;;
+     Linux*|linux*)
+        CFLAGS="-D_GNU_SOURCE $CFLAGS"
+	LDFLAGS=-ldl
+	SLAX_LIBEXT=so
 	;;
      cygwin*|CYGWIN*)
 	LDFLAGS=-no-undefined
+	SLAX_LIBEXT=ddl
 	;;
 esac
 
@@ -596,6 +603,8 @@ JUISE_INCLUDEDIR='${includedir}'
 AC_SUBST(JUISE_LIBEXECDIR)
 JUISE_LIBEXECDIR='${pkglibexecdir}'
 AC_SUBST(JUISE_INCLUDEDIR)
+
+AC_SUBST(SLAX_LIBEXT)
 
 dnl for the spec file
 RELDATE=`date +'%Y-%m-%d%n'`
