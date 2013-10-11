@@ -157,12 +157,4 @@ js_client_set_log_client (const char *log_client)
 const char *
 js_client_commit_log_client (void);
 
-#ifdef MAKE_JUNOSCRIPT_CLIENT
-/*
- * js_client_data: holds the information we need about the attached
- * client.
- */
-js_client_t js_client_data;
-#endif /* MAKE_JUNOSCRIPT_CLIENT */
-
 #endif /* JS_CLIENT_H */
