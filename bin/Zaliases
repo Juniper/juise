@@ -1,6 +1,6 @@
-set libjuise=`pwd`
-setenv LIBJUISE $libjuise
-alias Zautoreconf "(cd $libjuise ; autoreconf --install)"
+set top_src=`pwd`
+setenv LIBJUISE $top_src
+alias Zautoreconf "(cd $top_src ; autoreconf --install)"
 
 set opts=' \
 --enable-clira \
@@ -23,9 +23,10 @@ set opts=`echo $opts`
 
 setenv CONFIGURE_OPTS "$opts"
 
-alias Zconfigure "(cd $libjuise/build; ../configure $opts )"
+alias Zconfigure "(cd $top_src/build; ../configure $opts ); ."
 
-alias Zbuild "(cd $libjuise/build; make \!* )"
+alias Zbuild "(cd $top_src/build; make \!* ); ."
+alias mi "(cd $top_src/build; make && make install); ."
 
 mkdir -p build
 cd build
