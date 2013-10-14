@@ -14,6 +14,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <errno.h>
 
 #include <libjuise/common/aux_types.h>
@@ -41,7 +42,7 @@ pid_get_process (const char* pidfile_path)
 {  
     char buf[BUFSIZ] = "";
     int fd;
-    FILE* f;
+    FILE *f;
     int pid = -1;
     struct stat sb;
     int error = 0;
@@ -72,7 +73,8 @@ pid_get_process (const char* pidfile_path)
 	errno = error;
 	return -1;
     }
-    fgets(buf, sizeof buf, f);
+    if (fgets(buf, sizeof buf, f) == NULL)
+	buf[0] = '\0';
 
     fclose(f);
 
