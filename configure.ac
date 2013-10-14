@@ -75,6 +75,7 @@ AC_CHECK_FUNCS([sysctlbyname])
 AC_CHECK_FUNCS([flock])
 AC_CHECK_FUNCS([statfs])
 AC_CHECK_FUNCS([strnstr])
+AC_CHECK_FUNCS([strndup])
 
 AC_CHECK_HEADERS([sys/time.h])
 AC_CHECK_HEADERS([ctype.h errno.h stdio.h stdlib.h])
