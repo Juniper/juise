@@ -76,6 +76,7 @@ libjuise_la_SOURCES = \
     io/jtrace.c \
     io/trace.c \
     io/logging.c \
+    io/pid_lock.c \
     io/rotate_log.c \
     xml/client.c \
     xml/xml_escape.c \
