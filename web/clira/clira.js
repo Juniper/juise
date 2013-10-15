@@ -608,7 +608,7 @@ jQuery(function ($) {
                     $.dbgpr("rpc: complete");
                     $output.html(full.join(""));
 
-                    $output.find('[class~="data"]').each(function() {
+                    $output.find('[class~="data-tag"]').each(function() {
                         var help = $(this).attr("data-help");
                         var type = $(this).attr("data-type");
                         var xpath = $(this).attr("data-xpath");
