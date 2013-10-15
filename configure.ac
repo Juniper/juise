@@ -75,6 +75,7 @@ AC_CHECK_FUNCS([sysctlbyname])
 AC_CHECK_FUNCS([flock])
 AC_CHECK_FUNCS([statfs])
 AC_CHECK_FUNCS([strnstr])
+AC_CHECK_FUNCS([strndup])
 
 AC_CHECK_HEADERS([sys/time.h])
 AC_CHECK_HEADERS([ctype.h errno.h stdio.h stdlib.h])
@@ -536,9 +537,6 @@ fi
 # just punt.  For now, we just pray for hangtime....
 #
 LIGHTTPD_REQUIRED_VERSION=1.4.28
-LIGHTTPD_VERSION=${LIGHTTPD_REQUIRED_VERSION}
-LIGHTTPD_VERSION_ID=`echo $LIGHTTPD_VERSION | $AWK -F '.' '{print "(" $1 " << 16 | " $2 " << 8 | " $3 ")"}'`
-AC_DEFINE_UNQUOTED([LIGHTTPD_VERSION_ID], [$LIGHTTPD_VERSION_ID], [lighttpd-version-id])
 
 AC_CHECK_TYPES(socklen_t,,,[#include <sys/types.h>
 #include <sys/socket.h>])
@@ -546,9 +544,16 @@ AC_CHECK_TYPES(socklen_t,,,[#include <sys/types.h>
 case $host_os in
      darwin*)
         LIBTOOL=glibtool
+	SLAX_LIBEXT=dylib
+	;;
+     Linux*|linux*)
+        CFLAGS="-D_GNU_SOURCE $CFLAGS"
+	LDFLAGS=-ldl
+	SLAX_LIBEXT=so
 	;;
      cygwin*|CYGWIN*)
 	LDFLAGS=-no-undefined
+	SLAX_LIBEXT=ddl
 	;;
 esac
 
@@ -600,9 +605,12 @@ AC_SUBST(JUISE_LIBEXECDIR)
 JUISE_LIBEXECDIR='${pkglibexecdir}'
 AC_SUBST(JUISE_INCLUDEDIR)
 
+AC_SUBST(SLAX_LIBEXT)
+
 dnl for the spec file
 RELDATE=`date +'%Y-%m-%d%n'`
 AC_SUBST(RELDATE)
+UNAME=`uname -a`
 
 AC_MSG_RESULT(Using configure dir $ac_abs_confdir)
 
@@ -655,6 +663,8 @@ AC_OUTPUT
 
 
 AC_MSG_NOTICE([summary of build options:
+
+  build system:     ${UNAME}
 
   juise version:    ${VERSION} ${LIBJUISE_VERSION_EXTRA}
   host type:        ${host}

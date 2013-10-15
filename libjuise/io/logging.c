@@ -42,7 +42,8 @@ static inline const char *
 strerror_ri (int errnum, char *strerrbuf, size_t buflen)
 {
     if (strerror_r(errnum, strerrbuf, buflen) != 0)
-	strerror_r(EINVAL, strerrbuf, buflen);
+	if (strerror_r(EINVAL, strerrbuf, buflen) != 0)
+	    return "unknown error";
 
     return strerrbuf;
 }

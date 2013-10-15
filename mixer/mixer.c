@@ -294,6 +294,7 @@ print_help (const char *opt)
 	    "\t--port <n>: use alternative port for websocket\n"
 	    "\t--use-known-hosts OR -K: use openssh .known_hosts files\n"
 	    "\t--verbose: Enable verbose logs\n"
+	    "\t--version OR -V: show version information (and exit)\n"
 	    "\nProject juise home page: http://juise.googlecode.com\n"
 	    "\n");
 	        
@@ -315,6 +316,13 @@ sigchld_handler (int sig UNUSED)
 {
     while (waitpid(-1, NULL, WNOHANG) > 0)
 	continue;
+}
+
+static void
+print_version (void)
+{
+    printf("libjuice version %s\n", LIBJUISE_VERSION);
+    printf("libslax version %s\n",  LIBSLAX_VERSION);
 }
 
 int
@@ -390,6 +398,10 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
 	    opt_verbose = TRUE;
+
+	} else if (streq(cp, "--version") || streq(cp, "-V")) {
+	    print_version();
+	    exit(0);
 
 	} else {
 	    print_help(cp);

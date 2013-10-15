@@ -30,7 +30,8 @@ mx_channel_read (mx_channel_t *mcp, char *buf, unsigned long bufsiz)
 
     DBG_POLL("C%u read %d", mcp->mc_id, len);
     if (len > 0) {
-	slaxMemDump("chread: ", buf, len, ">", 0);
+	if (opt_debug & DBG_FLAG_DUMP)
+	    slaxMemDump("chread: ", buf, len, ">", 0);
     } else {
 	if (len == LIBSSH2_ERROR_SOCKET_RECV) {
 	    if (mcp->mc_session)
@@ -50,7 +51,8 @@ mx_channel_write (mx_channel_t *mcp, const char *buf, unsigned long bufsiz)
 
     DBG_POLL("C%u write %d", mcp->mc_id, len);
     if (len > 0)
-	slaxMemDump("chwrite: ", buf, len, ">", 0);
+	if (opt_debug & DBG_FLAG_DUMP)
+	    slaxMemDump("chwrite: ", buf, len, ">", 0);
 
     return len;
 }
