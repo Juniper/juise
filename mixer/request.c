@@ -354,12 +354,15 @@ mx_request_release_client (mx_sock_t *client)
 {
     mx_request_t *mrp;
 
+    if (client == NULL)
+	return;
+
     TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
 	if (mrp->mr_client == client) {
 	    mx_log("R%u client released S%u, C%u",
 		   mrp->mr_id, mrp->mr_client->ms_id,
 		   mrp->mr_channel ? mrp->mr_channel->mc_id : 0);
-	    if (mrp->mr_state == MSS_ESTABLISHED)
+	    if (mrp->mr_state == MSS_ESTABLISHED && mrp->mr_channel)
 		mx_channel_release(mrp->mr_channel);
 
 	    mrp->mr_state = MSS_FAILED;
