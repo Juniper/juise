@@ -9,9 +9,8 @@
  * LICENSE.
  */
 
-mx_sock_t *
+void
 mx_console_start (void);
 
 void
 mx_console_init (void);
-
