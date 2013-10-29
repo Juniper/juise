@@ -10,7 +10,7 @@
  */
 
 mx_sock_t *
-mx_listener (unsigned port, mx_type_t type, int spawns, const char *target);
+mx_listener (const char *path, mx_type_t type, int spawns, const char *target);
 
 void
 mx_listener_init (void);
