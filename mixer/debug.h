@@ -26,6 +26,9 @@ extern unsigned opt_verbose;
 FILE *
 mx_log_file (FILE *fp);
 
+FILE *
+mx_log_fd (int fd);
+
 void
 #ifdef HAVE_PRINTFLIKE
 __printflike(1, 2)
