@@ -13,6 +13,9 @@ mx_sock_session_t *
 mx_session_create (LIBSSH2_SESSION *session, int sock, const char *target,
 		   const char *canonname);
 
+void
+mx_session_release_client (mx_sock_t *client);
+
 int
 mx_session_check_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp);
 
