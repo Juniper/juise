@@ -38,7 +38,7 @@ mx_forwarder_spawn (MX_TYPE_SPAWN_ARGS)
     msfp->msf_base.ms_id = ++mx_sock_id;
     msfp->msf_base.ms_type = MST_FORWARDER;
     msfp->msf_base.ms_sock = sock;
-    msfp->msf_base.ms_sin = *sin;
+    msfp->msf_base.ms_sun = *sun;
 
     msfp->msf_rbufp = mx_buffer_create(0);
 
@@ -128,7 +128,7 @@ mx_forwarder_poller (MX_TYPE_POLLER_ARGS)
 
 	    } else if (len == 0) {
 		mx_log("%s: disconnect (%s)",
-                       mx_sock_title(msp), mx_sock_sin(msp));
+                       mx_sock_title(msp), mx_sock_name(msp));
 		return TRUE;
 	    } else {
 		mbp->mb_len = len;
