@@ -26,6 +26,20 @@ mx_log_file (FILE *fp)
     return old;
 }
 
+FILE *
+mx_log_fd (int fd)
+{
+    FILE *fp = fdopen(fd, "w+");
+    if (fp == NULL)
+	return NULL;
+
+    FILE *old = mx_log_fp;
+    mx_log_fp = fp;
+    if (fp)
+        setlinebuf(fp);
+    return old;
+}
+
 void
 #ifdef HAVE_PRINTFLIKE
 __printflike(1, 2)
