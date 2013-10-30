@@ -1424,9 +1424,8 @@ mod_juise_patch_connection (server *srv, connection *con, mod_juise_plugin_data 
 	    if (buffer_is_equal_string(du->key, CONST_STR_LEN("juise.assign")))
 		PATCH(cgi);
 	    else if (buffer_is_equal_string(du->key,
-				      CONST_STR_LEN("juise.execute-x-only"))) {
+				      CONST_STR_LEN("juise.execute-x-only")))
 		PATCH(execute_x_only);
-	    }
 	}
     }
 
@@ -1529,7 +1528,7 @@ URIHANDLER_FUNC(mod_juise_handle_physical)
 
 	if (ds->key->ptr[0] == '/') {
 	    if (strncmp(uri->ptr, ds->key->ptr, ct_len) == 0) {
-		buffer_copy_string(fn, PATH_JUISE);
+		buffer_copy_string_buffer(fn, ds->value);
 		break;
 	    }
 	}
