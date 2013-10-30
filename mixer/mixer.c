@@ -80,6 +80,7 @@ static int opt_fork;
 static int opt_getpass;
 static int opt_login;
 static int opt_no_console;
+static int opt_no_auto_server;
 static int opt_server;
 static unsigned opt_port = 8000;
 
@@ -325,6 +326,7 @@ connect_to_path (const char *path, const char *tag)
 {
     struct sockaddr_un sun;
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    int i;
 
     if (sock < 0) {
 	if (tag)
@@ -337,7 +339,15 @@ connect_to_path (const char *path, const char *tag)
     sun.sun_len = sizeof(sun);
     strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
 
-    if (connect(sock, (struct sockaddr *) &sun, sun.sun_len) < 0) {
+    for (i = 0;; i++) {
+	if (connect(sock, (struct sockaddr *) &sun, sun.sun_len) >= 0)
+	    break;
+
+	if (i < 5) {
+	    sleep(1);
+	    continue;
+	}
+
 	if (tag)
 	    mx_log("%s: path %s: bind: %s",
 		   tag, sun.sun_path, strerror(errno));
@@ -411,47 +421,6 @@ do_console (char **argv UNUSED)
     return 0;
 }
 
-static int
-do_forward (char **argv UNUSED)
-{
-    if (!pid_is_locked(path_lock)) {
-	mx_log("server is not started");
-	return -1;
-    }
-
-    int sock = connect_to_path(path_websocket, "websocket");
-    if (sock < 0)
-	return sock;
-
-    forward_data(0, sock, 1, FALSE);
-
-    shutdown(sock, SHUT_WR);
-
-    for (;;) {
-	char buf[READ_BUFSIZ];
-	int rc = read(sock, buf, sizeof(buf));
-	if (rc < 0) {
-	    if (errno == EINTR)
-		continue;
-	    break;
-	}
-	if (rc == 0)
-	    break;
-
-	if (write(1, buf, rc) < 0)
-	    break;
-    }
-
-    return 0;
-}
-
-static void
-sigchld_handler (int sig UNUSED)
-{
-    while (waitpid(-1, NULL, WNOHANG) > 0)
-	continue;
-}
-
 static void
 mx_type_info_init (void)
 {
@@ -462,18 +431,27 @@ mx_type_info_init (void)
     mx_websocket_init();
 }
 
+static void
+sigchld_handler (int sig UNUSED)
+{
+    while (waitpid(-1, NULL, WNOHANG) > 0)
+	continue;
+}
+
+static void
+sigchld_init (void)
+{
+    struct sigaction sa;
+
+    bzero(&sa, sizeof(sa));
+    sa.sa_handler =  sigchld_handler;
+    sigaction(SIGCHLD, &sa, 0);
+}    
+
 static int
 do_server (char **argv UNUSED)
 {
     int rc;
-
-    if (opt_fork) {
-	struct sigaction sa;
-
-	bzero(&sa, sizeof(sa));
-	sa.sa_handler =  sigchld_handler;
-	sigaction(SIGCHLD, &sa, 0);
-    }
 
     snprintf(keyfile1, sizeof(keyfile1), "%s/%s/%s",
 	     opt_home, keydir, keybase1);
@@ -513,6 +491,63 @@ do_server (char **argv UNUSED)
 
     if (!opt_no_db)
 	mx_db_close();
+
+    return 0;
+}
+
+static void
+fork_server (void)
+{
+    if (fork() == 0) {
+	if (fork() != 0)
+	    _exit(0);
+
+	mx_log("forking server automatically (pid %d)\n", getpid());
+	chdir("/");
+
+	int i, fd = open("/dev/null", O_RDWR);
+	for (i = 0; i < 64; i++)
+	    if (i != fd)
+		dup2(fd, i);
+
+	do_server(NULL);
+    }
+}
+
+static int
+do_forward (char **argv UNUSED)
+{
+    if (!pid_is_locked(path_lock)) {
+	mx_log("server is not started");
+
+	if (opt_no_auto_server)
+	    return -1;
+
+	fork_server();
+    }
+
+    int sock = connect_to_path(path_websocket, "websocket");
+    if (sock < 0)
+	return sock;
+
+    forward_data(0, sock, 1, FALSE);
+
+    shutdown(sock, SHUT_WR);
+
+    for (;;) {
+	char buf[READ_BUFSIZ];
+	int rc = read(sock, buf, sizeof(buf));
+	if (rc < 0) {
+	    if (errno == EINTR)
+		continue;
+	    break;
+	}
+	if (rc == 0)
+	    break;
+
+	if (write(1, buf, rc) < 0)
+	    break;
+    }
 
     return 0;
 }
@@ -674,6 +709,8 @@ main (int argc UNUSED, char **argv UNUSED)
     asprintf(&path_websocket, "%s/mixer.%s.ws", opt_dot_dir, opt_user);
     asprintf(&path_console, "%s/mixer.%s.cons", opt_dot_dir, opt_user);
     asprintf(&path_lock, "%s/mixer.%s.lock", opt_dot_dir, opt_user);
+
+    sigchld_init();
 
     if (opt_console) {
 	rc = do_console(argv);
