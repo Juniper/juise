@@ -18,6 +18,12 @@ case $prefix in
 	;;
 esac
 
+case $exec_prefix in
+     NONE)
+	exec_prefix=$prefix
+	;;
+esac
+
 # Support silent build rules.  Requires at least automake-1.11.
 # Disable with "configure --disable-silent-rules" or "make V=1"
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -148,6 +154,9 @@ if test "JUISE_DEBUG" = "yes" ; then
     AC_DEFINE([JUISE_DEBUG], [1], [Enable debugging])
 fi
 AC_SUBST(JUISE_DEBUG)
+
+PATH_JUISE=`eval echo $bindir/juise`
+AC_DEFINE_UNQUOTED(PATH_JUISE, ["$PATH_JUISE"], [Path to juise binary])
 
 AC_MSG_CHECKING([whether to build with readline])
 AC_ARG_ENABLE([readline],
