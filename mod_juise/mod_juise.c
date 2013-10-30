@@ -1529,7 +1529,7 @@ URIHANDLER_FUNC(mod_juise_handle_physical)
 
 	if (ds->key->ptr[0] == '/') {
 	    if (strncmp(uri->ptr, ds->key->ptr, ct_len) == 0) {
-		buffer_copy_string(fn, "/Users/phil/work/root/bin/juise");
+		buffer_copy_string(fn, PATH_JUISE);
 		break;
 	    }
 	}
