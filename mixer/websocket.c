@@ -335,7 +335,7 @@ mx_websocket_poller (MX_TYPE_POLLER_ARGS)
 	int size = mbp->mb_size - (mbp->mb_start + mbp->mb_len);
 	len = recv(msp->ms_sock, mbp->mb_data + mbp->mb_start, size, 0);
 	if (len < 0) {
-	    if (errno == EWOULDBLOCK)
+	    if (errno == EWOULDBLOCK || errno == EINTR)
 		return FALSE;
 
 	    mx_log("%s: read error: %s", mx_sock_title(msp), strerror(errno));
@@ -344,9 +344,13 @@ mx_websocket_poller (MX_TYPE_POLLER_ARGS)
 	}
 
 	if (len == 0) {
-	    mx_log("%s: disconnect (%s)",
-                   mx_sock_title(msp), mx_sock_name(msp));
-	    msp->ms_state = MSS_READ_EOF;
+	    mx_log("%s: disconnect (%s) (%u/%u)",
+                   mx_sock_title(msp), mx_sock_name(msp),
+		   mswp->msw_requests_made, mswp->msw_requests_complete);
+	    if (mswp->msw_requests_made < mswp->msw_requests_complete)
+		msp->ms_state = MSS_READ_EOF;
+	    else
+		msp->ms_state = MSS_FAILED;
 	    return FALSE;
 	}
 
