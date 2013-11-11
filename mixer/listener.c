@@ -83,8 +83,8 @@ mx_listener (unsigned port, mx_type_t type, int spawns, const char *target)
     TAILQ_INSERT_HEAD(&mx_sock_list, &mslp->msl_base, ms_link);
     mx_sock_count += 1;
 
-    MX_LOG("S%u new listener, fd %u, spawns %s, port %s:%d...",
-	   mslp->msl_base.ms_id, mslp->msl_base.ms_sock,
+    MX_LOG("%s new listener, fd %u, spawns %s, port %s:%d...",
+	   mx_sock_title(&mslp->msl_base), mslp->msl_base.ms_sock,
 	   mx_sock_type_number(mslp->msl_spawns),
 	   inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
 
@@ -100,7 +100,8 @@ mx_listener_accept (mx_sock_listener_t *listener)
     int sock = accept(listener->msl_base.ms_sock,
 		      (struct sockaddr *) &sin, &sinlen);
     if (sock < 0) {
-        mx_log("S%u: accept: %s", listener->msl_base.ms_id, strerror(errno));
+        mx_log("%s: accept: %s", mx_sock_title(&listener->msl_base),
+               strerror(errno));
 	return NULL;
     }
 
@@ -117,8 +118,8 @@ mx_listener_accept (mx_sock_listener_t *listener)
     TAILQ_INSERT_HEAD(&mx_sock_list, msp, ms_link);
     mx_sock_count += 1;
 
-    MX_LOG("S%u new %s, fd %u, port %s:%d...",
-	   msp->ms_id, mx_sock_type(msp), msp->ms_sock,
+    MX_LOG("%s new %s, fd %u, port %s:%d...",
+	   mx_sock_title(msp), mx_sock_type(msp), msp->ms_sock,
 	   inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
 
     return msp;
@@ -140,7 +141,7 @@ mx_listener_poller (MX_TYPE_POLLER_ARGS)
     if (pollp && pollp->revents & POLLIN) {
 	mx_sock_t *newp = mx_listener_accept(mslp);
 	if (newp == NULL) {
-	    mx_log("S%u: accept: %s", msp->ms_id, strerror(errno));
+	    mx_log("%s: accept: %s", mx_sock_title(msp), strerror(errno));
 	    return TRUE;
 	}
 
@@ -158,6 +159,7 @@ mx_listener_init (void)
     static mx_type_info_t mti = {
     mti_type: MST_LISTENER,
     mti_name: "listener",
+    mti_letter: "L",
     mti_print: mx_listener_print,
     mti_poller: mx_listener_poller,
     mti_close: mx_listener_close,

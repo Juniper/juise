@@ -77,6 +77,28 @@ mx_sock_type (mx_sock_t *msp)
     return mx_sock_type_number(msp->ms_type);
 }
 
+const char *
+mx_sock_letter (mx_sock_t *msp)
+{
+    mx_type_t type = msp->ms_type;
+
+    if (type > MST_MAX)
+	return "unknown";
+    if (mx_type_info[type].mti_letter)
+	return mx_type_info[type].mti_letter;
+    return "U";
+}
+
+const char *
+mx_sock_title  (mx_sock_t *msp)
+{
+    static char title[16];
+
+    snprintf(title, sizeof(title), "%s%u", mx_sock_letter(msp), msp->ms_id);
+
+    return title;
+}
+
 void
 mx_close_byname (const char *name)
 {

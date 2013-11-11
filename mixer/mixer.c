@@ -42,6 +42,7 @@
 #include "websocket.h"
 #include "request.h"
 #include <signal.h>
+#include <err.h>
 
 unsigned mx_sock_id;   /* Monotonically increasing ID number */
 
@@ -59,6 +60,7 @@ const char *opt_user;		/* User name (if not getlogin()) */
 const char *opt_password;
 const char *opt_db = NULL;
 const char *opt_desthost = "localhost";
+
 unsigned opt_destport = 22;
 int opt_no_agent;
 int opt_no_known_hosts;
@@ -132,7 +134,7 @@ mx_sock_close (mx_sock_t *msp)
     if (msp == NULL)
 	return;
 
-    mx_log("S%u close (%u)", msp->ms_id, msp->ms_state);
+    mx_log("%s close (%u)", mx_sock_title(msp), msp->ms_state);
 
     if (mx_mti(msp)->mti_close)
 	mx_mti(msp)->mti_close(msp);
@@ -181,17 +183,20 @@ main_loop (void)
 	TAILQ_FOREACH(msp, &mx_sock_list, ms_link) {
 	    mindex += 1;
 
-	    if (mx_mti(msp)->mti_prep) {
-		if (mx_mti(msp)->mti_prep(msp, &mx_pollfd[nfd], &timeout)) {
-		    mx_pollfd[nfd].revents = 0;
-		    mx_poll_owner[mindex] = &mx_pollfd[nfd];
-		    nfd += 1;
-		}
-	    } else {
+	    if (mx_mti(msp)->mti_prep == NULL
+                || mx_mti(msp)->mti_prep(msp, &mx_pollfd[nfd], &timeout)) {
 		mx_pollfd[nfd].fd = msp->ms_sock;
 		mx_pollfd[nfd].events = POLLIN;
 		mx_pollfd[nfd].revents = 0;
 		mx_poll_owner[mindex] = &mx_pollfd[nfd];
+
+                if (opt_debug & DBG_FLAG_POLL)
+                    mx_log("  prep: %d: fd %d %s %s %x (%s%s)",
+                         nfd, mx_pollfd[nfd].fd, mx_sock_title(msp),
+                         mx_sock_type(msp), mx_pollfd[nfd].events,
+                         (mx_pollfd[nfd].events & POLLIN) ? " pollin" : "",
+                         (mx_pollfd[nfd].events & POLLOUT) ? " pollout" : "");
+
 		nfd += 1;
 	    }
 
@@ -199,15 +204,7 @@ main_loop (void)
 		goto failure;
 	}
 
-	if (opt_debug & DBG_FLAG_POLL) {
-	    mx_log("%ld: poll: nfd %d, timeout %d", time(NULL), nfd, timeout);
-	    int i;
-	    for (i = 0; i < nfd; i++) {
-		mx_log("    %d: fd %d%s%s", i, mx_pollfd[i].fd,
-		       (mx_pollfd[i].events & POLLIN) ? " pollin" : "",
-		       (mx_pollfd[i].events & POLLOUT) ? " pollout" : "");
-	    }
-	}
+        DBG_POLL("poll<: nfd %d, timeout %d", nfd, timeout);
 
 	struct timeval tv_begin, tv_end;
 	gettimeofday(&tv_begin, NULL);
@@ -225,14 +222,15 @@ main_loop (void)
 	delta += (tv_end.tv_usec - tv_begin.tv_usec) / 1000;
 
 	if (opt_debug & DBG_FLAG_POLL) {
-	    if (delta > 20000)
-		mx_log("poll: long wait (%lu)", delta);
-	    mx_log("poll: nfd %d, timeout %d", nfd, timeout);
 	    int i;
+	    mx_log("poll: rc %d, delta %lu%s", rc, delta,
+                   (delta > 20000) ? " long wait" : "");
 	    for (i = 0; i < nfd; i++) {
-		mx_log("    %d: fd %d%s%s", i, mx_pollfd[i].fd,
+		mx_log("  post %d: fd %d %s %x (%s%s%s)", i, mx_pollfd[i].fd,
+                       mx_sock_type(msp), mx_pollfd[i].revents,
 		       (mx_pollfd[i].revents & POLLIN) ? " pollin" : "",
-		       (mx_pollfd[i].revents & POLLOUT) ? " pollout" : "");
+		       (mx_pollfd[i].revents & POLLOUT) ? " pollout" : "",
+		       (mx_pollfd[i].revents & POLLERR) ? " pollerr" : "");
 	    }
 	}
 
@@ -249,9 +247,11 @@ main_loop (void)
 		goto failure;
 	    }
 
-	    if (mx_mti(msp)->mti_poller)
-		if (mx_mti(msp)->mti_poller(msp, pollp))
-		    goto failure;
+	    if (mx_mti(msp)->mti_poller
+                && mx_mti(msp)->mti_poller(msp, pollp)) {
+                mx_log("%s poller detects failure", mx_sock_title(msp));
+                goto failure;
+            }
 
 	    if (msp->ms_state == MSS_FAILED)
 		goto failure;
@@ -287,6 +287,7 @@ print_help (const char *opt)
 	    "\t--help: display this message\n"
 	    "\t--home <dir>: specify home directory\n"
 	    "\t--keep-alive <secs> OR -k <secs>: keep-alive timeout\n"
+	    "\t--log <file>: send log message to file\n"
 	    "\t--login: require use login\n"
 	    "\t--no-db: do not use device database\n"
 	    "\t--password <xxx>: use password for device logins\n"
@@ -324,6 +325,7 @@ main (int argc UNUSED, char **argv UNUSED)
     int opt_getpass = FALSE, opt_console = FALSE;
     char *opt_home = NULL;
     unsigned opt_port = 8000;
+    char *opt_logfile = NULL;
 
     for (argv++; *argv; argv++) {
 	cp = *argv;
@@ -353,6 +355,11 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--keep-alive") || streq(cp, "-k")) {
 	    opt_keepalive = atoi(*++argv);
+
+	} else if (streq(cp, "--log")) {
+	    opt_logfile = *++argv;
+            if (opt_logfile == NULL)
+                errx(1, "missing log file name");
 
 	} else if (streq(cp, "--login")) {
 	    opt_login = TRUE;
@@ -391,6 +398,13 @@ main (int argc UNUSED, char **argv UNUSED)
 
     signal(SIGPIPE, SIG_IGN);
 
+    if (opt_logfile) {
+        FILE *fp = fopen(opt_logfile, "w");
+        if (fp == NULL)
+            errx(1, "cannot open log file '%s'", opt_logfile);
+        mx_log_file(fp);
+    }
+
     slaxLogEnableCallback(mx_log_callback, NULL);
 
     if (opt_verbose)
@@ -420,38 +434,29 @@ main (int argc UNUSED, char **argv UNUSED)
 
     mx_type_info_init();
 
-    if (!opt_no_db && !mx_db_init()) {
-	mx_log("mixer database initialization failed");
-	return 1;
-    }
+    if (!opt_no_db && !mx_db_init())
+	errx(1, "mixer database initialization failed");
 
     rc = libssh2_init (0);
-    if (rc != 0) {
-        mx_log("libssh2 initialization failed (%d)", rc);
-        return 1;
-    }
+    if (rc != 0)
+        errx(1, "libssh2 initialization failed (%d)", rc);
 
     if (opt_console)
 	mx_console_start();
 
-#if 0
-    if (mx_listener(2222, MST_LISTENER, MST_FORWARDER, "alice") == NULL) {
-	mx_log("initial listen failed");
-    }
-
-    if (mx_listener(3333, MST_LISTENER, MST_FORWARDER, "bob") == NULL) {
-	mx_log("initial listen failed");
-    }
-#endif
-
     if (mx_listener(opt_port, MST_LISTENER, MST_WEBSOCKET,
-		    "websocket") == NULL) {
-	mx_log("initial listen failed");
-    }
+		    "websocket") == NULL)
+	errx(1, "initial listen failed");
 
     main_loop();
 
     libssh2_exit();
+
+    if (opt_logfile) {
+        FILE *fp = mx_log_file(NULL);
+        if (fp)
+            fclose(fp);
+    }
 
     if (!opt_no_db)
 	mx_db_close();

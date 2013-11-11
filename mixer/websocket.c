@@ -111,7 +111,8 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	    || mhp->mh_version[1] != MX_HEADER_VERSION_1
 	    || mhp->mh_dot1 != '.' || mhp->mh_dot2 != '.'
 	    || mhp->mh_dot3 != '.' || mhp->mh_dot4 != '.') {
-	    mx_log("S%u parse request fails (%c)", mswp->msw_base.ms_id, *cp);
+	    mx_log("%s parse request fails (%c)",
+                   mx_sock_title(&mswp->msw_base), *cp);
 	    goto fatal;
 	}
 
@@ -123,11 +124,11 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	    if (*cp != ' ')
 		break;
 	*++cp = '\0';
-	mx_log("S%u incoming request '%s', muxid %lu, len %lu", 
-	       mswp->msw_base.ms_id, operation, muxid, len);
+	mx_log("%s incoming request '%s', muxid %lu, len %lu", 
+	       mx_sock_title(&mswp->msw_base), operation, muxid, len);
 
 	if (mbp->mb_len < len) {
-	    mx_log("S%u short read (%lu/%lu)", mswp->msw_base.ms_id,
+	    mx_log("%s short read (%lu/%lu)", mx_sock_title(&mswp->msw_base),
 		   len, mbp->mb_len);
 	    break;
 	}
@@ -150,15 +151,15 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	mbp->mb_len -= delta;
 	len -= delta;
 
-	mx_log("S%u websocket request op '%s', rest '%s'",
-	       mswp->msw_base.ms_id, operation, trailer);
+	mx_log("%s websocket request op '%s', rest '%s'",
+	       mx_sock_title(&mswp->msw_base), operation, trailer);
 
 	const char *attrs[MAX_XML_ATTR];
 	if (*trailer == '\0') {
 	    attrs[0] = NULL;
 	} else if (xml_parse_attributes(attrs, MAX_XML_ATTR, trailer)) {
-	    mx_log("S%u websocket request ('%s') w/ broken attributes ('%s')",
-		   mswp->msw_base.ms_id, operation, trailer);
+	    mx_log("%s websocket request ('%s') w/ broken attributes ('%s')",
+		   mx_sock_title(&mswp->msw_base), operation, trailer);
 	    goto fatal;
 	}
 
@@ -168,7 +169,8 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 		mx_request_release(mrp);
 		mx_sock_close(&mrp->mr_session->mss_base);
 	    } else {
-		mx_log("S%u websocket error ignored", mswp->msw_base.ms_id);
+		mx_log("%s websocket error ignored",
+                       mx_sock_title(&mswp->msw_base));
 	    }
 
 	} else if (streq(operation, MX_OP_RPC)) {
@@ -201,8 +203,8 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 		}
 
 	    } else {
-		mx_log("S%u muxid %lu not found (ignored)",
-		       mswp->msw_base.ms_id, muxid);
+		mx_log("%s muxid %lu not found (ignored)",
+		       mx_sock_title(&mswp->msw_base), muxid);
 	    }
 
 	} else if (streq(operation, MX_OP_PASSPHRASE)) {
@@ -222,8 +224,8 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 		    }
 		}
 	    } else {
-		mx_log("S%u muxid %lu not found (ignored)",
-		       mswp->msw_base.ms_id, muxid);
+		mx_log("%s muxid %lu not found (ignored)",
+		       mx_sock_title(&mswp->msw_base), muxid);
 	    }
 
 	} else if (streq(operation, MX_OP_PASSWORD)) {
@@ -242,8 +244,8 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 		    }
 		}
 	    } else {
-		mx_log("S%u muxid %lu not found (ignored)",
-		       mswp->msw_base.ms_id, muxid);
+		mx_log("%s muxid %lu not found (ignored)",
+		       mx_sock_title(&mswp->msw_base), muxid);
 	    }
 #if 0
 	} else if (streq(operation, "command")) {
@@ -251,8 +253,8 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	} else if (streq(operation, "unknown-host")) {
 #endif
 	} else {
-	    mx_log("S%u websocket: unknown request '%s'",
-		   mswp->msw_base.ms_id, operation);
+	    mx_log("%s websocket: unknown request '%s'",
+		   mx_sock_title(&mswp->msw_base), operation);
 	}
 
 	/* Move past this message and look at the next one */
@@ -266,7 +268,7 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
     return;
 
  fatal:
-    mx_log("S%u fatal error parsing request", mswp->msw_base.ms_id);
+    mx_log("%s fatal error parsing request", mx_sock_title(&mswp->msw_base));
     mswp->msw_base.ms_state = MSS_FAILED;
     mx_buffer_reset(mbp);
 }
@@ -291,8 +293,8 @@ mx_websocket_prep (MX_TYPE_PREP_ARGS)
      * the channels' session.
      */
     if (mbp && mbp->mb_len) {
-	DBG_POLL("S%u websocket has data; state %u",
-		 msp->ms_id, msp->ms_state);
+	DBG_POLL("%s websocket has data; state %u",
+		 mx_sock_title(msp), msp->ms_state);
 	if (msp->ms_state == MSS_RPC_WRITE_RPC
 	        || msp->ms_state == MSS_RPC_READ_REPLY)
 	    return FALSE;
@@ -301,7 +303,8 @@ mx_websocket_prep (MX_TYPE_PREP_ARGS)
     } else {
 	pollp->fd = msp->ms_sock;
 	pollp->events = POLLIN;
-	DBG_POLL("S%u blocking pollin for fd %d", msp->ms_id, pollp->fd);
+	DBG_POLL("%s blocking pollin for fd %d",
+                 mx_sock_title(msp), pollp->fd);
     }
 
     return TRUE;
@@ -325,13 +328,14 @@ mx_websocket_poller (MX_TYPE_POLLER_ARGS)
 	    if (errno == EWOULDBLOCK)
 		return FALSE;
 
-	    mx_log("S%u: read error: %s", msp->ms_id, strerror(errno));
+	    mx_log("%s: read error: %s", mx_sock_title(msp), strerror(errno));
 	    msp->ms_state = MSS_FAILED;
 	    return TRUE;
 	}
 
 	if (len == 0) {
-	    mx_log("S%u: disconnect (%s)", msp->ms_id, mx_sock_sin(msp));
+	    mx_log("%s: disconnect (%s)",
+                   mx_sock_title(msp), mx_sock_sin(msp));
 	    return TRUE;
 	}
 
@@ -406,7 +410,7 @@ mx_websocket_send_simple (mx_sock_t *client,
 			  mx_request_t *mrp, const char *info,
 			  const char *opname, const char *title)
 {
-    mx_log("S%u %s: [%s]", client->ms_id, title, info);
+    mx_log("%s %s: [%s]", mx_sock_title(client), title, info);
 
     int ilen = strlen(info);
     int len = sizeof(mx_header_t) + 1 + ilen;
@@ -421,8 +425,8 @@ mx_websocket_send_simple (mx_sock_t *client,
     int rc = write(client->ms_sock, buf, len);
     if (rc > 0) {
 	if (rc != len)
-	    mx_log("S%u complete very short write (%d/%d)",
-		   client->ms_id, rc, len);
+	    mx_log("%s complete very short write (%d/%d)",
+		   mx_sock_title(client), rc, len);
     }
 
     return TRUE;
@@ -452,7 +456,8 @@ mx_websocket_get_password (MX_TYPE_GET_PASSWORD_ARGS)
 static int
 mx_websocket_write (MX_TYPE_WRITE_ARGS)
 {
-    mx_log("S%u write rb %lu/%lu", msp->ms_id, mbp->mb_start, mbp->mb_len);
+    mx_log("%s write rb %lu/%lu",
+           mx_sock_title(msp), mbp->mb_start, mbp->mb_len);
     int len = mbp->mb_len;
     char *buf = mbp->mb_data + mbp->mb_start;
     char *mbuf = NULL;
@@ -488,8 +493,8 @@ mx_websocket_write (MX_TYPE_WRITE_ARGS)
 	    mx_buffer_reset(mbp);
 	    mcp->mc_state = MSS_RPC_IDLE;
 	} else if (rc < header_len) {
-	    mx_log("S%u very short write (%d/%d/%lu)",
-		   msp->ms_id, rc, len, mbp->mb_len);
+	    mx_log("%s very short write (%d/%d/%lu)",
+		   mx_sock_title(msp), rc, len, mbp->mb_len);
 	} else {
 	    /*
 	     * If we didn't used a malloc buffer, we want header_len
@@ -511,7 +516,7 @@ mx_websocket_write (MX_TYPE_WRITE_ARGS)
 static int
 mx_websocket_write_complete (MX_TYPE_WRITE_COMPLETE_ARGS)
 {
-    mx_log("S%u write complete", msp->ms_id);
+    mx_log("%s write complete", mx_sock_title(msp));
 
     if (mcp->mc_state == MSS_RPC_READ_REPLY) {
 	/* XXX Do something */
@@ -528,8 +533,8 @@ mx_websocket_write_complete (MX_TYPE_WRITE_COMPLETE_ARGS)
     int rc = write(msp->ms_sock, buf, len);
     if (rc > 0) {
 	if (rc != len)
-	    mx_log("S%u complete very short write (%d/%d)",
-		   msp->ms_id, rc, len);
+	    mx_log("%s complete very short write (%d/%d)",
+		   mx_sock_title(msp), rc, len);
     }
 
     if (mcp->mc_request) {
@@ -543,7 +548,7 @@ mx_websocket_write_complete (MX_TYPE_WRITE_COMPLETE_ARGS)
 static void
 mx_websocket_error (MX_TYPE_ERROR_ARGS)
 {
-    mx_log("S%u R%u (%d) error: %s", msp->ms_id, mrp->mr_id,
+    mx_log("%s R%u (%d) error: %s", mx_sock_title(msp), mrp->mr_id,
 	   mrp->mr_state, message);
 
     mx_websocket_send_simple(msp, mrp, message, MX_OP_ERROR, "error");
@@ -556,6 +561,7 @@ mx_websocket_init (void)
     static mx_type_info_t mti = {
     mti_type: MST_WEBSOCKET,
     mti_name: "websocket",
+    mti_letter: "W",
     mti_print: mx_websocket_print,
     mti_prep: mx_websocket_prep,
     mti_poller: mx_websocket_poller,

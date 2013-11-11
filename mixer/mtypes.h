@@ -239,6 +239,7 @@ typedef void (*mx_type_error_func_t)(MX_TYPE_ERROR_ARGS);
 typedef struct mx_type_info_s {
     mx_type_t mti_type;		/* MST_* */
     const char *mti_name;	/* Printable name */
+    const char *mti_letter;     /* One letter name */
     mx_type_print_func_t mti_print; /* Print function */
     mx_type_prep_func_t mti_prep; /* Prepare for poll() data */
     mx_type_poller_func_t mti_poller; /* Process poll() data */
@@ -288,6 +289,12 @@ mx_sock_isreadable (int sock);
 
 const char *
 mx_sock_type (mx_sock_t *msp);
+
+const char *
+mx_sock_letter (mx_sock_t *msp);
+
+const char *
+mx_sock_title  (mx_sock_t *msp);
 
 void
 mx_close_byname (const char *name);
