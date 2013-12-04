@@ -91,10 +91,10 @@ mx_debug_parse_flag (const char *cp)
     if (streq(cp, "poll"))
 	rc |= DBG_FLAG_POLL;
 
-    if (streq(cp, "dump"))
+    else if (streq(cp, "dump"))
 	rc |= DBG_FLAG_DUMP;
 
-    if (streq(cp, "all"))
+    else if (streq(cp, "all"))
 	rc |= - 1;
 
     return rc;
@@ -103,8 +103,12 @@ mx_debug_parse_flag (const char *cp)
 void
 mx_debug_flags (int set, const char *value)
 {
-    if (set)
-	opt_debug |= mx_debug_parse_flag(value);
+    unsigned flag = mx_debug_parse_flag(value);
+
+    if (flag == 0)
+	mx_log("unknown debug flag: %s", value);
+    else if (set)
+	opt_debug |= flag;
     else 
-	opt_debug &= ~mx_debug_parse_flag(value);
+	opt_debug &= ~flag;
 }
