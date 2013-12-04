@@ -99,6 +99,9 @@ jsio_session_type_name (session_type_t stype)
     if (stype == ST_JUNOS_NETCONF)
 	return "junos-netconf";
 
+    if (stype == ST_SHELL)
+	return "shell";
+
     return NULL;
 }
 
@@ -113,6 +116,9 @@ jsio_session_type (const char *name)
 
     if (streq(name, "junos-netconf"))
 	return ST_JUNOS_NETCONF;
+
+    if (streq(name, "shell"))
+	return ST_SHELL;
 
     return ST_MAX;
 }
@@ -725,12 +731,12 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 	    jsio_trace("error from rpc session: %m");
 	    return -1;
 	}
-	    
+
 	if (rc == 0) {
 	    if (secs)
 		jsio_trace("timeout from rpc session");
 	    return -1;
-	}
+	} 
 
 	if (serr >= 0 && (FD_ISSET(serr, &rfds) || FD_ISSET(serr, &xfds))) {
 	    char buf[BUFSIZ];
@@ -904,6 +910,20 @@ js_session_create (const char *host_name, char **argv,
     close(ev[1]);
     close(sv[1]);
     return NULL;
+}
+
+/*
+ * Initialize SHELL session.
+ */
+int
+js_shell_session_init (js_session_t *jsp)
+{
+    /*
+     * Set the "credentials" to NULL, the SHELL session type has no use for this information
+     */
+    jsp->js_creds = NULL;
+
+    return FALSE;
 }
 
 /*
@@ -1161,6 +1181,11 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 		++jsp->js_msgid, rpc_name);
 	break;
 
+    case ST_SHELL:
+        /* send the string */
+	fprintf(fp, "%s", rpc_name); 
+        break;
+
     case ST_DEFAULT:		/* Avoid compiler errors */
     case ST_MAX:
 	break;
@@ -1203,6 +1228,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 			++jsp->js_msgid); 
 		break;
 
+	case ST_SHELL:		        /* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
 	    break;
@@ -1229,6 +1255,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 	    fprintf(fp, "</rpc>\n");
 	    break;
 
+	case ST_SHELL:		        /* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
 	    break;
@@ -1500,6 +1527,8 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	argv[argc++] = ALLOCADUP("xml-mode");
 	argv[argc++] = ALLOCADUP("netconf");
 	argv[argc++] = ALLOCADUP("need-trailer");
+    } else if (jsop->jso_stype == ST_SHELL) {
+        /* shell requires no options */
     } else {
 	argv[argc++] = ALLOCADUP("xml-mode");
 	argv[argc++] = ALLOCADUP("need-trailer");
@@ -1519,6 +1548,11 @@ js_session_open (js_session_opts_t *jsop, int flags)
 
     if (jsop->jso_stype == ST_JUNOSCRIPT) {
 	if (js_session_init(jsp)) {
+	    js_session_terminate(jsp);
+	    return NULL;
+	}
+    } else if (jsop->jso_stype == ST_SHELL) {
+	if (js_shell_session_init(jsp)) {
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
@@ -1545,6 +1579,62 @@ js_session_open (js_session_opts_t *jsop, int flags)
     }
 
     return jsp;
+}
+/*
+ * Send the given string in the given host_name's JUNOScript session.
+ */
+void
+js_session_send (const char *host_name, const xmlChar *text)
+{
+    js_session_t *jsp;
+    int rc;
+
+    if (host_name == NULL || *host_name == '\0') {
+	host_name = js_default_server;
+	if (host_name == NULL || *host_name == '\0')
+	    return;
+    }
+
+    jsp = js_session_find(host_name, ST_SHELL);
+    if (!jsp) { 
+	LX_ERR("Session for server \"%s\" does not exist\n",
+	   host_name ?: "local");
+	return;
+    }
+
+    rc = js_rpc_send_simple(jsp, (const char *) text);
+    if (rc) {
+	jsio_trace("could not send request");
+       	patricia_delete(&js_session_root, &jsp->js_node);
+	js_session_terminate(jsp);
+	return;
+    }
+}
+
+/*
+ * Receive a string in the given host_name's JUNOScript session.
+ */
+char *
+js_session_receive (const char *host_name, time_t secs)
+{
+    js_session_t *jsp;
+
+    if (host_name == NULL || *host_name == '\0') {
+	host_name = js_default_server;
+	if (host_name == NULL || *host_name == '\0')
+	    return "";
+    }
+
+    jsp = js_session_find(host_name, ST_SHELL);
+    if (!jsp) { 
+	LX_ERR("Session for server \"%s\" does not exist\n",
+	   host_name ?: "local");
+	return "";
+    }
+
+    char *cp = js_gets_timed(jsp, secs, 0);
+
+    return cp;
 }
 
 /*
@@ -1799,6 +1889,8 @@ js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
+    } else if (stype == ST_SHELL) {
+        /* do nothing */
     } else {
 	if (js_session_init(jsp)) {
 	    js_session_terminate(jsp);
