@@ -104,11 +104,18 @@ mx_sock_letter (mx_sock_t *msp)
 const char *
 mx_sock_title  (mx_sock_t *msp)
 {
-    static char title[16];
+    #define TMAX 8
+    static char title[TMAX][16];
+    static int tnum;
+    char *cp = title[tnum];
 
-    snprintf(title, sizeof(title), "%s%u", mx_sock_letter(msp), msp->ms_id);
+    snprintf(title[tnum], sizeof(title[tnum]), "%s%u", mx_sock_letter(msp),
+	     msp ? msp->ms_id : 0);
 
-    return title;
+    if (++tnum >= TMAX)
+	tnum = 0;
+
+    return cp;
 }
 
 void
