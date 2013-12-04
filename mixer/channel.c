@@ -474,10 +474,9 @@ mx_channel_release (mx_channel_t *mcp)
     mx_sock_t *client = mcp->mc_client;
     mx_sock_session_t *session = mcp->mc_session;
 
-    MX_LOG("C%u: release channel, S%u, channel %p, client %s%u",
+    MX_LOG("C%u: release channel, S%u, channel %p, client %s",
 	   mcp->mc_id, session->mss_base.ms_id,
-	   mcp->mc_channel, client ? "S" : "NULL",
-	   client ? client->ms_id : 0 );
+	   mcp->mc_channel, mx_sock_title(client));
 
     if (client && mx_mti(client)->mti_set_channel)
 	mx_mti(client)->mti_set_channel(client, NULL, NULL);
