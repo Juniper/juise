@@ -82,7 +82,7 @@ jQuery(function ($) {
         },
         {
             name: "mixer",
-            def: "ws://10.10.10.40:3000/mixer",
+            def: "ws://127.0.0.1:3000/mixer",
             type: "string",
             label: "Mixer Location",
             title: "Address of the Mixer server",
