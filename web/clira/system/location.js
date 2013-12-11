@@ -31,7 +31,7 @@ jQuery(function ($) {
         ]
     });
 
-    function geolocate ($output, cmd, parse, poss) {
+    function geolocate (view, cmd, parse, poss) {
         var url = "http://maps.googleapis.com/maps/api/geocode/json";
         var me = parse.possibilities[0];
         
@@ -64,10 +64,27 @@ jQuery(function ($) {
 
                     html += "<div class='map-small hidden'></div>";
 
-                    $output.html(html);
+                    view.get('controller').set('output', html);
                     if (window.google && window.google.maps) {
-                        var $map = $("div.map-small", $output);
-                        $("button.link", $output).button({
+                        var $map = $("div.map-small", view.$());
+                        console.log($map);
+                            if ($map.hasClass("hidden")) {
+                                console.log("caught hidden");
+                                $map.removeClass("hidden");
+
+                                var map = new GMaps({
+                                    div: $map.get(0),
+                                    lat: lat,
+                                    lng: lng
+                                });
+                                map.addMarker({
+                                    lat: lat,
+                                    lng: lng,
+                                    title: me.data.location
+                                });
+                            } else
+                                $map.addClass("hidden");
+                        $("button.link", view.$()).button({
                             label: "Map it",
                             icons: { primary: "ui-icon-flag" }
                         })
@@ -91,16 +108,16 @@ jQuery(function ($) {
                     }
 
                 } else if (json.status == "ZERO_RESULTS") {
-                    $.clira.makeAlert($output,
+                    $.clira.makeAlert(view,
                                   "Location not found: " + me.data.location);
                 } else {
-                    $.clira.makeAlert($output, json.status, "geo failure");
+                    $.clira.makeAlert(view, json.status, "geo failure");
                 }
             }).fail(function (x, message, err) {
-                $.clira.makeAlert($output, message, "geo failure");
+                $.clira.makeAlert(view, message, "geo failure");
             });
         } else 
-            $.clira.makeAlert($output, "missing mandatory address");
+            $.clira.makeAlert(view, "missing mandatory address");
     }
 
     function fixed4 (value) {
