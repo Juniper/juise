@@ -91,6 +91,7 @@ Clira.CommandInputController = Em.ObjectController.extend({
         var content = {
             contentTemplate: templateName,
             command: finalCommand,
+            completed: false,
             messages: parseErrors,
             output: output,
             parse: parse,
@@ -173,12 +174,13 @@ Clira.OutputContainerController = Em.Controller.extend({
      */
     valueDidChange: function() {
         var command = this.get('command'),
+            completed = this.get('completed'),
             output = this.get('output'),
             parse = this.get('parse'),
             poss = this.get('poss'),
             view = this.get('view');
 
-        if (poss.command.onOutputChange && view && output) {
+        if (poss.command.onOutputChange && view && output && completed) {
             poss.command.onOutputChange.call(null, view, command, parse,
                                             poss);
         }

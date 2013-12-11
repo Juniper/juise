@@ -605,6 +605,7 @@ jQuery(function ($) {
                 },
                 oncomplete: function () {
                     $.dbgpr("rpc: complete");
+                    view.get('controller').set('completed', true);
                     view.get('controller').set('output', full.join(""));
                 },
                 onhostkey: function (data) {
