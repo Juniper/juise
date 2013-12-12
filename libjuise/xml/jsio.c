@@ -736,7 +736,7 @@ js_initial_read (js_session_t *jsp, time_t secs, long usecs)
 	    if (secs)
 		jsio_trace("timeout from rpc session");
 	    return -1;
-	} 
+	}
 
 	if (serr >= 0 && (FD_ISSET(serr, &rfds) || FD_ISSET(serr, &xfds))) {
 	    char buf[BUFSIZ];
@@ -1622,14 +1622,14 @@ js_session_receive (const char *host_name, time_t secs)
     if (host_name == NULL || *host_name == '\0') {
 	host_name = js_default_server;
 	if (host_name == NULL || *host_name == '\0')
-	    return "";
+	    return NULL;
     }
 
     jsp = js_session_find(host_name, ST_SHELL);
     if (!jsp) { 
 	LX_ERR("Session for server \"%s\" does not exist\n",
 	   host_name ?: "local");
-	return "";
+	return NULL;
     }
 
     char *cp = js_gets_timed(jsp, secs, 0);
