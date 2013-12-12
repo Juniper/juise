@@ -621,9 +621,9 @@ ext_jcs_close (xmlXPathParserContext *ctxt, int nargs)
  * context and returns the results.  Multiple stirngs can be sent in the
  * given connection context till the connection is closed.
  *
- * e.g) $results = jcs:send($connection, 'ifconfig -a');
+ * e.g) $results = jcs:send($connection, 'ifconfig -a\n');
  *
- * var $cmd = "ifconfig -a";
+ * var $cmd = "ifconfig -a\n";
  * $results = jcs:send($connection, $cmd);
  */
 static void
@@ -637,59 +637,57 @@ ext_jcs_send (xmlXPathParserContext *ctxt, int nargs)
 	return;
     }
 
-    xmlXPathObject *xop = valuePop(ctxt);
-    if (xop == NULL) {
+    xmlChar *str = xmlXPathPopString(ctxt);
+    if (str == NULL) {
 	LX_ERR("jcs:send: null argument\n");
+	return;
+    }
+
+    if (*str == '\0') {
+	LX_ERR("jcs:send: empty argument\n");
+	xmlFree(str);
 	return;
     }
 
     xmlXPathObject *sop = valuePop(ctxt);
     if (sop == NULL) {
-	xmlXPathFreeObject(xop);
-	LX_ERR("jcs:send: null argument\n");
+	xmlFree(str);
+	LX_ERR("jcs:send: null connection argument\n");
 	return;
     }
     ext_jcs_extract_scookie(sop->nodesetval, &server, &stype);
     if (server == NULL) {
-	xmlXPathFreeObject(xop);
+	xmlFree(str);
 	xmlXPathFreeObject(sop);
 	LX_ERR("jcs:send: null argument\n");
 	return;
 	
     }
+
     if (stype != ST_SHELL) {
-	xmlXPathFreeObject(xop);
+	xmlFree(str);
 	xmlXPathFreeObject(sop);
 	xmlFree(server);
-	LX_ERR("jcs:send: only connections with protocol \"shell\" supported\n");
+	LX_ERR("jcs:send: only connections with "
+	       "protocol \"shell\" supported\n");
         return;
     }
 
     /*
-     * Invoked with a simple string argument?  Handle it.
+     * Send our data over the connection
      */
-    if (xop->stringval) {
-	js_session_send((char *) server, xop->stringval);
+    js_session_send((char *) server, str);
 
-	xmlXPathFreeObject(xop);
-	xmlXPathFreeObject(sop);
-	xmlFree(server);
-
-	valuePush(ctxt, xmlXPathNewNodeSet(NULL));
-	return;
-    }
-
-    xmlXPathFreeObject(xop);
+    xmlFree(str);
     xmlXPathFreeObject(sop);
     xmlFree(server);
 
-    LX_ERR("jcs:send: second argument must be a string\n");
-    return;
+    valuePush(ctxt, xmlXPathNewNodeSet(NULL));
 }
 
 /*
  * Usage:
- *     var $results = jcs:receive($connection, int nargs);
+ *     var $results = jcs:receive($connection, timeout);
  *
  * Takes the connection handle,  receives any data on the connection
  * context and returns the results.  
@@ -709,21 +707,18 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
     xmlNodeSet *results;
     xmlXPathObject *ret;
 
-    if ((nargs < 1) || (nargs > 2)) {
+    if (nargs < 1 || nargs > 2) {
 	xmlXPathSetArityError(ctxt);
 	return;
     }
 
-    char *timeout;
     time_t secs = JS_READ_TIMEOUT;
     if (nargs == 2) {
-	timeout = (char *) xmlXPathPopString(ctxt);
-	if (timeout == NULL) {
+	secs = xmlXPathPopNumber(ctxt);
+	if (xmlXPathCheckError(ctxt)) {
 	    LX_ERR("jcs:receive: null argument\n");
 	    return;
 	}
-        secs = atoi(timeout);
-        xmlFree(timeout);
     } 
 
     xmlXPathObject *sop = valuePop(ctxt);
