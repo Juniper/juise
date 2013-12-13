@@ -665,6 +665,7 @@ AC_CONFIG_FILES([
   tests/Makefile
   packaging/juise.pc
   packaging/juise.spec
+  packaging/juise.space.spec
   packaging/juise.rb.base
   packaging/freebsd/port-Makefile
 ])
