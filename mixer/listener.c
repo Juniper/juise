@@ -38,12 +38,14 @@ mx_listener (const char *path, mx_type_t type, int spawns, const char *target)
 
     bzero(&sun, sizeof(sun));
     sun.sun_family = AF_UNIX;
+#ifdef HAVE_SUN_LEN
     sun.sun_len = sizeof(sun);
+#endif
     strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
 
     unlink(path);
 
-    if (bind(sock, (struct sockaddr *) &sun, sun.sun_len) < 0) {
+    if (bind(sock, (struct sockaddr *) &sun, sizeof(sun)) < 0) {
         mx_log("listener path %s: bind: %s", path, strerror(errno));
 	close(sock);
 	return NULL;

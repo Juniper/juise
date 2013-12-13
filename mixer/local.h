@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/queue.h>
+#include <libxml/tree.h>
 
 #include <libslax/slax.h>
 

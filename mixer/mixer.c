@@ -336,11 +336,13 @@ connect_to_path (const char *path, const char *tag)
 
     bzero(&sun, sizeof(sun));
     sun.sun_family = AF_UNIX;
+#ifdef HAVE_SUN_LEN
     sun.sun_len = sizeof(sun);
+#endif
     strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
 
     for (i = 0;; i++) {
-	if (connect(sock, (struct sockaddr *) &sun, sun.sun_len) >= 0)
+	if (connect(sock, (struct sockaddr *) &sun, sizeof(sun)) >= 0)
 	    break;
 
 	if (i < 5) {
