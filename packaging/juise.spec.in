@@ -5,12 +5,11 @@ Summary:     JUNOS User Interface Scripting Environment
 
 Prefix:      /usr
 
-Vender:      Juniper Networks, Inc.
+Vendor:      Juniper Networks, Inc.
 Packager:    Phil Shafer <phil@juniper.net>
 License:     BSD
 
 Group:       Development/Libraries
-License:     MIT
 URL:         https://github.com/Juniper/libslax
 Source0:     https://github.com/Juniper/@PACKAGE_NAME@/releases/@PACKAGE_VERSION@/@PACKAGE_NAME@-@PACKAGE_VERSION@.tar.gz
 
