@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<title>CLIRA</title>
+  <link rel="shortcut icon" href="/images/clira_icon.png" type="image/png"/>
+  <link rel="stylesheet" href="/themes/clira/jquery-ui-clira.css" class="ui-theme">
+  <link rel="stylesheet" href="/themes/clira/addons-clira.css" class="ui-addon">
+  <link rel="stylesheet" href="/css/clira.css" class="ui-main">
+  <link rel="stylesheet" href="/external/jqgrid/ui.jqgrid.css"/>
+  <link rel="stylesheet" href="/external/jquery-qtip/jquery.qtip.css"/>
+</head>
+<body>
+  <script type="text/x-handlebars">
+    <div id="input-top">
+      <div class="logo">
+        <img src="/images/logo.png" height="50px" border="0" />
+      </div>
+      <div id="input-history">
+        <div id="command-top">
+          <table id="command-input-box" class="input-box focus-on" cellpadding="1px" cellspacing="1px">
+            <tr>
+              <td>{{render 'commandInput'}}</td>
+              <td width="16px">{{render 'pulldown'}}</td>
+            </tr>
+          </table>
+        </div>
+        <div id="mru-pulldown">
+          {{render 'mruPulldown'}}
+        </div>
+      </div>
+      <div class="input-enter">{{view Clira.EnterButton}}</div>
+      {{view Clira.PrefsButtonView}}
+    </div>
+    <div id="output-top">
+      {{render 'outputs'}}
+    </div>
+  </script>
+  
+  <script type="text/x-handlebars" data-template-name="pulldown">
+    {{view Clira.PulldownIcon}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="command_input">
+    {{view Clira.AutoComplete valueBinding="command" viewName="CommandInput"}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="outputs">
+    {{each controller itemViewClass="Clira.OutputContainerView"}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="output_container">
+    {{outlet 'outputHeader'}}
+    {{outlet 'outputContent'}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="output_header">
+    <div class="output-header ui-state-default ui-widget-header ui-corner-all">
+      {{controller.command}}
+    </div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="output_content">
+    <div class="output-content">
+      {{{controller.output}}}
+    </div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="output_content_layout">
+    <div class="output-content">
+      {{yield}}
+    </div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="mru_pulldown">
+    {{#each mru itemViewClass="Clira.MruItemView"}}
+      {{this}}
+    {{/each}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="clira_message">
+    <div {{bindAttr class="view.uiType"}}>
+      {{#if output}}
+        {{#unless output.noIcon}}
+          <span class="ui-icon ui-icon-alert"></span>
+        {{/unless}}
+        {{output.message}}
+      {{else}}
+        {{#unless noIcon}}
+          <span class="ui-icon ui-icon-alert"></span>
+        {{/unless}}
+        {{message}}
+      {{/if}}
+    </div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="clira_messages">
+    {{#each this}}
+      {{view Clira.MessageView contentBinding="this"}}
+    {{/each}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="preferences">
+    <div id="prefs-main-form" title="Preferences">
+      <div class="setupgrid">
+        <ul class="setupgrid">
+          <li><a id="prefs-devices" href="#">Set Up Devices</a></li>
+          <li><a id="prefs-groups" href="#">Set Up Groups</a></li>
+          <li><a id="prefs-general" href="#" {{action "generalPref" target="view"}}>General Preferences</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="prefs-devices-form" title="Devices">
+      <p>The devices that CLIRA can access are listed below.</p>
+      <table id="prefs-devices-grid"></table>
+      <div id="prefs-devices-pager"></div>
+    </div>
+
+    <div id="prefs-groups-form" title="Groups">
+      <p>Groups of devices that CLIRA can access are listed below.</p>
+      <table id="prefs-groups-grid"></table>
+      <div id="prefs-groups-pager"></div>
+    </div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="dyn_form">
+    <div class="dyn-form-message">
+      {{message}}
+    </div>
+    {{#each field in fields}}
+      <div class="dyn-form-item">
+        <label>{{field.title}}</label>
+        {{#if field.boolean}}
+          <div class="dyn-form-boolean">
+            {{view Clira.DynCheckbox fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value"}}
+          </div>
+        {{else}}
+          {{#if field.secret}}
+            {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password"}}
+          {{else}}
+            {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value"}}
+          {{/if}}
+        {{/if}}
+      </div>
+    {{/each}}
+  </script>
+
+  <script src="/external/jquery/jquery.js"></script>
+  <script src="/external/jquery-ui/jquery-ui.js"></script>
+  <script src="/external/handlebars/handlebars.js"></script>
+  <script src="/external/ember/ember.js"></script>
+  <script src="/external/ember-restless/ember-restless+extras.js"></script>
+  <script src="/external/jqgrid/grid.locale-en.js"></script>
+  <script src="/external/jqgrid/jquery.jqGrid.src.js"></script>
+  <script src="/jquery/jquery.dbgpr.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?sensor=true"></script>
+  <script src="/external/gmaps/gmaps.js"></script>
+  <script src="/external/jquery-qtip/jquery.qtip.js"></script>
+  <script src="clira.prefs.js"></script>
+  <script src="clira.muxer.js"></script>
+  <script src="clira.js"></script>
+  <script src="parser.js"></script>
+  <script src="parser.types.js"></script>
+  <script src="builtins.js"></script>
+  <script src="app.js"></script>
+  <script src="models.js"></script>
+  <script src="views.js"></script>
+  <script src="controllers.js" id="last-script-in-header"></script>
+</body>
+</html>

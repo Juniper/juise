@@ -110,6 +110,24 @@ jQuery(function ($) {
                             + "' for command '" + options.command + "'");
             });
         }
+
+        /*
+         * For command output, user can directly emit HTML or can emit 
+         * JSON and specify handlebars template to use when rendering the 
+         * output. When using template for individual commands, template
+         * location can be provided using templateFile option. This template
+         * need not include <script> tags. User can use templates defined
+         * elsewhere by specifying the template name using templateName option
+         * for the command. Setting templateFile option will override
+         * templateName and use the template from templateFile.
+         */
+        if (this.templateFile) {
+            $.get(this.templateFile, $.proxy(function(data) {
+                var templateName = this.command.replace(/ /g, '_');
+                Em.TEMPLATES[templateName] = Em.Handlebars.compile(data);
+                this.templateName = templateName;
+            }, this));
+        }
     }
 
     $.extend($.clira, {
@@ -304,6 +322,25 @@ jQuery(function ($) {
                     var $p = $("script.prereq[src = '" + filename + "']");
                     if ($p.length == 0)
                         $.clira.loadFile(filename, "prereq");
+                });
+            }
+
+            /*
+             * Load handlebars templates if provided with the commandFile.
+             * Each template should be wrapped inside <script> tag with type
+             * attribute set along with the template name in
+             * data-template-name.
+             */
+            if (this.templatesFile) {
+                $.get(this.templatesFile, function(data) {
+                    $(data).filter('script[type="text/x-handlebars"]').each(
+                        function() {
+                            var templateName = $(this)
+                                                .attr('data-template-name');
+                            Em.TEMPLATES[templateName] = Em.Handlebars
+                                                    .compile($(this).html());
+                        }
+                    );
                 });
             }
         }

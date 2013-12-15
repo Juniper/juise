@@ -30,20 +30,64 @@ jQuery(function($) {
                         nokeyword: true
                     }
                 ],
-                execute: function ($output, cmd, parse, poss) {
+                onOutputChange: function(view, cmd, parse, poss) {
+                    setTimeout(function() {
+                        view.$().find('[class~="data"]').each(function() {
+                            var help = $(this).attr('data-help'),
+                                type = $(this).attr('data-type'),
+                                xpath = $(this).attr('data-xpath'),
+                                tag = $(this).attr('data-tag'),
+                                output = "<div>";
+                            if (help) {
+                                output += "<b>Help</b>: " + help  + "<br/>";
+                            }
+                            if (type) {
+                                output += "<b>Type</b>: " + type  + "<br/>";
+                            }
+                            if (xpath) {
+                                output += "<div class='xpath-wrapper'>"
+                                       + "<a class='xpath-link' href='#'>"
+                                       + "show xpath</a><div class='xpath'>" 
+                                       + xpath + "</div></div><br/>";
+                            }
+                            output += "</div>";
+                            $(this).qtip({
+                                content: {
+                                    title: "<b>" + tag + ":</b>",
+                                    text: function () {
+                                        var div = $(output);
+                                        div.find(".xpath-link")
+                                           .click(function() {
+                                            var xpath = $(this).next();
+                                            if (xpath.is(":hidden")) {
+                                                xpath.show();
+                                                $(this).text("hide xpath");
+                                            } else {
+                                                xpath.hide();
+                                                $(this).text("show xpath");
+                                            }
+                                        });
+                                        return div;
+                                    }
+                                },
+                                hide: {
+                                    fixed: true,
+                                    delay: 300
+                                },
+                                style: "qtip-tipped"
+                            });
+                        })
+                    }, 0);
+                },
+                execute: function (view, cmd, parse, poss) {
                     parse.dbgpr("working command: " + poss.command.command);
-                    $output.html("<div>Running.... </div>");
+                    view.get('controller').set('output', "Running.... ");
                     
                     var cname = poss.data.target;
                     // cname.replace("_", "__", "g"); // Maybe not needed?
                     // classnames can't have periods
                     cname = cname.replace(".", "_", "g");
-                    
-                    $.clira.targetListMarkUsed(poss.data.target, cname,
-                        function ($target, target) {
-                            $.clira.cmdHistory.select("on " + target + " ");
-                        });
-                    $.clira.runCommand($output, poss.data.target,
+                    $.clira.runCommand(view, poss.data.target,
                                        poss.data.command);
                 },
                 complete: function (poss, results, value) {

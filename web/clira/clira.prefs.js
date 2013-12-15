@@ -105,52 +105,42 @@ jQuery(function ($) {
     $.extend($.clira, {
         prefs: { },
         prefsInit: function prefsInit () {
-            $.clira.prefs_form = $.yform(prefs_options, "#prefs-dialog",
-                                         prefs_fields);
-            $.clira.prefs = $.clira.prefs_form.getData();
-            buildForms();
+            for (var i = 0; i < prefs_fields.length; i++) {
+                // Save the preference item if not already saved
+                var pref = Clira.Preference.find(prefs_fields[i]['name']);
+                if (Ember.isNone(pref)) {
+                    var item = prefs_fields[i];
+
+                    // We add a new field to hold the configured value
+                    item['value'] = item['def'];
+
+                    // Create and save as record
+                    pref = Clira.Preference.create(item);
+                    pref.saveRecord();
+                }
+            }
+
+            // Read preferences into $.clira.prefs to they can be used
+            // elsewhere
+            var prefs = Clira.Preference.findAll();
+            if (prefs) {
+                prefs.forEach(function(item) {
+                    $.clira.prefs[item.get('name')] = item.get('value');
+                });
+            }
+        },
+        buildPrefForms: function() {
+            return buildForms();
         }
     });
 
     function buildForms () {
-        $("#prefs").button().click(function (event) {
-            $.dbgpr("prefsEdit:", event.type);
-            if ($.clira.prefs_form.shown()) {
-                $.clira.prefs_form.close();
-
-                /* Put the focus back where it belongs */
-                $.clira.refocus();
-
-            } else {
-                $.clira.prefs_form.open();
-            }
-        });
-
-        $("#prefs-main-form").dialog({
-            autoOpen: false,
-            height: 300,
-            width: 350,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
-
-        $("#prefsbtn").click(function() {
-            $("#prefs-main-form").dialog("open");
-        });
-
         /* Set Up Devices */
         $("#prefs-devices-form").dialog({
             autoOpen: false,
             height: 600,
             width: 800,
             resizable: false,
-            modal: true,
             buttons: {
                 'Close': function() {
                     $(this).dialog("close");
@@ -405,7 +395,6 @@ jQuery(function ($) {
             height: 600,
             width: 800,
             resizable: false,
-            modal: true,
             buttons: {
                 'Close': function() {
                     $(this).dialog("close");
@@ -563,37 +552,6 @@ jQuery(function ($) {
         });
 
         $.extend(jQuery.jgrid.edit, { recreateForm: true });
-       
-        /* General Preferences */
-        $("#prefs-general").click(function() {
-            //$("#prefs-general-form").dialog("open");
-            // XXX: rkj    use new forms, decide what prefs we need?
-            if ($.clira.prefs_form.shown()) {
-                $.clira.prefs_form.close();
-                    
-                if (tgtHistory.value())
-                    cmdHistory.focus();
-                else tgtHistory.focus();
-
-            } else {
-                $.clira.prefs_form.open();
-            }
-        });
-        
-        $("#prefs-general-form").dialog({
-            autoOpen: false,
-            height: 600,
-            width: 800,
-            resizable: false,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
     }
 
     function prefsSetupConfirmExit () {
