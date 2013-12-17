@@ -130,7 +130,7 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	if (mbp->mb_len < len) {
 	    mx_log("%s short read (%lu/%lu)", mx_sock_title(&mswp->msw_base),
 		   len, mbp->mb_len);
-	    break;
+	    goto fatal;
 	}
 
 	trailer = cp = mhp->mh_trailer;
@@ -180,6 +180,7 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	    if (mrp == NULL)
 		goto fatal;
 
+	    mswp->msw_requests_made += 1;
 	    mx_request_start_rpc(mswp, mrp);
 
 	} else if (streq(operation, MX_OP_HOSTKEY)) {
@@ -280,6 +281,8 @@ mx_websocket_print (MX_TYPE_PRINT_ARGS)
     mx_buffer_t *mbp = mswp->msw_rbufp;
 
     mx_log("%*s%srb %lu/%lu", indent, "", prefix, mbp->mb_start, mbp->mb_len);
+    mx_log("%*s%srequests: made %u, complete %u", indent, "", prefix,
+	   mswp->msw_requests_made, mswp->msw_requests_complete);
 }
 
 static int
@@ -287,6 +290,9 @@ mx_websocket_prep (MX_TYPE_PREP_ARGS)
 {
     mx_sock_websocket_t *mswp = mx_sock(msp, MST_WEBSOCKET);
     mx_buffer_t *mbp = mswp->msw_rbufp;
+
+    if (msp->ms_state == MSS_READ_EOF)
+	return FALSE;
 
     /*
      * If we have buffered data, we need to poll for output on
@@ -318,29 +324,39 @@ mx_websocket_poller (MX_TYPE_POLLER_ARGS)
     int len;
 
     if (pollp && pollp->revents & POLLIN) {
-
-	if (mbp->mb_len == 0)
+	if (mbp->mb_len == 0)	/* If it's empty, start at the beginning */
 	    mbp->mb_start = 0;
 
-	int size = mbp->mb_size - (mbp->mb_start + mbp->mb_len);
-	len = recv(msp->ms_sock, mbp->mb_data + mbp->mb_start, size, 0);
-	if (len < 0) {
-	    if (errno == EWOULDBLOCK)
-		return FALSE;
-
-	    mx_log("%s: read error: %s", mx_sock_title(msp), strerror(errno));
+	if (msp->ms_state == MSS_READ_EOF) {
 	    msp->ms_state = MSS_FAILED;
 	    return TRUE;
 	}
 
+	int size = mbp->mb_size - (mbp->mb_start + mbp->mb_len);
+	len = recv(msp->ms_sock, mbp->mb_data + mbp->mb_start, size, 0);
+	if (len < 0) {
+	    if (errno == EWOULDBLOCK || errno == EINTR)
+		return FALSE;
+
+	    mx_log("%s: read error: %s", mx_sock_title(msp), strerror(errno));
+	    msp->ms_state = MSS_READ_EOF;
+	    return FALSE;
+	}
+
 	if (len == 0) {
-	    mx_log("%s: disconnect (%s)",
-                   mx_sock_title(msp), mx_sock_sin(msp));
-	    return TRUE;
+	    mx_log("%s: disconnect (%s) (%u/%u)",
+                   mx_sock_title(msp), mx_sock_name(msp),
+		   mswp->msw_requests_made, mswp->msw_requests_complete);
+	    if (mswp->msw_requests_made < mswp->msw_requests_complete)
+		msp->ms_state = MSS_READ_EOF;
+	    else
+		msp->ms_state = MSS_FAILED;
+	    return FALSE;
 	}
 
 	mbp->mb_len = len;
-	slaxMemDump("wsread: ", mbp->mb_data, mbp->mb_len, ">", 0);
+	if (opt_debug & DBG_FLAG_DUMP)
+	    slaxMemDump("wsread: ", mbp->mb_data, mbp->mb_len, ">", 0);
 
 	mx_websocket_handle_request(mswp, mbp);
     }
@@ -360,7 +376,7 @@ mx_websocket_spawn (MX_TYPE_SPAWN_ARGS)
     mswp->msw_base.ms_id = ++mx_sock_id;
     mswp->msw_base.ms_type = MST_WEBSOCKET;
     mswp->msw_base.ms_sock = sock;
-    mswp->msw_base.ms_sin = *sin;
+    mswp->msw_base.ms_sun = *sun;
 
     mswp->msw_rbufp = mx_buffer_create(0);
 
@@ -488,7 +504,11 @@ mx_websocket_write (MX_TYPE_WRITE_ARGS)
     }
 
     int rc = write(msp->ms_sock, buf, len);
-    if (rc > 0) {
+    if (rc < 0) {
+	if (errno == EPIPE)
+	    goto move_along;
+
+    } else if (rc > 0) {
 	if (rc == len) {
 	    mx_buffer_reset(mbp);
 	    mcp->mc_state = MSS_RPC_IDLE;
@@ -500,6 +520,7 @@ mx_websocket_write (MX_TYPE_WRITE_ARGS)
 	     * If we didn't used a malloc buffer, we want header_len
 	     * to count as part of the length.
 	     */
+	move_along:
 	    if (mbuf)
 		rc -= header_len;
 	    mbp->mb_start += rc;
@@ -516,6 +537,7 @@ mx_websocket_write (MX_TYPE_WRITE_ARGS)
 static int
 mx_websocket_write_complete (MX_TYPE_WRITE_COMPLETE_ARGS)
 {
+    mx_sock_websocket_t *mswp = mx_sock(msp, MST_WEBSOCKET);
     mx_log("%s write complete", mx_sock_title(msp));
 
     if (mcp->mc_state == MSS_RPC_READ_REPLY) {
@@ -537,9 +559,19 @@ mx_websocket_write_complete (MX_TYPE_WRITE_COMPLETE_ARGS)
 		   mx_sock_title(msp), rc, len);
     }
 
+    int state = msp->ms_state;
+
+    mswp->msw_requests_complete += 1;
+
     if (mcp->mc_request) {
 	mx_log("C%u complete R%u", mcp->mc_id, mcp->mc_request->mr_id);
 	mx_request_release(mcp->mc_request);
+    }
+
+    if (state == MSS_READ_EOF) {
+	mx_log("%s eof and complete", mx_sock_title(msp));
+	msp->ms_state = MSS_FAILED;
+	return TRUE;
     }
 
     return FALSE;
@@ -553,6 +585,21 @@ mx_websocket_error (MX_TYPE_ERROR_ARGS)
 
     mx_websocket_send_simple(msp, mrp, message, MX_OP_ERROR, "error");
     mx_request_set_state(mrp, MSS_ERROR);
+}
+
+static void
+mx_websocket_close (MX_TYPE_CLOSE_ARGS)
+{
+    mx_sock_websocket_t *mswp = (mx_sock_websocket_t *) msp;
+
+    mx_request_release_client(msp);
+    mx_session_release_client(msp);
+
+    if (mswp->msw_rbufp)
+	mx_buffer_free(mswp->msw_rbufp);
+
+    close(msp->ms_sock);
+    msp->ms_sock = -1;
 }
 
 void
@@ -572,6 +619,7 @@ mx_websocket_init (void)
     mti_write: mx_websocket_write,
     mti_write_complete: mx_websocket_write_complete,
     mti_error: mx_websocket_error,
+    mti_close: mx_websocket_close,
 #if 0
     mti_set_channel: mx_websocket_set_channel,
 #endif

@@ -107,10 +107,17 @@ div.header-line {
     background: none repeat scroll 0 0 #0D5995;
     margin-top: 4px;
     padding-top: 4px;
-    padding-bottom: 2px;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
 }
+
+div.header-line-empty {
+    color: #ffffff;
+    background: none repeat scroll 0 0 #0D5995;
+    padding-top: 4px;
+    padding-bottom: 2px;
+}
+    
 
 /*
  * juise rendering
@@ -176,7 +183,7 @@ div#header-info {
     padding-left: 10px;
 }
 
-div#prefsbtn {
+.prefsbtn {
     background: rgb(230, 230, 230) url(/images/gear.png) no-repeat center;
     margin-top: 5px; 
     min-height: 40px;
@@ -190,7 +197,7 @@ div#prefsbtn {
 		inset 0 1px 1px rgba(255,255,255,0.8); 
 }
 
-div#prefsbtn:hover {
+.prefsbtn:hover {
     background-color: #dde;
 }
 
@@ -317,6 +324,14 @@ div#footer {
     text-align: center;
 }
 
+div#input-history {
+    display: inline-block;
+    float: left;
+    margin-right: 5px;
+    position: relative;
+    width: 70%;
+}
+
 div#input-top {
     display: block;
     height: 70px;
@@ -325,6 +340,28 @@ div#input-top {
     background-color: rgb(245, 245, 245);
     border-bottom: rgb(200, 200, 200) solid 1px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+div#input-history .pulldown {
+    border: solid 1px rgb(180, 180, 200);
+    padding: 0px;
+    width: 100%;
+}
+
+div#mru-pulldown {
+    margin-top: 40px;
+    position: absolute;
+    width: 100%;
+}
+
+div#mru-pulldown .mru-item {
+    padding: 5px;
+}
+
+div#mru-pulldown .mru-item:hover {
+    background: rgb(242, 244, 255);
+    cursor: pointer;
+    font-weight: 700;
 }
 
 div#input-top .logo {
@@ -341,8 +378,8 @@ div#target-top,
 div#command-top {
     display: inline-block;
     float: left;
-    margin: 10px 5px 10px 5px;
-    width: 70%;
+    margin: 10px 5px 0px 0px;
+    width: 100%;
 }
 
 div#command-top .input-box {
@@ -671,6 +708,31 @@ div.ui-yf-item div {
     display: table-cell;
 }
 
+div.dyn-form {
+    width: auto;
+}
+
+div.dyn-form-item {
+    display: table-row;
+}
+
+div.dyn-form-item label {
+    padding-left: 10px;
+    padding-right: 5px;
+}
+
+div.dyn-form-item label, 
+div.dyn-form-item input, 
+div.dyn-form-item div {
+    display: table-cell;
+    text-align: left;
+}
+
+div.dyn-form-boolean {
+    text-align: left;
+    vertical-align: middle;
+}
+
 .history-element .command {
     font-size: 16px;
 }
@@ -740,4 +802,31 @@ div.xpath-wrapper {
 div.xpath {
     display: none;
     margin-top: 8px;
+}
+
+/*
+ * Additional styles for messages
+ */
+.ui-state-info {
+    color: rgb(0, 94, 196);
+}
+
+.ui-state-info .ui-icon {
+    background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
+}
+
+.ui-state-success {
+    color: rgb(45, 126, 0);
+}
+
+.ui-state-success .ui-icon {
+    background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
+}
+
+.ui-state-warning {
+    color: rgb(179, 146, 14);
+}
+
+.ui-state-warning .ui-icon {
+    background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
 }

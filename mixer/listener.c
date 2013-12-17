@@ -18,44 +18,41 @@ mx_listener_print (MX_TYPE_PRINT_ARGS)
 {
     mx_sock_listener_t *mslp = mx_sock(msp, MST_LISTENER);
 
-    mx_log("%*s%sport %u, spawns %s to %s", indent, "", prefix,
-	   mslp->msl_port, mx_sock_type_number(mslp->msl_spawns),
+    mx_log("%*s%spath %s, spawns %s to %s", indent, "", prefix,
+	   mslp->msl_base.ms_sun.sun_path,
+	   mx_sock_type_number(mslp->msl_spawns),
 	   mslp->msl_request->mr_target);
 }
 
 mx_sock_t *
-mx_listener (unsigned port, mx_type_t type, int spawns, const char *target)
+mx_listener (const char *path, mx_type_t type, int spawns, const char *target)
 {
-    struct sockaddr_in sin;
-    socklen_t sinlen;
+    struct sockaddr_un sun;
 
-    int sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0)
 	return NULL;
 
     int sockopt = 1;
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(sockopt));
 
-    bzero(&sin, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(port);
-    sin.sin_addr.s_addr = inet_addr(LOCALHOST_ADDRESS);
-    if (sin.sin_addr.s_addr == INADDR_NONE) {
-        mx_log("listener port %u: inet_addr: %s", port, strerror(errno));
-	close(sock);
-	return NULL;
-    }
+    bzero(&sun, sizeof(sun));
+    sun.sun_family = AF_UNIX;
+#ifdef HAVE_SUN_LEN
+    sun.sun_len = sizeof(sun);
+#endif
+    strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
 
-    sinlen = sizeof(sin);
-    if (bind(sock, (struct sockaddr *) &sin, sinlen) < 0) {
-        mx_log("listener port %u: bind: %s", port, strerror(errno));
+    unlink(path);
+
+    if (bind(sock, (struct sockaddr *) &sun, sizeof(sun)) < 0) {
+        mx_log("listener path %s: bind: %s", path, strerror(errno));
 	close(sock);
 	return NULL;
     }
 
     if (listen(sock, 5) < 0) {
-        mx_log("listener port %u: listen: %s", port, strerror(errno));
+        mx_log("listener path %s: listen: %s", path, strerror(errno));
 	close(sock);
 	return NULL;
     }
@@ -68,7 +65,7 @@ mx_listener (unsigned port, mx_type_t type, int spawns, const char *target)
     mslp->msl_base.ms_id = ++mx_sock_id;
     mslp->msl_base.ms_type = type;
     mslp->msl_base.ms_sock = sock;
-    mslp->msl_port = port;
+    mslp->msl_base.ms_sun = sun;
     mslp->msl_spawns = spawns;
 
     mslp->msl_request = calloc(1, sizeof(*mslp->msl_request));
@@ -83,10 +80,10 @@ mx_listener (unsigned port, mx_type_t type, int spawns, const char *target)
     TAILQ_INSERT_HEAD(&mx_sock_list, &mslp->msl_base, ms_link);
     mx_sock_count += 1;
 
-    MX_LOG("%s new listener, fd %u, spawns %s, port %s:%d...",
+    MX_LOG("%s new listener, fd %u, spawns %s, %s...",
 	   mx_sock_title(&mslp->msl_base), mslp->msl_base.ms_sock,
 	   mx_sock_type_number(mslp->msl_spawns),
-	   inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
+	   mx_sock_name(&mslp->msl_base));
 
     return &mslp->msl_base;
 }
@@ -94,11 +91,11 @@ mx_listener (unsigned port, mx_type_t type, int spawns, const char *target)
 static mx_sock_t *
 mx_listener_accept (mx_sock_listener_t *listener)
 {
-    struct sockaddr_in sin;
-    socklen_t sinlen = sizeof(sin);
+    struct sockaddr_un sun;
+    socklen_t sunlen = sizeof(sun);
 
     int sock = accept(listener->msl_base.ms_sock,
-		      (struct sockaddr *) &sin, &sinlen);
+		      (struct sockaddr *) &sun, &sunlen);
     if (sock < 0) {
         mx_log("%s: accept: %s", mx_sock_title(&listener->msl_base),
                strerror(errno));
@@ -111,16 +108,16 @@ mx_listener_accept (mx_sock_listener_t *listener)
 
     mx_sock_t *msp;
     msp = mx_mti_number(listener->msl_spawns)->mti_spawn(listener, sock,
-							 &sin, sinlen);
+							 &sun, sunlen);
     if (msp == NULL)
 	return NULL;
 
     TAILQ_INSERT_HEAD(&mx_sock_list, msp, ms_link);
     mx_sock_count += 1;
 
-    MX_LOG("%s new %s, fd %u, port %s:%d...",
+    MX_LOG("%s new %s, fd %u, %s...",
 	   mx_sock_title(msp), mx_sock_type(msp), msp->ms_sock,
-	   inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
+	   mx_sock_name(msp));
 
     return msp;
 }
@@ -146,7 +143,7 @@ mx_listener_poller (MX_TYPE_POLLER_ARGS)
 	}
 
 	mx_log("new connection from %s here to remote %s:%d",
-	       mx_sock_sin(newp), mslp->msl_request->mr_desthost,
+	       mx_sock_name(newp), mslp->msl_request->mr_desthost,
 	       mslp->msl_request->mr_destport);
     }
 

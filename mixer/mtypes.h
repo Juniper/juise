@@ -36,6 +36,7 @@
 #define MSS_RPC_READ_REPLY 13	/* Reading <rpc-reply from server */
 #define MSS_RPC_WRITE_REPLY 14	/* Writing <rpc-reply> to client (ws) */
 #define MSS_RPC_COMPLETE 15	/* Reply is complete (end-of-frame seen) */
+#define MSS_READ_EOF	16	/* Have read EOF from websocket */
 
 #define DEFINE_BIT_FUNCTIONS(_test, _set, _clear, _type, _field, _bit)	\
     static inline unsigned _test (_type *ptr) { \
@@ -115,6 +116,7 @@ typedef struct mx_request_s {
     unsigned mr_id;		/* Request ID (our ID) */
     unsigned mr_state;		/* State of this request */
     mx_muxid_t mr_muxid;	/* Muxer ID (client's ID) */
+    unsigned mr_flags;          /* Flags for this request */
     char *mr_name;		/* Request name (tag) */
     char *mr_target;		/* Target name (could be alias) */
     char *mr_fulltarget;        /* Full target name (user@host:port) */
@@ -132,18 +134,22 @@ typedef struct mx_request_s {
     mx_buffer_t *mr_rpc;	     /* The RPC we're attempting */
 } mx_request_t;
 
+/* Flags for mr_flags */
+#define MRF_NOCREATE      (1<<0)  /* Do not create a new session */
+
 typedef struct mx_sock_s {
     mx_sock_link_t ms_link;	/* List of all open sockets */
     unsigned ms_id;		/* Socket identifier */
     mx_type_t ms_type;		/* MST_* type */
     unsigned ms_sock;		/* Underlaying sock */
     unsigned ms_state;		/* Type-specific state */
-    struct sockaddr_in ms_sin;	/* Address of peer */
+    struct sockaddr_in ms_sin;	/* Address of peer (AF_INET) */
+    struct sockaddr_in6 ms_sin6; /* Address of peer (AF_INET6) */
+    struct sockaddr_un ms_sun;	/* Address of peer (AF_UNIX) */
 } mx_sock_t;
 
 typedef struct mx_sock_listener_s {
     mx_sock_t msl_base;		/* Base sock info */
-    unsigned msl_port;		/* Port being listened on */
     mx_type_t msl_spawns;	/* Type of socket spawned */
     mx_request_t *msl_request;	/* Target information */
 } mx_sock_listener_t;
@@ -169,6 +175,8 @@ typedef struct mx_sock_session_s {
 typedef struct mx_sock_websocket_s {
     mx_sock_t msw_base;
     mx_buffer_t *msw_rbufp;	   /* Read buffer */
+    unsigned msw_requests_made;	   /* Count of requests */
+    unsigned msw_requests_complete; /* Count of requests complete */
 } mx_sock_websocket_t;
 
 typedef struct mx_password_s {
@@ -196,7 +204,7 @@ typedef int (*mx_type_poller_func_t)(MX_TYPE_POLLER_ARGS);
 
 #define MX_TYPE_SPAWN_ARGS \
     mx_sock_listener_t *mslp UNUSED, \
-    int sock UNUSED, struct sockaddr_in *sin UNUSED, socklen_t sinlen UNUSED
+    int sock UNUSED, struct sockaddr_un *sun UNUSED, socklen_t sunlen UNUSED
 typedef mx_sock_t *(*mx_type_spawn_func_t)(MX_TYPE_SPAWN_ARGS);
 
 #define MX_TYPE_WRITE_ARGS \
@@ -279,7 +287,7 @@ void
 mx_type_info_register (int version UNUSED, mx_type_info_t *mtip);
 
 const char *
-mx_sock_sin (mx_sock_t *msp);
+mx_sock_name (mx_sock_t *msp);
 
 const char *
 mx_sock_type_number (mx_type_t type);

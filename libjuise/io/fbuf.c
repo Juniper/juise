@@ -758,7 +758,7 @@ char *
 fbuf_gets_ex (fbuf_t *fbp, const int tries)
 {
     int left = fbp->fb_left;
-    char *cp = fbp->fb_ptr, *np;
+    char *cp = fbp->fb_ptr, *np = NULL;
     errno = 0;
 
     for (;;) {
@@ -788,7 +788,8 @@ fbuf_gets_ex (fbuf_t *fbp, const int tries)
 	    return NULL;
 	}
 
-	np = memchr(cp, '\n', left);
+        if (cp)
+	    np = memchr(cp, '\n', left);
 	if (np) {
 	    if(*(np - 1) == '\r')
 		*(np - 1) = 0;

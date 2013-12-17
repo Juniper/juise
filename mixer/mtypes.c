@@ -43,18 +43,28 @@ mx_sock_isreadable (int sock)
 }
 
 const char *
-mx_sock_sin (mx_sock_t *msp)
+mx_sock_name (mx_sock_t *msp)
 {
     #define NUM_BUFS 3
     static unsigned buf_num;
     static char bufs[NUM_BUFS][BUFSIZ];
-    const char *shost = inet_ntoa(msp->ms_sin.sin_addr);
-    unsigned int sport = ntohs(msp->ms_sin.sin_port);
 
     if (++buf_num >= NUM_BUFS)
 	buf_num = 0;
 
-    snprintf(bufs[buf_num], BUFSIZ, "%s:%d", shost, sport);
+    if (msp->ms_sin.sin_port) {
+	const char *shost = inet_ntoa(msp->ms_sin.sin_addr);
+	unsigned int sport = ntohs(msp->ms_sin.sin_port);
+	snprintf(bufs[buf_num], BUFSIZ, "inet: %s:%d", shost, sport);
+    } else if (msp->ms_sin6.sin6_port) {
+	unsigned int sport = ntohs(msp->ms_sin6.sin6_port);
+	snprintf(bufs[buf_num], BUFSIZ, "inet6: %d", sport);
+    } else if (msp->ms_sun.sun_path) {
+	snprintf(bufs[buf_num], BUFSIZ, "unix: %s", msp->ms_sun.sun_path);
+
+    } else {
+	snprintf(bufs[buf_num], BUFSIZ, "unknown");
+    }
 
     return bufs[buf_num];
 }
@@ -92,11 +102,18 @@ mx_sock_letter (mx_sock_t *msp)
 const char *
 mx_sock_title  (mx_sock_t *msp)
 {
-    static char title[16];
+    #define TMAX 8
+    static char title[TMAX][16];
+    static int tnum;
+    char *cp = title[tnum];
 
-    snprintf(title, sizeof(title), "%s%u", mx_sock_letter(msp), msp->ms_id);
+    snprintf(title[tnum], sizeof(title[tnum]), "%s%u", mx_sock_letter(msp),
+	     msp ? msp->ms_id : 0);
 
-    return title;
+    if (++tnum >= TMAX)
+	tnum = 0;
+
+    return cp;
 }
 
 void

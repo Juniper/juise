@@ -89,6 +89,25 @@ mx_session_establish (mx_sock_session_t *mssp, mx_request_t *mrp)
 	libssh2_keepalive_config(mssp->mss_session, 1, opt_keepalive);
 }
 
+void
+mx_session_release_client (mx_sock_t *client)
+{
+    mx_sock_t *msp;
+    mx_sock_session_t *mssp;
+    mx_channel_t *mcp;
+
+    TAILQ_FOREACH(msp, &mx_sock_list, ms_link) {
+	if (msp->ms_type != MST_SESSION)
+	    continue;
+
+	mssp = mx_sock(msp, MST_SESSION);
+	TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
+	    if (mcp->mc_client == client)
+		mcp->mc_client = NULL;
+	}
+    }
+}
+
 /*
  * At this point we haven't yet authenticated, and we don't know if we can
  * trust the remote host.  So we extract the hostkey and check if it's a
@@ -550,6 +569,21 @@ mx_session_open (mx_request_t *mrp)
 	return NULL;
     }
 
+    switch (aip->ai_family) {
+    case AF_INET:
+	if (aip->ai_addrlen <= sizeof(mssp->mss_base.ms_sin))
+	    memcpy(&mssp->mss_base.ms_sin, aip->ai_addr, aip->ai_addrlen);
+	break;
+
+    case AF_INET6:
+	if (aip->ai_addrlen <= sizeof(mssp->mss_base.ms_sin6))
+	    memcpy(&mssp->mss_base.ms_sin6, aip->ai_addr, aip->ai_addrlen);
+	break;
+
+    default:
+	break;
+    }
+
     freeaddrinfo(res);
 
     mrp->mr_session = mssp;
@@ -597,6 +631,9 @@ mx_sock_session_t *
 mx_session (mx_request_t *mrp)
 {
     mx_sock_session_t *session = mx_session_find(mrp->mr_fulltarget);
+
+    if (session == NULL && (mrp->mr_flags & MRF_NOCREATE))
+        return NULL;
 
     if (session == NULL || session->mss_base.ms_state != MSS_ESTABLISHED)
 	session = mx_session_open(mrp);
@@ -757,7 +794,7 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
 	for (;;) {
             rc = mx_channel_handle_input(mcp);
-            mx_log("C%u: handle input returns %d", mcp->mc_id, rc);
+            DBG_POLL("C%u: handle input returns %d", mcp->mc_id, rc);
 	    if (rc)
 		break;
 	}

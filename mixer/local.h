@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/un.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <signal.h>
@@ -26,6 +27,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/queue.h>
+#include <libxml/tree.h>
 
 #include <libslax/slax.h>
 
@@ -58,6 +60,8 @@
 extern char keyfile1[], keyfile2[];
 
 extern unsigned mx_sock_id;   /* Monotonically increasing ID number */
+
+extern char *opt_dot_dir;	/* Directory for our dot files */
 extern const char *opt_user;
 extern const char *opt_password;
 extern const char *opt_desthost;

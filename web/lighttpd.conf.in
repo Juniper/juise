@@ -65,5 +65,5 @@ expire.url = ( "/static/images/" => "access 1 hours" )
 #url.rewrite = ( "^/$" => "/status" )
 
 websocket.server = (
-    "/mixer" =>    ( "host" => "127.0.0.1", "port" => "8000" ),
+    "/mixer" =>    ( "command" => "@prefix@/bin/mixer --user ${remoteuser}" )
 )

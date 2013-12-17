@@ -43,6 +43,9 @@
 #include "request.h"
 #include <signal.h>
 #include <err.h>
+#include <libjuise/io/pid_lock.h>
+
+#define READ_BUFSIZ (8*BUFSIZ)
 
 unsigned mx_sock_id;   /* Monotonically increasing ID number */
 
@@ -56,21 +59,32 @@ static const char keybase2[] = "id_dsa";
 /* Filenames of SSH private and public key files (in ~/.ssh/) */
 char keyfile1[MAXPATHLEN], keyfile2[MAXPATHLEN];
 
-const char *opt_user;		/* User name (if not getlogin()) */
-const char *opt_password;
+
 const char *opt_db = NULL;
 const char *opt_desthost = "localhost";
-
-unsigned opt_destport = 22;
-int opt_no_agent;
-int opt_no_known_hosts;
-int opt_no_db;
+char *opt_dot_dir;		/* Directory for our dot files */
+const char *opt_password;
+const char *opt_user;		/* User name (if not getlogin()) */
 int opt_keepalive;
 int opt_knownhosts;
+int opt_local_console;
+int opt_no_agent;
+int opt_no_db;
+int opt_no_known_hosts;
+unsigned opt_destport = 22;
 
-static int opt_login;
+static char *opt_home;
+static char *opt_logfile;
+static int opt_console;
 static int opt_fork;
+static int opt_getpass;
+static int opt_login;
+static int opt_no_console;
+static int opt_no_auto_server;
+static int opt_server;
+static unsigned opt_port = 8000;
 
+static char *path_websocket, *path_console, *path_lock;
 static mx_password_t *mx_saved_passwords;
 
 mx_password_t *
@@ -206,6 +220,11 @@ main_loop (void)
 
         DBG_POLL("poll<: nfd %d, timeout %d", nfd, timeout);
 
+	if (nfd == 0) {
+	    mx_log("mixer: nfd is zero");
+	    return;
+	}
+
 	struct timeval tv_begin, tv_end;
 	gettimeofday(&tv_begin, NULL);
 
@@ -272,32 +291,136 @@ shutdown:
     }
 }
 
-static void
-print_help (const char *opt)
+static int
+copy_data (int wr, int rd, int *eofp)
 {
-    if (opt)
-	fprintf(stderr, "invalid option: %s\n\n", opt);
+    int rc, len;
+    char buf[READ_BUFSIZ];
 
-    fprintf(stderr,
-	    "Usage: mixer [options]\n\n"
-	    "\t--console or -C: enable console mode\n"
-	    "\t--db <dbname>: Specify mixer database file\n"
-	    "\t--debug <flag>: turn on specified debug flag\n"
-	    "\t--fork: force fork\n"
-	    "\t--help: display this message\n"
-	    "\t--home <dir>: specify home directory\n"
-	    "\t--keep-alive <secs> OR -k <secs>: keep-alive timeout\n"
-	    "\t--log <file>: send log message to file\n"
-	    "\t--login: require use login\n"
-	    "\t--no-db: do not use device database\n"
-	    "\t--password <xxx>: use password for device logins\n"
-	    "\t--port <n>: use alternative port for websocket\n"
-	    "\t--use-known-hosts OR -K: use openssh .known_hosts files\n"
-	    "\t--verbose: Enable verbose logs\n"
-	    "\nProject juise home page: http://juise.googlecode.com\n"
-	    "\n");
-	        
-    exit(1);
+    rc = read(rd, buf, sizeof(buf));
+    if (rc < 0) {
+	if (errno == EINTR)
+	    return 0;
+	mx_log("read: (%d) %s", rc, strerror(errno));
+	return -1;
+    }
+    if (rc == 0)
+	return -1;
+    
+    if (eofp && rc == 1 && buf[0] == 0x04) {
+	*eofp = TRUE;
+	return 0;
+    }
+
+    len = write(wr, buf, rc);
+    if (len < 0 || len != rc) {
+	mx_log("write: (%d.%d) %s", len, rc, strerror(errno));
+	return -1;
+    }
+
+    return 0;
+}
+
+static int
+connect_to_path (const char *path, const char *tag)
+{
+    struct sockaddr_un sun;
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    int i;
+
+    if (sock < 0) {
+	if (tag)
+	    mx_log("%s: could not create socket: %s", tag, strerror(errno));
+	return -1;
+    }
+
+    bzero(&sun, sizeof(sun));
+    sun.sun_family = AF_UNIX;
+#ifdef HAVE_SUN_LEN
+    sun.sun_len = sizeof(sun);
+#endif
+    strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
+
+    for (i = 0;; i++) {
+	if (connect(sock, (struct sockaddr *) &sun, sizeof(sun)) >= 0)
+	    break;
+
+	if (i < 5) {
+	    sleep(1);
+	    continue;
+	}
+
+	if (tag)
+	    mx_log("%s: path %s: bind: %s",
+		   tag, sun.sun_path, strerror(errno));
+	close(sock);
+	return -1;
+    }
+
+    return sock;
+}
+
+static void
+forward_data (int s1, int s2, int s3, int s1_check_eof)
+{
+    int rc;
+    int s1_eof = FALSE;
+    int *s1_checker = s1_check_eof ? &s1_eof : NULL;
+
+    for (;;) {
+	struct pollfd pd[2];
+	int timeout = POLL_TIMEOUT;
+
+	pd[0].fd = s2;
+	pd[0].events = POLLIN;
+	pd[0].revents = 0;
+
+	if (!s1_eof) {
+	    pd[1].fd = s1;
+	    pd[1].events = POLLIN;
+	    pd[1].revents = 0;
+	}
+
+	rc = poll(pd, s1_eof ? 1 : 2, timeout);
+        if (rc < 0) {
+	    if (errno == EINTR)
+		continue;
+	    mx_log("poll: %s", strerror(errno));
+	    break;
+        }
+
+	if (!s1_eof && (pd[1].revents & POLLIN)) {
+	    if (copy_data(s2, s1, s1_checker) < 0) {
+		mx_log("copy 1->2 done");
+		break;
+	    }
+
+	    if (s1_eof)
+		break;
+	}
+
+	if (pd[0].revents & POLLIN) {
+	    if (copy_data(s3, s2, FALSE) < 0) {
+		mx_log("copy 2->1 done");
+		break;
+	    }
+	}
+    }
+}
+
+static int
+do_console (char **argv UNUSED)
+{
+    if (!pid_is_locked(path_lock))
+	mx_log("daemon is not running");
+
+    int sock = connect_to_path(path_console, "console");
+    if (sock < 0)
+	return sock;
+
+    forward_data(0, sock, 1, TRUE);
+
+    return 0;
 }
 
 static void
@@ -317,15 +440,165 @@ sigchld_handler (int sig UNUSED)
 	continue;
 }
 
+static void
+sigchld_init (void)
+{
+    struct sigaction sa;
+
+    bzero(&sa, sizeof(sa));
+    sa.sa_handler =  sigchld_handler;
+    sigaction(SIGCHLD, &sa, 0);
+}    
+
+static int
+do_server (char **argv UNUSED)
+{
+    int rc;
+
+    snprintf(keyfile1, sizeof(keyfile1), "%s/%s/%s",
+	     opt_home, keydir, keybase1);
+    snprintf(keyfile2, sizeof(keyfile2), "%s/%s/%s",
+	     opt_home, keydir, keybase2);
+
+    if (pid_lock(path_lock) < 0)
+	errx(1, "mixer lock is already active: %s", path_lock);
+
+    if (opt_getpass)
+	opt_password = strdup(getpass("Password:"));
+
+    mx_type_info_init();
+
+    if (!opt_no_db && !mx_db_init())
+	errx(1, "mixer database initialization failed");
+
+    rc = libssh2_init(0);
+    if (rc != 0)
+        errx(1, "libssh2 initialization failed (%d)", rc);
+
+    if (opt_local_console)
+	mx_console_start();
+
+    if (mx_listener(path_websocket, MST_LISTENER, MST_WEBSOCKET,
+		    "websocket") == NULL)
+	errx(1, "initial listen failed");
+
+    if (!opt_local_console && !opt_no_console)
+	if (mx_listener(path_console, MST_LISTENER, MST_CONSOLE,
+			"console") == NULL)
+	    errx(1, "initial listen failed");
+
+    main_loop();
+
+    libssh2_exit();
+
+    if (!opt_no_db)
+	mx_db_close();
+
+    return 0;
+}
+
+static void
+fork_server (void)
+{
+    if (fork() == 0) {
+	if (fork() != 0)
+	    _exit(0);
+
+	mx_log("forking server automatically (pid %d)\n", getpid());
+	chdir("/");
+
+	int i, fd = open("/dev/null", O_RDWR);
+	for (i = 0; i < 64; i++)
+	    if (i != fd)
+		dup2(fd, i);
+
+	do_server(NULL);
+    }
+}
+
+static int
+do_forward (char **argv UNUSED)
+{
+    if (!pid_is_locked(path_lock)) {
+	mx_log("server is not started");
+
+	if (opt_no_auto_server)
+	    return -1;
+
+	fork_server();
+    }
+
+    int sock = connect_to_path(path_websocket, "websocket");
+    if (sock < 0)
+	return sock;
+
+    forward_data(0, sock, 1, FALSE);
+
+    shutdown(sock, SHUT_WR);
+
+    for (;;) {
+	char buf[READ_BUFSIZ];
+	int rc = read(sock, buf, sizeof(buf));
+	if (rc < 0) {
+	    if (errno == EINTR)
+		continue;
+	    break;
+	}
+	if (rc == 0)
+	    break;
+
+	if (write(1, buf, rc) < 0)
+	    break;
+    }
+
+    return 0;
+}
+
+static void
+print_help (const char *opt)
+{
+    if (opt)
+	fprintf(stderr, "invalid option: %s\n\n", opt);
+
+    fprintf(stderr,
+	    "Usage: mixer [options]\n\n"
+	    "\t--console or -C: connect to server console\n"
+	    "\t--db <dbname>: Specify mixer database file\n"
+	    "\t--debug <flag>: turn on specified debug flag\n"
+	    "\t--dot-dir <path>: directory for finding 'dot' files\n"
+	    "\t--fork: force fork\n"
+	    "\t--help: display this message\n"
+	    "\t--home <dir>: specify home directory\n"
+	    "\t--keep-alive <secs> OR -k <secs>: keep-alive timeout\n"
+	    "\t--local-console: enable local console for server\n"
+	    "\t--log <file>: send log message to file\n"
+	    "\t--login: require use login\n"
+	    "\t--no-console: do not start server console\n"
+	    "\t--no-db: do not use device database\n"
+	    "\t--password <xxx>: use password for device logins\n"
+	    "\t--port <n>: use alternative port for websocket\n"
+	    "\t--server: run in server mode\n"
+	    "\t--use-known-hosts OR -K: use openssh .known_hosts files\n"
+	    "\t--verbose: Enable verbose logs\n"
+	    "\t--version OR -V: show version information (and exit)\n"
+	    "\nProject juise home page: http://juise.googlecode.com\n"
+	    "\n");
+
+    exit(1);
+}
+
+static void
+print_version (void)
+{
+    printf("libjuice version %s\n", LIBJUISE_VERSION);
+    printf("libslax version %s\n",  LIBSLAX_VERSION);
+}
+
 int
 main (int argc UNUSED, char **argv UNUSED)
 {
     char *cp;
     int rc;
-    int opt_getpass = FALSE, opt_console = FALSE;
-    char *opt_home = NULL;
-    unsigned opt_port = 8000;
-    char *opt_logfile = NULL;
 
     for (argv++; *argv; argv++) {
 	cp = *argv;
@@ -344,6 +617,9 @@ main (int argc UNUSED, char **argv UNUSED)
 		print_help(NULL);
 	    mx_debug_flags(TRUE, cp);
 
+	} else if (streq(cp, "--dot-dir")) {
+	    opt_dot_dir = *++argv;
+
 	} else if (streq(cp, "--fork")) {
 	    opt_fork = TRUE;
 
@@ -356,6 +632,9 @@ main (int argc UNUSED, char **argv UNUSED)
 	} else if (streq(cp, "--keep-alive") || streq(cp, "-k")) {
 	    opt_keepalive = atoi(*++argv);
 
+	} else if (streq(cp, "--local-console")) {
+	    opt_local_console = TRUE;
+
 	} else if (streq(cp, "--log")) {
 	    opt_logfile = *++argv;
             if (opt_logfile == NULL)
@@ -363,6 +642,9 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--login")) {
 	    opt_login = TRUE;
+
+	} else if (streq(cp, "--no-console")) {
+	    opt_no_console = TRUE;
 
 	} else if (streq(cp, "--no-db")) {
 	    opt_no_db = TRUE;
@@ -382,6 +664,9 @@ main (int argc UNUSED, char **argv UNUSED)
 	} else if (streq(cp, "--no-known-hosts")) {
 	    opt_no_known_hosts = TRUE;
 
+	} else if (streq(cp, "--server")) {
+	    opt_server = TRUE;
+
 	} else if (streq(cp, "--user") || streq(cp, "-u")) {
 	    opt_user = *++argv;
 
@@ -391,6 +676,10 @@ main (int argc UNUSED, char **argv UNUSED)
 	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
 	    opt_verbose = TRUE;
 
+	} else if (streq(cp, "--version") || streq(cp, "-V")) {
+	    print_version();
+	    exit(0);
+
 	} else {
 	    print_help(cp);
 	}
@@ -399,7 +688,7 @@ main (int argc UNUSED, char **argv UNUSED)
     signal(SIGPIPE, SIG_IGN);
 
     if (opt_logfile) {
-        FILE *fp = fopen(opt_logfile, "w");
+        FILE *fp = fopen(opt_logfile, "w+");
         if (fp == NULL)
             errx(1, "cannot open log file '%s'", opt_logfile);
         mx_log_file(fp);
@@ -413,44 +702,25 @@ main (int argc UNUSED, char **argv UNUSED)
     if (opt_home == NULL)
 	opt_home = getenv("HOME");
 
-    if (opt_fork) {
-	struct sigaction sa;
-
-	bzero(&sa, sizeof(sa));
-	sa.sa_handler =  sigchld_handler;
-	sigaction(SIGCHLD, &sa, 0);
-    }
-
-    snprintf(keyfile1, sizeof(keyfile1), "%s/%s/%s",
-	     opt_home, keydir, keybase1);
-    snprintf(keyfile2, sizeof(keyfile2), "%s/%s/%s",
-	     opt_home, keydir, keybase2);
+    if (opt_dot_dir == NULL)
+	asprintf(&opt_dot_dir, "%s/.juise", opt_home ?: "/tmp");
 
     if (opt_user == NULL)
 	opt_user = strdup(getlogin());
 
-    if (opt_getpass)
-	opt_password = strdup(getpass("Password:"));
+    asprintf(&path_websocket, "%s/mixer.%s.ws", opt_dot_dir, opt_user);
+    asprintf(&path_console, "%s/mixer.%s.cons", opt_dot_dir, opt_user);
+    asprintf(&path_lock, "%s/mixer.%s.lock", opt_dot_dir, opt_user);
 
-    mx_type_info_init();
+    sigchld_init();
 
-    if (!opt_no_db && !mx_db_init())
-	errx(1, "mixer database initialization failed");
-
-    rc = libssh2_init (0);
-    if (rc != 0)
-        errx(1, "libssh2 initialization failed (%d)", rc);
-
-    if (opt_console)
-	mx_console_start();
-
-    if (mx_listener(opt_port, MST_LISTENER, MST_WEBSOCKET,
-		    "websocket") == NULL)
-	errx(1, "initial listen failed");
-
-    main_loop();
-
-    libssh2_exit();
+    if (opt_console) {
+	rc = do_console(argv);
+    } else if (opt_server) {
+	rc = do_server(argv);
+    } else {
+	rc = do_forward(argv);
+    }
 
     if (opt_logfile) {
         FILE *fp = mx_log_file(NULL);
@@ -458,8 +728,5 @@ main (int argc UNUSED, char **argv UNUSED)
             fclose(fp);
     }
 
-    if (!opt_no_db)
-	mx_db_close();
-
-    return 0;
+    return rc;
 }

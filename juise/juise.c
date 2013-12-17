@@ -1408,7 +1408,7 @@ print_version (void)
     printf("libslax version %s\n",  LIBSLAX_VERSION);
     printf("Using libxml %s, libxslt %s and libexslt %s\n",
 	   xmlParserVersion, xsltEngineVersion, exsltLibraryVersion);
-    printf("slaxproc was compiled against libxml %d, "
+    printf("juise was compiled against libxml %d, "
 	   "libxslt %d and libexslt %d\n",
 	   LIBXML_VERSION, LIBXSLT_VERSION, LIBEXSLT_VERSION);
     printf("libxslt %d was compiled against libxml %d\n",
@@ -1421,31 +1421,31 @@ static void
 print_help (void)
 {
     fprintf(stderr,
-	    "Usage: juise [@target] [options] [script] [param value]*\n"
-	    "\t--agent OR -A: enable ssh-agent forwarding\n"
-	    "\t--commit-script OR -c: test a commit script\n"
-	    "\t--debug OR -d: use the libslax debugger\n"
-	    "\t--directory <dir> OR -D <dir>: set the directory for server scripts\n"
-	    "\t--include <dir> OR -I <dir>: search directory for includes/imports\n"
-	    "\t--input <file> OR -i <file>: use given file for input\n"
-	    "\t--indent OR -g: indent output ala output-method/indent\n"
-	    "\t--junoscript OR -J: use junoscript API protocol\n"
-	    "\t--load OR -l: load commit script changes in test mode\n"
-	    "\t--lib <dir> OR -L <dir>: search directory for extension libraries\n"
-	    "\t--no-randomize: do not initialize the random number generator\n"
-	    "\t--param <name> <value> OR -a <name> <value>: pass parameters\n"
-	    "\t--protocol <name> OR -P <name>: use the given API protocol\n"
-	    "\t--run-server OR -R: run in juise server mode\n"
-	    "\t--script <name> OR -S <name>: run the given script\n"
-	    "\t--target <name> OR -T <name>: specify the default target device\n"
-	    "\t--trace <file> OR -t <file>: write trace data to a file\n"
-	    "\t--user <name> OR -u <name>: specify the user name for API connections\n"
-	    "\t--verbose OR -v: enable debugging output (slaxLog())\n"
-	    "\t--version OR -V: show version information (and exit)\n"
-	    "\t--wait <seconds>: wait after starting (for gdb to attach)\n"
+"Usage: juise [@target] [options] [script] [param value]*\n"
+"\t--agent OR -A: enable ssh-agent forwarding\n"
+"\t--commit-script OR -c: test a commit script\n"
+"\t--debug OR -d: use the libslax debugger\n"
+"\t--directory <dir> OR -D <dir>: set the directory for server scripts\n"
+"\t--include <dir> OR -I <dir>: search directory for includes/imports\n"
+"\t--input <file> OR -i <file>: use given file for input\n"
+"\t--indent OR -g: indent output ala output-method/indent\n"
+"\t--junoscript OR -J: use junoscript API protocol\n"
+"\t--load OR -l: load commit script changes in test mode\n"
+"\t--lib <dir> OR -L <dir>: search directory for extension libraries\n"
+"\t--no-randomize: do not initialize the random number generator\n"
+"\t--param <name> <value> OR -a <name> <value>: pass parameters\n"
+"\t--protocol <name> OR -P <name>: use the given API protocol\n"
+"\t--run-server OR -R: run in juise server mode\n"
+"\t--script <name> OR -S <name>: run the given script\n"
+"\t--target <name> OR -T <name>: specify the default target device\n"
+"\t--trace <file> OR -t <file>: write trace data to a file\n"
+"\t--user <name> OR -u <name>: specify the user name for API connections\n"
+"\t--verbose OR -v: enable debugging output (slaxLog())\n"
+"\t--version OR -V: show version information (and exit)\n"
+"\t--wait <seconds>: wait after starting (for gdb to attach)\n"
 
-	    "\nProject juise home page: https://github.com/Juniper/juise\n"
-	    "\n");
+"\nProject juise home page: https://github.com/Juniper/juise\n"
+"\n");
 }
 
 int

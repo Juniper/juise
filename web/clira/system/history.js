@@ -12,29 +12,37 @@
 jQuery(function($) {
     jQuery.clira.commandFile({
         name: "history",
+        templatesFile: '/clira/templates/history.hbs',
         commands: [
             {
                 command: "show command history",
                 help: "Display list of all the commands executed along with "
                     + "timestamp",
-                execute: function ($output, cmd, parse, poss) {
-                    var history = $.clira.cmdHistory.show(),
-                        html = '';
-                    for (var i = history.length - 1; i >= 0; i--) {
-                        html += "<div class='history-element'><span "
-                              + "class='command'>" + history[i]['command'] 
-                              + "</span> - <span class='date'>"
-                              + new Date(history[i]['on']) + "</span></div>";
-                    }
-                    $output.html(html);
+                templateName: "show-history",
+                execute: function (view, cmd, parse, poss) {
+                    var output = {
+                        history: Clira.CommandHistoryController.create({
+                            content: Clira.CommandHistory.find()
+                        })
+                    };
+                    view.get('controller').set('output', output);
                 }
             },
             {
                 command: "clear command history",
                 help: "Clears history of executed commands",
-                execute: function ($output, cmd, parse, poss) {
-                    $.clira.cmdHistory.clear();
-                    $output.html("Cleared command history");
+                templateName: "clear-history",
+                execute: function (view, cmd, parse, poss) {
+                    var output = {};
+                    Clira.CommandHistory.deleteAll().then(function() {
+                        output.message = "Successfully cleared history";
+                        output.type = "success";
+                        view.get('controller').set('output', output);
+                    }, function(err) {
+                        output.message = "Failed to clear history";
+                        output.type = "error";
+                        view.get('controller').set('output', output);
+                    });
                 }
             }
         ]

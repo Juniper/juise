@@ -34,6 +34,7 @@ jQuery(function ($) {
                     $.dbgpr("parse: " + parse.possibilities.length);
 
                     var res = [ ];
+                    var delay = 0, delay2 = 0;
 
                     parse.eachPossibility(function (n, p) {
                         p.render();
@@ -53,14 +54,26 @@ jQuery(function ($) {
                             // If the command defines a custom completion,
                             // use it.
                             //
-                            if (false && p.command.complete) {
+                            if (p.command.complete) {
                                 $.dbgpr("calling custom completion");
-                                p.command.complete(p, res, value);
+                                delay2 = p.command.complete(p, res, value);
+                                if (delay2 > delay)
+                                    delay = delay2;
                             }
 
                         }
                     });
-                    response(res);
+
+                    if (delay == 0) {
+                        response(res);
+                    } else {
+                        $.dbgpr("autocomplete: delay for " + delay + "ms: "
+                                + res.length);
+                        setTimeout(function () {
+                            $.dbgpr("autocomplete: now firing: " + res.length);
+                            response(res);
+                        }, delay);
+                    }
                 },
                 open: function () {
                     $inputbox = $("#command-input-box");

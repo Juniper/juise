@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (c) 2006-2011, Juniper Networks, Inc.
+ * Copyright (c) 2006-2013, Juniper Networks, Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -1053,9 +1053,12 @@ mod_juise_create_env (server *srv, connection *con,
 		      );
 	    mod_juise_env_add(&env, CONST_STR_LEN("REMOTE_PORT"), buf, strlen(buf));
 
-	    if (!buffer_is_empty(con->authed_user)) {
+	    data_string *dsp;
+	    dsp = (data_string *) array_get_element(con->environment,
+						    "REMOTE_USER");
+	    if (dsp != NULL && dsp->value->used > 1) {
 		mod_juise_env_add(&env, CONST_STR_LEN("REMOTE_USER"),
-			      CONST_BUF_LEN(con->authed_user));
+				  CONST_BUF_LEN(dsp->value));
 	    }
 
 #ifdef USE_OPENSSL
@@ -1421,9 +1424,8 @@ mod_juise_patch_connection (server *srv, connection *con, mod_juise_plugin_data 
 	    if (buffer_is_equal_string(du->key, CONST_STR_LEN("juise.assign")))
 		PATCH(cgi);
 	    else if (buffer_is_equal_string(du->key,
-				      CONST_STR_LEN("juise.execute-x-only"))) {
+				      CONST_STR_LEN("juise.execute-x-only")))
 		PATCH(execute_x_only);
-	    }
 	}
     }
 
@@ -1526,7 +1528,7 @@ URIHANDLER_FUNC(mod_juise_handle_physical)
 
 	if (ds->key->ptr[0] == '/') {
 	    if (strncmp(uri->ptr, ds->key->ptr, ct_len) == 0) {
-		buffer_copy_string(fn, "/Users/phil/work/root/bin/juise");
+		buffer_copy_string_buffer(fn, ds->value);
 		break;
 	    }
 	}

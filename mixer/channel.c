@@ -13,6 +13,7 @@
 #include "session.h"
 #include "channel.h"
 #include "netconf.h"
+#include "request.h"
 #include <ctype.h>
 
 static unsigned mx_channel_id; /* Monotonically increasing ID number */
@@ -30,7 +31,8 @@ mx_channel_read (mx_channel_t *mcp, char *buf, unsigned long bufsiz)
 
     DBG_POLL("C%u read %d", mcp->mc_id, len);
     if (len > 0) {
-	slaxMemDump("chread: ", buf, len, ">", 0);
+	if (opt_debug & DBG_FLAG_DUMP)
+	    slaxMemDump("chread: ", buf, len, ">", 0);
     } else {
 	if (len == LIBSSH2_ERROR_SOCKET_RECV) {
 	    if (mcp->mc_session)
@@ -50,7 +52,8 @@ mx_channel_write (mx_channel_t *mcp, const char *buf, unsigned long bufsiz)
 
     DBG_POLL("C%u write %d", mcp->mc_id, len);
     if (len > 0)
-	slaxMemDump("chwrite: ", buf, len, ">", 0);
+	if (opt_debug & DBG_FLAG_DUMP)
+	    slaxMemDump("chwrite: ", buf, len, ">", 0);
 
     return len;
 }
@@ -465,12 +468,15 @@ mx_channel_netconf_detect_marker (mx_channel_t *mcp UNUSED,
 void
 mx_channel_release (mx_channel_t *mcp)
 {
+    if (mcp == NULL)
+	return;
+
     mx_sock_t *client = mcp->mc_client;
     mx_sock_session_t *session = mcp->mc_session;
 
-    MX_LOG("C%u: release channel, S%u, channel %p, client S%u",
+    MX_LOG("C%u: release channel, S%u, channel %p, client %s",
 	   mcp->mc_id, session->mss_base.ms_id,
-	   mcp->mc_channel, client->ms_id);
+	   mcp->mc_channel, mx_sock_title(client));
 
     if (client && mx_mti(client)->mti_set_channel)
 	mx_mti(client)->mti_set_channel(client, NULL, NULL);
@@ -499,10 +505,10 @@ mx_channel_print (mx_channel_t *mcp, int indent, const char *prefix)
 int
 mx_channel_handle_input (mx_channel_t *mcp)
 {
-    int len;
     mx_buffer_t *mbp = mcp->mc_rbufp;
+    int len = mbp->mb_len;
 
-    if (mbp->mb_len == 0) { /* Nothing buffered */
+    if (len == 0) { /* Nothing buffered */
 	mbp->mb_start = 0;
 	len = mx_channel_read(mcp, mbp->mb_data, mbp->mb_size);
 	if (len == LIBSSH2_ERROR_EAGAIN) {
@@ -528,8 +534,12 @@ mx_channel_handle_input (mx_channel_t *mcp)
      * If the write call would block (returns TRUE), then
      * we move on.
      */
-    if (mcp->mc_client == NULL
-	    || mx_mti(mcp->mc_client)->mti_write(mcp->mc_client, mcp, mbp))
+    if (mcp->mc_client == NULL) {
+	/* The client has vaporized */
+	mbp->mb_start += len;
+	mbp->mb_len -= len;
+
+    } else if (mx_mti(mcp->mc_client)->mti_write(mcp->mc_client, mcp, mbp))
 	return 1;
 
     /*
@@ -547,7 +557,14 @@ mx_channel_handle_input (mx_channel_t *mcp)
 	 * The RPC is complete, so we can detach the channel from the
 	 * websocket, allowing us to reuse it.
 	 */
-	if (mcp->mc_client && mx_mti(mcp->mc_client)->mti_write_complete)
+	if (mcp->mc_client == NULL) {
+	    /* Client has vaporized */
+	    if (mcp->mc_request) {
+		mx_log("C%u complete (vaporized) R%u",
+		       mcp->mc_id, mcp->mc_request->mr_id);
+	    }
+
+	} else if (mx_mti(mcp->mc_client)->mti_write_complete)
 	    mx_mti(mcp->mc_client)->mti_write_complete(mcp->mc_client, mcp);
 	
 	mx_channel_release(mcp);

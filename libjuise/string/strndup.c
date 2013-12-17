@@ -17,6 +17,7 @@
 #include "juiseconfig.h"
 #include <libjuise/string/strextra.h>
 
+#ifndef HAVE_STRNDUP
 /*
  * strndup(): strdup() meets strncat(); return a duplicate string
  * of upto count characters of str. Always NUL terminate.
@@ -37,3 +38,4 @@ strndup (const char *str, size_t count)
 	return cp;
     }
 }
+#endif /* HAVE_STRNDUP */

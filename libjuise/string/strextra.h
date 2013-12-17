@@ -75,6 +75,7 @@ char *strdupf (const char *fmt, ...) PRINTFLIKE(1, 2);
  */   
 char *strcombine (char *basestr, char *appendstr, int free_args);
 
+#ifndef HAVE_STRNDUP
 /**
  * @brief
  * Allocates sufficient memory for a copy of a string, up to the maximum
@@ -89,6 +90,7 @@ char *strcombine (char *basestr, char *appendstr, int free_args);
  *     A duplicate string of up to @a count characters of @a str.
  */
 char *strndup (const char *str, size_t count);
+#endif /* HAVE_STRNDUP */
 
 /**
  * @brief

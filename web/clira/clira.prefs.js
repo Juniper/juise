@@ -105,52 +105,42 @@ jQuery(function ($) {
     $.extend($.clira, {
         prefs: { },
         prefsInit: function prefsInit () {
-            $.clira.prefs_form = $.yform(prefs_options, "#prefs-dialog",
-                                         prefs_fields);
-            $.clira.prefs = $.clira.prefs_form.getData();
-            buildForms();
+            for (var i = 0; i < prefs_fields.length; i++) {
+                // Save the preference item if not already saved
+                var pref = Clira.Preference.find(prefs_fields[i]['name']);
+                if (Ember.isNone(pref)) {
+                    var item = prefs_fields[i];
+
+                    // We add a new field to hold the configured value
+                    item['value'] = item['def'];
+
+                    // Create and save as record
+                    pref = Clira.Preference.create(item);
+                    pref.saveRecord();
+                }
+            }
+
+            // Read preferences into $.clira.prefs to they can be used
+            // elsewhere
+            var prefs = Clira.Preference.findAll();
+            if (prefs) {
+                prefs.forEach(function(item) {
+                    $.clira.prefs[item.get('name')] = item.get('value');
+                });
+            }
+        },
+        buildPrefForms: function() {
+            return buildForms();
         }
     });
 
     function buildForms () {
-        $("#prefs").button().click(function (event) {
-            $.dbgpr("prefsEdit:", event.type);
-            if ($.clira.prefs_form.shown()) {
-                $.clira.prefs_form.close();
-
-                /* Put the focus back where it belongs */
-                $.clira.refocus();
-
-            } else {
-                $.clira.prefs_form.open();
-            }
-        });
-
-        $("#prefs-main-form").dialog({
-            autoOpen: false,
-            height: 300,
-            width: 350,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
-
-        $("#prefsbtn").click(function() {
-            $("#prefs-main-form").dialog("open");
-        });
-
         /* Set Up Devices */
         $("#prefs-devices-form").dialog({
             autoOpen: false,
             height: 600,
             width: 800,
             resizable: false,
-            modal: true,
             buttons: {
                 'Close': function() {
                     $(this).dialog("close");
@@ -168,13 +158,14 @@ jQuery(function ($) {
                 editurl: '/clira/db.php?p=device_edit',
                 datatype: 'json',
                 colNames: ['Name', 'Hostname', 'Port',
-                           'Username', 'Password', 'Save Password', ''],
+                           'Username', 'Password', 'Save Password', 'Connect', ''],
                 colModel: [
                     {
                         name: 'name',
                         index: 'index',
                         width: 90,
                         editable: true,
+                        qTip: "The name of this device to be identified by in CLIRA.",
                         editrules: {
                             required: true
                         }
@@ -184,6 +175,7 @@ jQuery(function ($) {
                         index: 'hostname',
                         width: 100,
                         editable: true,
+                        qTip: "The host name or IP address of this device.",
                         editrules: {
                             required: true
                         }
@@ -192,13 +184,18 @@ jQuery(function ($) {
                         name: 'port',
                         index: 'port',
                         width: 50,
-                        editable: true
+                        editable: true,
+                        qTip: "The SSH port to connect to on this device.",
+                        editoptions: {
+                            defaultValue: "22"
+                        }
                     },
                     {
                         name: 'username',
                         index: 'username',
                         width: 100,
                         editable: true,
+                        qTip: "The user name to connect with for this device.",
                         editrules: {
                             required: true
                         }
@@ -208,6 +205,7 @@ jQuery(function ($) {
                         index: 'password',
                         width: 40,
                         editable: true,
+                        qTip: "The password to connect with for this device.  Note that if you set this here, the password will be stored in clear text in the CLIRA database file.  Please see the documentation for more information.",
                         edittype: 'password',
                         hidden: true,
                         hidedlg: true,
@@ -220,10 +218,28 @@ jQuery(function ($) {
                         index: 'save_password',
                         width: 20,
                         editable: true,
+                        qTip: "Save the password in CLIRA database if it has not been saved previously.",
                         edittype: 'checkbox',
                         editoptions: {
                             value: 'yes:no',
                             defaultValue: 'no'
+                        },
+                        formatter: 'checkbox'
+                    },
+                    {
+                        name: 'connect',
+                        index: 'connect',
+                        width: 20,
+                        editable: true,
+                        qTip: "If checked, attempt to verify connectivity to the device immediately after saving the connection information.",
+                        hidden: true,
+                        edittype: 'checkbox',
+                        editoptions: {
+                            value: 'yes:no',
+                            defaultValue: 'yes'
+                        },
+                        editrules: {
+                            edithidden: true
                         },
                         formatter: 'checkbox'
                     },
@@ -245,6 +261,26 @@ jQuery(function ($) {
                                     coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
                                     
                                     $dialog.offset(coord);
+                                },
+                                beforeShowForm: function(form) {
+                                    $("#tr_connect", form).hide();
+                                    var colNames = this.p.colNames;
+                                    $.each(this.p.colModel, function (i, item) {
+                                        if (item["qTip"]) {
+                                            $("#tr_" + item["name"] + " td.CaptionTD").qtip({
+                                                content: {
+                                                    title: colNames[i],
+                                                    text: item["qTip"]
+                                                },
+                                                position: {
+                                                    target: "mouse",
+                                                    adjust: { x: 5, y: 5 },
+                                                    viewport: $(window)
+                                                },
+                                                style: "qtip-tipped"
+                                            });
+                                        }
+                                    });
                                 }
                             },
                             delOptions: {
@@ -268,14 +304,8 @@ jQuery(function ($) {
                 viewrecords: true,
                 sortorder: 'asc',
                 height: 400,
-                pager: '#prefs-devices-pager',
-                beforeSelectRow: function (rowid, e) {
-                    if (e.target.id == 'delete') {
-                        // Do our row delete
-                        alert('delete row ' + rowid);
-                    }
-                }
-            }).navGrid('#prefs-devices-pager', {
+                pager: '#prefs-devices-pager'
+            }).jqGrid('navGrid', '#prefs-devices-pager', {
                 edit:false,
                 add:true,
                 del:false,
@@ -285,7 +315,77 @@ jQuery(function ($) {
                 closeAfterEdit: true
             }, {
                 //prmAdd,
-                closeAfterAdd: true
+                closeAfterAdd: true,
+                afterShowForm: function ($form) {
+                    var $dialog = $('#editmodprefs-devices-grid');
+                    var grid = $('#prefs-devices-grid');
+                    var coord = {};
+
+                    coord.top = grid.offset().top + (grid.height() / 2);
+                    coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                    $dialog.offset(coord);
+                },
+                beforeShowForm: function(form) {
+                    var colNames = this.p.colNames;
+                    $.each(this.p.colModel, function (i, item) {
+                        if (item["qTip"]) {
+                            $("#tr_" + item["name"] + " td.CaptionTD").qtip({
+                                content: {
+                                    title: colNames[i],
+                                    text: item["qTip"]
+                                },
+                                position: {
+                                    target: "mouse",
+                                    adjust: { x: 5, y: 5 },
+                                    viewport: $(window)
+                                },
+                                style: "qtip-tipped"
+                            });
+                        }
+                    });
+                },
+                afterSubmit: function(response, formdata) {
+                    if (formdata["connect"] == "yes") {
+                        $("#prefs-devices-connect").dialog({
+                            autoOpen: true,
+                            height: 300,
+                            width: 400,
+                            resizable: false,
+                            modal: true,
+                            buttons: {
+                                'Close': function() {
+                                    $(this).dialog("close");
+                                }
+                            },
+                            close: function() {
+                            },
+                            open: function() {
+                                var content = "<div id=\"connecting\">Attempting to establish connection to '"
+                                    + formdata["name"] + "' (" + formdata["username"] + "@" + formdata["hostname"]
+                                    + ":" + formdata["port"] + ") ...</div><div class=\"output-replace\"></div>";
+                                var $newp = jQuery(content);
+                                $("div#prefs-devices-connect").empty();
+                                $("div#prefs-devices-connect").append($newp);
+
+                                var $out = $("div#prefs-devices-connect div.output-replace");
+                                $.clira.runCommand($out, formdata["name"], ".noop-command", 
+                                    function (success, $output) {
+                                        var msg = "<div style=\"font-weight: bold\">";
+                                        if (success) {
+                                            msg += "Connection successful.  You can now use this device in CLIRA.";
+                                        } else {
+                                            msg += "Connection NOT successful.  Please check your device connection settings and try again.";
+                                        }
+                                        msg += "</div>";
+                                        $output.append(msg);
+                                    }
+                                );
+                            }
+                        });
+                    }
+                    return [ true, "" ];
+                }
             });
         });
         
@@ -295,7 +395,6 @@ jQuery(function ($) {
             height: 600,
             width: 800,
             resizable: false,
-            modal: true,
             buttons: {
                 'Close': function() {
                     $(this).dialog("close");
@@ -319,6 +418,7 @@ jQuery(function ($) {
                         index: 'name',
                         width: 90,
                         editable: true,
+                        qTip: "The name of this group to be identified by in CLIRA.",
                         editrules: {
                             required: true
                         }
@@ -327,6 +427,7 @@ jQuery(function ($) {
                         name: 'members',
                         index: 'devices',
                         editable: true,
+                        qTip: "The devices that are a member of this group.",
                         edittype: 'select',
                         editrules: {
                             required: true
@@ -364,6 +465,25 @@ jQuery(function ($) {
                                     coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
 
                                     $dialog.offset(coord);
+                                },
+                                beforeShowForm: function(form) {
+                                    var colNames = this.p.colNames;
+                                    $.each(this.p.colModel, function (i, item) {
+                                        if (item["qTip"]) {
+                                            $("#tr_" + item["name"] + " td.CaptionTD").qtip({
+                                                content: {
+                                                    title: colNames[i],
+                                                    text: item["qTip"]
+                                                },
+                                                position: {
+                                                    target: "mouse",
+                                                    adjust: { x: 5, y: 5 },
+                                                    viewport: $(window)
+                                                },
+                                                style: "qtip-tipped"
+                                            });
+                                        }
+                                    });
                                 }
                             },
                             delOptions: {
@@ -387,13 +507,7 @@ jQuery(function ($) {
                 viewrecords: true,
                 sortorder: 'asc',
                 height: 400,
-                pager: '#prefs-groups-pager',
-                beforeSelectRow: function (rowid, e) {
-                    if (e.target.id == 'delete') {
-                        // Do our row delete
-                        alert('delete row ' + rowid);
-                    }
-                }
+                pager: '#prefs-groups-pager'
             }).navGrid('#prefs-groups-pager', {
                 edit:false,
                 add:true,
@@ -404,42 +518,40 @@ jQuery(function ($) {
                 closeAfterEdit: true
             }, {
                 //prmAdd,
-                closeAfterAdd: true
+                closeAfterAdd: true,
+                beforeShowForm: function(form) {
+                    var colNames = this.p.colNames;
+                    $.each(this.p.colModel, function (i, item) {
+                        if (item["qTip"]) {
+                            $("#tr_" + item["name"] + " td.CaptionTD").qtip({
+                                content: {
+                                    title: colNames[i],
+                                    text: item["qTip"]
+                                },
+                                position: {
+                                    target: "mouse",
+                                    adjust: { x: 5, y: 5 },
+                                    viewport: $(window)
+                                },
+                                style: "qtip-tipped"
+                            });
+                        }
+                    });
+                },
+                afterShowForm: function ($form) {
+                    var $dialog = $('#editmodprefs-groups-grid');
+                    var grid = $('#prefs-groups-grid');
+                    var coord = {};
+
+                    coord.top = grid.offset().top + (grid.height() / 2);
+                    coord.left = grid.offset().left + (grid.width() / 2) - ($dialog.width() / 2);
+
+                    $dialog.offset(coord);
+                }
             });
         });
 
         $.extend(jQuery.jgrid.edit, { recreateForm: true });
-       
-        /* General Preferences */
-        $("#prefs-general").click(function() {
-            //$("#prefs-general-form").dialog("open");
-            // XXX: rkj    use new forms, decide what prefs we need?
-            if ($.clira.prefs_form.shown()) {
-                $.clira.prefs_form.close();
-                    
-                if (tgtHistory.value())
-                    cmdHistory.focus();
-                else tgtHistory.focus();
-
-            } else {
-                $.clira.prefs_form.open();
-            }
-        });
-        
-        $("#prefs-general-form").dialog({
-            autoOpen: false,
-            height: 600,
-            width: 800,
-            resizable: false,
-            modal: true,
-            buttons: {
-                'Close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            close: function() {
-            }
-        });
     }
 
     function prefsSetupConfirmExit () {

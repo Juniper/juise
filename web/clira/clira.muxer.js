@@ -80,10 +80,10 @@ jQuery(function ($) {
                 muxer.data += event.data;
                 muxer.reading -= event.data.length;
                 if (muxer.reading > 0) {
-                    $.dbpr("muxer: still reading: " + muxer.reading);
+                    $.dbgpr("muxer: still reading: " + muxer.reading);
                     return;
                 }
-                $.dbpr("muxer: done reading");
+                $.dbgpr("muxer: done reading");
             } else {
                 muxer.data = event.data;
             }
@@ -226,6 +226,8 @@ jQuery(function ($) {
         var payload = options.payload;
         if (payload == undefined && options.command)
             payload = "<command>" + options.command + "</command>";
+        if (options.create == "no")
+            attrs += " create=\"no\"";
 
         var op = options.op;
         if (op == undefined)

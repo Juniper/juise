@@ -1,6 +1,6 @@
-set libjuise=`pwd`
-setenv LIBJUISE $libjuise
-alias Zautoreconf "(cd $libjuise ; autoreconf --install)"
+set top_src=`pwd`
+setenv LIBJUISE $top_src
+alias Zautoreconf "(cd $top_src ; autoreconf --install)"
 
 set opts=' \
 --enable-clira \
@@ -12,20 +12,21 @@ set opts=' \
 --with-libxml-prefix=/Users/phil/work/root \
 --with-libxslt-prefix=/Users/phil/work/root \
 --with-libslax-prefix=/Users/phil/work/root \
---with-lighttpd-obj=/Users/phil/work/src/lighttpd-1.4.28-with-mod_websocket/build \
---with-lighttpd-src=/Users/phil/work/src/lighttpd-1.4.28-with-mod_websocket \
+--with-lighttpd-obj=/Users/phil/work/slax/lighttpd-for-juise/build \
+--with-lighttpd-src=/Users/phil/work/slax/lighttpd-for-juise \
 --with-libssh2-prefix=/Users/phil/work/root \
 --with-sqlite3-prefix=/opt/local \
 --with-lighttpd-lib=/Users/phil/work/root/lib \
---with-php-cgi=/opt/local/bin/php-cgi53 \
+--with-php-cgi=/opt/local/bin/php-cgi \
 '
 set opts=`echo $opts`
 
 setenv CONFIGURE_OPTS "$opts"
 
-alias Zconfigure "(cd $libjuise/build; ../configure $opts )"
+alias Zconfigure "(cd $top_src/build; ../configure $opts ); ."
 
-alias Zbuild "(cd $libjuise/build; make \!* )"
+alias Zbuild "(cd $top_src/build; make \!* ); ."
+alias mi "(cd $top_src/build; make && make install); ."
 
 mkdir -p build
 cd build

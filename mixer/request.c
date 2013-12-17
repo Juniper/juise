@@ -71,6 +71,10 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
 	mrp->mr_port = opt_destport;
     }
     
+    /* Assume we're seeing 'create=no' */
+    if (xml_get_attribute(attrs, "create"))
+	mrp->mr_flags |= MRF_NOCREATE;
+
     mrp->mr_rpc = mx_buffer_copy(mbp, len);
 
     /*
@@ -219,7 +223,7 @@ mx_request_start_rpc (mx_sock_websocket_t *mswp, mx_request_t *mrp)
 
     mx_sock_session_t *mssp = mx_session(mrp);
     if (mssp == NULL) {
-	/* XXX send failure message */
+        mx_request_error(mrp, "no session");
 	return TRUE;
     }
 
@@ -270,10 +274,12 @@ mx_request_print (mx_request_t *mrp, int indent, const char *prefix)
 	   indent, "", prefix, mrp->mr_id, mrp->mr_muxid,
 	   mrp->mr_name ?: "", mrp->mr_target ?: "", mrp->mr_user ?: "",
 	   mrp->mr_desthost ?: "", mrp->mr_destport);
-    mx_log("%*s%sclient S%u, session S%u C%u", indent + INDENT, "", prefix,
+    mx_log("%*s%sclient S%u, session S%u C%u (%x)",
+           indent + INDENT, "", prefix,
 	   mrp->mr_client ? mrp->mr_client->ms_id : 0,
 	   mrp->mr_session ? mrp->mr_session->mss_base.ms_id : 0,
-	   mrp->mr_channel ? mrp->mr_channel->mc_id : 0);
+	   mrp->mr_channel ? mrp->mr_channel->mc_id : 0,
+           mrp->mr_flags);
 }	
 
 void
@@ -348,12 +354,15 @@ mx_request_release_client (mx_sock_t *client)
 {
     mx_request_t *mrp;
 
+    if (client == NULL)
+	return;
+
     TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
 	if (mrp->mr_client == client) {
 	    mx_log("R%u client released S%u, C%u",
 		   mrp->mr_id, mrp->mr_client->ms_id,
 		   mrp->mr_channel ? mrp->mr_channel->mc_id : 0);
-	    if (mrp->mr_state == MSS_ESTABLISHED)
+	    if (mrp->mr_state == MSS_ESTABLISHED && mrp->mr_channel)
 		mx_channel_release(mrp->mr_channel);
 
 	    mrp->mr_state = MSS_FAILED;
