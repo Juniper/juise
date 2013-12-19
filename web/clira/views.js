@@ -307,7 +307,7 @@ Clira.MruItemView = Ember.View.extend({
         var commandInputView = this.get('parentView').get('parentView')
                                    .CommandInput;
         // Set the command
-        commandInputView.get('targetObject').set('command',this.content);
+        commandInputView.get('targetObject').set('command', this.content);
         commandInputView.$().focus();
 
         // Hide mru pulldown view
@@ -425,6 +425,45 @@ Clira.GeneralPrefView = Clira.DynFormView.extend({
                 }
             });
             $(this).dialog('close');
+        }
+    }
+});
+
+
+/*
+ * View to display a map. Reads latitude and longitude data from map object in
+ * context along with required height of the map
+ */
+Clira.MapView = Ember.View.extend({
+    tagName : 'div',
+    attributeBindings: ['style'],
+    style: null,
+
+    didInsertElement : function() {
+        this._super();
+
+        var context = this.get('context');
+
+        this.set('style', "position: relative;");
+
+        if (context && context.height) {
+            this.set('style', 
+                        this.get('style') + "height:" + context.height + ";");
+        }
+
+        if (context) {
+            var map = new GMaps({
+                div: $("#" + this.get('elementId')).get(0),
+                lat: context.lat,
+                lng: context.lng,
+                center: new google.maps.LatLng(context.lat, context.lng)
+            });
+
+            map.addMarker({
+                lat: context.lat,
+                lng: context.lng,
+                title: context.address
+            });
         }
     }
 });
