@@ -1,0 +1,9 @@
+# Juise (Juniper User Script Environment)
+
+@ juise
+
+category: Utils
+requires: libslax lighttpd-for-juise libxml2 libxslt libssh2 libsqlite3_0 libpcre1 php php-json php-pdo_sqlite php-posix php-sqlite3
+sdesc: "Juniper User Script Environment"
+ldesc: "juise is the JUNOS User Interface Script Environment, which allows
+users to develop, test, and execute script outside of JUNOS."
