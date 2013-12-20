@@ -126,4 +126,10 @@ jQuery(function ($) {
 
     // Icons on debug container
     $.clira.decorateIcons($("#debug-container"));
+
+    // Hide debug container when not debugging
+    if (localStorage['debug'] 
+            && JSON.parse(localStorage['debug']) == false) {
+        $("#debug-container").css({ display: "none" });
+    }
 });
