@@ -90,12 +90,12 @@ jQuery(function($) {
                     $.clira.runCommand(view, poss.data.target,
                                        poss.data.command);
                 },
-                complete: function (poss, results, value) {
+                complete: function (controller, poss, results, value) {
                     if (!(poss.data.target && poss.data.command))
                         return;
 
-                    addCompletions(poss, poss.data.target, poss.data.command,
-                                   results);
+                    addCompletions(controller, poss, poss.data.target, 
+                                   poss.data.command, results);
 
                     return 200; // Need a delay/timeout
                 }
@@ -103,8 +103,19 @@ jQuery(function($) {
         ]
     });
 
-    function addCompletions(poss, target, command, results) {
+    function addCompletions(controller, poss, target, command, results) {
         var completion = "";
+        // Command completion on box on ?
+        if (command.slice(-2) == " ?" 
+            && (command.split('"').length - 1) % 2 == 0) {
+            command = command.slice(0, -1);
+
+            // Remove ? from the command input box
+            controller.set('command', controller.get('command').slice(0, -1));
+
+            //Remove command with ? from autocomplete list
+            results.pop();
+        }
         var payload = "<command expand='expand'>" + command + "?</command>";
         $.dbgpr("on-device: rpc [" + payload + "]");
 

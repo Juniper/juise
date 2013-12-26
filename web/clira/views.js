@@ -132,6 +132,9 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
         // Set the source as controller's autoComplete function
         this.ui.source = this.get('targetObject').autoComplete;
 
+        // Save controller to be used later
+        this.ui.controller = this.get('targetObject');
+
         // Handle focus events
         this.$().focus(function(event, ui) {
             $('#command-input-box').attr('class', 'input-box focus-on');        

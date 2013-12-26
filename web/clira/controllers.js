@@ -26,6 +26,7 @@ Clira.CommandInputController = Em.ObjectController.extend({
         $.dbgpr("parse: " + parse.possibilities.length);
 
         var res = [ ],
+            controller = this.controller,
             delay = 0, delay2 = 0;
 
         parse.eachPossibility(function (n, p) {
@@ -45,7 +46,7 @@ Clira.CommandInputController = Em.ObjectController.extend({
                 // If the command defines a custom completion, use it
                 if (p.command.complete) {
                     $.dbgpr("calling custom completion");
-                    delay2 = p.command.complete(p, res, value);
+                    delay2 = p.command.complete(controller, p, res, value);
                     if (delay2 > delay)
                         delay = delay2;
                 }
