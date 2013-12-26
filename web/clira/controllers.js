@@ -175,6 +175,19 @@ Clira.OutputContainerController = Em.Controller.extend({
     data: null,
     contentTemplate: null,
 
+    // Action functions to handle close and toggle button clicks
+    actions: {
+        close: function(controller) {
+            controller.get('view').get('parentView').destroy();
+        },
+        collapse: function(controller) {
+            controller.get('view').$().toggle('slow', function() {
+                controller.get('view')
+                          .set('isVisible', !controller.get('view.isVisible'));
+            });
+        }
+    },
+
     init: function() {
         // Set template name to be used for output content
         this.contentTemplate = this.get('contentTemplate');

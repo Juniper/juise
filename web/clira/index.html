@@ -57,7 +57,9 @@
 
   <script type="text/x-handlebars" data-template-name="output_header">
     <div class="output-header ui-state-default ui-widget-header ui-corner-all">
-      {{controller.command}}
+      {{view Clira.IconView iconClass="ui-icon-closethick" onClick="close"}}
+      {{view Clira.IconView iconClass="ui-icon-minusthick,ui-icon-plusthick" onClick="collapse"}}
+      <b>{{controller.command}}</b>
     </div>
   </script>
 
