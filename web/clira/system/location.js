@@ -42,16 +42,14 @@ jQuery(function ($) {
                     view.get('controller').set('output', output);
 
                     // actions for buttons to handle show/hide map
-                    var actions = {
-                        toggle: function() {
+                    var toggleMap = function() {
                             if (this.get('output').hide) {
                                 this.set('output.hide', false);
                             } else {
                                 this.set('output.hide', true);
                             }
-                        }
                     };
-                    view.get('controller')._actions = actions; 
+                    view.get('controller')._actions.toggleMap = toggleMap;
                 }
             }
         ]
