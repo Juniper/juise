@@ -267,6 +267,45 @@ Clira.PulldownIcon = JQ.ButtonView.extend({
 
 
 /*
+ * Extend ButtonView to define generic Icon view that can be used to display
+ * icons, catch click events and delegate them to action functions defined in
+ * parent controller and change icons after click. Usage is as below
+ *   {{view Clira.IconView iconClass="class1,class2" onClick="function"}}
+ * iconClass is comma separated list of icon classes that will be cycled
+ * through after each click. onClick is the action function defined in
+ * 'actions' hash in the parent controller that receives controller as
+ * argument from IconView's click event
+ */
+Clira.IconView = JQ.ButtonView.extend({
+    label: null,
+    text: false,
+
+    // Read and save list of iconClasses and initialize current icon
+    init: function() {
+        var iconClasses = this.get('iconClass').split(',');
+        this.set('iconClasses', iconClasses);
+        this.set('classIndex', 0);
+        this.set('icons', { primary: iconClasses[0] });
+        this._super();
+    },
+
+    // Capture click event and invoke appropriate action function
+    click: function() {
+        // Call action function from controller provided using onClick
+        this.get('controller')._actions[this.get('onClick')].call(null, this.get('controller'));
+
+        // Change icon class to next available from the list
+        this.set('classIndex', this.get('classIndex') + 1);
+
+        if (this.get('iconClasses')) {
+            this.set('icons', { primary: 
+                                this.get('iconClasses')[this.get('classIndex')
+                                        % this.get('iconClasses').length]});
+        }
+    }
+})
+
+/*
  * Extend ButtonView to defined Enter button with label
  */
 Clira.EnterButton = JQ.ButtonView.extend({
