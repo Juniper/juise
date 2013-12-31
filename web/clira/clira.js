@@ -618,12 +618,16 @@ jQuery(function ($) {
                     var self = this;
                     promptForSecret(view, target, data, function (response) {
                         muxer.psphrase(self, response);
+                    }, function() {
+                        muxer.close();
                     });
                 },
                 onpsword: function (data) {
                     var self = this;
                     promptForSecret(view, target, data, function (response) {
                         muxer.psword(self, response);
+                    }, function() {
+                        muxer.close();
                     });
                 },
                 onclose: function (event, message) {
@@ -740,7 +744,7 @@ jQuery(function ($) {
         view.createChildView(hostKeyView, {message: prompt}).append();
     }
 
-    function promptForSecret (view, target, prompt, onclick) {
+    function promptForSecret (view, target, prompt, onclick, onclose) {
         var title = "Password: ";
         $.ajax({
             url: 'db.php?p=device&name=' + target,
@@ -748,7 +752,7 @@ jQuery(function ($) {
                 title += result['username'] + '@' + result['hostname'];
             },
             async: false
-        });     
+        });
         var secretView = Clira.DynFormView.extend({
             title: title,
             buttons: {
@@ -757,7 +761,7 @@ jQuery(function ($) {
                     $(this).dialog("close")
                 },
                 Cancel: function() {
-                    onclick('');
+                    onclose();
                     $(this).dialog("close");
                 }
             }
