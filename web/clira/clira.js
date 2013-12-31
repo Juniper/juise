@@ -610,19 +610,19 @@ jQuery(function ($) {
                 },
                 onhostkey: function (data) {
                     var self = this;
-                    promptForHostKey(view, data, function (response) {
+                    promptForHostKey(view, target, data, function (response) {
                         muxer.hostkey(self, response);
                     });
                 },
                 onpsphrase: function (data) {
                     var self = this;
-                    promptForSecret(view, data, function (response) {
+                    promptForSecret(view, target, data, function (response) {
                         muxer.psphrase(self, response);
                     });
                 },
                 onpsword: function (data) {
                     var self = this;
-                    promptForSecret(view, data, function (response) {
+                    promptForSecret(view, target, data, function (response) {
                         muxer.psword(self, response);
                     });
                 },
@@ -631,9 +631,6 @@ jQuery(function ($) {
                     if (full.length == 0) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
-                        if ($.isFunction(onComplete)) {
-                            onComplete(false, $output);
-                        }
                     }
                 },
                 onerror: function (message) {
@@ -641,9 +638,6 @@ jQuery(function ($) {
                     if (full.length == 0) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
-                        if ($.isFunction(onComplete)) {
-                            onComplete(false, $output);
-                        }
                     }
                 }
             });
@@ -729,9 +723,9 @@ jQuery(function ($) {
         }
     });
 
-    function promptForHostKey (view, prompt, onclick) {
+    function promptForHostKey (view, target, prompt, onclick) {
         var hostKeyView = Clira.DynFormView.extend({
-            title: "Host key",
+            title: "Host key for " + target,
             buttons: {
                 Accept: function() {
                     onclick("yes");
@@ -746,9 +740,17 @@ jQuery(function ($) {
         view.createChildView(hostKeyView, {message: prompt}).append();
     }
 
-    function promptForSecret (view, prompt, onclick) {
+    function promptForSecret (view, target, prompt, onclick) {
+        var title = "Password: ";
+        $.ajax({
+            url: 'db.php?p=device&name=' + target,
+            success: function(result) {
+                title += result['username'] + '@' + result['hostname'];
+            },
+            async: false
+        });     
         var secretView = Clira.DynFormView.extend({
-            title: "Password",
+            title: title,
             buttons: {
                 Enter: function() {
                     onclick(viewContext.get('fieldValues').password);
@@ -765,8 +767,8 @@ jQuery(function ($) {
             title: "",
             secret: true
         }];
-        view.createChildView(secretView, {fields: fields, message: prompt})
-                            .append();
+        view.createChildView(secretView, {fields: fields, 
+                            message: prompt.split(/(?:\n)+/)}).append();
     }
 
     function loadHttpReply (text, status, http, $this, $output) {

@@ -129,7 +129,9 @@
 
   <script type="text/x-handlebars" data-template-name="dyn_form">
     <div class="dyn-form-message">
-      {{message}}
+      {{#each message}}
+        {{.}}<br>
+      {{/each}}
     </div>
     {{#each field in fields}}
       <div class="dyn-form-item">
