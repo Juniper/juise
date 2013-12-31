@@ -713,7 +713,11 @@ div.dyn-form {
 }
 
 div.dyn-form-item {
-    display: table-row;
+    text-align: center;
+}
+
+div.dyn-form-message {
+    text-align: left;
 }
 
 div.dyn-form-item label {
@@ -726,6 +730,13 @@ div.dyn-form-item input,
 div.dyn-form-item div {
     display: table-cell;
     text-align: left;
+}
+
+div.dyn-form-item input {
+    border: solid 1px #CCC;
+    height: 1.8em;
+    margin-top: 5px;
+    width: 100%;
 }
 
 div.dyn-form-boolean {
