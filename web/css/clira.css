@@ -148,7 +148,7 @@ div#debug-container {
     border: 1px solid #d0d0ff;
     bottom: 0;
     color: blue;
-    display: box;
+    display: none;
     font-size: 70%;
     position: fixed;
     width: 100%;

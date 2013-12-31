@@ -129,7 +129,7 @@ jQuery(function ($) {
 
     // Hide debug container when not debugging
     if (localStorage['debug'] 
-            && JSON.parse(localStorage['debug']) == false) {
-        $("#debug-container").css({ display: "none" });
+            && JSON.parse(localStorage['debug']) == true) {
+        $("#debug-container").css({ display: "inline" });
     }
 });
