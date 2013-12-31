@@ -761,15 +761,16 @@ jQuery(function ($) {
             buttons: {
                 Enter: function() {
                     onclick(viewContext.get('fieldValues').password);
-                    $(this).dialog("close")
+                    $(this).context.enter = true;
+                    $(this).dialog("close");
                 },
                 Cancel: function() {
-                    onclose();
                     $(this).dialog("close");
                 }
             },
             close: function() {
-                onclose();
+                if (!this.$().context.enter)
+                    onclose();
             }
         });
         var fields = [{
