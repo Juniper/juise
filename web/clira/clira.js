@@ -739,6 +739,9 @@ jQuery(function ($) {
                     onclick("no");
                     $(this).dialog("close");
                 }
+            },
+            close: function() {
+                onclick("no");
             }
         }); 
         view.createChildView(hostKeyView, {message: prompt}).append();
@@ -764,6 +767,9 @@ jQuery(function ($) {
                     onclose();
                     $(this).dialog("close");
                 }
+            },
+            close: function() {
+                onclose();
             }
         });
         var fields = [{
