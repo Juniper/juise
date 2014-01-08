@@ -47,15 +47,15 @@ div.indent {
 
 /* BEGIN LINES */
 div.line {
-    border: 1px solid #ffd0d0;
+    border: none;
 }
 
 div.item {
-    border: 1px solid #d0d0ff;
+    border: none;
 }
 
 div.pad {
-    border: 1px solid orange;
+    border: none;
 }
 
 div.blank-line {
