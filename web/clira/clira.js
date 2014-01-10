@@ -790,7 +790,8 @@ jQuery(function ($) {
                 onclick("no");
             }
         }); 
-        view.createChildView(hostKeyView, {message: prompt}).append();
+        view.createChildView(hostKeyView, 
+                                {message: prompt.split(/(?:\n)+/)}).append();
     }
 
     function promptForSecret (view, target, prompt, onclick, onclose) {
