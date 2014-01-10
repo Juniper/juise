@@ -576,7 +576,7 @@ jQuery(function ($) {
             }
             return muxer;
         },
-        runCommand: function runCommand (view, target, command) {
+        runCommand: function runCommand (view, target, command, onComplete) {
             var output = null,
                 domElement = false;
             
@@ -643,6 +643,10 @@ jQuery(function ($) {
                         view.get('controller').set('completed', true);
                         view.get('controller').set('output', full.join(""));
                     }
+
+                    if ($.isFunction(onComplete)) {
+                        onComplete(true, output);
+                    }
                 },
                 onhostkey: function (data) {
                     var self = this;
@@ -671,6 +675,9 @@ jQuery(function ($) {
                     if (full.length == 0) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
+                        if ($.isFunction(onComplete)) {
+                            onComplete(false, output);
+                        }
                     }
                 },
                 onerror: function (message) {
@@ -678,6 +685,9 @@ jQuery(function ($) {
                     if (full.length == 0) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
+                        if ($.isFunction(onComplete)) {
+                            onComplete(false, output);
+                        }
                     }
                 }
             });
