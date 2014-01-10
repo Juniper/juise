@@ -36,6 +36,7 @@
     <div id="output-top">
       {{render 'outputs'}}
     </div>
+    {{view Clira.PseudoView}}
   </script>
   
   <script type="text/x-handlebars" data-template-name="pulldown">
@@ -125,6 +126,8 @@
       <table id="prefs-groups-grid"></table>
       <div id="prefs-groups-pager"></div>
     </div>
+
+    <div id="prefs-devices-connect" title="Connection Status" style="display:none; text-align:left"></div>
   </script>
 
   <script type="text/x-handlebars" data-template-name="dyn_form">
