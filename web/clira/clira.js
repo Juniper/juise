@@ -577,7 +577,34 @@ jQuery(function ($) {
             return muxer;
         },
         runCommand: function runCommand (view, target, command) {
-            view.get('controller').set('output', loadingMessage);
+            var output = null,
+                domElement = false;
+            
+            /*
+             * If runCommand is called without a view, create a pseudo view
+             * and use for pop ups that need user input
+             */
+            if (view instanceof jQuery) {
+                output = view;
+                domElement = true;
+                var pseudoView = Ember.View.extend({
+                    init: function() {
+                        this._super();
+                        this.set('controller', Ember.Controller.create());
+                    }
+                });
+                view = Ember.View.views["pseudo_view"]
+                            .createChildView(pseudoView);
+                view.append();
+            } else {
+                output = view.$();
+            }
+
+            if (domElement) {
+                output.html(loadingMessage);
+            } else {
+                view.get('controller').set('output', loadingMessage);
+            }
 
             if (muxer == undefined)
                 openMuxer();
@@ -585,7 +612,7 @@ jQuery(function ($) {
             var full = [ ];
 
             muxer.rpc({
-                div: view.$(),
+                div: output,
                 target: target,
                 payload: "<command format='html'>" + command + "</command>",
                 onreply: function (data) {
@@ -600,13 +627,22 @@ jQuery(function ($) {
                     // rest wait until the RPC is complete.  Ideally, there
                     // should also be a timer to render what we've got if
                     // the output RPC stalls.
-                    if (full.length <= 2)
-                        view.get('controller').set('output', data);
+                    if (full.length <= 2) {
+                        if (domElement) {
+                            output.html(data);
+                        } else {
+                            view.get('controller').set('output', data);
+                        }
+                    }
                 },
                 oncomplete: function () {
                     $.dbgpr("rpc: complete");
-                    view.get('controller').set('completed', true);
-                    view.get('controller').set('output', full.join(""));
+                    if (domElement) {
+                        output.html(full.join(""));
+                    } else {
+                        view.get('controller').set('completed', true);
+                        view.get('controller').set('output', full.join(""));
+                    }
                 },
                 onhostkey: function (data) {
                     var self = this;

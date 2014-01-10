@@ -104,6 +104,14 @@ Clira.DynCheckbox = Ember.Checkbox.extend({
     }.observes('checked')
 });
 
+/*
+ * Pseudo view that can be used to append views created for DOM elements
+ * without parent views
+ */
+Clira.PseudoView = Ember.View.extend({
+    elementId: "pseudo_view"
+});
+
 
 /*
  * Extendable Clira specific Ember views.
