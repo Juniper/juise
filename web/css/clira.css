@@ -47,15 +47,15 @@ div.indent {
 
 /* BEGIN LINES */
 div.line {
-    border: 1px solid #ffd0d0;
+    border: none;
 }
 
 div.item {
-    border: 1px solid #d0d0ff;
+    border: none;
 }
 
 div.pad {
-    border: 1px solid orange;
+    border: none;
 }
 
 div.blank-line {
@@ -148,7 +148,7 @@ div#debug-container {
     border: 1px solid #d0d0ff;
     bottom: 0;
     color: blue;
-    display: box;
+    display: none;
     font-size: 70%;
     position: fixed;
     width: 100%;
@@ -713,7 +713,11 @@ div.dyn-form {
 }
 
 div.dyn-form-item {
-    display: table-row;
+    text-align: center;
+}
+
+div.dyn-form-message {
+    text-align: left;
 }
 
 div.dyn-form-item label {
@@ -726,6 +730,13 @@ div.dyn-form-item input,
 div.dyn-form-item div {
     display: table-cell;
     text-align: left;
+}
+
+div.dyn-form-item input {
+    border: solid 1px #CCC;
+    height: 1.8em;
+    margin-top: 5px;
+    width: 100%;
 }
 
 div.dyn-form-boolean {

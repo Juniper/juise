@@ -39,7 +39,7 @@ jQuery(function ($) {
     }
     var colors = { };
 
-    function topology ($output, cmd, parse, poss) {
+    function topology (view, cmd, parse, poss) {
         var color_wheel = d3.scale.category20();
         var width = 960;
         var height = 500;
@@ -63,23 +63,23 @@ jQuery(function ($) {
             })
             .size([width, height]);
 
-        var svg = d3.select($output.get(0)).append("svg")
+        var svg = d3.select(view.$().get(0)).append("svg")
             .attr("width", width)
             .attr("height", height);
 
         d3.json("/bin/topology-ospf.slax", function(error, graph) {
             if (error) {
-                $.clira.makeAlert($output, error);
+                $.clira.makeAlert(view, error);
                 return;
             }
 
             if (graph.error) {
-                $.clira.makeAlert($output, graph.error);
+                $.clira.makeAlert(view, graph.error);
                 return;
             }
 
             if (!(graph.nodes && graph.links)) {
-                $.clira.makeAlert($output, "invalid topology data");
+                $.clira.makeAlert(view, "invalid topology data");
                 return;
             }
 
