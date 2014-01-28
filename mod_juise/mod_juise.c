@@ -938,9 +938,10 @@ mod_juise_create_env (server *srv, connection *con,
 	    if (auth_type_len == 5 
 		&& strncasecmp(http_auth, "Basic", auth_type_len) == 0 
 		&& auth_realm + 1) {
-		auth_realm_decoded = slaxBase64Decode(auth_realm + 1, 
-						      strlen(auth_realm + 1), 
-						      &dlen);
+		size_t hash_len = strlen(auth_realm + 1);
+
+		auth_realm_decoded = (char *)slaxBase64Decode(auth_realm + 1, 
+							      hash_len, &dlen);
 		if (!auth_realm_decoded) {
 		    LOGERR("s", "Failed to decode auth header");
 		    con->http_status = 400;
@@ -953,6 +954,7 @@ mod_juise_create_env (server *srv, connection *con,
 		if (!pass) {
 		    LOGERR("s", "Invalid authorization format");
 		    con->http_status = 400;
+		    free(auth_realm_decoded);
 		    if (argv)
 			free(argv);
 		    return 0;
@@ -963,7 +965,6 @@ mod_juise_create_env (server *srv, connection *con,
 		pass++;
 	    } else {
 		LOGERR("s", "Unrecognized authorization format");
-		buffer_free(auth_realm_decoded);
 		con->http_status = 400;
 		return 0;
 	    }
@@ -1190,8 +1191,6 @@ mod_juise_create_env (server *srv, connection *con,
 	    }
 
 	    for (n = 0; n < con->request.headers->used; n++) {
-		data_string *ds;
-
 		ds = (data_string *)con->request.headers->data[n];
 
 		if (ds->value->used && ds->key->used) {
@@ -1230,8 +1229,6 @@ mod_juise_create_env (server *srv, connection *con,
 	    }
 
 	    for (n = 0; n < con->environment->used; n++) {
-		data_string *ds;
-
 		ds = (data_string *)con->environment->data[n];
 
 		if (ds->value->used && ds->key->used) {

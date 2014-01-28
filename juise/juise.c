@@ -1305,7 +1305,7 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     xmlAttrPtr attr;
     slax_data_list_t lines;
     int len = 0;
-    char *output_format = NULL, *content_type = NULL, *accept;
+    char *output_format = NULL, *content_type = NULL, *accept_header;
     char oper_delimiter = '/';
 
     docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
@@ -1398,10 +1398,10 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     }
 
     /* Parse Accept header and set output format */
-    accept = getenv("HTTP_ACCEPT");
+    accept_header = getenv("HTTP_ACCEPT");
 
-    if (accept && !output_format) {
-	output_format = rpc_parse_mime_list(accept);
+    if (accept_header && !output_format) {
+	output_format = rpc_parse_mime_list(accept_header);
 
 	if (output_format == NULL) {
 	    output_format = strdup("xml");
@@ -1587,7 +1587,7 @@ do_run_rpc_on_box (const char *scriptname UNUSED, const char *input UNUSED,
         char **argv UNUSED)
 {
     char *uri, *newuri, *operation;
-    char *localhost = "localhost";
+    const char *localhost = "localhost";
 
     uri = getenv("REQUEST_URI");
     if (uri == NULL || *uri == '\0')
