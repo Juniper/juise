@@ -68,9 +68,19 @@ int opt_debugger;		/* Invoke the debugger */
 int opt_indent;			/* Pretty-print XML output */
 static int opt_load;		/* Under-implemented */
 static int opt_local;		/* Run a local (server-based) script */
+static int opt_user_info_on_stdin;/* User info is sent on stdin to execute 
+				     RPC on localhost */
 const char *opt_output_format = "compare";
 char *opt_username;
 char *opt_target;
+char *opt_auth_socket;
+
+static rpc_media_type_map_t mtypemap[] = {
+    { MEDIA_TYPE_TEXT_HTML, RPC_FORMAT_HTML },
+    { MEDIA_TYPE_TEXT_PLAIN, RPC_FORMAT_TEXT },
+    { MEDIA_TYPE_APPLICATION_XML, RPC_FORMAT_XML },
+    { MEDIA_TYPE_APPLICATION_JSON, RPC_FORMAT_JSON }
+};
 
 static void
 juise_make_param (const char *pname, const char *pvalue, int quoted_string)
@@ -875,6 +885,7 @@ do_run_server_on_stdin (const char *scriptname UNUSED,
     }
 
     run_server(fd, 1, ST_DEFAULT);
+    close(fd);
     return 0;
 }
 
@@ -1022,6 +1033,7 @@ do_run_as_cgi (const char *scriptname, const char *input UNUSED, char **argv)
 	    parse_query_string(docp, paramp, bp);
 
 	    slaxDataListClean(&lines);
+	    free(bp);
 	}
     }
 
@@ -1124,6 +1136,114 @@ makeLeafNode (xmlDocPtr docp, xmlNodePtr parent,
     return childp;
 }
 
+/*
+ * Parses MIME list for known media types and return corresponding rpc format
+ */
+static char * 
+rpc_parse_mime_list (char *str)
+{
+    char *cp, *ap, *ep;
+    char *output_format = NULL;
+    size_t i;
+
+    for (cp = str; cp && *cp; cp = ap) {
+	ap = strchr(cp, ',');
+
+	if (ap != NULL)
+    	    *ap++ = '\0';
+
+	while (*cp == ' ') cp++;
+
+	ep = strchr(cp, ';');
+
+	if (ep != NULL)
+	    *ep = '\0';
+
+	/* Match against supported output formats */
+	for (i = 0; i < sizeof(mtypemap) / sizeof(rpc_media_type_map_t); i++) {
+	    if (!strncmp(mtypemap[i].rmtm_media_type, cp, strlen(cp))) {
+		output_format = strdup(mtypemap[i].rmtm_output_format);
+		break;
+	    }
+	}
+
+	if (i == (sizeof(mtypemap) / sizeof(rpc_media_type_map_t))) {
+	    fprintf(stdout, "Content-Type: " MEDIA_TYPE_APPLICATION_XML "\n\n");
+	    fflush(stdout);
+	}
+
+	if (output_format != NULL)
+	    break;
+    }
+
+    return output_format;
+}
+
+/*
+ * Converts RPC output format to equivalent MIME representation and writes it
+ * to response Content-Type header
+ */
+static void 
+rpc_write_content_type (const char *output_format) 
+{
+    size_t i;
+
+    for (i = 0; i < sizeof(mtypemap) / sizeof(rpc_media_type_map_t); i++) {
+	if (streq(mtypemap[i].rmtm_output_format, output_format)) {
+	    fprintf(stdout, "Content-Type: %s\n\n", 
+		    mtypemap[i].rmtm_media_type);
+	    fflush(stdout);
+	    break;
+	}
+    }
+
+    if (i == (sizeof(mtypemap) / sizeof(rpc_media_type_map_t))) {
+	fprintf(stdout, "Content-Type: " MEDIA_TYPE_APPLICATION_XML "\n\n");
+	fflush(stdout);
+    }
+}
+
+/*
+ * Build XML node out of raw string data and attach it to given node
+ */
+static int
+rpc_build_data (lx_document_t *docp, lx_node_t *nodep, char *str)
+{
+    int rc = 0;
+    xmlDocPtr xmlp;
+    xmlNodePtr newp, cur;
+
+    if (str == NULL)
+        return 1;
+
+    xmlp = xmlReadMemory(str, strlen(str), NULL, NULL, XML_PARSE_NOENT);
+
+    if (xmlp == NULL)
+        return 1;
+
+    xmlNodePtr childp = xmlDocGetRootElement(xmlp);
+    if (childp) {
+	cur = childp->xmlChildrenNode;
+	while (cur != NULL) {
+	    newp = xmlDocCopyNode(childp, docp, 1);
+	    if (newp) {
+		xmlAddChild(nodep, newp);
+	    } else {
+		rc = 1;
+		goto exit;
+	    }
+	    cur = cur->next;
+	}
+    } else {
+	rc = 1;
+	goto exit;
+    }
+
+exit:
+    xmlFreeDoc(xmlp);
+    return rc;
+}
+
 static void
 rpc_parse_query_string (lx_document_t *docp, lx_node_t *nodep, char *str)
 {
@@ -1185,10 +1305,13 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     xmlAttrPtr attr;
     slax_data_list_t lines;
     int len = 0;
+    char *output_format = NULL, *content_type = NULL, *accept;
+    char oper_delimiter = '/';
 
     docp = xmlNewDoc((const xmlChar *) XML_DEFAULT_VERSION);
     ctxt = xmlXPathNewContext(docp);
     pctxt = xmlXPathNewParserContext(NULL, ctxt);
+    slaxDataListInit(&lines);
 
     uri = getenv("REQUEST_URI");
     if (uri == NULL || *uri == '\0')
@@ -1204,13 +1327,25 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 	errx(1, "missing operation");
     *operation++ = '\0';
 
-    params = strchr(operation, '/');
+    params = strchr(operation, oper_delimiter);
+
+    if (!params && strchr(operation, '?')) {
+        oper_delimiter = '?';
+        params = strchr(operation, oper_delimiter);
+    } else if (params && strchr(operation, '?')) {
+        if (params > strchr(operation, '?')) {
+            oper_delimiter = '?';
+            params = strchr(operation, oper_delimiter);
+        }
+    }
+    
     attributes = strchr(operation, '@');
     if (attributes && (params == NULL || attributes < params)) {
-	*attributes++ = '\0';
+        *attributes++ = '\0';
     } else {
-	attributes = NULL;
+        attributes = NULL;
     }
+
     if (params)
 	*params++ = '\0';
 
@@ -1250,20 +1385,45 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 		*cp++ = '\0';
 	    if (next)
 		*next++ = '\0';
-	    attr = xmlNewProp(rpc, (const xmlChar *) attributes,
-			      (const xmlChar *) cp);
+
+            if (strncmp(ATT_FORMAT, attributes, strlen(attributes)) == 0) {
+                output_format = strdup(cp);
+            }
+
+            attr = xmlNewProp(rpc, (const xmlChar *) attributes,
+                              (const xmlChar *) cp);
 	    if (attr == NULL)
 		errx(1, "could not build attribute: '%s'", attributes);
+	}
+    }
+
+    /* Parse Accept header and set output format */
+    accept = getenv("HTTP_ACCEPT");
+
+    if (accept && !output_format) {
+	output_format = rpc_parse_mime_list(accept);
+
+	if (output_format == NULL) {
+	    output_format = strdup("xml");
+	}
+
+	attr = xmlNewProp(rpc, (const xmlChar *) ATT_FORMAT, 
+			  (const xmlChar *) output_format);
+
+	if (attr == NULL) {
+	    free(output_format);
+	    errx(1, "could not build 'format' attribute");
 	}
     }
 
     /* Populate the operation node with our parameter values */
     if (params) {
 	char *next;
+	char param_delimiter = (oper_delimiter == '/') ? '/' : '&';
 
 	for (; params && *params; params = next) {
 	    cp = strchr(params, '=');
-	    next = cp ? strchr(cp, '/') : NULL;
+	    next = cp ? strchr(cp, param_delimiter) : NULL;
 	    if (cp)
 		*cp++ = '\0';
 	    if (next)
@@ -1278,11 +1438,52 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     if (cp)
 	rpc_parse_query_string(docp, rpc, cp);
 
+    /*
+     * If we are running RPC on box, we receive username and password in first
+     * two lines
+     */
+    if (opt_user_info_on_stdin) {
+	if (fgets(buf, sizeof(buf), stdin) == NULL 
+	    || !strlcmp("user=", buf, 0)) {
+	    if (output_format)
+		free(output_format);
+	    err(1, "Missing Authorization header %s", buf);
+	}
+	user = strdup(strchr(buf, '=') + 1);
+
+	if (fgets(buf, sizeof(buf), stdin) == NULL 
+	    || !strlcmp("password=", buf, 0)) {
+	    if (output_format)
+		free(output_format);
+	    err(1, "Missing Authorization header %s", buf);
+	}
+	pass = strdup(strchr(buf, '=') + 1);
+    }
+
+    if (getenv("CONTENT_TYPE")) {
+	content_type = rpc_parse_mime_list(getenv("CONTENT_TYPE"));
+    }
+
+    /*
+     * If xml is sent as POST data, wrap it around an outer <post> tag so we 
+     * can form valid xml and process the contents later when creating rpc
+     * request
+     */
+    if (content_type && streq(content_type, "xml")) {
+	len += 6;
+	slaxDataListAddLen(&lines, "<post>", 6);
+    }
+
     while (fgets(buf, sizeof(buf), stdin) != NULL) {
 	trace(trace_file, TRACE_ALL, "cgi: stdin: %s", buf);
 	i = strlen(buf);
 	len += i;
 	slaxDataListAddLen(&lines, buf, i);
+    }
+
+    if (content_type && streq(content_type, "xml")) {
+	len += 7;
+	slaxDataListAddLen(&lines, "</post>", 7);
     }
 
     if (len) {
@@ -1298,10 +1499,24 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
 	    }
 	    bp[len] = '\0';
 
-	    rpc_parse_query_string(docp, rpc, bp);
+            if (content_type && streq(content_type, "xml")) {
+                if (rpc_build_data(docp, rpc, bp)) {
+                    printf("Status: 400\n\n");
+		    free(bp);
+		    free(content_type);
+		    if (output_format)
+			free(output_format);
+                    errx(1, "Failed to parse XML POST data");
+                }
+            } else {
+                rpc_parse_query_string(docp, rpc, bp);
+            }
+
 	    slaxDataListClean(&lines);
+	    free(bp);
 	}
     }
+    free(content_type);
 
     if (user)
 	user = xmlURIUnescapeString(user, 0, NULL);
@@ -1314,10 +1529,29 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     jso.jso_username = user;
     jso.jso_passphrase = pass;
 
-    js_session_t *jsp = js_session_open(&jso, 0);
-    if (jsp == NULL)
-	errx(1, "could not open session to target");
-    
+    js_session_t *jsp;
+
+    if (opt_user_info_on_stdin)
+        jsp = js_session_open_localhost(&jso, 0, opt_auth_socket);
+    else
+        jsp = js_session_open(&jso, 0);
+
+    if (jsp == NULL) {
+        printf("Status: 401\n\n");
+	printf("Failed to open session to execute RPC\n");
+	if (output_format)
+	    free(output_format);
+        errx(1, "Could not open session");
+    }
+
+    /*
+     * Write Content-Type into output header
+     */
+    if (output_format) {
+	rpc_write_content_type(output_format);
+	free(output_format);
+    }
+   
     reply = js_session_execute(pctxt, target, rpc, NULL, ST_DEFAULT);
     if (reply == NULL)
 	err(0, "rpc operation failed");
@@ -1342,6 +1576,38 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     xmlFreeAndEasy(pass);
 
     return 0;
+}
+
+/*
+ * URIs received to run on box will not have target specified. We rewrite 
+ * URI to include localhost as target before calling do_run_rpc
+ */
+static int
+do_run_rpc_on_box (const char *scriptname UNUSED, const char *input UNUSED,
+        char **argv UNUSED)
+{
+    char *uri, *newuri, *operation;
+    char *localhost = "localhost";
+
+    uri = getenv("REQUEST_URI");
+    if (uri == NULL || *uri == '\0')
+        errx(1, "missing REQUEST_URI");
+
+    operation = strchr(uri + 1, '/');
+
+    if (operation == NULL || operation[0] == '\0')
+        errx(1, "missing operation");
+
+    if (asprintf(&newuri, "%.*s%s%s", operation - uri + 1, uri, localhost, 
+		 operation) < 0) {
+	errx(1, "Failed building REQUEST_URI");
+    }
+
+    setenv("REQUEST_URI", newuri, 1);
+
+    free(newuri);
+
+    return do_run_rpc(scriptname, input, argv);
 }
 
 static char **
@@ -1423,6 +1689,7 @@ print_help (void)
     fprintf(stderr,
 "Usage: juise [@target] [options] [script] [param value]*\n"
 "\t--agent OR -A: enable ssh-agent forwarding\n"
+"\t--auth-socket <socket-path>: for authentication when run on localhost\n"
 "\t--commit-script OR -c: test a commit script\n"
 "\t--debug OR -d: use the libslax debugger\n"
 "\t--directory <dir> OR -D <dir>: set the directory for server scripts\n"
@@ -1435,6 +1702,7 @@ print_help (void)
 "\t--no-randomize: do not initialize the random number generator\n"
 "\t--param <name> <value> OR -a <name> <value>: pass parameters\n"
 "\t--protocol <name> OR -P <name>: use the given API protocol\n"
+"\t--rpc-on-box: Executes RPC on localhost\n"
 "\t--run-server OR -R: run in juise server mode\n"
 "\t--script <name> OR -S <name>: run the given script\n"
 "\t--target <name> OR -T <name>: specify the default target device\n"
@@ -1497,6 +1765,9 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--agent") || streq(cp, "-A")) {
 		ssh_agent_forwarding = TRUE;
+
+	    } else if (streq(cp, "--auth-socket")) {
+		opt_auth_socket = *++argv;
 
 	    } else if (streq(cp, "--commit-script") || streq(cp, "-c")) {
 		opt_commit_script = TRUE;
@@ -1582,6 +1853,10 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--rpc")) {
 		func = do_run_rpc;
+
+	    } else if (streq(cp, "--rpc-on-box")) {
+		func = do_run_rpc_on_box;
+		opt_user_info_on_stdin = TRUE;
 
 	    } else if (streq(cp, "--run-server") || streq(cp, "-R")) {
 		func = do_run_server_on_stdin;

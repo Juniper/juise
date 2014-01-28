@@ -789,6 +789,60 @@ js_dup (int target, int existing)
 }
 
 /*
+ * Creates and fills in js session object with appropriate data
+ */
+static js_session_t *
+js_session_create_internal (const char *host_name, int pid, int in, int out, 
+			    int err, int stype, int flags)
+{
+    js_session_t *jsp;
+
+    FILE *fp = fdopen(out, "w");
+    if (fp == NULL) {
+	jsio_trace("jsio: fdopen failed: %m");
+	goto fail2;
+    }
+
+    const char *name = host_name ?: "";
+    size_t namelen = host_name ? strlen(host_name) + 1 : 1;
+    jsp = malloc(sizeof(*jsp) + namelen);
+    if (jsp == NULL)
+	goto fail3;
+
+    bzero(jsp, sizeof(*jsp));
+    jsp->js_pid = pid;
+    jsp->js_stdin = in;
+    jsp->js_stdout = out;
+    jsp->js_stderr = err;
+    jsp->js_fpout = fp;
+    jsp->js_msgid = 0;
+    jsp->js_hello = NULL;
+    jsp->js_isjunos = FALSE;
+
+    jsp->js_key.jss_type = stype;
+    memcpy(jsp->js_key.jss_name, name, namelen);
+    patricia_node_init_length(&jsp->js_node, sizeof(js_skey_t) + namelen);
+
+    jsp->js_fbuf = fbuf_fdopen(out, 0);
+
+    if (flags & JSF_FBUF_TRACE)
+	fbuf_trace_tagged(jsp->js_fbuf, stdout, "jsp-read");
+
+    return jsp;
+
+fail3:
+    fclose(fp);
+fail2:
+    if (in)
+	close(in);
+    if (out)
+	close(out);
+    if (err)
+	close(err);
+    return NULL;
+}
+
+/*
  * Create a session object and connect it as appropriate
  */
 static js_session_t *
@@ -797,8 +851,8 @@ js_session_create (const char *host_name, char **argv,
 {
     int sv[2], ev[2];
     int pid = 0, i;
-    FILE *fp;
     sigset_t sigblocked, sigblocked_old;
+    js_session_t *jsp;
 
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0)
         return NULL;
@@ -862,44 +916,14 @@ js_session_create (const char *host_name, char **argv,
     close(sv[0]);
     close(ev[0]);
 
-    fp = fdopen(sv[1], "w");
-    if (fp == NULL) {
-	jsio_trace("jsio: fdopen failed: %m");
-	goto fail2;
-    }
-
-    const char *name = host_name ?: "";
-    size_t namelen = host_name ? strlen(host_name) + 1 : 1;
-    js_session_t *jsp = malloc(sizeof(*jsp) + namelen);
-    if (jsp == NULL)
-	goto fail3;
-
-    bzero(jsp, sizeof(*jsp));
-    jsp->js_pid = pid;
-    jsp->js_stdin = sv[1];
-    jsp->js_stdout = sv[1];
-    jsp->js_stderr = ev[1];
-    jsp->js_fpout = fp;
-    jsp->js_msgid = 0;
-    jsp->js_hello = NULL;
-    jsp->js_isjunos = FALSE;
-
     if (stype == ST_DEFAULT)
 	stype = js_default_stype;
 
-    jsp->js_key.jss_type = stype;
-    memcpy(jsp->js_key.jss_name, name, namelen);
-    patricia_node_init_length(&jsp->js_node, sizeof(js_skey_t) + namelen);
-
-    jsp->js_fbuf = fbuf_fdopen(sv[1], 0);
-
-    if (flags & JSF_FBUF_TRACE)
-	fbuf_trace_tagged(jsp->js_fbuf, stdout, "jsp-read");
+    jsp = js_session_create_internal(host_name, pid, sv[1], sv[1], ev[1], 
+				     stype, flags);
 
     return jsp;
 
- fail3:
-    fclose(fp);
  fail2:
     close(ev[1]);
     close(sv[1]);
@@ -1400,6 +1424,149 @@ jsio_add_ssh_options (const char *opts)
 {
     if (opts && jsio_ssh_options_count < JSIO_SSH_OPTIONS_MAX)
 	jsio_ssh_options[jsio_ssh_options_count++] = strdup(opts);
+}
+
+/*
+ * Opens a JUNOScript session on the localhost using jade for authentication
+ */
+js_session_t *
+js_session_open_localhost (js_session_opts_t *jsop, int flags, 
+                           const char *auth_socket)
+{
+    js_session_t *jsp;
+    js_session_opts_t jso; 
+    int conn_addr_len, conn_sock;
+    char auth_rpc[4 * BUFSIZ];
+    char *auth_resp;
+    struct sockaddr_un conn_addr;
+
+    if (jsop == NULL) {
+        bzero(&jso, sizeof(jso));
+        jsop = &jso;
+    }    
+
+    if (auth_socket == NULL) {
+	jsio_trace("Missing mandatory auth socket");
+        return NULL;
+    }
+
+    js_initialize();
+
+    if (jsop->jso_stype == ST_DEFAULT)
+        jsop->jso_stype = js_default_stype;
+
+    if (jsop->jso_server == NULL || *jsop->jso_server == '\0') {
+        jsop->jso_server = js_default_server;
+        if (jsop->jso_server == NULL || *jsop->jso_server == '\0')
+            return NULL;
+    }
+
+    /*
+     * Check whether the junoscript session already exists for the given 
+     * hostname, if so then return that.
+     */
+    jsp = js_session_find(jsop->jso_server, jsop->jso_stype);
+    if (jsp)
+        return jsp;
+
+    conn_sock = socket(PF_LOCAL, SOCK_STREAM, 0);
+
+    if (conn_sock < 0) {
+        jsio_trace("Failed to create socket");
+        return NULL;
+    }
+
+    /*
+     * Set up connection for authentication
+     */
+#ifdef HAVE_SUN_LEN
+    conn_addr.sun_len = sizeof(struct sockaddr_un);
+#endif /* HAVE_SUN_LEN */
+    conn_addr.sun_family = AF_UNIX;
+    strcpy(conn_addr.sun_path, auth_socket);
+
+#ifdef HAVE_SUN_LEN
+    conn_addr_len = sizeof(conn_addr.sun_len) + sizeof( conn_addr.sun_family)
+#else
+    conn_addr_len = sizeof( conn_addr.sun_family)
+#endif /* HAVE_SUN_LEN */
+        + strlen(conn_addr.sun_path);
+
+    /*
+     * Connect on the socket to exec jade that handles authentication and
+     * provides us with a Junoscript session
+     */
+    if (connect(conn_sock, (struct sockaddr *)&conn_addr, conn_addr_len) < 0) {
+        jsio_trace("Failed to connect for authentication");
+        return NULL;
+    } else {
+	jsp = js_session_create_internal(jsop->jso_server, -1, conn_sock, 
+					 conn_sock, -1, jsop->jso_stype, 
+					 flags);
+
+	if (jsp == NULL)
+	    return NULL;
+
+        if (js_session_init(jsp)) {
+            js_session_terminate(jsp);
+            return NULL;
+        }
+
+        jsio_trace("Session initialized");
+        snprintf_safe(auth_rpc, sizeof(auth_rpc),
+                     "<rpc><request-login><username>%s</username>"
+                     "<challenge-response>%s</challenge-respone>"
+                     "</request-login></rpc>\n", jsop->jso_username,
+                     jsop->jso_passphrase);
+
+        /*
+         * Write authetication RPC into the socket
+         */
+        if (write(conn_sock, auth_rpc, strlen(auth_rpc)) < 0) {
+            jsio_trace("Failed to send authentication rpc");
+            bzero(auth_rpc, strlen(auth_rpc));
+            bzero(jsop->jso_passphrase, strlen(jsop->jso_passphrase));
+            return NULL;
+        }
+
+        bzero(auth_rpc, strlen(auth_rpc));
+        bzero(jsop->jso_passphrase, strlen(jsop->jso_passphrase));
+
+        if (!fbuf_has_buffered(jsp->js_fbuf)) {
+            if (js_initial_read(jsp, JS_READ_TIMEOUT, 0)) {
+                return NULL;
+            }
+        }
+
+        /*
+         * Read the response and look for status in authentication reply
+         */
+	for (;;) {
+	    auth_resp = js_gets_timed(jsp, 0, JS_READ_QUICK);
+
+	    if (auth_resp == NULL)
+		break;
+
+            if (strstr(auth_resp, "<status>fail</status>")) {
+                jsio_trace("Authentication failed");
+                js_session_terminate(jsp);
+                return NULL;
+            } else if (strstr(auth_resp, "<status>success</status>")) {
+                jsio_trace("Authentication successful");
+                /*
+                 * Add the session details to patricia tree
+                 */
+                if (!js_session_add(jsp)) {
+                    js_session_terminate(jsp);
+                    return NULL;
+                }
+                return jsp;
+            }
+	}
+    }
+
+    js_session_terminate(jsp);
+    return NULL;
 }
 
 /*

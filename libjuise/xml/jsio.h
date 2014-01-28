@@ -88,6 +88,13 @@ typedef struct js_session_opts_s {
 } js_session_opts_t;
 
 /*
+ * Opens a JUNOScript session on localhost by connecting to given auth socket
+ */
+js_session_t *
+js_session_open_localhost (js_session_opts_t *jsop, int flags,
+                           const char *auth_socket);
+
+/*
  * Opens a JUNOScript session for the give host_name, username, passphrase
  */
 js_session_t *
