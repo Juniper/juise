@@ -52,16 +52,14 @@ mx_sock_name (mx_sock_t *msp)
     if (++buf_num >= NUM_BUFS)
 	buf_num = 0;
 
-    if (msp->ms_sin.sin_len) {
+    if (msp->ms_sin.sin_port) {
 	const char *shost = inet_ntoa(msp->ms_sin.sin_addr);
 	unsigned int sport = ntohs(msp->ms_sin.sin_port);
 	snprintf(bufs[buf_num], BUFSIZ, "inet: %s:%d", shost, sport);
-
-    } else if (msp->ms_sin6.sin6_len) {
+    } else if (msp->ms_sin6.sin6_port) {
 	unsigned int sport = ntohs(msp->ms_sin6.sin6_port);
 	snprintf(bufs[buf_num], BUFSIZ, "inet6: %d", sport);
-
-    } else if (msp->ms_sun.sun_len) {
+    } else if (msp->ms_sun.sun_path) {
 	snprintf(bufs[buf_num], BUFSIZ, "unix: %s", msp->ms_sun.sun_path);
 
     } else {

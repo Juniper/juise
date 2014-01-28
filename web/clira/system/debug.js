@@ -16,37 +16,37 @@ jQuery(function($) {
             {
                 command: "enable debugging",
                 help: "Log debug messages",
-                execute: function ($output, cmd, parse, poss) {
+                execute: function (view, cmd, parse, poss) {
                     localStorage['debug'] = true;
                     $("#debug-container").css({ display: "inline" });
-                    $output.html("Enabled debugging");
+                    view.get('controller').set('output', 'Enabled debugging');
                 }
             },
             {
                 command: "disable debugging",
                 help: "Disable logging of debug messages",
-                execute: function ($output, cmd, parse, poss) {
+                execute: function (view, cmd, parse, poss) {
                     localStorage['debug'] = false;
                     $("#debug-log").empty();
                     $("#debug-container").css({ display: "none" });
-                    $output.html("Disabled debugging");
+                    view.get('controller').set('output', 'Disabled debugging');
                 }
             },
             {
                 command: "pause debugging",
                 help: "Pause logging of debug messages",
-                execute: function ($output, cmd, parse, poss) {
+                execute: function (view, cmd, parse, poss) {
                     localStorage['debug'] = false;
-                    $output.html("Paused debugging");
+                    view.get('controller').set('output', 'Paused debugging');
                 }
             },
             {
                 command: "resume debugging",
                 help: "Enable/resume logging of debug messages",
-                execute: function ($output, cmd, parse, poss) {
+                execute: function (view, cmd, parse, poss) {
                     localStorage['debug'] = true;
                     $("#debug-container").css({ display: "inline" });
-                    $output.html("Resumed debugging");
+                    view.get('controller').set('output', 'Resumed debugging');
                 }
             }
         ]

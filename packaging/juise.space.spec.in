@@ -13,6 +13,8 @@ Group:       Development/Libraries
 URL:         https://github.com/Juniper/libslax
 Source0:     https://github.com/Juniper/@PACKAGE_NAME@/releases/@PACKAGE_VERSION@/@PACKAGE_NAME@-@PACKAGE_VERSION@.tar.gz
 
+BuildRoot:   %{_tmppath}/%{name}-%{version}-%{release}-root
+
 BuildRequires:  libxml2-devel
 BuildRequires:  libxslt-devel
 BuildRequires:  curl-devel
@@ -26,6 +28,9 @@ BuildRequires:  bison
 Welcome to juise, the JUNOS User Interface Scripting Environment.
 This library adds the JUNOS-specific bits to the base SLAX language.
 
+NOTE: This is the spec file used for JUNOS Space, and should not
+be used for other builds;  use libslax.spec instead.
+
 %prep
 %setup -q
 
@@ -35,7 +40,7 @@ make %{?_smp_mflags}
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%make_install
+make DESTDIR="$RPM_BUILD_ROOT" install
 
 %clean
 rm -rf $RPM_BUILD_ROOT

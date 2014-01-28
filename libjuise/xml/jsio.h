@@ -25,6 +25,7 @@ typedef enum session_type_s {
     ST_JUNOSCRIPT,
     ST_NETCONF,
     ST_JUNOS_NETCONF,
+    ST_SHELL,
     ST_MAX,
 } session_type_t;
 
@@ -99,6 +100,18 @@ js_session_open_localhost (js_session_opts_t *jsop, int flags,
  */
 js_session_t *
 js_session_open (js_session_opts_t *jsop, int flags);
+
+/*
+ * Send the given string in the given host_name's JUNOScript session.
+ */
+void
+js_session_send (const char *host_name, const xmlChar *text);
+
+/*
+ * Receive a string in the given host_name's JUNOScript session.
+ */
+char *
+js_session_receive (const char *host_name, time_t secs);
 
 /*
  * Execute the give RPC in the given host_name's JUNOScript session.
@@ -217,6 +230,9 @@ jsio_restart (void);
 
 js_session_t *
 js_session_open_server (int fdin, int fdout, session_type_t stype, int flags);
+
+int
+js_shell_session_init (js_session_t *jsp);
 
 int
 js_session_init (js_session_t *jsp);

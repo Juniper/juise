@@ -508,53 +508,12 @@ mx_db_upgrade (int version)
 }
 
 /*
- * Open the database for read/write.  Recursively create directories as
- * needed.
+ * Open the database for read/write.
  */
 static int
-mx_db_open_recursive (void)
+mx_db_open (void)
 {
-    int rc = 0;
-    char buf[BUFSIZ];
-    char *name = buf, *path = buf, *cp = NULL, *filename;
-
-    strncpy(buf, opt_db, sizeof(buf));
-
-    filename = name + strlen(name) - 1;
-    while (filename > name) {
-	if (*filename == '/') {
-	    break;
-	}
-	filename--;
-    }
-    if (filename != name) {
-	*filename = '\0';
-	filename++;
-
-	while (*name) {
-	    cp = strchr(name + 1, '/');
-	    if (cp) {
-		*cp = '\0';
-	    }
-
-	    rc = mkdir(path, 0755);
-	    if (rc && errno != EEXIST) {
-		mx_log("Could not open database '%s' for read/write.  "
-			"Please check your path.", opt_db);
-		return FALSE;
-	    }
-
-	    if (cp == NULL) {
-		break;
-	    }
-
-	    *cp = '/';
-	    name = cp + 1;
-	}
-    }
-
-    rc = sqlite3_open(opt_db, &mx_db_handle);
-    if (rc != SQLITE_OK) {
+    if (sqlite3_open(opt_db, &mx_db_handle) != SQLITE_OK) {
 	mx_log("Could not open database '%s' for read/write.  "
 		"Critical error!", opt_db);
 	return FALSE;
@@ -590,7 +549,7 @@ mx_db_init (void)
 	opt_db = strdup(buf);
     }
 
-    if (!mx_db_open_recursive()) {
+    if (!mx_db_open()) {
 	return FALSE;
     }
 

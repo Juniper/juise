@@ -2,6 +2,7 @@ server.document-root = "@JUISE_WEB_DIR@"
 server.tag  = "lighttpd/1.4.28 juisebox"
 server.port = 3000
 server.bind = "127.0.0.1"
+server.pid-file = "/var/run/lighttpd.pid"
 
 server.modules = (
     "mod_auth", 
@@ -39,6 +40,8 @@ mimetype.assign = (
   ".svg" => "image/svg+xml",
   ".js" => "application/javascript",
 )
+
+index-file.names = ( "index.html" )
 
 url.access-deny = ( "~", ".inc", ".conf" )
 expire.url = ( "/static/images/" => "access 1 hours" )

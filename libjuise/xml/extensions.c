@@ -349,6 +349,7 @@ ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, js_session_opts_t *jsop)
 	    key = xmlNodeName(cop);
 	    if (!key)
 		continue;
+
 	    value = xmlNodeValue(cop);
 
 	    if (streq(key, "connection-timeout")) {
@@ -415,6 +416,8 @@ ext_jcs_extract_scookie (xmlNodeSetPtr nodeset, xmlChar **server,
 		    *stype = ST_JUNOS_NETCONF;
 		} else if (value && streq(value, "junoscript")) {
 		    *stype = ST_JUNOSCRIPT;
+		} else if (value && streq(value, "shell")) {
+		    *stype = ST_SHELL;
 		}
 	    }
 	}
@@ -448,7 +451,7 @@ jsopts_free (js_session_opts_t *jsop)
  *    var $connection = jcs:open($server, $username, $passphrase);  
  *    var $connection = jcs:open($server, $blob);
  *             where $blob := {
- *                       <method> "junoscript" | "netconf";
+ *                       <method> "junoscript" | "netconf" | "shell";
  *                       <username> $username;
  *                       <passphrase> $passphrase;
  *                  }
@@ -612,6 +615,192 @@ ext_jcs_close (xmlXPathParserContext *ctxt, int nargs)
 
 /*
  * Usage:
+ *     var $results = jcs:send($connection,  $str);
+ *
+ * Takes the connection handle,  writes the given string in the connection
+ * context and returns the results.  Multiple stirngs can be sent in the
+ * given connection context till the connection is closed.
+ *
+ * e.g) $results = jcs:send($connection, 'ifconfig -a\n');
+ *
+ * var $cmd = "ifconfig -a\n";
+ * $results = jcs:send($connection, $cmd);
+ */
+static void
+ext_jcs_send (xmlXPathParserContext *ctxt, int nargs)
+{
+    xmlChar *server = NULL;
+    session_type_t stype = ST_DEFAULT; /* Default session */
+
+    if (nargs != 2) {
+	xmlXPathSetArityError(ctxt);
+	return;
+    }
+
+    xmlChar *str = xmlXPathPopString(ctxt);
+    if (str == NULL) {
+	LX_ERR("jcs:send: null argument\n");
+	return;
+    }
+
+    if (*str == '\0') {
+	LX_ERR("jcs:send: empty argument\n");
+	xmlFree(str);
+	return;
+    }
+
+    xmlXPathObject *sop = valuePop(ctxt);
+    if (sop == NULL) {
+	xmlFree(str);
+	LX_ERR("jcs:send: null connection argument\n");
+	return;
+    }
+    ext_jcs_extract_scookie(sop->nodesetval, &server, &stype);
+    if (server == NULL) {
+	xmlFree(str);
+	xmlXPathFreeObject(sop);
+	LX_ERR("jcs:send: null argument\n");
+	return;
+	
+    }
+
+    if (stype != ST_SHELL) {
+	xmlFree(str);
+	xmlXPathFreeObject(sop);
+	xmlFree(server);
+	LX_ERR("jcs:send: only connections with "
+	       "protocol \"shell\" supported\n");
+        return;
+    }
+
+    /*
+     * Send our data over the connection
+     */
+    js_session_send((char *) server, str);
+
+    xmlFree(str);
+    xmlXPathFreeObject(sop);
+    xmlFree(server);
+
+    valuePush(ctxt, xmlXPathNewNodeSet(NULL));
+}
+
+/*
+ * Usage:
+ *     var $results = jcs:receive($connection, timeout);
+ *
+ * Takes the connection handle,  receives any data on the connection
+ * context and returns the results.  
+ *
+ * e.g) $results = jcs:receive($connection);
+ *
+ */
+static void
+ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
+{
+    xmlChar *server = NULL;
+    session_type_t stype = ST_DEFAULT; /* Default session */
+
+    xsltTransformContextPtr tctxt;
+    xmlDocPtr container;
+    xmlNode *newp, *last = NULL;
+    xmlNodeSet *results;
+    xmlXPathObject *ret;
+
+    if (nargs < 1 || nargs > 2) {
+	xmlXPathSetArityError(ctxt);
+	return;
+    }
+
+    time_t secs = JS_READ_TIMEOUT;
+    if (nargs == 2) {
+	secs = xmlXPathPopNumber(ctxt);
+	if (xmlXPathCheckError(ctxt)) {
+	    LX_ERR("jcs:receive: null argument\n");
+	    return;
+	}
+    } 
+
+    xmlXPathObject *sop = valuePop(ctxt);
+    if (sop == NULL) {
+	LX_ERR("jcs:receive: null argument\n");
+	return;
+    }
+    ext_jcs_extract_scookie(sop->nodesetval, &server, &stype);
+    if (server == NULL) {
+	xmlXPathFreeObject(sop);
+	LX_ERR("jcs:receive: null argument\n");
+	return;
+	
+    }
+    if (stype != ST_SHELL) {
+	xmlXPathFreeObject(sop);
+	xmlFree(server);
+	LX_ERR("jcs:receive: only connections with protocol \"shell\" "
+	       "supported\n");
+        return;
+    }
+
+    /*
+     * Create a Result Value Tree container, and register it with RVT garbage
+     * collector.
+     */
+    results =  xmlXPathNodeSetCreate(NULL);
+    tctxt = xsltXPathGetTransformContext(ctxt);
+    container = xsltCreateRVT(tctxt);
+    xsltRegisterLocalRVT(tctxt, container);
+
+    /*
+     * Read a line of text from the socket
+     */
+    char *cp = js_session_receive((char *) server, secs);
+    if (cp != NULL) {
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "receive",
+				      (const xmlChar *) cp, strlen(cp));
+	if (newp) {
+	    xmlXPathNodeSetAdd(results, newp);
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "receive",
+				      (const xmlChar *) "true", strlen("true"));
+
+	if (newp) {
+	    xmlXPathNodeSetAdd(results, newp);
+
+	    if (last)
+		xmlAddSibling(last, newp);
+
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+
+    } else {
+	newp = ext_jcs_make_text_node(container, NULL,
+				      (const xmlChar *) "receive",
+				      (const xmlChar *) "", strlen(""));
+	if (newp) {
+	    xmlXPathNodeSetAdd(results, newp);
+	    xmlAddChild((xmlNodePtr) container, newp);
+	    last = newp;
+	}
+    } 
+
+    xmlXPathFreeObject(sop);
+    xmlFree(server);
+
+    ret = xmlXPathNewNodeSetList(results);
+    slaxSetPreserveFlag(tctxt, ret);
+    valuePush(ctxt, ret);
+    xmlXPathFreeNodeSet(results);
+    return;
+}
+
+/*
+ * Usage:
  *     var $results = jcs:execute($connection,  $rpc);
  *
  * Takes the connection handle,  execute the given rpc in the connection
@@ -658,6 +847,13 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
 	LX_ERR("jcs:execute: null argument\n");
 	return;
 	
+    }
+    if (stype == ST_SHELL) {
+	xmlXPathFreeObject(xop);
+	xmlXPathFreeObject(sop);
+	xmlFree(server);
+	LX_ERR("jcs:execute: connections with protocol \"shell\" not supported\n");
+        return;
     }
 
     /*
@@ -1359,6 +1555,8 @@ ext_jcs_register_all (void)
     slaxRegisterFunction(JCS_FULL_NS, "invoke", ext_jcs_invoke);
     slaxRegisterFunction(JCS_FULL_NS, "open", ext_jcs_open);
     slaxRegisterFunction(JCS_FULL_NS, "parse-ip", ext_jcs_parse_ip);
+    slaxRegisterFunction(JCS_FULL_NS, "receive", ext_jcs_receive);
+    slaxRegisterFunction(JCS_FULL_NS, "send", ext_jcs_send);
 
     return 0;
 }

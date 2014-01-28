@@ -17,7 +17,7 @@ juise depends on the following software packages:
   - download information: http://xmlsoft.org/XSLT/downloads.html
 
 - libcurl (optional)
-  - home: http://xmlsoft.org/XSLT/downloads.html
+  - home: http://curl.haxx.se/libcurl/
   - download information: http://curl.haxx.se/download.html
 
 - libedit (optional)
