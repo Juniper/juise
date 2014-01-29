@@ -131,7 +131,7 @@ jsio_set_default_session_type (session_type_t stype)
     return old;
 }
 
-static inline void
+static void
 jsio_trace(const char *fmt, ...)
 {
     va_list vap;
