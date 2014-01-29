@@ -9,8 +9,6 @@
 #ifndef MOD_JUISE_H
 #define MOD_JUISE_H
 
-#include "server.h"
-
 int response_header_insert (server *srv, connection *con, const char *key, 
 			    size_t key_len, const char *value, size_t vallen);
 

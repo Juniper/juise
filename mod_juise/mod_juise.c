@@ -65,6 +65,7 @@
 #endif
 
 #include "version.h"
+#include "mod_juise.h"
 
 #define LOGERR(_fmt...) \
     log_error_write(srv, __FILE__, __LINE__, _fmt)
