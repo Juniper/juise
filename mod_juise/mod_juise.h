@@ -16,6 +16,4 @@ int response_header_overwrite (server *srv, connection *con, const char *key,
 			       size_t key_len, const char *value, 
 			       size_t vallen);
 
-char *slaxBase64Decode (const char *buf, size_t blen, size_t *olenp);
-
 #endif /* MOD_JUISE_H */

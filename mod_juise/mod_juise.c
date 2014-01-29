@@ -65,6 +65,8 @@
 #endif
 
 #include "version.h"
+
+#include <libslax/slax.h>
 #include "mod_juise.h"
 
 #define LOGERR(_fmt...) \
