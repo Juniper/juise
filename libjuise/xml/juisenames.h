@@ -44,4 +44,6 @@
 #define ELT_USER_CONTEXT	"user-context"
 #define ELT_WARNING		"warning"
 
+#define ATT_FORMAT "format"
+
 #endif /* LIBJUISE_JUISENAME_H */

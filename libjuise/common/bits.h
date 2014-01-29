@@ -22,11 +22,11 @@ extern "C" {
     namespace junos {
 #endif
 
-typedef u_int32_t flag_t;           /**< Flag */
+typedef u_int32_t flag32_t;           /**< Flag */
 typedef u_int64_t flag64_t;
 
 typedef struct bits_s {
-    flag_t	t_bits;
+    flag32_t	t_bits;
     const char *t_name;
 } bits;
 
@@ -91,10 +91,10 @@ typedef enum {
 #define BIT32(bitnum) BITT(u_int32_t, bitnum)
 #define BIT64(bitnum) BITT(u_int64_t, bitnum)
 
-extern const char * bit_value_encode (const bits *, flag_t);
-extern flag_t bit_value_decode (const bits *, const char *);
-extern const char * bits_encode (const bits *, flag_t);
-extern char *bits_decode (const bits *, const char *, flag_t *);
+extern const char * bit_value_encode (const bits *, flag32_t);
+extern flag32_t bit_value_decode (const bits *, const char *);
+extern const char * bits_encode (const bits *, flag32_t);
+extern char *bits_decode (const bits *, const char *, flag32_t *);
 
 extern const char * bit64_value_encode (const bits64_t *, const flag64_t);
 extern flag64_t bit64_value_decode (const bits64_t *, const char *);

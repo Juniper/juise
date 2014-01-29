@@ -66,6 +66,9 @@
 
 #include "version.h"
 
+#include <libslax/slax.h>
+#include "mod_juise.h"
+
 #define LOGERR(_fmt...) \
     log_error_write(srv, __FILE__, __LINE__, _fmt)
 
@@ -86,6 +89,7 @@ typedef struct {
 typedef struct {
     array *cgi;
     unsigned short execute_x_only;
+    unsigned short require_auth;
 } mod_juise_plugin_config;
 
 typedef struct {
@@ -190,6 +194,8 @@ SETDEFAULTS_FUNC(mod_juise_set_defaults)
 	  T_CONFIG_ARRAY, T_CONFIG_SCOPE_CONNECTION },       /* 0 */
 	{ "juise.execute-x-only", NULL,
 	  T_CONFIG_BOOLEAN, T_CONFIG_SCOPE_CONNECTION },     /* 1 */
+	{ "juise.require-auth", NULL,
+	  T_CONFIG_BOOLEAN, T_CONFIG_SCOPE_CONNECTION },     /* 2 */
 	{ NULL, NULL,
 	  T_CONFIG_UNSET, T_CONFIG_SCOPE_UNSET}
     };
@@ -208,9 +214,11 @@ SETDEFAULTS_FUNC(mod_juise_set_defaults)
 
 	s->cgi = array_init();
 	s->execute_x_only = 0;
+	s->require_auth = 0;
 
 	cv[0].destination = s->cgi;
 	cv[1].destination = &s->execute_x_only;
+	cv[2].destination = &s->require_auth;
 
 	p->config_storage[i] = s;
 
@@ -362,6 +370,14 @@ mod_juise_response_parse (server *srv, connection *con, mod_juise_plugin_data *p
 		    con->response.keep_alive
 			= (strcasecmp(value, "Keep-Alive") == 0) ? 1 : 0;
 		    con->parsed_response |= HTTP_CONNECTION;
+		}
+		break;
+
+	    case 12:
+		if (strncasecmp(key, "Content-Type", key_len) == 0) {
+		    response_header_overwrite(srv, con, 
+					      CONST_STR_LEN("Content-Type"), 
+					      CONST_BUF_LEN(ds->value));
 		}
 		break;
 
@@ -842,6 +858,8 @@ mod_juise_create_env (server *srv, connection *con,
     int argc;
     int i = 0;
     char *sdup = NULL, *cp;
+    char *http_auth = NULL, *user = NULL, *pass = NULL;
+    data_string *ds;
 
 #ifndef __WIN32
     /* set up args */
@@ -882,12 +900,16 @@ mod_juise_create_env (server *srv, connection *con,
 	if (stat(argv[0], &st) < 0) {
 	    LOGERR("sbss", "stat for cgi-handler", argv[0],
 		   "failed:", strerror(errno));
+	    if (argv)
+		free(argv);
 	    return -1;
 	}
     }
 
     if (pipe(to_cgi_fds)) {
 	LOGERR("ss", "pipe failed:", strerror(errno));
+	if (argv)
+	    free(argv);
 	return -1;
     }
 
@@ -895,7 +917,61 @@ mod_juise_create_env (server *srv, connection *con,
 	close(to_cgi_fds[0]);
 	close(to_cgi_fds[1]);
 	LOGERR("ss", "pipe failed:", strerror(errno));
+	if (argv)
+	    free(argv);
 	return -1;
+    }
+
+    /* Get Authorization header */
+    ds = (data_string *) array_get_element(con->request.headers, 
+					   "Authorization");
+    if (ds) {
+	char *auth_realm_decoded, *auth_realm = NULL; 
+	size_t dlen;
+
+	http_auth = ds->value->ptr;
+
+	if (http_auth) {
+	    auth_realm = strchr(http_auth, ' ');
+	}
+
+	if (auth_realm) {
+	    int auth_type_len = auth_realm - http_auth;
+
+	    if (auth_type_len == 5 
+		&& strncasecmp(http_auth, "Basic", auth_type_len) == 0 
+		&& auth_realm + 1) {
+		size_t hash_len = strlen(auth_realm + 1);
+
+		auth_realm_decoded = (char *)slaxBase64Decode(auth_realm + 1, 
+							      hash_len, &dlen);
+		if (!auth_realm_decoded) {
+		    LOGERR("s", "Failed to decode auth header");
+		    con->http_status = 400;
+		    if (argv)
+			free(argv);
+		    return 0;
+		}
+
+		pass = strchr(auth_realm_decoded, ':');
+		if (!pass) {
+		    LOGERR("s", "Invalid authorization format");
+		    con->http_status = 400;
+		    free(auth_realm_decoded);
+		    if (argv)
+			free(argv);
+		    return 0;
+		}
+
+		user = auth_realm_decoded;
+		*pass = '\0';
+		pass++;
+	    } else {
+		LOGERR("s", "Unrecognized authorization format");
+		con->http_status = 400;
+		return 0;
+	    }
+	}
     }
 
     /* fork, execve */
@@ -1118,12 +1194,15 @@ mod_juise_create_env (server *srv, connection *con,
 	    }
 
 	    for (n = 0; n < con->request.headers->used; n++) {
-		data_string *ds;
-
 		ds = (data_string *)con->request.headers->data[n];
 
 		if (ds->value->used && ds->key->used) {
 		    size_t j;
+
+		    /* Don't set authorization header in env */
+		    if (strcasecmp(ds->key->ptr, "AUTHORIZATION") == 0) {
+			continue;
+		    }
 
 		    buffer_reset(p->tmp_buf);
 
@@ -1153,8 +1232,6 @@ mod_juise_create_env (server *srv, connection *con,
 	    }
 
 	    for (n = 0; n < con->environment->used; n++) {
-		data_string *ds;
-
 		ds = (data_string *)con->environment->data[n];
 
 		if (ds->value->used && ds->key->used) {
@@ -1226,6 +1303,8 @@ mod_juise_create_env (server *srv, connection *con,
 	close(to_cgi_fds[1]);
 	if (sdup)
 	    free(sdup);
+	if (argv)
+	    free(argv);
 	return -1;
 
     default:
@@ -1235,6 +1314,35 @@ mod_juise_create_env (server *srv, connection *con,
 
 	    close(from_cgi_fds[1]);
 	    close(to_cgi_fds[0]);
+		    
+	    int r = 0;
+
+	    if (p->conf.require_auth == 1 && http_auth) {
+		buffer *auth = buffer_init();
+		buffer_append_string_len(auth, CONST_STR_LEN("user="));
+		buffer_append_string(auth, user);
+		buffer_append_string_len(auth, CONST_STR_LEN("\npassword="));
+		buffer_append_string(auth, pass);
+		buffer_append_string_len(auth, CONST_STR_LEN("\n"));
+		r = write(to_cgi_fds[1], auth->ptr, 
+			  auth->used ? auth->used - 1 : 0);
+		if (r < 0) {
+		    switch (errno) {
+			case ENOSPC:
+			    con->http_status = 507;
+			    break;
+
+			default:
+			    con->http_status = 403;
+			    break;
+		    }
+		}
+		buffer_free(auth);
+
+		if (pass) {
+		    bzero(pass, strlen(pass));
+		}
+	    }
 
 	    if (con->request.content_length) {
 		chunkqueue *cq = con->request_content_queue;
@@ -1245,7 +1353,6 @@ mod_juise_create_env (server *srv, connection *con,
 
 		/* there is content to send */
 		for (c = cq->first; c; c = cq->first) {
-		    int r = 0;
 
 		    /* copy all chunks */
 		    switch (c->type) {
@@ -1263,6 +1370,8 @@ mod_juise_create_env (server *srv, connection *con,
 				close(to_cgi_fds[1]);
 				if (sdup)
 				    free(sdup);
+				if (argv)
+				    free(argv);
 				return -1;
 			    }
 
@@ -1382,6 +1491,8 @@ mod_juise_create_env (server *srv, connection *con,
 
 		if (sdup)
 		    free(sdup);
+		if (argv)
+		    free(argv);
 		return -1;
 	    }
 	}
@@ -1389,10 +1500,14 @@ mod_juise_create_env (server *srv, connection *con,
 
     if (sdup)
 	free(sdup);
+    if (argv)
+	free(argv);
     return 0;
 #else
     if (sdup)
 	free(sdup);
+    if (argv)
+	free(argv);
     return -1;
 #endif
 }
@@ -1407,6 +1522,7 @@ mod_juise_patch_connection (server *srv, connection *con, mod_juise_plugin_data 
 
     PATCH(cgi);
     PATCH(execute_x_only);
+    PATCH(require_auth);
 
     /* skip the first, the global context */
     for (i = 1; i < srv->config_context->used; i++) {
@@ -1421,11 +1537,16 @@ mod_juise_patch_connection (server *srv, connection *con, mod_juise_plugin_data 
 	for (j = 0; j < dc->value->used; j++) {
 	    data_unset *du = dc->value->data[j];
 
-	    if (buffer_is_equal_string(du->key, CONST_STR_LEN("juise.assign")))
+	    if (buffer_is_equal_string(du->key, 
+				       CONST_STR_LEN("juise.assign"))) {
 		PATCH(cgi);
-	    else if (buffer_is_equal_string(du->key,
-				      CONST_STR_LEN("juise.execute-x-only")))
+	    } else if (buffer_is_equal_string(du->key,
+				      CONST_STR_LEN("juise.execute-x-only"))) {
 		PATCH(execute_x_only);
+	    } else if (buffer_is_equal_string(du->key, 
+				CONST_STR_LEN("juise.require-auth"))) {
+		PATCH(require_auth);
+	    }
 	}
     }
 
@@ -1461,6 +1582,20 @@ URIHANDLER_FUNC(mod_juise_handle_subrequest_start)
     if (p->conf.execute_x_only == 1
 		&& (sce->st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0)
 	return HANDLER_GO_ON;
+
+    /* Prompt for authorization information if required by config */
+    if (p->conf.require_auth == 1 
+	&& array_get_element(con->request.headers, "Authorization") == NULL) {
+	con->http_status = 401;
+	con->mode = DIRECT;
+	buffer_reset(p->tmp_buf);
+	buffer_append_string_len(p->tmp_buf, 
+			CONST_STR_LEN("Basic realm=\"Need basic auth header\""));
+	response_header_insert(srv, con, CONST_STR_LEN("WWW-Authenticate"), 
+			       CONST_BUF_LEN(p->tmp_buf));
+	LOGERR("s", "Redirecting as mandatory authentication header missing");
+	return HANDLER_FINISHED;
+    }
 
     s_len = fn->used - 1;
 
@@ -1528,7 +1663,7 @@ URIHANDLER_FUNC(mod_juise_handle_physical)
 
 	if (ds->key->ptr[0] == '/') {
 	    if (strncmp(uri->ptr, ds->key->ptr, ct_len) == 0) {
-		buffer_copy_string_buffer(fn, ds->value);
+		buffer_copy_string(fn, PATH_JUISE);
 		break;
 	    }
 	}
