@@ -10,30 +10,92 @@
 
 # CLEANFILES = lighttpd.conf
 
+webdatadir = $(datadir)/juise/web
+
 EXTRA_DIST = \
     Makefile.am \
     Makefile.in \
-    lighttpd.conf.in
+    lighttpd.conf.in \
+    lighttpd-wrapper.sh
 
 BASE_FILES = \
-    favicon.ico
-
-OTHER_FILES = \
-    icons/loading.png \
-    images/logo.png \
-    jquery/jquery-ui.js \
-    jquery/jquery-ui.min.js \
-    jquery/jquery.dbgpr.js \
-    jquery/jquery.js \
-    jquery/jquery.min.js \
-    jquery/jquery.mruPulldown.js \
+    bin/form2.js \
+    bin/list-command-files.slax \
+    bin/topology-ospf.slax \
+    clira/app.js \
+    clira/builtins.js \
     clira/clira.html \
-    clira/clira.css \
     clira/clira.js \
-    clira/parser.js \
-    clira/parser-test.js \
+    clira/clira.muxer.js \
+    clira/clira.prefs.js \
     clira/clira.slax \
-    static/drag-test.html
+    clira/controllers.js \
+    clira/db.php \
+    clira/index.html \
+    clira/models.js \
+    clira/parser-test.html \
+    clira/parser.js \
+    clira/parser.output.js \
+    clira/parser.test.js \
+    clira/parser.types.js \
+    clira/system/debug.js \
+    clira/system/fancy.js \
+    clira/system/history.js \
+    clira/system/location.js \
+    clira/system/on-device.js \
+    clira/system/topology.js \
+    clira/system/unit-test-commands.js \
+    clira/templates/history.hbs \
+    clira/templates/show-commands.hbs \
+    clira/views.js \
+    css/clira.css \
+    favicon.ico \
+    images/checkbox.png \
+    images/clira_icon.png \
+    images/empty.png \
+    images/gear.png \
+    images/icons/doubleSize.png \
+    images/icons/juniper-favicon.ico \
+    images/icons/loading.png \
+    images/icons/size1p5.png \
+    images/juise.png \
+    images/logo.png \
+    images/network.png \
+    images/prefs-devices.png \
+    images/prefs-general.png \
+    images/prefs-groups.png \
+    images/puck.png \
+    jquery/jquery.dbgpr.js \
+    jquery/jquery.mruPulldown.js
+
+EXTERNAL_FILES = \
+    external/d3/d3.v3.js \
+    external/d3/d3.v3.min.js \
+    external/ember/ember.js \
+    external/ember-restless/ember-restless+extras.js \
+    external/ember-restless/ember-restless.js \
+    external/gmaps/gmaps.js \
+    external/handlebars/handlebars.js \
+    external/jqgrid/grid.locale-en.js \
+    external/jqgrid/jquery.jqGrid.min.js \
+    external/jqgrid/jquery.jqGrid.src.js \
+    external/jqgrid/ui.jqgrid.css \
+    external/jquery/jquery-1.9.1.js \
+    external/jquery/jquery.js \
+    external/jquery/jquery.min.js \
+    external/jquery-checkbox/jquery.checkbox.css \
+    external/jquery-checkbox/jquery.checkbox.js \
+    external/jquery-checkbox/jquery.checkbox.min.js \
+    external/jquery-qtip/imagesloaded.min.js \
+    external/jquery-qtip/jquery.qtip.css \
+    external/jquery-qtip/jquery.qtip.js \
+    external/jquery-qtip/jquery.qtip.min.css \
+    external/jquery-qtip/jquery.qtip.min.js \
+    external/jquery-ui/jquery-ui-1.10.2.js \
+    external/jquery-ui/jquery-ui.js \
+    external/jquery-ui/jquery-ui.min.js \
+    external/qunit/qunit-1.12.0.css \
+    external/qunit/qunit-1.12.0.js
 
 THEME_BLACK_TIE = \
     themes/black-tie/jquery-ui-black-tie.css \
@@ -54,6 +116,20 @@ THEME_BLACK_TIE = \
     themes/black-tie/images/ui-icons_ededed_256x240.png \
     themes/black-tie/images/ui-icons_ffcf29_256x240.png \
     themes/black-tie/images/ui-icons_ffffff_256x240.png
+
+THEME_CLIRA = \
+    themes/clira/addons-clira.css \
+    themes/clira/images/ui-bg_diagonals-thick_8_333333_40x40.png \
+    themes/clira/images/ui-bg_highlight-hard_100_f9f9f9_1x100.png \
+    themes/clira/images/ui-bg_highlight-hard_40_aaaaaa_1x100.png \
+    themes/clira/images/ui-icons_222222_256x240.png \
+    themes/clira/images/ui-icons_4ca300_256x240.png \
+    themes/clira/images/ui-icons_bbbbbb_256x240.png \
+    themes/clira/images/ui-icons_ededed_256x240.png \
+    themes/clira/images/ui-icons_ededed_hover_256x240.png \
+    themes/clira/images/ui-icons_ffcf29_256x240.png \
+    themes/clira/images/ui-icons_ffffff_256x240.png \
+    themes/clira/jquery-ui-clira.css
 
 THEME_DOT_LUV = \
     themes/dot-luv/jquery-ui-dot-luv.css \
@@ -93,28 +169,35 @@ THEME_EXCITE_BIKE = \
 
 WEB_FILES = \
     ${BASE_FILES} \
+    ${EXTERNAL_FILES} \
     ${THEME_BLACK_TIE} \
+    ${THEME_CLIRA} \
     ${THEME_DOT_LUV} \
     ${THEME_EXCITE_BIKE}
 
+nobase_dist_webdata_DATA = ${WEB_FILES}
+nobase_dist_sysconf_DATA = \
+    lighttpd.conf \
+    lighttpd-wrapper.sh
+
 EXTRA_DIST += ${WEB_FILES}
 
-INSTALL_WEB_FILES =  \
-    lighttpd.conf \
-    ${WEB_FILES}
+#INSTALL_WEB_FILES =  \
+#    lighttpd.conf \
+#    ${WEB_FILES}
 
-not-yet-install-exec-hook:
-	@echo "Installing Web Files ... "
-	@for file in ${INSTALL_WEB_FILES} ; do \
-		if [ -f $$file ]; then \
-			rfile=$$file ; \
-		else \
-			rfile=${srcdir}/$$file ; \
-		fi ; \
-		mdir=${JUISE_WEB_DIR}/`dirname $$file` ; \
-		mkdir -p $$mdir ; \
-		cp $$rfile $$mdir/ ; \
-        done
+#not-yet-install-exec-hook:
+#	@echo "Installing Web Files ... "
+#	@for file in ${INSTALL_WEB_FILES} ; do \
+#		if [ -f $$file ]; then \
+#			rfile=$$file ; \
+#		else \
+#			rfile=${srcdir}/$$file ; \
+#		fi ; \
+#		mdir=${JUISE_WEB_DIR}/`dirname $$file` ; \
+#		mkdir -p $$mdir ; \
+#		cp $$rfile $$mdir/ ; \
+#        done
 
 svnignore:
 	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}

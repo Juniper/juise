@@ -576,8 +576,35 @@ jQuery(function ($) {
             }
             return muxer;
         },
-        runCommand: function runCommand (view, target, command) {
-            view.get('controller').set('output', loadingMessage);
+        runCommand: function runCommand (view, target, command, onComplete) {
+            var output = null,
+                domElement = false;
+            
+            /*
+             * If runCommand is called without a view, create a pseudo view
+             * and use for pop ups that need user input
+             */
+            if (view instanceof jQuery) {
+                output = view;
+                domElement = true;
+                var pseudoView = Ember.View.extend({
+                    init: function() {
+                        this._super();
+                        this.set('controller', Ember.Controller.create());
+                    }
+                });
+                view = Ember.View.views["pseudo_view"]
+                            .createChildView(pseudoView);
+                view.append();
+            } else {
+                output = view.$();
+            }
+
+            if (domElement) {
+                output.html(loadingMessage);
+            } else {
+                view.get('controller').set('output', loadingMessage);
+            }
 
             if (muxer == undefined)
                 openMuxer();
@@ -585,7 +612,7 @@ jQuery(function ($) {
             var full = [ ];
 
             muxer.rpc({
-                div: view.$(),
+                div: output,
                 target: target,
                 payload: "<command format='html'>" + command + "</command>",
                 onreply: function (data) {
@@ -600,30 +627,47 @@ jQuery(function ($) {
                     // rest wait until the RPC is complete.  Ideally, there
                     // should also be a timer to render what we've got if
                     // the output RPC stalls.
-                    if (full.length <= 2)
-                        view.get('controller').set('output', data);
+                    if (full.length <= 2) {
+                        if (domElement) {
+                            output.html(data);
+                        } else {
+                            view.get('controller').set('output', data);
+                        }
+                    }
                 },
                 oncomplete: function () {
                     $.dbgpr("rpc: complete");
-                    view.get('controller').set('completed', true);
-                    view.get('controller').set('output', full.join(""));
+                    if (domElement) {
+                        output.html(full.join(""));
+                    } else {
+                        view.get('controller').set('completed', true);
+                        view.get('controller').set('output', full.join(""));
+                    }
+
+                    if ($.isFunction(onComplete)) {
+                        onComplete(true, output);
+                    }
                 },
                 onhostkey: function (data) {
                     var self = this;
-                    promptForHostKey(view, data, function (response) {
+                    promptForHostKey(view, target, data, function (response) {
                         muxer.hostkey(self, response);
                     });
                 },
                 onpsphrase: function (data) {
                     var self = this;
-                    promptForSecret(view, data, function (response) {
+                    promptForSecret(view, target, data, function (response) {
                         muxer.psphrase(self, response);
+                    }, function() {
+                        muxer.close();
                     });
                 },
                 onpsword: function (data) {
                     var self = this;
-                    promptForSecret(view, data, function (response) {
+                    promptForSecret(view, target, data, function (response) {
                         muxer.psword(self, response);
+                    }, function() {
+                        muxer.close();
                     });
                 },
                 onclose: function (event, message) {
@@ -632,7 +676,7 @@ jQuery(function ($) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
                         if ($.isFunction(onComplete)) {
-                            onComplete(false, $output);
+                            onComplete(false, output);
                         }
                     }
                 },
@@ -642,7 +686,7 @@ jQuery(function ($) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
                         if ($.isFunction(onComplete)) {
-                            onComplete(false, $output);
+                            onComplete(false, output);
                         }
                     }
                 }
@@ -729,9 +773,9 @@ jQuery(function ($) {
         }
     });
 
-    function promptForHostKey (view, prompt, onclick) {
+    function promptForHostKey (view, target, prompt, onclick) {
         var hostKeyView = Clira.DynFormView.extend({
-            title: "Host key",
+            title: "Host key for " + target,
             buttons: {
                 Accept: function() {
                     onclick("yes");
@@ -741,23 +785,39 @@ jQuery(function ($) {
                     onclick("no");
                     $(this).dialog("close");
                 }
+            },
+            close: function() {
+                onclick("no");
             }
         }); 
-        view.createChildView(hostKeyView, {message: prompt}).append();
+        view.createChildView(hostKeyView, 
+                                {message: prompt.split(/(?:\n)+/)}).append();
     }
 
-    function promptForSecret (view, prompt, onclick) {
+    function promptForSecret (view, target, prompt, onclick, onclose) {
+        var title = "Password: ";
+        $.ajax({
+            url: 'db.php?p=device&name=' + target,
+            success: function(result) {
+                title += result['username'] + '@' + result['hostname'];
+            },
+            async: false
+        });
         var secretView = Clira.DynFormView.extend({
-            title: "Password",
+            title: title,
             buttons: {
                 Enter: function() {
                     onclick(viewContext.get('fieldValues').password);
-                    $(this).dialog("close")
+                    $(this).context.enter = true;
+                    $(this).dialog("close");
                 },
                 Cancel: function() {
-                    onclick('');
                     $(this).dialog("close");
                 }
+            },
+            close: function() {
+                if (!this.$().context.enter)
+                    onclose();
             }
         });
         var fields = [{
@@ -765,8 +825,8 @@ jQuery(function ($) {
             title: "",
             secret: true
         }];
-        view.createChildView(secretView, {fields: fields, message: prompt})
-                            .append();
+        view.createChildView(secretView, {fields: fields, 
+                            message: prompt.split(/(?:\n)+/)}).append();
     }
 
     function loadHttpReply (text, status, http, $this, $output) {

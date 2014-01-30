@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.5.8], [phil@juniper.net])
+AC_INIT([juise], [0.5.9], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 
 case $prefix in
@@ -388,7 +388,7 @@ then
 		AC_MSG_ERROR(Version $LIBSLAX_VERSION found. You need at least libslax $LIBSLAX_REQUIRED_VERSION for this version of juise)
 	fi
 else
-	AC_MSG_ERROR([Could not find libslax anywhere, check http://code.google.com/p/libslax.])
+	AC_MSG_ERROR([Could not find libslax anywhere, check https://github.com/Juniper/libslax.])
 fi
 
 AC_SUBST(SLAX_CONFIG)

@@ -104,6 +104,14 @@ Clira.DynCheckbox = Ember.Checkbox.extend({
     }.observes('checked')
 });
 
+/*
+ * Pseudo view that can be used to append views created for DOM elements
+ * without parent views
+ */
+Clira.PseudoView = Ember.View.extend({
+    elementId: "pseudo_view"
+});
+
 
 /*
  * Extendable Clira specific Ember views.
@@ -131,6 +139,9 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
 
         // Set the source as controller's autoComplete function
         this.ui.source = this.get('targetObject').autoComplete;
+
+        // Save controller to be used later
+        this.ui.controller = this.get('targetObject');
 
         // Handle focus events
         this.$().focus(function(event, ui) {
@@ -267,6 +278,45 @@ Clira.PulldownIcon = JQ.ButtonView.extend({
 
 
 /*
+ * Extend ButtonView to define generic Icon view that can be used to display
+ * icons, catch click events and delegate them to action functions defined in
+ * parent controller and change icons after click. Usage is as below
+ *   {{view Clira.IconView iconClass="class1,class2" onClick="function"}}
+ * iconClass is comma separated list of icon classes that will be cycled
+ * through after each click. onClick is the action function defined in
+ * 'actions' hash in the parent controller that receives controller as
+ * argument from IconView's click event
+ */
+Clira.IconView = JQ.ButtonView.extend({
+    label: null,
+    text: false,
+
+    // Read and save list of iconClasses and initialize current icon
+    init: function() {
+        var iconClasses = this.get('iconClass').split(',');
+        this.set('iconClasses', iconClasses);
+        this.set('classIndex', 0);
+        this.set('icons', { primary: iconClasses[0] });
+        this._super();
+    },
+
+    // Capture click event and invoke appropriate action function
+    click: function() {
+        // Call action function from controller provided using onClick
+        this.get('controller')._actions[this.get('onClick')].call(null, this.get('controller'));
+
+        // Change icon class to next available from the list
+        this.set('classIndex', this.get('classIndex') + 1);
+
+        if (this.get('iconClasses')) {
+            this.set('icons', { primary: 
+                                this.get('iconClasses')[this.get('classIndex')
+                                        % this.get('iconClasses').length]});
+        }
+    }
+})
+
+/*
  * Extend ButtonView to defined Enter button with label
  */
 Clira.EnterButton = JQ.ButtonView.extend({
@@ -307,7 +357,7 @@ Clira.MruItemView = Ember.View.extend({
         var commandInputView = this.get('parentView').get('parentView')
                                    .CommandInput;
         // Set the command
-        commandInputView.get('targetObject').set('command',this.content);
+        commandInputView.get('targetObject').set('command', this.content);
         commandInputView.$().focus();
 
         // Hide mru pulldown view
@@ -425,6 +475,45 @@ Clira.GeneralPrefView = Clira.DynFormView.extend({
                 }
             });
             $(this).dialog('close');
+        }
+    }
+});
+
+
+/*
+ * View to display a map. Reads latitude and longitude data from map object in
+ * context along with required height of the map
+ */
+Clira.MapView = Ember.View.extend({
+    tagName : 'div',
+    attributeBindings: ['style'],
+    style: null,
+
+    didInsertElement : function() {
+        this._super();
+
+        var context = this.get('context');
+
+        this.set('style', "position: relative;");
+
+        if (context && context.height) {
+            this.set('style', 
+                        this.get('style') + "height:" + context.height + ";");
+        }
+
+        if (context) {
+            var map = new GMaps({
+                div: $("#" + this.get('elementId')).get(0),
+                lat: context.lat,
+                lng: context.lng,
+                center: new google.maps.LatLng(context.lat, context.lng)
+            });
+
+            map.addMarker({
+                lat: context.lat,
+                lng: context.lng,
+                title: context.address
+            });
         }
     }
 });

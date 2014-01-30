@@ -1,0 +1,23 @@
+{{#if output.address}}
+  <div>
+    Address is: <span class="geo-address">{{output.address}}</span>
+  </div>
+  <div class="location">
+    set system location latitude {{output.lat}} longitude {{output.lng}}
+  </div>
+  <div>
+    <button  {{action 'toggleMap'}}>
+    {{#if output.hide}}  
+      Map it
+    {{else}}
+      Hide
+    {{/if}}
+    </button>
+  </div>
+  {{#unless output.hide}}
+    {{view Clira.MapView contextBinding="output.map"}}
+  {{/unless}}
+{{/if}}
+{{#if output.error}}
+  {{view Clira.MessageView contentBinding="output.error" contextBinding="output.error"}}
+{{/if}}

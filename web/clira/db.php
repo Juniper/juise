@@ -26,6 +26,7 @@ header('Content-type: text/x-json');
 $return = array();
 
 switch ($p) {
+case 'device': $return = do_device(); break;
 case 'devices': $return = do_devices(); break;
 case 'device_list': $return = do_device_list(); break;
 case 'device_edit': $return = do_device_edit(); break;
@@ -35,6 +36,19 @@ case 'group_members': $return = do_group_members(); break;
 }
 
 print json_encode($return);
+
+function 
+do_device ()
+{
+    global $db;
+    $name = get('name');
+    
+    if ($name) {
+        $result = $db->query("SELECT * FROM devices WHERE name = '$name'");
+        return $result->fetch();
+    }
+    return false;
+}
 
 function
 do_devices ()

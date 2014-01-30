@@ -16,6 +16,7 @@ jQuery(function ($) {
         commands: [
             {
                 command: "show location",
+                templateFile: '/clira/templates/location.hbs',
                 arguments: [
                     {
                         name: "location",
@@ -26,14 +27,38 @@ jQuery(function ($) {
                         help: "Name of a location to resolve"
                     }
                 ],
-                execute: geolocate
+                execute: function(view, cmd, parse, poss) {
+                    var output = geolocate(view, parse);
+                    if (output.address) {
+                        output.map = {
+                            title: output.address,
+                            height: "200px",
+                            lat: output.lat,
+                            lng: output.lng
+                        }
+                    }
+                    output.hide = true;
+
+                    view.get('controller').set('output', output);
+
+                    // actions for buttons to handle show/hide map
+                    var toggleMap = function() {
+                            if (this.get('output').hide) {
+                                this.set('output.hide', false);
+                            } else {
+                                this.set('output.hide', true);
+                            }
+                    };
+                    view.get('controller')._actions.toggleMap = toggleMap;
+                }
             }
         ]
     });
 
-    function geolocate (view, cmd, parse, poss) {
+    function geolocate (view, parse) {
         var url = "http://maps.googleapis.com/maps/api/geocode/json";
         var me = parse.possibilities[0];
+        var output = {};
         
         if (me.data.location) {
             var opts = {
@@ -41,83 +66,64 @@ jQuery(function ($) {
                 address: me.data.location
             }
 
-            $.getJSON(url, opts, function (json) {
-                if (json.status == "OK") {
-                    var res = json.results[0];
-                    var lat = fixed4(res.geometry.location.lat);
-                    var lng = fixed4(res.geometry.location.lng);
+            $.ajax({
+                url: url,
+                dataType: 'json',
+                async: false,
+                data: opts,
+                success: function(json) {
+                    if (json.status == "OK") {
+                        var res = json.results[0];
+                        var lat = fixed4(res.geometry.location.lat);
+                        var lng = fixed4(res.geometry.location.lng);
 
-//                    var template = this.handlebars("geotop");
-//                    var html = template(json);
-
-                    var html = "<div>"
-                        + "Address is: <span class='geo-address'>"
-                        + res.formatted_address + "</span>"
-                        + "</div>";
-                    html += "<div class='location'>"
-                        + "set system location latitude " + lat
-                        + " longitude " + lng + "</div>";
-
-                    // Only make the link if there's a map available
-                    if (window.google && window.google.maps)
-                        html += "<button class='link'></button>";
-
-                    html += "<div class='map-small hidden'></div>";
-
-                    view.get('controller').set('output', html);
-                    if (window.google && window.google.maps) {
-                        var $map = $("div.map-small", view.$());
-                        console.log($map);
-                            if ($map.hasClass("hidden")) {
-                                console.log("caught hidden");
-                                $map.removeClass("hidden");
-
-                                var map = new GMaps({
-                                    div: $map.get(0),
-                                    lat: lat,
-                                    lng: lng
-                                });
-                                map.addMarker({
-                                    lat: lat,
-                                    lng: lng,
-                                    title: me.data.location
-                                });
-                            } else
-                                $map.addClass("hidden");
-                        $("button.link", view.$()).button({
-                            label: "Map it",
-                            icons: { primary: "ui-icon-flag" }
-                        })
-                        .click(function (e) {
-                            if ($map.hasClass("hidden")) {
-                                $map.removeClass("hidden");
-
-                                var map = new GMaps({
-                                    div: $map.get(0),
-                                    lat: lat,
-                                    lng: lng
-                                });
-                                map.addMarker({
-                                    lat: lat,
-                                    lng: lng,
-                                    title: me.data.location
-                                });
-                            } else
-                                $map.addClass("hidden");
-                        });
+                        if (window.google && window.google.maps) {
+                            output.address = res.formatted_address;
+                            output.lat = lat;
+                            output.lng = lng;
+                        }
+                    } else if (json.status == "ZERO_RESULTS") {
+                        output.error = {
+                            message: "Location not found: " 
+                                        + me.data.location,
+                            type: "error"
+                        };
+                    } else {
+                        if (json.status) {
+                            output.error = {
+                                message: "geo failure",
+                                type: "error"
+                            };
+                        } else {
+                            output.error = {
+                                message: json.status,
+                                type: "error"
+                            };
+                        }
                     }
-
-                } else if (json.status == "ZERO_RESULTS") {
-                    $.clira.makeAlert(view,
-                                  "Location not found: " + me.data.location);
-                } else {
-                    $.clira.makeAlert(view, json.status, "geo failure");
+                },
+                fail: function (x, message, err) {
+                    if (message) {
+                        output.error = {
+                            message: message,
+                            type: "error"
+                        };
+                    } else {
+                        output.error = {
+                            message: "geo failure",
+                            type: "error"
+                        };
+                    }
                 }
-            }).fail(function (x, message, err) {
-                $.clira.makeAlert(view, message, "geo failure");
             });
-        } else 
-            $.clira.makeAlert(view, "missing mandatory address");
+        } else { 
+            output.error = { 
+                message: "missing mandatory address", 
+                type: "error"
+            };
+        }
+
+        return output;
     }
 
     function fixed4 (value) {

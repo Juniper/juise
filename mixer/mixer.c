@@ -554,6 +554,32 @@ do_forward (char **argv UNUSED)
     return 0;
 }
 
+static int
+mkdirp (const char *path, mode_t mode)
+{
+    char parent[PATH_MAX], *p;
+    
+    strncpy(parent, path, sizeof(parent));
+    parent[sizeof(parent) - 1] = '\0';
+
+    for (p = parent + strlen(parent); *p != '/' && p != parent; p--);
+    *p = '\0';
+
+    if (p != parent && mkdirp(parent, mode) != 0) {
+	return -1;
+    }
+    
+    if (mkdir(path, mode) == 0) {
+	return 0;
+    }
+
+    if (errno == EEXIST) {
+	return 0;
+    }
+
+    return -1;
+}
+
 static void
 print_help (const char *opt)
 {
@@ -563,6 +589,7 @@ print_help (const char *opt)
     fprintf(stderr,
 	    "Usage: mixer [options]\n\n"
 	    "\t--console or -C: connect to server console\n"
+	    "\t--create-db: create mixer database and exit\n"
 	    "\t--db <dbname>: Specify mixer database file\n"
 	    "\t--debug <flag>: turn on specified debug flag\n"
 	    "\t--dot-dir <path>: directory for finding 'dot' files\n"
@@ -598,7 +625,7 @@ int
 main (int argc UNUSED, char **argv UNUSED)
 {
     char *cp;
-    int rc;
+    int rc, create_db_and_exit = FALSE;
 
     for (argv++; *argv; argv++) {
 	cp = *argv;
@@ -607,6 +634,9 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	if (streq(cp, "--console") || streq(cp, "-c")) {
 	    opt_console = TRUE;
+
+	} else if (streq(cp, "--create-db")) {
+	    create_db_and_exit = TRUE;
 
 	} else if (streq(cp, "--db")) {
 	    opt_db = *++argv;
@@ -708,11 +738,24 @@ main (int argc UNUSED, char **argv UNUSED)
     if (opt_user == NULL)
 	opt_user = strdup(getlogin());
 
+    if (opt_dot_dir) {
+	if (mkdirp(opt_dot_dir, 0755) < 0) {
+	    errx(1, "could not create dot_dir '%s'", opt_dot_dir);
+	}
+    }
+
     asprintf(&path_websocket, "%s/mixer.%s.ws", opt_dot_dir, opt_user);
     asprintf(&path_console, "%s/mixer.%s.cons", opt_dot_dir, opt_user);
     asprintf(&path_lock, "%s/mixer.%s.lock", opt_dot_dir, opt_user);
 
     sigchld_init();
+
+    if (create_db_and_exit) {
+	if (!opt_no_db) {
+	    mx_db_init();
+	}
+	exit(0);
+    }
 
     if (opt_console) {
 	rc = do_console(argv);

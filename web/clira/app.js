@@ -123,4 +123,13 @@ jQuery(function ($) {
     // Load command files
     $.clira.loadCommandFiles();
     $.clira.prefsInit();
+
+    // Icons on debug container
+    $.clira.decorateIcons($("#debug-container"));
+
+    // Hide debug container when not debugging
+    if (localStorage['debug'] 
+            && JSON.parse(localStorage['debug']) == true) {
+        $("#debug-container").css({ display: "inline" });
+    }
 });

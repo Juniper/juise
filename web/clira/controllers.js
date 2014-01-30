@@ -25,7 +25,9 @@ Clira.CommandInputController = Em.ObjectController.extend({
         var parse = $.clira.parse(value.term);
         $.dbgpr("parse: " + parse.possibilities.length);
 
-        var res = [ ];
+        var res = [ ],
+            controller = this.controller,
+            delay = 0, delay2 = 0;
 
         parse.eachPossibility(function (n, p) {
             p.render();
@@ -42,14 +44,25 @@ Clira.CommandInputController = Em.ObjectController.extend({
                 res.push(r);
 
                 // If the command defines a custom completion, use it
-                if (false && p.command.complete) {
+                if (p.command.complete) {
                     $.dbgpr("calling custom completion");
-                    p.command.complete(p, res, value);
+                    delay2 = p.command.complete(controller, p, res, value);
+                    if (delay2 > delay)
+                        delay = delay2;
                 }
 
             }
         });
-        response(res);
+
+        if (delay2 == 0) {
+            response(res);
+        } else {
+            $.dbgpr("autocomplete: delay for " + delay + "ms: " + res.length);
+            setTimeout(function() {
+                $.dbgpr("autocomplete: now firing: " + res.length);
+                response(res);
+            }, delay);
+        }
     },
 
     // Runs the command and appends output to outputs controller
@@ -162,6 +175,19 @@ Clira.OutputsController = Em.ArrayController.extend();
 Clira.OutputContainerController = Em.Controller.extend({
     data: null,
     contentTemplate: null,
+
+    // Action functions to handle close and toggle button clicks
+    actions: {
+        close: function(controller) {
+            controller.get('view').get('parentView').destroy();
+        },
+        collapse: function(controller) {
+            controller.get('view').$().toggle('slow', function() {
+                controller.get('view')
+                          .set('isVisible', !controller.get('view.isVisible'));
+            });
+        }
+    },
 
     init: function() {
         // Set template name to be used for output content
