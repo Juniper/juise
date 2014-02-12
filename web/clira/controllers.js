@@ -180,7 +180,10 @@ Clira.OutputContainerController = Em.Controller.extend({
     // Action functions to handle close and toggle button clicks
     actions: {
         close: function(controller) {
-            controller.get('view').get('parentView').destroy();
+            controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 
+                                                    function() {
+                controller.get('view').get('parentView').destroy();
+            });
         },
         collapse: function(controller) {
             controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 
