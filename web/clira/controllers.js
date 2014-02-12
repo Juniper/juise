@@ -101,9 +101,17 @@ Clira.CommandInputController = Em.ObjectController.extend({
             parseErrors = null;
         }
 
+        if ($.clira.commandCount) {
+            this.set('commandNumber', ++$.clira.commandCount);
+        } else {
+            $.clira.commandCount = 1;
+            this.set('commandNumber', 1);
+        }
+
         var content = {
             contentTemplate: templateName,
             command: finalCommand,
+            commandNumber: this.get('commandNumber'),
             completed: false,
             messages: parseErrors,
             output: output,
@@ -119,13 +127,6 @@ Clira.CommandInputController = Em.ObjectController.extend({
          */
         this.get('controllers.outputs')
             .unshiftObject(Clira.OutputContainerController.create(content));
-
-        if ($.clira.commandCount) {
-            this.set('commandNumber', ++$.clira.commandCount);
-        } else {
-            $.clira.commandCount = 1;
-            this.set('commandNumber', 1);
-        }
 
         // Reset command input field 
         this.set('command', '');
