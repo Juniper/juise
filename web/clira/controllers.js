@@ -183,7 +183,8 @@ Clira.OutputContainerController = Em.Controller.extend({
             controller.get('view').get('parentView').destroy();
         },
         collapse: function(controller) {
-            controller.get('view').$().toggle('slow', function() {
+            controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 
+                                                    function() {
                 controller.get('view')
                           .set('isVisible', !controller.get('view.isVisible'));
             });
