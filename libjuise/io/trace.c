@@ -469,7 +469,7 @@ trace_msg (trace_file_t *traceptr, char *trace_buffer, u_int trace_it, int *msg_
     /* Get the current time and copy it into the buffer. */
 
     gettimeofday(&cur_time, NULL);
-    time_buffer = ctime_r(&cur_time.tv_sec, time_string);
+    time_buffer = ctime_r((time_t *)&cur_time.tv_sec, time_string);
     bcopy(&time_buffer[4], trace_buffer, TRACE_PREAMBLE_SIZE);
     trace_msg_len += TRACE_PREAMBLE_SIZE;
     trace_buf_remaining -= TRACE_PREAMBLE_SIZE;
