@@ -113,6 +113,7 @@ Clira.CommandInputController = Em.ObjectController.extend({
             command: finalCommand,
             commandNumber: this.get('commandNumber'),
             completed: false,
+            context: this,
             messages: parseErrors,
             output: output,
             parse: parse,
@@ -191,6 +192,9 @@ Clira.OutputContainerController = Em.Controller.extend({
                 controller.get('view')
                           .set('isVisible', !controller.get('view.isVisible'));
             });
+        },
+        commandClick: function() {
+            this.set('context.command', this.get('command'));
         }
     },
 
