@@ -61,7 +61,9 @@
       {{view Clira.IconView iconClass="ui-icon-closethick" onClick="close"}}
       {{view Clira.IconView iconClass="ui-icon-minusthick,ui-icon-plusthick" onClick="collapse"}}
       <b>{{controller.command}}</b>
-    </div>
+      <div class="command-number">
+        ({{controller.commandNumber}})
+      </div>
   </script>
 
   <script type="text/x-handlebars" data-template-name="output_content">

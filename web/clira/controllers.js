@@ -101,9 +101,17 @@ Clira.CommandInputController = Em.ObjectController.extend({
             parseErrors = null;
         }
 
+        if ($.clira.commandCount) {
+            this.set('commandNumber', ++$.clira.commandCount);
+        } else {
+            $.clira.commandCount = 1;
+            this.set('commandNumber', 1);
+        }
+
         var content = {
             contentTemplate: templateName,
             command: finalCommand,
+            commandNumber: this.get('commandNumber'),
             completed: false,
             messages: parseErrors,
             output: output,
@@ -119,13 +127,6 @@ Clira.CommandInputController = Em.ObjectController.extend({
          */
         this.get('controllers.outputs')
             .unshiftObject(Clira.OutputContainerController.create(content));
-
-        if ($.clira.commandCount) {
-            this.set('commandNumber', ++$.clira.commandCount);
-        } else {
-            $.clira.commandCount = 1;
-            this.set('commandNumber', 1);
-        }
 
         // Reset command input field 
         this.set('command', '');
@@ -179,10 +180,14 @@ Clira.OutputContainerController = Em.Controller.extend({
     // Action functions to handle close and toggle button clicks
     actions: {
         close: function(controller) {
-            controller.get('view').get('parentView').destroy();
+            controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 
+                                                    function() {
+                controller.get('view').get('parentView').destroy();
+            });
         },
         collapse: function(controller) {
-            controller.get('view').$().toggle('slow', function() {
+            controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 
+                                                    function() {
                 controller.get('view')
                           .set('isVisible', !controller.get('view.isVisible'));
             });
