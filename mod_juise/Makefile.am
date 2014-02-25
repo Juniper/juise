@@ -55,6 +55,9 @@ AM_CFLAGS = \
     -I.. \
     -I${LIGHTTPD_OBJ} \
     -I${LIGHTTPD_SRC}/src \
+    ${LIBSLAX_CFLAGS} \
+    ${LIBXSLT_CFLAGS} \
+    ${LIBXML_CFLAGS} \
     ${PCRE_CFLAGS} \
     ${MYWARNINGS}
 
@@ -74,8 +77,18 @@ AM_CFLAGS += \
  -DJUISE_DIR=\"${JUISE_DIR}\" \
  -DJUISE_SCRIPT_DIR=\"${JUISE_SCRIPT_DIR}\"
 
+noinst_HEADERS = \
+    mod_juise.h
+
 lib_LTLIBRARIES = mod_juise.la
 mod_juise_la_SOURCES = mod_juise.c
 mod_juise_la_LDFLAGS = -module -export-dynamic -avoid-version -no-undefined
 #mod_juise_la_LIBADD = liblightcomp.la
 mod_juise_la_LDFLAGS += -L${LIGHTTPD_MOD} -llightcomp
+
+LIBS = \
+    ${LIBSLAX_LIBS} \
+    ${LIBXSLT_LIBS} \
+    -lexslt \
+    ${LIBXML_LIBS} \
+    ${LIBCURL_LIBS}

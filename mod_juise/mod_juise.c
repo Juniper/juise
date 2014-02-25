@@ -943,7 +943,7 @@ mod_juise_create_env (server *srv, connection *con,
 		&& auth_realm + 1) {
 		size_t hash_len = strlen(auth_realm + 1);
 
-		auth_realm_decoded = (char *)slaxBase64Decode(auth_realm + 1, 
+		auth_realm_decoded = (char *) slaxBase64Decode(auth_realm + 1, 
 							      hash_len, &dlen);
 		if (!auth_realm_decoded) {
 		    LOGERR("s", "Failed to decode auth header");
