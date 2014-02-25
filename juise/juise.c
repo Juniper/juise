@@ -1168,8 +1168,7 @@ rpc_parse_mime_list (char *str)
 	}
 
 	if (i == (sizeof(mtypemap) / sizeof(rpc_media_type_map_t))) {
-	    fprintf(stdout, "Content-Type: " MEDIA_TYPE_APPLICATION_XML "\n\n");
-	    fflush(stdout);
+	    output_format = strdup( MEDIA_TYPE_APPLICATION_XML );
 	}
 
 	if (output_format != NULL)
@@ -1225,7 +1224,7 @@ rpc_build_data (lx_document_t *docp, lx_node_t *nodep, char *str)
     if (childp) {
 	cur = childp->xmlChildrenNode;
 	while (cur != NULL) {
-	    newp = xmlDocCopyNode(childp, docp, 1);
+	    newp = xmlDocCopyNode(cur, docp, 1);
 	    if (newp) {
 		xmlAddChild(nodep, newp);
 	    } else {
@@ -1400,7 +1399,7 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     /* Parse Accept header and set output format */
     accept_header = getenv("HTTP_ACCEPT");
 
-    if (accept_header && !output_format) {
+    if (!output_format) {
 	output_format = rpc_parse_mime_list(accept_header);
 
 	if (output_format == NULL) {
