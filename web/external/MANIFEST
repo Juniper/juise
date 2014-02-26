@@ -60,6 +60,13 @@ date: 2013-05-24
 license: MIT
 url: https://raw.github.com/emberjs/ember.js/release-builds/ember-1.0.0-rc.3.js
 
+name: ember-restless
+site: http://endlessinc.github.io/ember-restless/
+version: 0.5.0
+date: 2014-02-26
+license: MIT
+url: https://raw.github.com/endlessinc/ember-restless/v0.5.0/dist/ember-restless+extras.js
+
 name: d3
 site: https://github.com/mbostock/d3
 version: v3
