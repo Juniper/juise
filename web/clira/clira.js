@@ -779,19 +779,22 @@ jQuery(function ($) {
             buttons: {
                 Accept: function() {
                     onclick("yes");
-                    $(this).dialog("close");
+                    this.get('parentView').destroy();
                 },
                 Decline: function() {
                     onclick("no");
-                    $(this).dialog("close");
+                    this.get('parentView').destroy();
                 }
-            },
-            close: function() {
-                onclick("no");
             }
         }); 
-        view.createChildView(hostKeyView, 
-                                {message: prompt.split(/(?:\n)+/)}).append();
+
+        /*
+         * Register hostKeyView, get an instance and push it to the container
+         */
+        view.get('parentView').container.register('view:hostKey', hostKeyView);
+        var hkv = view.get('parentView').container.lookup('view:hostKey');
+        hkv.message = prompt.split(/(?:\n)+/); 
+        view.get('parentView').pushObject(hkv);
     }
 
     function promptForSecret (view, target, prompt, onclick, onclose) {
@@ -808,25 +811,31 @@ jQuery(function ($) {
             buttons: {
                 Enter: function() {
                     onclick(viewContext.get('fieldValues').password);
-                    $(this).context.enter = true;
-                    $(this).dialog("close");
+                    this.$().context.enter = true;
+                    this.get('parentView').destroy();
                 },
                 Cancel: function() {
-                    $(this).dialog("close");
+                    if (!this.$().context.enter) {
+                        onclose();
+                    }
+                    this.get('parentView').destroy();
                 }
             },
-            close: function() {
-                if (!this.$().context.enter)
-                    onclose();
-            }
         });
         var fields = [{
             name: "password",
             title: "",
             secret: true
         }];
-        view.createChildView(secretView, {fields: fields, 
-                            message: prompt.split(/(?:\n)+/)}).append();
+
+        /*
+         * Register secretView, get an instance and push it to the container
+         */
+        view.get('parentView').container.register('view:secret', secretView);
+        var sv = view.get('parentView').container.lookup('view:secret');
+        sv.fields = fields;
+        sv.message = prompt.split(/(?:\n)+/);
+        view.get('parentView').pushObject(sv);
     }
 
     function loadHttpReply (text, status, http, $this, $output) {
