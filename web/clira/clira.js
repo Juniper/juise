@@ -141,7 +141,11 @@ jQuery(function ($) {
                 content.poss = poss;            
 
                 if (content.commandNumber == undefined) {
-                    content.commandNumber = $.clira.commandCount ? ++$.clira.commandCount : 1;
+                    if ($.clira.commandCount) {
+                        content.commandNumber = ++$.clira.commandCount;
+                    else {
+                        content.commandNumber = 1;
+                    }
                 }
                 
                 Clira.__container__.lookup('controller:outputs')
