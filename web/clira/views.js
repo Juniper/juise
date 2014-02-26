@@ -52,17 +52,40 @@ JQ.Dialog = Em.View.extend(JQ.Widget, {
  * fieldValues as name:value and the same can be retrieved from 
  * viewContext.get('fieldValues')
  */
-Clira.DynFormView = JQ.Dialog.extend({
-    templateName: "dyn_form",
+Clira.DynFormView = Ember.ContainerView.extend({
     view: null,
     viewContext: null,
     width: "auto",
+    classNames: ['output-content'],
 
     // Set view and view context as globals
     didInsertElement: function() {
         this._super.apply(this, arguments);
         view = this;
         viewContext = view.get('context');
+
+        /*
+         * Iterate through buttons and create ButtonViews for the same
+         */
+        var buttons = this.get('buttons');
+        if (buttons) {
+            for (var key in buttons) {
+                var buttonView = JQ.ButtonView.extend({
+                    label: key,
+                    click: buttons[key]
+                });
+                this.pushObject(buttonView.create());
+            }
+        }
+    },
+
+    // Insert view containing form fields
+    init: function() {
+        var fieldsView = Ember.View.create({
+            templateName: 'dyn_form'
+        });
+        this.set('childViews', [fieldsView]);
+        this._super();
     },
 
     /*
@@ -244,6 +267,7 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
         if (!this.get('controller').parseErrors) {
             var contentView = Ember.View.create({
                 layoutName: "output_content_layout",
+                underlay: true,
                 templateName: this.get('controller').contentTemplate,
 
                 didInsertElement: function() {
@@ -257,7 +281,22 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
             });
             this.pushObject(contentView);
         }
-    }
+    },
+
+    /*
+     * When views are stacked in a output container, we hide the views which
+     * has underlay set to true
+     */
+    toggleChildVisibility: function() {
+        var childViews = this.get('_childViews');
+        for (var i = childViews.length - 2; i >= 0; i--) {
+            if (childViews[i].underlay) {
+                childViews[i].set('isVisible', false);
+            }
+        }
+
+        childViews[childViews.length - 1].set('isVisible', true);
+    }.observes('childViews')
 });
 
 
