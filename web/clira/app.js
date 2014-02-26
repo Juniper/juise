@@ -120,8 +120,17 @@ JQ.Widget = Em.Mixin.create({
 });
 
 jQuery(function ($) {
-    // Load command files
-    $.clira.loadCommandFiles();
+    // Load command files and display welcome screen when done
+    $.clira.loadCommandFiles().done(function() {
+        var content = {
+            command: 'Welcome',
+            completed: false,
+            commandNumber: 0,
+            context: this,
+        };
+        $.clira.executeCommand('show welcome screen', content);
+    });
+
     $.clira.prefsInit();
 
     // Icons on debug container
