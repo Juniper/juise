@@ -164,6 +164,8 @@ jQuery(function ($) {
             }
         },
         loadCommandFiles: function loadCommandFiles () {
+            var deferred = $.Deferred(),
+                promises = [];
             // Load (or reload) the set of command files, which we
             // get from our web server.
             $.ajax("/bin/list-command-files.slax")
@@ -193,15 +195,29 @@ jQuery(function ($) {
 
                     $.dbgpr("load command files success: " + data.files.length);
                     $.each(data.files, function (i, filename) {
-                        $.clira.loadFile(filename, "commandFile");
+                        var def = new $.Deferred();
+                        $.clira.loadFile(filename, "commandFile").then(
+                            function() {
+                                def.resolve();
+                            }
+                        );
+                        promises.push(def);
+                    });
+
+                    // Resolve when all the files are loaded
+                    $.when.apply($, promises).done(function() {
+                        deferred.resolve();
                     });
                 })
                 .fail(function loadCommandFilesFail (jqxhr, settings,
                                                      exception) {
                     $.dbgpr("load command files failed");
+                    deferred.reject();
                 });
+            return deferred.promise();
         },
         loadFile: function loadFile (filename, classname) {
+            var deferred = $.Deferred();
             commandFilenames.push(filename);
 
             // jQuery's getScript/ajax logic will get a script and
@@ -219,6 +235,9 @@ jQuery(function ($) {
                     ga.setAttribute("class", classname);
                     ga.async = "true";
                     ga.src = filename;
+                    ga.onload = ga.onreadystatechange = function() {
+                        deferred.resolve();
+                    };
                     var s = document.getElementById('last-script-in-header');
                     s.parentNode.insertBefore(ga, s);
                 })();
@@ -236,6 +255,7 @@ jQuery(function ($) {
                 var last = $last.get(0);
                 last.parentNode.insertBefore(tag, last);
             }
+            return deferred.promise();
         },
         onload: function onload (name, data) {
             $.dbgpr("clira: load: " + name);
