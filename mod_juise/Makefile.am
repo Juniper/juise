@@ -77,6 +77,9 @@ AM_CFLAGS += \
  -DJUISE_DIR=\"${JUISE_DIR}\" \
  -DJUISE_SCRIPT_DIR=\"${JUISE_SCRIPT_DIR}\"
 
+noinst_HEADERS = \
+    mod_juise.h
+
 lib_LTLIBRARIES = mod_juise.la
 mod_juise_la_SOURCES = mod_juise.c
 mod_juise_la_LDFLAGS = -module -export-dynamic -avoid-version -no-undefined
