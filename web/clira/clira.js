@@ -127,6 +127,27 @@ jQuery(function ($) {
                     && JSON.parse(localStorage['debug']) == false) {
                 $("#debug-container").css({ display: "none" });
             }
+        },
+
+        /*
+         * Executes given command and inserts output container into the page
+         */
+        executeCommand: function executeCommand (command, content) {
+            var parse = $.clira.parse(command);
+
+            if (parse.possibilities.length > 0) {
+                var poss = parse.possibilities[0];
+                content.contentTemplate = poss.command.templateName;
+                content.poss = poss;            
+
+                if (content.commandNumber == undefined) {
+                    content.commandNumber = $.clira.commandCount ? ++$.clira.commandCount : 1;
+                }
+                
+                Clira.__container__.lookup('controller:outputs')
+                     .unshiftObject(Clira.OutputContainerController
+                                         .create(content));
+            }
         }
     });
 
