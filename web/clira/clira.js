@@ -143,7 +143,7 @@ jQuery(function ($) {
                 if (content.commandNumber == undefined) {
                     if ($.clira.commandCount) {
                         content.commandNumber = ++$.clira.commandCount;
-                    else {
+                    } else {
                         content.commandNumber = 1;
                     }
                 }
