@@ -107,29 +107,33 @@
   </script>
 
   <script type="text/x-handlebars" data-template-name="preferences">
-    <div id="prefs-main-form" title="Preferences">
+    <div class="prefs-main-form" title="Preferences">
       <div class="setupgrid">
         <ul class="setupgrid">
-          <li><a id="prefs-devices" href="#">Set Up Devices</a></li>
-          <li><a id="prefs-groups" href="#">Set Up Groups</a></li>
+          <li><a id="prefs-devices" href="#" {{action "devicesPref" target="view"}}>Set Up Devices</a></li>
+          <li><a id="prefs-groups" href="#" {{action "groupsPref" target="view"}}>Set Up Groups</a></li>
           <li><a id="prefs-general" href="#" {{action "generalPref" target="view"}}>General Preferences</a></li>
         </ul>
       </div>
     </div>
+  </script>
 
+  <script type="text/x-handlebars" data-template-name="devices_pref">
     <div id="prefs-devices-form" title="Devices">
       <p>The devices that CLIRA can access are listed below.</p>
       <table id="prefs-devices-grid"></table>
       <div id="prefs-devices-pager"></div>
     </div>
 
+    <div id="prefs-devices-connect" title="Connection Status" style="display:none; text-align:left"></div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="groups_pref">
     <div id="prefs-groups-form" title="Groups">
       <p>Groups of devices that CLIRA can access are listed below.</p>
       <table id="prefs-groups-grid"></table>
       <div id="prefs-groups-pager"></div>
     </div>
-
-    <div id="prefs-devices-connect" title="Connection Status" style="display:none; text-align:left"></div>
   </script>
 
   <script type="text/x-handlebars" data-template-name="dyn_form">
@@ -176,6 +180,7 @@
   <script src="app.js"></script>
   <script src="models.js"></script>
   <script src="views.js"></script>
+  <script src="clira.prefs.views.js"></script>
   <script src="controllers.js" id="last-script-in-header"></script>
 </body>
 </html>

@@ -352,6 +352,7 @@ div#mru-pulldown {
     margin-top: 40px;
     position: absolute;
     width: 100%;
+    z-index: 9999;
 }
 
 div#mru-pulldown .mru-item {
@@ -469,7 +470,13 @@ div.command-number {
     float: right;
 }
 
+div#ember-view .output-content {
+    float: left;
+    position: relative;
+}
+
 div.output-content {
+    display: block;
     font-size: 12px;
     padding: 10px;
 }
@@ -681,6 +688,16 @@ img.rendered {
 div.map-small {
     width: 300px;
     height: 200px;
+}
+
+div.inline-dialog {
+    box-shadow: none;
+    margin-left: 20px;
+    position: relative;
+}
+
+.inline-dialog .ui-dialog-titlebar-close {
+    display: none;
 }
 
 div#prefs-title {
