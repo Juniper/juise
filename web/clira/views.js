@@ -215,7 +215,13 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
     insertNewline: function() {
         this.ui.close();
         this.get('targetObject').executeCommand();
-    }
+    },
+
+    // Scroll up and focus the input field when on command change
+    scrollUp: function() {
+        $("html, body").animate({ scrollTop: 0 }, 300);
+        this.$().focus();
+    }.observes('targetObject.command')
 });
 
 
