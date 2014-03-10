@@ -25,6 +25,7 @@
               <td width="16px">{{render 'pulldown'}}</td>
             </tr>
           </table>
+          <div id="recent-devices">{{render 'recentDevices'}}</div>
         </div>
         <div id="mru-pulldown">
           {{render 'mruPulldown'}}
@@ -37,6 +38,13 @@
       {{render 'outputs'}}
     </div>
     {{view Clira.PseudoView}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="recent_devices">
+    <i>Recent devices:</i>
+    {{#each ru}}
+      <a {{action "onDevice" this}}>{{this}}</a>&nbsp;
+    {{/each}}
   </script>
   
   <script type="text/x-handlebars" data-template-name="pulldown">

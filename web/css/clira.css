@@ -365,6 +365,16 @@ div#mru-pulldown .mru-item:hover {
     font-weight: 700;
 }
 
+div#recent-devices {
+    margin-top: 10px;
+}
+
+div#recent-devices a {
+    color: rgb(0, 50, 112);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
 div#input-top .logo {
     float: left;
     margin: 0px 10px 0px 10px;

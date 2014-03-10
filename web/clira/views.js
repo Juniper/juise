@@ -427,6 +427,20 @@ Clira.MessageView = Ember.View.extend({
 
 
 /*
+ * View to display the list of recently used devices
+ */
+Clira.RecentDevicesView = Ember.View.extend({
+    isVisible: false,
+
+    toggleVisibility: function() {
+        if (this.get('controller').content.length > 0) {
+            this.set('isVisible', true);
+        }
+    }.observes('controller.content.@each')
+});
+
+
+/*
  * View for clira preferences button
  */
 Clira.PrefsButtonView = Ember.View.extend({
