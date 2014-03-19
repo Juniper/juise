@@ -806,10 +806,12 @@ jQuery(function ($) {
             title: "Host key for " + target,
             buttons: {
                 Accept: function() {
+                    var onclick = this.get('parentView.onclick');
                     onclick("yes");
                     this.get('parentView').destroy();
                 },
                 Decline: function() {
+                    var onclick = this.get('parentView.onclick');
                     onclick("no");
                     this.get('parentView').destroy();
                 }
@@ -822,6 +824,7 @@ jQuery(function ($) {
         view.get('parentView').container.register('view:hostKey', hostKeyView);
         var hkv = view.get('parentView').container.lookup('view:hostKey');
         hkv.message = prompt.split(/(?:\n)+/); 
+        hkv.onclick = onclick;
         view.get('parentView').pushObject(hkv);
     }
 
@@ -838,13 +841,14 @@ jQuery(function ($) {
             title: title,
             buttons: {
                 Enter: function() {
-                    onclick(viewContext.get('fieldValues').password);
+                    var onclick = this.get('parentView.onclick');
+                    onclick(this.get('controller.fieldValues').password);
                     this.$().context.enter = true;
                     this.get('parentView').destroy();
                 },
                 Cancel: function() {
                     if (!this.$().context.enter) {
-                        onclose();
+                        this.get('parentView.onclose')();
                     }
                     this.get('parentView').destroy();
                 }
@@ -862,6 +866,8 @@ jQuery(function ($) {
         view.get('parentView').container.register('view:secret', secretView);
         var sv = view.get('parentView').container.lookup('view:secret');
         sv.fields = fields;
+        sv.onclick = onclick;
+        sv.onclose = onclose;
         sv.message = prompt.split(/(?:\n)+/);
         view.get('parentView').pushObject(sv);
     }
