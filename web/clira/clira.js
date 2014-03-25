@@ -78,57 +78,6 @@ jQuery(function ($) {
             else tgtHistory.focus();
         },
 
-        cliraInit: function cliraInit (need_history, submit) {
-            $.clira.prefsInit();
-            $.clira.decorateIcons($("#debug-container"));
-
-            if (need_history) {
-                $.clira.cmdHistory = $.mruPulldown({
-                    name: "command-history",
-                    top: $("#command-top"),
-                    clearIcon: $("#command-clear"),
-                    entryClass: "command-history-entry",
-                    click: function (me) {
-                        if (tgtHistory)
-                            tgtHistory.close();
-                    }
-                });
-
-                tgtHistory = $.mruPulldown({
-                    name: "target-history",
-                    top: $("#target-top"),
-                    clearIcon: $("#target-clear"),
-                    multiple: $("#target-history-form"),
-                    history: $("#target-history"),
-                    entryClass: "target-history-entry",
-                    focusAfter: $("#command-input"),
-                    click: function (me) {
-                        if ($.clira.cmdHistory)
-                            $.clira.cmdHistory.close();
-                    }
-                });
-            }
-
-            $("#target-input-form").submit(submit);
-            $("#command-input-form").submit(submit);
-
-            $("#input-enter").text("Enter").button({
-                text: true
-            }).click(function (e) {
-                submit(e);
-                $.clira.cmdHistory.focus();
-                $(this).blur();
-                return false;
-            });
-
-            $("#juise").button();
-
-            if (localStorage['debug'] 
-                    && JSON.parse(localStorage['debug']) == false) {
-                $("#debug-container").css({ display: "none" });
-            }
-        },
-
         /*
          * Executes given command and inserts output container into the page
          */
@@ -325,103 +274,6 @@ jQuery(function ($) {
         }
     }
 
-    function cliInit () {
-        cmdHistory = $.mruPulldown({
-            name: "command-history",
-            top: $("#command-top"),
-            clearIcon: $("#command-clear"),
-            entryClass: "command-history-entry",
-            click: function (me) {
-                if (tgtHistory)
-                    tgtHistory.close();
-            }
-        });
-
-        tgtHistory = $.mruPulldown({
-            name: "target-history",
-            top: $("#target-top"),
-            clearIcon: $("#target-clear"),
-            multiple: $("#target-history-form"),
-            history: $("#target-history"),
-            entryClass: "target-history-entry",
-            focusAfter: $("#command-input"),
-            click: function (me) {
-                if (cmdHistory)
-                    cmdHistory.close();
-            }
-        });
-
-        $("#target-input-form").submit(commandSubmit);
-        $("#command-input-form").submit(commandSubmit);
-
-        $("#input-enter").text("Enter").button({
-            text: true
-        }).click(function (e) {
-            commandSubmit(e);
-            cmdHistory.focus();
-            $(this).blur();
-            return false;
-        });
-
-        $.clira.prefsInit();
-    }
-
-    function commandSubmit (event) {
-        event.preventDefault();
-        $.dbgpr("commandSubmit:", event.type);
-
-        if (tgtHistory)
-            tgtHistory.close();
-        $.clira.cmdHistory.close();
-  
-        var command = $.clira.cmdHistory.value();
-        if (command == "") {
-            $.dbgpr("submit; skipping since command value is empty");
-            $.clira.cmdHistory.focus();
-            return false;
-        }
-
-        //
-        // Since multiple targets are allowed in the target field,
-        // we need to break the target string up into distinct values.
-        //
-        var count = 0;
-        var tset = [ ];
-        var tname = "";
-        var cname = "";
-        var value = tgtHistory.value();
-
-        $.dbgpr("commandSubmit: target [", target,
-                "] command [", command, "]");
-
-        if (value == "") {
-            $.dbgpr("submit: no target, but still working");
-            commmandWrapperAdd(undefined, command);
-
-        } else {
-            $(value.split(" ")).each(function (i, x) {
-                if (x != "") {
-                    count += 1;
-                    tset.push(x);
-                    commmandWrapperAdd(x, command);
-                    tgtHistory.markUsed(x);
-                    tname += " " + x;
-                    cname += "_" + x.replace("_", "__", "g");
-                }
-            });
-
-            tname = tname.substr(1);
-            cname = cname.substr(1);
-            if (cname && cname != "")
-                $.clira.targetListMarkUsed(tname, cname, null);
-        }
-
-        $.clira.cmdHistory.markUsed(command);
-        $.clira.commandOutputTrim(count);
-
-        return false;
-    }
-
     function parseParams (cmdline) {
         var argv = cmdline.split(" ");
         var params = { };
@@ -431,142 +283,10 @@ jQuery(function ($) {
         return params;
     }
 
-    function commmandWrapperAdd (target, command) {
-        var test;
-        var local;
-
-        $.dbgpr("commmandWrapperAdd", target, command);
-
-        var content = "<div class='output-wrapper ui-widget "
-            +     "ui-widget-content ui-corner-all'>"
-            + "<div class='output-header ui-state-default "
-            +     "ui-widget-header ui-corner-all'>"
-            + "<button class='icon-remove-section'></button>"
-            + "<button class='icon-hide-section hidden'></button>"
-            + "<button class='icon-unhide-section'></button>"
-            + "<button class='keeper icon-keeper-section'></button>";
-
-        if (target) {
-            content += "<div class='target-value rounded buttonish green'>"
-                + target
-                + "</div><div class='label'> -> </div>";
-        }
-
-        content += "<div class='command-value rounded blue'>"
-            + command
-            + "</div><div class='command-number'>"
-            + " (" + ++command_number + ")"
-            + "</div></div><div class='output-content can-hide'>"
-
-        if (command.substring(0, 10) == "test form ") {
-            test = command.substring(10);
-            if (testForms[test]) {
-                content += "<div class='ui-yform'></div>";
-            } else {
-                test = undefined;
-            }
-            content += "<div class='output-replace'></div>";
-
-        } else if (command.substring(0, 6) == "local ") {
-            local = command.substring(6);
-            content += "<div class='output-replace'>"
-                + loadingMessage;
-                + "</div>";
-
-        } else if ($.clira.prefs.live_action) {
-            content += "<div class='output-replace'>"
-                + loadingMessage;
-                + "</div>";
-
-        } else {
-            content += "<div class='output-replace'>"
-                + "test-output\nmore\nand more and more\noutput\n";
-                + "</div>";
-        }
-
-        content += "</div>";
-
-        var $newp = jQuery(content);
-        $output.prepend($newp);
-        if ($.clira.prefs.slide_speed > 0)
-            $newp.slideUp(0).slideDown($.clira.prefs.slide_speed);
-        divUnhide($newp);
-
-        if (test) {
-            var yd = $("div.ui-yform", $newp);
-            var yf = $.yform(testForms[test], yd);
-
-            yf.buildForm(function (yform, guide) {
-                hideCommandForm(yform);
-                var $out = yform.form.parents("div.output-content")
-                .find("div.output-replace");
-                $out.html(loadingMessage);
-
-                var rpc = yform.buildRpc();
-                runRpc(yform, $out, rpc, tgtHistory.value());
-            });
-            yf.focus();
-
-        } else if (local) {
-            var $out = $("div.output-replace", $newp);
-            $out.slideUp(0).slideDown($.clira.prefs.slide_speed);
-
-            var params = parseParams("script " + local);
-            var name = params["script"];
-
-            $out.load("/local/" + name, params,
-                      function (text, status, http) {
-                          loadHttpReply(text, status, http,
-                                        $(this), $out);
-                      });
-
-        } else if ($.clira.prefs.live_action) {
-            var $out = $("div.output-replace", $newp);
-            if ($.clira.prefs.muxer) {
-                $.clira.runCommand($out, target, command);
-
-                if (muxer == undefined) {
-                    openMuxer();
-                }
-
-                // Resolve our group/device
-                $.getJSON(
-                    "/clira/db.php?p=group_members",
-                    { target: target },
-                    function (json) {
-                        $.each(json.devices, function (i, name) {
-                            $.clira.runCommand($out, name, command);
-                        });
-                    }
-                ).fail(function fail (x, message, err) {
-                    // Failure means we assume it's a single target
-                    $.clira.runCommand($out, target, command);
-                });
-            }
-        }
-
-        $.clira.decorateIcons($newp);
-
-        if (target) {
-            $(".target-value", $newp).click(function () {
-                tgtHistory.close();
-                tgtHistory.select($(this).text());
-                $.clira.cmdHistory.focus();
-            });
-        }
-
-        $(".command-value", $newp).click(function () {
-            $.clira.cmdHistory.close();
-            $.clira.cmdHistory.select($(this).text());
-            $.clira.cmdHistory.focus();
-        });
-
-        return false;
-    }
-
     function openMuxer () {
-        if (muxer)
-            muxer.close();
+        if (muxer) {
+            return;
+        }
 
         muxer = $.Muxer({
             url: $.clira.prefs.mixer,
@@ -582,6 +302,30 @@ jQuery(function ($) {
             onclose: function (event) {
                 $.dbgpr("clira: WebSocket has closed");
                 muxer.failed = true;
+            },
+            onhostkey: function (view, data) {
+                var self = this;
+                promptForHostKey(view, data, function (response) {
+                    muxer.hostkey(self, response, data);
+                });
+            },
+            onpsphrase: function (view, data) {
+                var self = this;
+                promptForSecret(view, data, function (response) {
+                        muxer.psphrase(self, response, data);
+                }, function() {
+                    $.clira.makeAlert(view,
+                        "Incorrect or unspecified passphrase");
+                });
+            },
+            onpsword: function (view, data) {
+                var self = this;
+                promptForSecret(view, data, function (response) {
+                    muxer.psword(self, response, data);
+                }, function() {
+                    $.clira.makeAlert(view, 
+                        "Incorrect or unspecified password");
+                });
             }
         });
 
@@ -673,28 +417,6 @@ jQuery(function ($) {
                         onComplete(true, output);
                     }
                 },
-                onhostkey: function (data) {
-                    var self = this;
-                    promptForHostKey(view, target, data, function (response) {
-                        muxer.hostkey(self, response);
-                    });
-                },
-                onpsphrase: function (data) {
-                    var self = this;
-                    promptForSecret(view, target, data, function (response) {
-                        muxer.psphrase(self, response);
-                    }, function() {
-                        muxer.close();
-                    });
-                },
-                onpsword: function (data) {
-                    var self = this;
-                    promptForSecret(view, target, data, function (response) {
-                        muxer.psword(self, response);
-                    }, function() {
-                        muxer.close();
-                    });
-                },
                 onclose: function (event, message) {
                     $.dbgpr("muxer: rpc onclose");
                     if (full.length == 0) {
@@ -713,6 +435,29 @@ jQuery(function ($) {
                         if ($.isFunction(onComplete)) {
                             onComplete(false, output);
                         }
+                    }
+                }
+            });
+        },
+
+        runSlax: function (options) {
+            if (!muxer) {
+                openMuxer();
+            }
+
+            muxer.slax({
+                script: options.script,
+                view: options.view,
+                type: options.type,
+                args: options.args,
+                oncomplete: function (data) {
+                    if (options.success) {
+                        options.success(data);
+                    }
+                },
+                onerror: function (data) {
+                    if (options.failure) {
+                        options.failure(data)
                     }
                 }
             });
@@ -798,15 +543,17 @@ jQuery(function ($) {
         }
     });
 
-    function promptForHostKey (view, target, prompt, onclick) {
+    function promptForHostKey (view, data, onclick) {
         var hostKeyView = Clira.DynFormView.extend({
-            title: "Host key for " + target,
+            title: "Host key for " + data.target,
             buttons: {
                 Accept: function() {
+                    var onclick = this.get('parentView.onclick');
                     onclick("yes");
                     this.get('parentView').destroy();
                 },
                 Decline: function() {
+                    var onclick = this.get('parentView.onclick');
                     onclick("no");
                     this.get('parentView').destroy();
                 }
@@ -818,30 +565,24 @@ jQuery(function ($) {
          */
         view.get('parentView').container.register('view:hostKey', hostKeyView);
         var hkv = view.get('parentView').container.lookup('view:hostKey');
-        hkv.message = prompt.split(/(?:\n)+/); 
+        hkv.message = data.prompt.split(/(?:\n)+/); 
+        hkv.onclick = onclick;
         view.get('parentView').pushObject(hkv);
     }
 
-    function promptForSecret (view, target, prompt, onclick, onclose) {
-        var title = "Password: ";
-        $.ajax({
-            url: 'db.php?p=device&name=' + target,
-            success: function(result) {
-                title += result['username'] + '@' + result['hostname'];
-            },
-            async: false
-        });
+    function promptForSecret (view, data, onclick, onclose) {
         var secretView = Clira.DynFormView.extend({
-            title: title,
+            title: 'hey',
             buttons: {
                 Enter: function() {
-                    onclick(viewContext.get('fieldValues').password);
+                    var onclick = this.get('parentView.onclick');
+                    onclick(this.get('controller.fieldValues').password);
                     this.$().context.enter = true;
                     this.get('parentView').destroy();
                 },
                 Cancel: function() {
                     if (!this.$().context.enter) {
-                        onclose();
+                        this.get('parentView.onclose')();
                     }
                     this.get('parentView').destroy();
                 }
@@ -859,7 +600,11 @@ jQuery(function ($) {
         view.get('parentView').container.register('view:secret', secretView);
         var sv = view.get('parentView').container.lookup('view:secret');
         sv.fields = fields;
-        sv.message = prompt.split(/(?:\n)+/);
+        sv.onclick = onclick;
+        sv.onclose = onclose;
+        
+        var host = data.target + ' [' + data.fulltarget + ']' + ': \n\n' + data.prompt;
+        sv.message = host.split(/(?:\n)+/);
         view.get('parentView').pushObject(sv);
     }
 
@@ -947,25 +692,16 @@ jQuery(function ($) {
 
     function runRpc (yform, $output, rpc, target) {
         $.dbgpr("runrpc:", rpc);
-        if ($.clira.prefs.live_action) {
-            $output.slideUp(0).slideDown($.clira.prefs.slide_speed);
-            $output.load("/clira/clira.slax",
-                         {
-                             target: target, // target is optional
-                             rpc: rpc,       // rpc is in string form
-                             form: "false"   // don't want form in reply
-                         },
-                         function (text, status, http) {
-                             loadHttpReply(text, status, http,
-                                           $(this), $output);
-                         });
-        } else {
-            $output.text("RPC:\n" + rpc);
-        }
-    }
-
-    if (false) {
-        $.clira.cliraInit(true, commandSubmit);
-        tgtHistory.focus();
+        
+        $output.slideUp(0).slideDown($.clira.prefs.slide_speed);
+        $output.load("/clira/clira.slax", 
+            {
+                target: target, // target is optional
+                rpc: rpc,       // rpc is in string form
+                form: "false"   // don't want form in reply
+            }, function (text, status, http) {
+                loadHttpReply(text, status, http, $(this), $output);
+            }
+        );
     }
 });

@@ -116,6 +116,10 @@ typedef struct mx_request_s {
     unsigned mr_id;		/* Request ID (our ID) */
     unsigned mr_state;		/* State of this request */
     mx_muxid_t mr_muxid;	/* Muxer ID (client's ID) */
+    mx_muxid_t mr_auth_muxid;	/* Muxer Auth ID (if different) */
+    char *mr_auth_divid;	/* Client div ID to place auth prompts */
+    int mr_auth_websocketid;	/* Websocket ID to use for Authentication */
+    unsigned mr_authid;		/* Request Auth ID (if different than mr_id) */
     unsigned mr_flags;          /* Flags for this request */
     char *mr_name;		/* Request name (tag) */
     char *mr_target;		/* Target name (could be alias) */
@@ -135,11 +139,13 @@ typedef struct mx_request_s {
 } mx_request_t;
 
 /* Flags for mr_flags */
-#define MRF_NOCREATE      (1<<0)  /* Do not create a new session */
+#define MRF_NOCREATE	    (1<<0)  /* Do not create a new session */
+#define MRF_HTML	    (1<<1)  /* HTML mode */
 
 typedef struct mx_sock_s {
     mx_sock_link_t ms_link;	/* List of all open sockets */
     unsigned ms_id;		/* Socket identifier */
+    mx_boolean_t ms_auth;	/* Socket contains a AUTH MUXID */
     mx_type_t ms_type;		/* MST_* type */
     unsigned ms_sock;		/* Underlaying sock */
     unsigned ms_state;		/* Type-specific state */

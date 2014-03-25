@@ -90,6 +90,7 @@ typedef struct {
     array *cgi;
     unsigned short execute_x_only;
     unsigned short require_auth;
+    buffer *mixer;
 } mod_juise_plugin_config;
 
 typedef struct {
@@ -196,6 +197,8 @@ SETDEFAULTS_FUNC(mod_juise_set_defaults)
 	  T_CONFIG_BOOLEAN, T_CONFIG_SCOPE_CONNECTION },     /* 1 */
 	{ "juise.require-auth", NULL,
 	  T_CONFIG_BOOLEAN, T_CONFIG_SCOPE_CONNECTION },     /* 2 */
+	{ "juise.mixer", NULL,
+	 T_CONFIG_STRING, T_CONFIG_SCOPE_CONNECTION },       /* 3 */
 	{ NULL, NULL,
 	  T_CONFIG_UNSET, T_CONFIG_SCOPE_UNSET}
     };
@@ -215,10 +218,12 @@ SETDEFAULTS_FUNC(mod_juise_set_defaults)
 	s->cgi = array_init();
 	s->execute_x_only = 0;
 	s->require_auth = 0;
+	s->mixer = buffer_init();
 
 	cv[0].destination = s->cgi;
 	cv[1].destination = &s->execute_x_only;
 	cv[2].destination = &s->require_auth;
+	cv[3].destination = s->mixer;
 
 	p->config_storage[i] = s;
 
@@ -860,6 +865,7 @@ mod_juise_create_env (server *srv, connection *con,
     char *sdup = NULL, *cp;
     char *http_auth = NULL, *user = NULL, *pass = NULL;
     data_string *ds;
+    char buf[BUFSIZ];
 
 #ifndef __WIN32
     /* set up args */
@@ -886,8 +892,15 @@ mod_juise_create_env (server *srv, connection *con,
 	}
     }
 
+    if (!buffer_is_empty(p->conf.mixer)) {
+	argv[i++] = "--mixer";
+	snprintf(buf, sizeof(buf), "%s --user %s", p->conf.mixer->ptr, getlogin());
+	argv[i++] = buf;
+    }
+
     if (con->physical.path->used > 1)
 	argv[i++] = con->physical.path->ptr;
+
     argv[i] = NULL;
     argc = i;
 
@@ -1156,6 +1169,11 @@ mod_juise_create_env (server *srv, connection *con,
 	    /* for valgrind */
 	    if ((s = getenv("LD_PRELOAD")) != NULL) {
 		mod_juise_env_add(&env, CONST_STR_LEN("LD_PRELOAD"), s, strlen(s));
+	    }
+
+	    /* needed for juise/mixer interaction on lock file */
+	    if ((s = getenv("HOME")) != NULL) {
+		mod_juise_env_add(&env, CONST_STR_LEN("HOME"), s, strlen(s));
 	    }
 
 	    if ((s = getenv("LD_LIBRARY_PATH")) != NULL) {
@@ -1523,6 +1541,7 @@ mod_juise_patch_connection (server *srv, connection *con, mod_juise_plugin_data 
     PATCH(cgi);
     PATCH(execute_x_only);
     PATCH(require_auth);
+    PATCH(mixer);
 
     /* skip the first, the global context */
     for (i = 1; i < srv->config_context->used; i++) {
@@ -1546,6 +1565,9 @@ mod_juise_patch_connection (server *srv, connection *con, mod_juise_plugin_data 
 	    } else if (buffer_is_equal_string(du->key, 
 				CONST_STR_LEN("juise.require-auth"))) {
 		PATCH(require_auth);
+	    } else if (buffer_is_equal_string(du->key,
+					      CONST_STR_LEN("juise.mixer"))) {
+		PATCH(mixer);
 	    }
 	}
     }

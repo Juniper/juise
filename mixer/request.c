@@ -17,13 +17,15 @@
 #include "session.h"
 #include "channel.h"
 #include "netconf.h"
-#include "db.h"
+#include "websocket.h"
 
 static unsigned mx_request_id; /* Monotonically increasing ID number */
 static mx_request_list_t mx_request_list; /* List of outstanding requests */
 
-char mx_netconf_tag_open_rpc[] = "<rpc format=\"html\">";
+char mx_netconf_tag_open_rpc[] = "<rpc>";
 unsigned mx_netconf_tag_open_rpc_len = sizeof(mx_netconf_tag_open_rpc) - 1;
+char mx_html_format_tag[] = " format=\"html\" ";
+unsigned mx_html_format_tag_len = sizeof(mx_html_format_tag) - 1;
 char mx_netconf_tag_close_rpc[] = "</rpc>";
 unsigned  mx_netconf_tag_close_rpc_len = sizeof(mx_netconf_tag_close_rpc) - 1;
 
@@ -31,6 +33,9 @@ unsigned  mx_netconf_tag_close_rpc_len = sizeof(mx_netconf_tag_close_rpc) - 1;
  * Create a mixer request using the incoming attributes.
  *
  * target => This can be in the format: [user@]target[:port]
+ * authmuxid => The muxid to use for auth challenge/response prompts
+ * authswid => The websocket to use for auth challenge/response prompts
+ * authdivid => The unique div id used to place the challenge/response prompts
  *
  * If target is in the database with a stored host/port/credentials, we will
  * use that information as the basis of the connection.  The user and port can
@@ -70,6 +75,21 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
 	mrp->mr_hostkey = nstrdup(xml_get_attribute(attrs, "hostkey"));
 	mrp->mr_port = opt_destport;
     }
+
+    const char *auth_muxid = xml_get_attribute(attrs, "authmuxid");
+    if (auth_muxid) {
+	mrp->mr_auth_muxid = atoi(auth_muxid);
+    }
+    if (!mrp->mr_auth_muxid) {
+	mrp->mr_auth_muxid = mrp->mr_muxid;
+    }
+
+    mrp->mr_auth_divid = nstrdup(xml_get_attribute(attrs, "authdivid"));
+    
+    const char *auth_websocketid = xml_get_attribute(attrs, "authwsid");
+    if (auth_websocketid) {
+	mrp->mr_auth_websocketid = atoi(auth_websocketid);
+    }
     
     /* Assume we're seeing 'create=no' */
     if (xml_get_attribute(attrs, "create"))
@@ -94,11 +114,11 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
 
     TAILQ_INSERT_HEAD(&mx_request_list, mrp, mr_link);
 
-    mx_log("R%u request %s %lu from S%u, target %s, hostname: %s, "
-	    "port: %d, user: %s",
-	   mrp->mr_id, mrp->mr_name, mrp->mr_muxid,
+    mx_log("R%u request %s muxid %lu (auth muxid: %lu) from S%u, target %s,"
+	    " hostname: %s, port: %d, user: %s, awsid: %d",
+	   mrp->mr_id, mrp->mr_name, mrp->mr_muxid, mrp->mr_auth_muxid,
 	   mswp->msw_base.ms_id, mrp->mr_target, mrp->mr_hostname,
-	   mrp->mr_port, mrp->mr_user);
+	   mrp->mr_port, mrp->mr_user, mrp->mr_auth_websocketid);
 
     return mrp;
 
@@ -112,23 +132,27 @@ mx_request_create (mx_sock_websocket_t *mswp, mx_buffer_t *mbp, int len,
 /*
  * We need to add framing to the front and end of the RPC, but we really
  * want to put all the content into one mx_buffer_t.  So if it fits, that's
- * what we do.
+ * what we do.  Also insert format="html" attribute into the requested RPC
+ * if necessary.
  */
 static mx_buffer_t *
-mx_netconf_insert_framing (mx_buffer_t *mbp)
+mx_netconf_insert_framing (mx_buffer_t *mbp, mx_boolean_t html)
 {
     const unsigned close_len
 	= mx_netconf_tag_close_rpc_len + mx_netconf_marker_len;
     mx_buffer_t *newp = mbp;
-    int fresh = FALSE, blen, len;
+    int fresh = FALSE, blen, len, count, html_len = (html ? mx_html_format_tag_len : 0);
+    mx_boolean_t seen = FALSE;
+    char *cp, *ep;
 
-    if (mbp->mb_next != NULL)
+    if (mbp->mb_next != NULL) {
 	fresh = TRUE;
-    else if (mbp->mb_start >= mx_netconf_tag_open_rpc_len) {
-	fresh =  (mbp->mb_size - (mbp->mb_start + mbp->mb_len) < close_len);
+    } else if (mbp->mb_start >= mx_netconf_tag_open_rpc_len) {
+	fresh = (mbp->mb_size - (mbp->mb_start + mbp->mb_len) < close_len
+		+ html_len);
     } else {
-	fresh =  (mbp->mb_size - (mbp->mb_start + mbp->mb_len)
-		  < close_len + mx_netconf_tag_open_rpc_len);
+	fresh = (mbp->mb_size - (mbp->mb_start + mbp->mb_len)
+		< close_len + mx_netconf_tag_open_rpc_len + html_len);
     }
 
     if (fresh) {
@@ -136,6 +160,7 @@ mx_netconf_insert_framing (mx_buffer_t *mbp)
 	blen += mbp->mb_len;
 	blen += mx_netconf_tag_close_rpc_len;
 	blen += mx_netconf_marker_len;
+	blen += mx_html_format_tag_len;
 
 	newp = mx_buffer_create(blen);
 	if (newp == NULL)
@@ -146,7 +171,29 @@ mx_netconf_insert_framing (mx_buffer_t *mbp)
 	blen = len;
 
 	len = mbp->mb_len;
-	memcpy(newp->mb_data + blen, mbp->mb_data + mbp->mb_start, len);
+	if (html) {
+	    /*
+	     * If we're injecting our format="html" into our rpc, we need to
+	     * handle things like:
+	     *
+	     * <get-software-information/>
+	     * <get-software-information foo="bar"/>
+	     * <get-software-information>xxx</get-software-information>
+	     */
+	    for (cp = mbp->mb_data + mbp->mb_start, count = 0, 
+		    ep = mbp->mb_data + mbp->mb_len; cp < ep && *cp;
+		    cp++, count++) {
+		if ((*cp == ' ' || *cp == '/' || *cp == '>') && !seen) {
+		    seen = TRUE;
+		    memcpy(newp->mb_data + blen + count, mx_html_format_tag,
+			    mx_html_format_tag_len);
+		    blen += mx_html_format_tag_len;
+		}
+		memcpy(newp->mb_data + blen + count, cp, 1);
+	    }
+	} else {
+	    memcpy(newp->mb_data + blen, mbp->mb_data + mbp->mb_start, len);
+	}
 	blen += len;
 
 	len = mx_netconf_tag_close_rpc_len;
@@ -200,7 +247,8 @@ mx_request_rpc_send (mx_sock_t *msp, mx_buffer_t *mbp,
 
     ssize_t len;
 
-    mx_buffer_t *newp = mx_netconf_insert_framing(mbp);
+    mx_buffer_t *newp = mx_netconf_insert_framing(mbp, 
+	    mrp->mr_flags & MRF_HTML);
 
     mcp->mc_request = mrp;
     mcp->mc_state = MSS_RPC_INITIAL;
@@ -217,8 +265,8 @@ mx_request_rpc_send (mx_sock_t *msp, mx_buffer_t *mbp,
 int
 mx_request_start_rpc (mx_sock_websocket_t *mswp, mx_request_t *mrp)
 {
-    mx_log("R%u %s %lu on S%u, target '%s'",
-	   mrp->mr_id, mrp->mr_name, mrp->mr_muxid,
+    mx_log("R%u %s muxid %lu (auth muxid %lu) on S%u, target '%s'",
+	   mrp->mr_id, mrp->mr_name, mrp->mr_muxid, mrp->mr_auth_muxid,
 	   mswp->msw_base.ms_id, mrp->mr_target);
 
     mx_sock_session_t *mssp = mx_session(mrp);
@@ -241,13 +289,18 @@ mx_request_start_rpc (mx_sock_websocket_t *mswp, mx_request_t *mrp)
 }
 
 mx_request_t *
-mx_request_find (mx_muxid_t muxid)
+mx_request_find (mx_muxid_t muxid, int reqid)
 {
     mx_request_t *mrp;
 
     TAILQ_FOREACH(mrp, &mx_request_list, mr_link) {
-	if (mrp->mr_muxid == muxid)
+	if (reqid) {
+	    if (mrp->mr_id == reqid) {
+		return mrp;
+	    }
+	} else if (mrp->mr_muxid == muxid) {
 	    return mrp;
+	}
     }
 
     return NULL;

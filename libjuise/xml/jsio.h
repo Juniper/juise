@@ -26,6 +26,7 @@ typedef enum session_type_s {
     ST_NETCONF,
     ST_JUNOS_NETCONF,
     ST_SHELL,
+    ST_MIXER,
     ST_MAX,
 } session_type_t;
 
@@ -39,9 +40,20 @@ typedef struct js_skey_s {
     char jss_name[0];		/* Session name (remote host name or NULL) */
 } js_skey_t;
 
+typedef unsigned long js_mx_offset_t; /* Offset into a mixer buffer */
+
+typedef struct js_mx_buffer_s {
+    js_mx_offset_t jmb_start;	/* Offset of first data byte */
+    js_mx_offset_t jmb_len;	/* Number of bytes in use */
+    js_mx_offset_t jmb_size;	/* Number of bytes in the buffer */
+    char *jmb_leftover;		/* Leftover raw RPC data to send */
+    char jmb_data[0];
+} js_mx_buffer_t;
+
 typedef struct js_session_s {
     patnode js_node;		/* Node inside parent patricia tree */
     struct js_session_s *js_next; /* Next in linked list */
+    js_boolean_t js_ismixer;	/* Is this a mixer connection? */
     int js_pid;			/* Child pid */
     int js_stdin;		/* Child's stdin (socket) */
     int js_stdout;		/* Child's stdout (socket) */
@@ -60,10 +72,19 @@ typedef struct js_session_s {
     int js_roff;		/* Read buffer offset */
     int js_rlen;		/* Read buffer length */
     char *js_passphrase;	/* Passphrase */
+    char *js_target;		/* Target name */
+    js_mx_buffer_t *js_mx_buffer; /* Mixer receive buffer */
 
     /* NOTICE: js_key _MUST_ _BE_ _LAST_ */
     js_skey_t js_key;		/* js_session key (MUST BE LAST) */
 } js_session_t;
+
+#define MX_HEADER_VERSION_0 '0'
+#define MX_HEADER_VERSION_1 '1'
+#define MX_OP_REPLY	"reply"
+#define MX_OP_RPC	"rpc"
+#define MX_OP_COMPLETE	"complete"
+#define MX_OP_ERROR	"error"
 
 #define SESSION_NAME_DELTA	\
 	    (offsetof(struct js_session_s, js_key) \
@@ -217,12 +238,26 @@ void
 jsio_set_default_user (const char *user);
 
 void
+jsio_set_mixer (const char *mixer);
+
+void
 jsio_add_ssh_options (const char *opts);
+
+void
+jsio_set_use_mixer (const js_boolean_t use_mixer);
+
+void
+jsio_set_auth_muxer_id (char *muxerid);
+
+void
+jsio_set_auth_websocket_id (char *websocketid);
+
+void
+jsio_set_auth_div_id (char *divid);
 
 void
 jsio_init (unsigned flags);
 #define JSIO_MEMDUMP	(1<<0)	/* memdump() traffic */
-
 void
 jsio_cleanup (void);
 void

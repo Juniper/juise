@@ -27,7 +27,7 @@ jQuery(function ($) {
     var commandFiles = [ ];
 
     $.extend($.clira, {
-        debug: true,           // Have debug output use $.dbgpr()
+        debug: false,           // Have debug output use $.dbgpr()
         commands:  [ ],         // The set of commands we accept
         types: { },             // Set of builtin types
         bundles: { },           // Define a set of bundled arguments

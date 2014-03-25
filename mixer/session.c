@@ -778,7 +778,6 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
              mx_channel_count(&mssp->mss_released),
              mx_sock_bytes_outstanding(msp));
 
-#if 0
     if (mx_sock_isreadable(msp->ms_sock) && TAILQ_EMPTY(&mssp->mss_channels)
 	    && TAILQ_EMPTY(&mssp->mss_released)) {
 	/*
@@ -789,7 +788,6 @@ mx_session_poller (MX_TYPE_POLLER_ARGS)
 	mssp->mss_base.ms_state = MSS_FAILED;
 	return TRUE;
     }
-#endif
 
     TAILQ_FOREACH(mcp, &mssp->mss_channels, mc_link) {
 	for (;;) {

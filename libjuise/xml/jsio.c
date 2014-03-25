@@ -74,7 +74,12 @@ static const char fake_creds[] = "<?xml version=\"1.0\"?>\n<"
 static patroot js_session_root;
 static char *js_default_server;
 static char *js_default_user;
+static char *js_mixer;
 static session_type_t js_default_stype = ST_JUNOSCRIPT;
+static int js_auth_muxer_id;
+static int js_auth_websocket_id;
+static char *js_auth_div_id;
+static int js_muxid = 0;
 
 static unsigned jsio_flags;
 static char js_netconf_ns_attr[] = "xmlns=\"" XNM_NETCONF_NS "\"";
@@ -83,6 +88,50 @@ static char jsio_askpass_socket_path[BUFSIZ];
 static int jsio_askpass_socket;
 
 trace_file_t *trace_file;	/* Common trace file */
+
+typedef struct mx_header_s {
+    char mh_pound;              /* Leader: pound sign */
+    char mh_version[2];         /* MX_HEADER_VERSION */
+    char mh_dot1;               /* Separator: period */
+    char mh_len[8];             /* Total data length (including header) */
+    char mh_dot2;               /* Separator: period */
+    char mh_operation[8];       /* Operation name */
+    char mh_dot3;               /* Separator: period */
+    char mh_muxid[8];           /* Muxer ID */
+    char mh_dot4;               /* Separator: period */
+    char mh_trailer[];
+} mx_header_t;
+
+static unsigned long
+strntoul (const char *buf, size_t bufsiz)
+{
+    unsigned long val = 0;
+
+    for ( ; bufsiz > 0; buf++, bufsiz--) {
+	if (isdigit((int) *buf)) {
+	    val = val * 10 + (*buf - '0');
+	}
+    }
+
+    return val;
+}
+
+#define JS_MX_DEFAULT_BUFFER_SIZE	(1024 * 5)
+
+static js_mx_buffer_t *
+js_mx_buffer_create (void)
+{
+    js_mx_buffer_t *jmbp = calloc(sizeof(js_mx_buffer_t)
+	    + JS_MX_DEFAULT_BUFFER_SIZE, 1);
+    
+    if (jmbp == NULL) {
+	return NULL;
+    }
+
+    jmbp->jmb_size = JS_MX_DEFAULT_BUFFER_SIZE;
+    
+    return jmbp;
+}
 
 const char *
 jsio_session_type_name (session_type_t stype)
@@ -102,6 +151,9 @@ jsio_session_type_name (session_type_t stype)
     if (stype == ST_SHELL)
 	return "shell";
 
+    if (stype == ST_MIXER)
+	return "mixer";
+
     return NULL;
 }
 
@@ -120,6 +172,9 @@ jsio_session_type (const char *name)
     if (streq(name, "shell"))
 	return ST_SHELL;
 
+    if (streq(name, "mixer"))
+	return ST_MIXER;
+
     return ST_MAX;
 }
 
@@ -131,6 +186,36 @@ jsio_set_default_session_type (session_type_t stype)
     return old;
 }
 
+void 
+jsio_set_auth_muxer_id (char *muxerid)
+{
+    if (!muxerid) {
+	return;
+    }
+
+    js_auth_muxer_id = strtol(muxerid, NULL, 10);
+}
+
+void 
+jsio_set_auth_websocket_id (char *websocketid)
+{
+    if (!websocketid) {
+	return;
+    }
+
+    js_auth_websocket_id = strtol(websocketid, NULL, 10);
+}
+
+void 
+jsio_set_auth_div_id (char *divid)
+{
+    if (!divid) {
+	return;
+    }
+
+    js_auth_div_id = strdup(divid);
+}
+	
 static void
 jsio_trace(const char *fmt, ...)
 {
@@ -139,6 +224,73 @@ jsio_trace(const char *fmt, ...)
     va_start(vap, fmt);
     tracev(trace_file, TRACE_ALL, fmt, vap);
     va_end(vap);
+}
+
+static void
+js_mixer_header_format_int (char *buf, int blen, unsigned value)
+{
+    char *cp = buf + blen - 1;
+
+    for ( ; cp >= buf; cp--) {
+	*cp = (value % 10) + '0';
+	value /= 10;
+    }
+}
+
+static void
+js_mixer_header_format_string (char *buf, int blen, const char *value)
+{
+    int vlen = strlen(value);
+
+    if (vlen > blen) {
+	vlen = blen;
+    }
+    memcpy(buf, value, vlen);
+    if (vlen < blen) {
+	memset(buf + vlen, ' ', blen - vlen);
+    }
+}
+
+static void
+js_mixer_header_build (mx_header_t *mhp, int len, const char *operation,
+	unsigned muxid)
+{
+    mhp->mh_pound = '#';
+    mhp->mh_version[0] = MX_HEADER_VERSION_0;
+    mhp->mh_version[1] = MX_HEADER_VERSION_1;
+    mhp->mh_dot1 = mhp->mh_dot2 = mhp->mh_dot3 = mhp->mh_dot4 = '.';
+    js_mixer_header_format_int(mhp->mh_len, sizeof(mhp->mh_len), len);
+    js_mixer_header_format_string(mhp->mh_operation,
+	    sizeof(mhp->mh_operation), operation);
+    js_mixer_header_format_int(mhp->mh_muxid, sizeof(mhp->mh_muxid), muxid);
+}
+
+static int
+js_mixer_send_simple (js_session_t *jsp, const char *opname, const char *attrs,
+	const char *data)
+{
+    int dlen = data ? strlen(data) : 0;   /* length of data */
+    int hlen = sizeof(mx_header_t);       /* length of header */
+    int alen = attrs ? strlen(attrs) : 0; /* length of attrs */
+    int len = dlen + hlen + alen + 1;     /* length of all plus \n delimiter */
+    char buf[len + 1];
+    
+    jsio_trace("send mixer op '%s' with attrs: '%s', data: '%s'", 
+	    opname ?: "<null>", attrs ?: "<null>", data ?: "<null>");
+
+    mx_header_t *mhp = (mx_header_t *) buf;
+    js_mixer_header_build(mhp, len, opname, js_auth_muxer_id);
+
+    if (attrs) {
+	memcpy(buf + hlen, attrs, alen);
+    }
+
+    buf[hlen + alen] = '\n';
+    memcpy(buf + hlen + alen + 1, data, dlen + 1);
+
+    write(jsp->js_stdout, buf, len);
+
+    return TRUE;
 }
 
 static void
@@ -391,6 +543,196 @@ js_buffer_find_reset (js_session_t *jsp, char *bp, int blen)
 }
 
 /*
+ * This function assumes that the buffer is populated with at least one
+ * completely framed mixer message.  Decode the first one and bubble it back
+ * to libxml.
+ */
+static int
+js_mixer_message_parse (js_session_t *jsp, char *buf, int bufsiz)
+{
+    mx_header_t *mhp;
+    js_mx_buffer_t *jmbp = jsp->js_mx_buffer;
+    char *trailer;
+    char *cp = jmbp->jmb_data + jmbp->jmb_start;
+    char *ep = jmbp->jmb_data + jmbp->jmb_start + jmbp->jmb_len;
+
+    mhp = (mx_header_t *) cp;
+
+    if (mhp->mh_pound != '#' || mhp->mh_version[0] != MX_HEADER_VERSION_0
+	    || mhp->mh_version[1] != MX_HEADER_VERSION_1
+	    || mhp->mh_dot1 != '.' || mhp->mh_dot2 != '.'
+	    || mhp->mh_dot3 != '.' || mhp->mh_dot4 != '.') {
+	jsio_trace("mixer parse request fails (%c)", *cp);
+	goto fatal;
+    }
+
+    unsigned long len = strntoul(mhp->mh_len, sizeof(mhp->mh_len));
+    unsigned long muxid = strntoul(mhp->mh_muxid, sizeof(mhp->mh_muxid));
+    char *operation = mhp->mh_operation;
+    for (cp = operation + sizeof(mhp->mh_operation) - 1;
+	    cp >= operation; cp--) {
+	if (*cp != ' ') {
+	    break;
+	}
+    }
+    *++cp = '\0';
+
+    if (jmbp->jmb_len < len) {
+	goto fatal;
+    }
+
+    trailer = cp = mhp->mh_trailer;
+    for (; cp < ep; cp++) {
+	if (*cp == '\n') {
+	    break;
+	}
+    }
+    if (cp >= ep) {
+	goto fatal;
+    }
+    *cp++ = '\0';		/* Skip over '\n' */
+
+    /*
+     * Mark the header data as consumed.  The rest of the payload
+     * may be used during the request.
+     */
+    int delta = cp - (jmbp->jmb_data + jmbp->jmb_start);
+    jmbp->jmb_start += delta; 
+    jmbp->jmb_len -= delta;
+    len -= delta;
+
+    size_t sent_size = 0;
+    if (len > (unsigned long)bufsiz) {
+	char *np = strndup(jmbp->jmb_data + jmbp->jmb_start + bufsiz,
+		len - bufsiz);
+
+	/*
+	 * We have more raw RPC data than we can send back right now.  Put it
+	 * in leftovers and move the buffer pointer to the beginning of the
+	 * first header.
+	 */
+	strncpy(buf, jmbp->jmb_data + jmbp->jmb_start, bufsiz);
+	jmbp->jmb_leftover = np;
+	jmbp->jmb_start += len;
+	jmbp->jmb_len -= len;
+	sent_size = bufsiz;
+    } else {
+	strncpy(buf, jmbp->jmb_data + jmbp->jmb_start, len);
+	sent_size = len;
+    
+	jmbp->jmb_start += sent_size;
+	jmbp->jmb_len -= sent_size;
+    }
+
+    if (jmbp->jmb_len == 0) {
+	jmbp->jmb_start = 0;
+    }
+    
+    jsio_trace("mixer received op: '%s', data: '%s', muxid: %lu",
+	    operation, buf, muxid);
+
+    if (streq(operation, MX_OP_COMPLETE)) {
+	jsp->js_state = JSS_CLOSE;
+    } else if (streq(operation, MX_OP_ERROR)) {
+	jsp->js_state = JSS_CLOSE;
+	return -1;
+    }
+
+    return sent_size;
+
+fatal:
+    jsio_trace("fatal error parsing mixer reply");
+    jmbp->jmb_start = jmbp->jmb_len = 0;
+
+    return -1;
+}
+
+/*
+ * The data from mixer is framed using our own rolled framing protocol.  We
+ * need to read a single message from mixer, de-framize it, and then pass it
+ * into the libxml buffer.  We don't need to mess with authentication because
+ * mixer handles that for us - we already have a raw netconf connection at
+ * this point.
+ */
+static int
+js_mixer_read (void *context, char *buf, int bufsiz)
+{
+    js_session_t *jsp = context;
+    js_mx_buffer_t *jmbp = jsp->js_mx_buffer;
+    int size_to_read = jmbp->jmb_size - (jmbp->jmb_start + jmbp->jmb_len);
+    mx_header_t *mhp = (mx_header_t *)(jmbp->jmb_data + jmbp->jmb_start);
+    js_boolean_t need_more = FALSE;
+
+    /*
+     * If we have leftover RPC data to send back to libxml, do that before we
+     * continue reading/parsing.
+     */
+    if (jmbp->jmb_leftover) {
+	size_t leftover_size = 0;
+	if (strlen(jmbp->jmb_leftover) > (unsigned long)bufsiz) {
+	    char *np = strdup(jmbp->jmb_leftover + bufsiz);
+
+	    /*
+	     * Still too big to send in one block to libxml, ugh.
+	     */
+	    strncpy(buf, jmbp->jmb_leftover, bufsiz);
+	    free(jmbp->jmb_leftover);
+	    jmbp->jmb_leftover = np;
+	    leftover_size = bufsiz;
+	} else {
+	    leftover_size = strlen(jmbp->jmb_leftover);
+	    strncpy(buf, jmbp->jmb_leftover, leftover_size);
+	    free(jmbp->jmb_leftover);
+	    jmbp->jmb_leftover = NULL;
+	}
+	return leftover_size;
+    }
+
+    /*
+     * If we have an incomplete block of framed mixer data in our buffer, or
+     * if we have no mixer data, read some more.
+     */
+    if (jmbp->jmb_len == 0) {
+	need_more = TRUE;
+    } else {
+	if (jmbp->jmb_len < sizeof(*mhp)) {
+	    need_more = TRUE;
+	} else if (mhp->mh_pound != '#' || mhp->mh_version[0] != MX_HEADER_VERSION_0
+		|| mhp->mh_version[1] != MX_HEADER_VERSION_1
+		|| mhp->mh_dot1 != '.' || mhp->mh_dot2 != '.'
+		|| mhp->mh_dot3 != '.' || mhp->mh_dot4 != '.') {
+	    jsio_trace("mixer parse request failed");
+	    return -1;
+	}
+
+	unsigned long len = strntoul(mhp->mh_len, sizeof(mhp->mh_len));
+
+	if (jmbp->jmb_len < len) {
+	    need_more = TRUE;
+	}
+    }
+
+    if (need_more) {
+	/*
+	 * Read some more data from mixer
+	 */
+	int recvlen = recv(jsp->js_stdin, jmbp->jmb_data + jmbp->jmb_start,
+		size_to_read, 0);
+	if (recvlen < 0) {
+	    jsio_trace("reading from mixer failed");
+	    return -1;
+	} else if (recvlen == 0) {
+	    jsio_trace("unexpected disconnect from mixer");
+	    return 0;
+	}
+    
+	jmbp->jmb_len += recvlen;
+    }
+
+    return js_mixer_message_parse(jsp, buf, bufsiz);
+}
+
+/*
  * Read the data from the server into buffer. Takes care of emitting 
  * credentials in the begining and xml trailer (</junoscript>) in the end.
  */
@@ -567,8 +909,13 @@ js_buffer_create (js_session_t *jsp, xmlCharEncoding enc)
     ret = xmlAllocParserInputBuffer(enc);
     if (ret != NULL) {
         ret->context = (void *) jsp;
-        ret->readcallback = js_buffer_read;
-        ret->closecallback = js_buffer_close;
+	if (jsp->js_key.jss_type == ST_MIXER) {
+	    jsp->js_mx_buffer = js_mx_buffer_create();
+	    ret->readcallback = js_mixer_read;
+	} else {
+	    ret->readcallback = js_buffer_read;
+	}
+	ret->closecallback = js_buffer_close;
     }
 
     return ret;
@@ -593,7 +940,6 @@ js_document_read (xmlParserCtxtPtr ctxt, js_session_t *jsp,
     input = js_buffer_create(jsp, XML_CHAR_ENCODING_NONE);
     if (input == NULL)
         return NULL;
-    input->closecallback = NULL;
 
     stream = xmlNewIOInputStream(ctxt, input, XML_CHAR_ENCODING_NONE);
     if (stream == NULL) {
@@ -623,6 +969,10 @@ js_document_read (xmlParserCtxtPtr ctxt, js_session_t *jsp,
     if (docp && !ctxt->wellFormed) {
 	xmlFreeDoc(docp);
         docp = NULL;
+    }
+
+    if (jsp->js_mx_buffer) {
+	free(jsp->js_mx_buffer);
     }
 
     return docp;
@@ -824,6 +1174,7 @@ js_session_create_internal (const char *host_name, int pid, int in, int out,
     jsp->js_msgid = 0;
     jsp->js_hello = NULL;
     jsp->js_isjunos = FALSE;
+    jsp->js_target = strdup(name);
 
     jsp->js_key.jss_type = stype;
     memcpy(jsp->js_key.jss_name, name, namelen);
@@ -1148,6 +1499,7 @@ js_session_terminate (js_session_t *jsp)
     if (jsp->js_hello)
 	xmlFreeNode(jsp->js_hello);
 
+    free(jsp->js_target);
     free(jsp->js_creds);
     free(jsp);
 }
@@ -1176,6 +1528,8 @@ static int
 js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 {
     FILE *fp = jsp->js_fpout;
+    int is_mixer = (jsp->js_key.jss_type == ST_MIXER);
+    char buf[BUFSIZ], rpc[BUFSIZ];
 
     jsio_trace("rpc name: %s", rpc_name);
 
@@ -1210,12 +1564,23 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 	fprintf(fp, "%s", rpc_name); 
         break;
 
+    case ST_MIXER:
+	snprintf(buf, sizeof(buf), "target=\"%s\" "
+		"authmuxid=\"%d\" authwsid=\"%d\" authdivid=\"%s\"",
+		jsp->js_target, js_auth_muxer_id, js_auth_websocket_id,
+		js_auth_div_id);
+	snprintf(rpc, sizeof(rpc), "<%s/>", rpc_name);
+	js_mixer_send_simple(jsp, MX_OP_RPC, buf, rpc);
+	break;
+
     case ST_DEFAULT:		/* Avoid compiler errors */
     case ST_MAX:
 	break;
     }
 
-    fflush(fp);
+    if (!is_mixer) {
+	fflush(fp);
+    }
 
     return 0;
 }
@@ -1227,10 +1592,22 @@ static int
 js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 {
     FILE *fp = jsp->js_fpout;
+    lx_output_t *handle = NULL;
+    char buf[BUFSIZ];
+    int is_mixer = (jsp->js_key.jss_type == ST_MIXER);
 
-    lx_output_t *handle = lx_output_open_fd(fileno(fp));
+    /*
+     * If we're a mixer instance, we need to dump to a string so we can pass
+     * it to our mixer message functions.  Otherwise dump the raw XML document
+     * directly to the socket
+     */
+    if (is_mixer) {
+	handle = lx_output_open_buffer();
+    } else  {
+	handle = lx_output_open_fd(fileno(fp));
+    }
     if (handle == NULL) {
-	jsio_trace("jsio: open fd failed");
+	jsio_trace("jsio: open buffer/fd failed");
 	return -1;
     }
 
@@ -1252,6 +1629,7 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 			++jsp->js_msgid); 
 		break;
 
+	case ST_MIXER:
 	case ST_SHELL:		        /* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
@@ -1263,9 +1641,14 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
      * We must flush before calling lx_output_node, since it's not
      * using our FILE pointer
      */
-    fflush(fp);
+    if (!is_mixer) {
+	fflush(fp);
+    }
 
-    /* Write the rpc data to the junoscript server */
+    /* 
+     * Write the rpc data to the junoscript server (or dump to buffer if
+     * mixer)
+     */
     lx_output_node(handle, rpc_node);
 
     if (!is_rpc) {
@@ -1278,7 +1661,15 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 	case ST_JUNOS_NETCONF:
 	    fprintf(fp, "</rpc>\n");
 	    break;
-
+	
+	case ST_MIXER:
+	    snprintf(buf, sizeof(buf), "target=\"%s\" "
+		    "authmuxid=\"%d\" authwsid=\"%d\" authdivid=\"%s\"",
+		    jsp->js_target, js_auth_muxer_id, js_auth_websocket_id,
+		    js_auth_div_id);
+	    js_mixer_send_simple(jsp, MX_OP_RPC, buf,
+		    lx_output_buffer(handle));
+	    break;
 	case ST_SHELL:		        /* Avoid compiler errors */
 	case ST_DEFAULT:		/* Avoid compiler errors */
 	case ST_MAX:
@@ -1286,10 +1677,14 @@ js_rpc_send (js_session_t *jsp, lx_node_t *rpc_node)
 	}
     }
 
-    fputs(xml_parser_reset, fp);
-    fflush(fp);
+    if (!is_mixer) {
+	fputs(xml_parser_reset, fp);
+	fflush(fp);
+    }
 
     lx_output_close(handle);
+    lx_output_cleanup(handle);
+
     return 0;
 }
 
@@ -1334,9 +1729,21 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
     if (trace_flag_is_set(trace_file, CS_TRC_RPC))
 	lx_trace_node(nop, "results of rpc");
 
-    if (!streq(xmlNodeName(nop), XMLRPC_APINAME)) {
-	jsio_trace("jsio: could not find api tag");
-	goto fail;
+    /*
+     * If this is a mixer connection, our top level tag will be <rpc-reply>,
+     * if it is a non-mixer connection, it will be <junoscript>
+     */
+    if (jsp->js_key.jss_type == ST_MIXER) {
+	if (!streq(xmlNodeName(nop), XMLRPC_REPLY)) {
+	    jsio_trace("jsio: could not find rpc-reply tag");
+	    goto fail;
+	}
+    } else {
+	if (!streq(xmlNodeName(nop), XMLRPC_APINAME)) {
+	    jsio_trace("jsio: could not find api tag");
+	    goto fail;
+	}
+	nop = lx_node_children(nop);
     }
 
     /*
@@ -1347,7 +1754,7 @@ js_rpc_get_reply (xmlXPathParserContext *ctxt, js_session_t *jsp)
     xmlDocPtr container = xsltCreateRVT(tctxt);
     xsltRegisterLocalRVT(tctxt, container);
 
-    for (nop = lx_node_children(nop); nop; nop = lx_node_next(nop)) {
+    for (; nop; nop = lx_node_next(nop)) {
 	if (streq(xmlNodeName(nop), XMLRPC_REPLY)) {
 	    lx_node_t *cop, *newp;
 	    lx_nodeset_t *setp = xmlXPathNodeSetCreate(NULL);
@@ -1440,6 +1847,19 @@ jsio_set_default_user (const char *user)
 	free(js_default_user);
 
     js_default_user = user ? strdup(user) : NULL;
+}
+
+void
+jsio_set_mixer (const char *mixer)
+{
+    if (js_mixer)
+	free(js_mixer);
+
+    if (mixer) {
+	jsio_set_default_session_type(ST_MIXER);
+    }
+
+    js_mixer = mixer ? strdup(mixer) : NULL;
 }
 
 #define JSIO_SSH_OPTIONS_MAX 16
@@ -1624,6 +2044,10 @@ js_session_open (js_session_opts_t *jsop, int flags)
     if (flags & JSF_JUNOS_NETCONF)
 	jsop->jso_stype = ST_JUNOS_NETCONF;
 
+    if (js_mixer) {
+	jsop->jso_stype = ST_MIXER;
+    }
+
     if (jsop->jso_server == NULL || *jsop->jso_server == '\0') {
 	jsop->jso_server = js_default_server;
 	if (jsop->jso_server == NULL || *jsop->jso_server == '\0')
@@ -1641,64 +2065,114 @@ js_session_open (js_session_opts_t *jsop, int flags)
     if (jsp)
 	return jsp;
 
-    argv[argc++] = ALLOCADUP(PATH_SSH);
-    argv[argc++] = ALLOCADUP("-aqTx");
-    argv[argc++] = ALLOCADUP("-oTCPKeepAlive=yes");
-
-    if (jsop->jso_timeout) {
-	timeout_str = strdupf("-oServerAliveInterval=%u", jsop->jso_timeout);
-	argv[argc++] = timeout_str;
-    }
-
-    if (jsop->jso_connect_timeout) {
-	conn_timeout_str = strdupf("-oConnectTimeout=%u", jsop->jso_connect_timeout);
-	argv[argc++] = conn_timeout_str;
-    }
-
-    for (i = 0; i < jsio_ssh_options_count; i++)
-	argv[argc++] = jsio_ssh_options[i];
-
-    if (jsop->jso_port) {
-	port_str = strdupf("-p%u", jsop->jso_port);
-	argv[argc++] = port_str;
-    }
-
     /*
-     * If username is passed use that username
+     * If we are using a mixer connection, we need to fork a mixer binary to
+     * handle this, rather than an SSH binary.  Mixer speaks its own framing
+     * language which we have to intercept and handle before we pass the data
+     * back to the normal routines.
      */
-    if (jsop->jso_username) {
-	argv[argc++] = ALLOCADUP("-l");
-	argv[argc++] = ALLOCADUP(jsop->jso_username);
-    } else {
+    if (js_mixer) {
 	/*
-	 * When username is not passed, ssh takes it from
-	 * getlogin().  Not always login name will be the name of
-	 * the user executing the script. So, instead of relying
-	 * on that get the username from auth info and pass it to
-	 * ssh.
+	 * js_mixer likely is in the format   
+	 * "<mixer binary> --user <username>" or something.  We need to parse
+	 * this out to a valid argv array
 	 */
-	const char *logname = getlogin();
+	static char whitespace[] = " \t\n\r";
+	const char *cp = js_mixer, *sp, *ep = js_mixer + strlen(js_mixer);
+	char buf[BUFSIZ], *bp = buf;
+	int bufsiz = sizeof(buf);
+	char *ap;
 
-	if (logname) {
-	    argv[argc++] = ALLOCADUP("-l");
-	    argv[argc++] = ALLOCADUP(logname);
+	for (; cp < ep;) {
+	    cp += strspn(cp, whitespace);
+	    if (*cp == '\0') {
+		break;
+	    }
+
+	    for (ap = bp, sp = cp; cp < ep; cp++) {
+		if (ap - bp > bufsiz) {
+		    char *np = alloca(bufsiz * 2);
+		    memcpy(np, bp, bufsiz);
+		    ap = np + (ap - bp);
+		    bp = np;
+		    bufsiz = bufsiz * 2;
+		}
+
+		if (*cp == '\\') {
+		    *ap++ = *++cp;
+		    continue;
+		}
+
+		if (index(whitespace, *cp) != NULL) {
+		    break;
+		}
+
+		*ap++ = *cp;
+	    }
+
+	    *ap = '\0';
+	    argv[argc++] = strdup(bp);
 	}
-    }
-
-    argv[argc++] = ALLOCADUP(jsop->jso_server);
-
-    if (jsop->jso_stype == ST_NETCONF) {
-	argv[argc++] = ALLOCADUP("-s");
-	argv[argc++] = ALLOCADUP("netconf");
-    } else if (jsop->jso_stype == ST_JUNOS_NETCONF) {
-	argv[argc++] = ALLOCADUP("xml-mode");
-	argv[argc++] = ALLOCADUP("netconf");
-	argv[argc++] = ALLOCADUP("need-trailer");
-    } else if (jsop->jso_stype == ST_SHELL) {
-        /* shell requires no options */
     } else {
-	argv[argc++] = ALLOCADUP("xml-mode");
-	argv[argc++] = ALLOCADUP("need-trailer");
+	argv[argc++] = ALLOCADUP(PATH_SSH);
+	argv[argc++] = ALLOCADUP("-aqTx");
+	argv[argc++] = ALLOCADUP("-oTCPKeepAlive=yes");
+
+	if (jsop->jso_timeout) {
+	    timeout_str = strdupf("-oServerAliveInterval=%u", jsop->jso_timeout);
+	    argv[argc++] = timeout_str;
+	}
+
+	if (jsop->jso_connect_timeout) {
+	    conn_timeout_str = strdupf("-oConnectTimeout=%u", jsop->jso_connect_timeout);
+	    argv[argc++] = conn_timeout_str;
+	}
+
+	for (i = 0; i < jsio_ssh_options_count; i++)
+	    argv[argc++] = jsio_ssh_options[i];
+
+	if (jsop->jso_port) {
+	    port_str = strdupf("-p%u", jsop->jso_port);
+	    argv[argc++] = port_str;
+	}
+
+	/*
+	 * If username is passed use that username
+	 */
+	if (jsop->jso_username) {
+	    argv[argc++] = ALLOCADUP("-l");
+	    argv[argc++] = ALLOCADUP(jsop->jso_username);
+	} else {
+	    /*
+	     * When username is not passed, ssh takes it from
+	     * getlogin().  Not always login name will be the name of
+	     * the user executing the script. So, instead of relying
+	     * on that get the username from auth info and pass it to
+	     * ssh.
+	     */
+	    const char *logname = getlogin();
+
+	    if (logname) {
+		argv[argc++] = ALLOCADUP("-l");
+		argv[argc++] = ALLOCADUP(logname);
+	    }
+	}
+
+	argv[argc++] = ALLOCADUP(jsop->jso_server);
+
+	if (jsop->jso_stype == ST_NETCONF) {
+	    argv[argc++] = ALLOCADUP("-s");
+	    argv[argc++] = ALLOCADUP("netconf");
+	} else if (jsop->jso_stype == ST_JUNOS_NETCONF) {
+	    argv[argc++] = ALLOCADUP("xml-mode");
+	    argv[argc++] = ALLOCADUP("netconf");
+	    argv[argc++] = ALLOCADUP("need-trailer");
+	} else if (jsop->jso_stype == ST_SHELL) {
+	    /* shell requires no options */
+	} else {
+	    argv[argc++] = ALLOCADUP("xml-mode");
+	    argv[argc++] = ALLOCADUP("need-trailer");
+	}
     }
 
     argv[argc] = NULL;		/* Terminate the argument list */
@@ -1723,6 +2197,12 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	    js_session_terminate(jsp);
 	    return NULL;
 	}
+    } else if (jsop->jso_stype == ST_MIXER) {
+	/*
+	 * This is a mixer connection - we don't actually attempt to connect
+	 * to the device until we issue an RPC.  Any netconf handshaking is
+	 * done by mixer.  Nothing to do at this point - session is open.
+	 */
     } else {
 	if (js_session_init_netconf(jsp)) {
 	    js_session_terminate(jsp);

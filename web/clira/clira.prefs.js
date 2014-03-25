@@ -74,13 +74,6 @@ jQuery(function ($) {
             change: prefsSwitchTheme
         },
         {
-            name: "live_action",
-            def: true,
-            type: "boolean",
-            label: "Live",
-            title: "Interact with real devices"
-        },
-        {
             name: "mixer",
             def: "ws://127.0.0.1:3000/mixer",
             type: "string",
