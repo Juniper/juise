@@ -391,8 +391,6 @@ jQuery(function ($) {
     }
 
     function muxerSimpleOp (muxer, options, answer, attrs, op, extra) {
-        console.log("muxerSimpleOp:");
-        console.log(extra);
         if (extra && extra.reqid) {
             attrs += " reqid=\"" + extra.reqid + "\"";
         }
