@@ -66,6 +66,7 @@ jQuery(function($) {
                                                 xpath.hide();
                                                 $(this).text("show xpath");
                                             }
+                                            return false;
                                         });
                                         return div;
                                     }

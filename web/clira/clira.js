@@ -413,6 +413,9 @@ jQuery(function ($) {
                         view.get('controller').set('output', full.join(""));
                     }
 
+                    // Add this device to list of recently used devices
+                    view.get('controller').get('controllers.recentDevices')
+                                          .addDevice(target);
                     if ($.isFunction(onComplete)) {
                         onComplete(true, output);
                     }

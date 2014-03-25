@@ -215,7 +215,13 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
     insertNewline: function() {
         this.ui.close();
         this.get('targetObject').executeCommand();
-    }
+    },
+
+    // Scroll up and focus the input field when on command change
+    scrollUp: function() {
+        $("html, body").animate({ scrollTop: 0 }, 300);
+        this.$().focus();
+    }.observes('targetObject.command')
 });
 
 
@@ -417,6 +423,20 @@ Clira.MessageView = Ember.View.extend({
     uiType: function() {
         return "ui-state-" + this.get('content').type;
     }.property('content.type')
+});
+
+
+/*
+ * View to display the list of recently used devices
+ */
+Clira.RecentDevicesView = Ember.View.extend({
+    isVisible: false,
+
+    toggleVisibility: function() {
+        if (this.get('controller').content.length > 0) {
+            this.set('isVisible', true);
+        }
+    }.observes('controller.content.@each')
 });
 
 
