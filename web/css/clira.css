@@ -740,17 +740,36 @@ div.dyn-form {
     width: auto;
 }
 
+div.dyn-form-wrapper {
+    width: 400px;
+    border: 1px solid #ccc;
+}
+
+div.dyn-form-title {
+    background-color: #1478dc;
+    padding: 10px;
+    color: white;
+    font-size: 1.1em;
+}
+
 div.dyn-form-item {
     text-align: center;
+    padding: 2px 10px 2px 10px;
 }
 
 div.dyn-form-message {
     text-align: left;
+    padding: 5px 10px 5px 10px;
 }
 
 div.dyn-form-item label {
     padding-left: 10px;
     padding-right: 5px;
+}
+
+div.dyn-form-buttons {
+    text-align: center;
+    padding: 5px 10px 10px 10px;
 }
 
 div.dyn-form-item label, 

@@ -301,7 +301,9 @@ jQuery(function ($) {
             },
             onclose: function (event) {
                 $.dbgpr("clira: WebSocket has closed");
-                muxer.failed = true;
+                // This muxer has been closed.  Completely nuke it since we
+                // only hold one muxer in memory per browser instance.
+                muxer = undefined;
             },
             onhostkey: function (view, data) {
                 var self = this;
@@ -549,18 +551,21 @@ jQuery(function ($) {
     function promptForHostKey (view, data, onclick) {
         var hostKeyView = Clira.DynFormView.extend({
             title: "Host key for " + data.target,
-            buttons: {
-                Accept: function() {
-                    var onclick = this.get('parentView.onclick');
+            buttons: [{
+                caption: "Accept",
+                onclick: function() {
+                    var onclick = this.get('parentView.parentView.onclick');
                     onclick("yes");
-                    this.get('parentView').destroy();
-                },
-                Decline: function() {
-                    var onclick = this.get('parentView.onclick');
-                    onclick("no");
-                    this.get('parentView').destroy();
+                    this.get('parentView.parentView').destroy();
                 }
-            }
+            },{
+                caption: "Decline",
+                onclick: function() {
+                    var onclick = this.get('parentView.parentView.onclick');
+                    onclick("no");
+                    this.get('parentView.parentView').destroy();
+                }
+            }]
         }); 
 
         /*
@@ -575,21 +580,24 @@ jQuery(function ($) {
 
     function promptForSecret (view, data, onclick, onclose) {
         var secretView = Clira.DynFormView.extend({
-            title: 'hey',
-            buttons: {
-                Enter: function() {
-                    var onclick = this.get('parentView.onclick');
+            title: data.target,
+            buttons: [{
+                caption: "Enter",
+                onclick: function() {
+                    var onclick = this.get('parentView.parentView.onclick');
                     onclick(this.get('controller.fieldValues').password);
                     this.$().context.enter = true;
-                    this.get('parentView').destroy();
-                },
-                Cancel: function() {
-                    if (!this.$().context.enter) {
-                        this.get('parentView.onclose')();
-                    }
-                    this.get('parentView').destroy();
+                    this.get('parentView.parentView').destroy();
                 }
-            },
+            },{
+                caption: "Cancel",
+                onclick: function() {
+                    if (!this.$().context.enter) {
+                        this.get('parentView.parentView.onclose')();
+                    }
+                    this.get('parentView.parentView').destroy();
+                }
+            }]
         });
         var fields = [{
             name: "password",
@@ -605,9 +613,7 @@ jQuery(function ($) {
         sv.fields = fields;
         sv.onclick = onclick;
         sv.onclose = onclose;
-        
-        var host = data.target + ' [' + data.fulltarget + ']' + ': \n\n' + data.prompt;
-        sv.message = host.split(/(?:\n)+/);
+        sv.message = data.prompt.split(/(?:\n)+/);
         view.get('parentView').pushObject(sv);
     }
 

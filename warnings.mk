@@ -40,5 +40,3 @@ HIGHER_WARNINGS?= ${HIGH_WARNINGS} \
     -Wstrict-aliasing
 
 WARNINGS += $(if ${JUISE_WARNINGS}, ${HIGH_WARNINGS}, ${LOW_WARNINGS})
-
-WARNINGS += -fno-inline-functions-called-once

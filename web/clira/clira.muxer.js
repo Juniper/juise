@@ -163,6 +163,7 @@ jQuery(function ($) {
         muxer.ws = undefined;
         muxer.opening = muxer.opened = false;
         muxer.muxMap = [ ];
+        muxer.authmuxid = muxer.authwebsocketid = 0;
     }
 
     function muxerClose () {
@@ -279,7 +280,7 @@ jQuery(function ($) {
             payload = "<command>" + options.command + "</command>";
         if (options.create == "no")
             attrs += " create=\"no\"";
-        if (this.authmuxid !== undefined) {
+        if (muxer.authmuxid) {
             attrs += " authmuxid=\"" + this.authmuxid + "\"";
         }
         if (options.div) {

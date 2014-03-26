@@ -10,11 +10,13 @@ version 1.1;
  * LICENSE.
  */
 
-ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
 ns os extension = "http://xml.libslax.org/os";
 ns xutil extension = "http://xml.libslax.org/xutil";
 ns set extension = "http://exslt.org/sets";
 ns math extension = "http://exslt.org/math";
+
+param $target;
 
 output-method text;
 
@@ -22,14 +24,16 @@ var $json-opts = {
     <pretty>;
 }
 
-param $input = "../data/ospf.xml";
 match / {
     <cgi Content-type="application/json"> {
-	var $doc = document($input);
+        var $conn = jcs:open($target);
+        var $rpc = <get-ospf-database-information> {
+            <extensive>;
+        }
+        var $doc = jcs:execute($conn, $rpc);
+
 	var $data := {
-	    for-each ($doc) {
-		call first-pass();
-	    }
+            call first-pass($doc);
 	}
 	var $two := {
 	    call second-pass($data);
@@ -177,10 +181,9 @@ template second-pass ($data) {
     }
 }
 
-template first-pass () {
-    var $doc = .;
+template first-pass ($doc) {
     <areas type="array"> {
-	for-each (ospf-database-information/ospf-area-header) {
+	for-each ($doc/ospf-area-header) {
 	    var $next = following-sibling::ospf-area-header[1];
 	    var $stopx = {
 		if ($next) {
@@ -300,7 +303,7 @@ template summaries ($doc, $area, $db-set) {
     trace "  summaries: " _ count($db-set);
     for-each ($db-set) {
 	var $lsa-id = lsa-id;
-	var $metrics = $doc/ospf-database-information
+	var $metrics = $doc
 	    /ospf-database[lsa-type == "Summary" && lsa-id == $lsa-id]
 	    /ospf-summary-lsa/ospf-summary-lsa-topology/ospf-topology-metric;
 	var $min = math:min($metrics);

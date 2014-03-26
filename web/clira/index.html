@@ -145,27 +145,41 @@
   </script>
 
   <script type="text/x-handlebars" data-template-name="dyn_form">
-    <div class="dyn-form-message">
-      {{#each message}}
-        {{.}}<br>
-      {{/each}}
-    </div>
-    {{#each field in fields}}
-      <div class="dyn-form-item">
-        <label>{{field.title}}</label>
-        {{#if field.boolean}}
-          <div class="dyn-form-boolean">
-            {{view Clira.DynCheckbox fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value"}}
-          </div>
-        {{else}}
-          {{#if field.secret}}
-            {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password"}}
-          {{else}}
-            {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value"}}
-          {{/if}}
-        {{/if}}
+    <div class="dyn-form-wrapper">
+      {{#if title}}
+        <div class="dyn-form-title">
+          {{title}}
+        </div>
+      {{/if}}
+      <div class="dyn-form-message">
+        {{#each message}}
+          {{.}}<br>
+        {{/each}}
       </div>
-    {{/each}}
+      {{#each field in fields}}
+        <div class="dyn-form-item">
+          <label>{{field.title}}</label>
+          {{#if field.boolean}}
+            <div class="dyn-form-boolean">
+              {{view Clira.DynCheckbox fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value"}}
+            </div>
+          {{else}}
+            {{#if field.secret}}
+              {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password"}}
+            {{else}}
+              {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value"}}
+            {{/if}}
+          {{/if}}
+        </div>
+      {{/each}}
+      {{#if buttons}}
+        <div class="dyn-form-buttons">
+          {{#each button in buttons}}
+            {{view JQ.ButtonView labelBinding="button.caption" clickBinding="button.onclick"}}
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
   </script>
 
   <script src="/external/jquery/jquery.js"></script>

@@ -63,28 +63,14 @@ Clira.DynFormView = Ember.ContainerView.extend({
         this._super.apply(this, arguments);
         view = this;
         viewContext = view.get('context');
-
-        /*
-         * Iterate through buttons and create ButtonViews for the same
-         */
-        var buttons = this.get('buttons');
-        if (buttons) {
-            for (var key in buttons) {
-                var buttonView = JQ.ButtonView.extend({
-                    label: key,
-                    click: buttons[key]
-                });
-                this.pushObject(buttonView.create());
-            }
-        }
     },
 
     // Insert view containing form fields
     init: function() {
-        var fieldsView = Ember.View.create({
+        var dynFormView = Ember.View.create({
             templateName: 'dyn_form'
         });
-        this.set('childViews', [fieldsView]);
+        this.set('childViews', [dynFormView]);
         this._super();
     },
 
@@ -93,8 +79,10 @@ Clira.DynFormView = Ember.ContainerView.extend({
      * them in template and to capture the modified values
      */
     willInsertElement: function() {
+        this.get('controller').set('buttons', this.get('buttons'));
         this.get('controller').set('message', this.get('message'));
         this.get('controller').set('fields', this.get('fields'));
+        this.get('controller').set('title', this.get('title'));
         this.get('controller').set('fieldValues', {});
     }
 });
