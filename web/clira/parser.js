@@ -198,7 +198,15 @@ jQuery(function ($) {
                         var def = new $.Deferred();
                         $.clira.loadFile(filename, "commandFile").then(
                             function() {
-                                def.resolve();
+                                // Resolve only if we are done loading the
+                                // commandFile
+                                var commandLoaded = function() {
+                                    if ($.clira.commandLoading == false) {
+                                        def.resolve();
+                                        clearInterval(timer);
+                                    }
+                                };
+                                var timer = setInterval(commandLoaded, 100);
                             }
                         );
                         promises.push(def);
@@ -322,17 +330,25 @@ jQuery(function ($) {
         $.clira.buildObject(this, base, null, null);
     }
     $.clira.commandFile = function (base) {
+        // Boolean indicating we have started loading command
+        $.clira.commandLoading = true;
         var me = new CommandFile(base);
         if (me.init)
             me.init();
-        me.onload();
-        commandFiles.push(me);
-        return me;
+        me.onload().then(function() {
+            commandFiles.push(me);
+            // We are done loading the command
+            $.clira.commandLoading = false;
+            return me;
+        });
     }
     $.extend(CommandFile.prototype, {
         onload: function () {
-            $.dbgpr("clira: load: " + this.name);
+            var deferred = $.Deferred(),
+                promises = [];
 
+            $.dbgpr("clira: load: " + this.name);
+            
             // We have an array of commands
             if (this.commands)
                 $.clira.addCommand(this.commands);
@@ -340,8 +356,13 @@ jQuery(function ($) {
             if (this.prereqs) {
                 $.each(this.prereqs, function (i, filename) {
                     var $p = $("script.prereq[src = '" + filename + "']");
-                    if ($p.length == 0)
-                        $.clira.loadFile(filename, "prereq");
+                    if ($p.length == 0) {
+                        var def = new $.Deferred();
+                        $.clira.loadFile(filename, "prereq").then(function() {
+                            def.resolve();
+                        });
+                        promises.push(def);
+                    }
                 });
             }
 
@@ -357,12 +378,20 @@ jQuery(function ($) {
                         function() {
                             var templateName = $(this)
                                                 .attr('data-template-name');
+                            var def = new $.Deferred();
                             Em.TEMPLATES[templateName] = Em.Handlebars
                                                     .compile($(this).html());
+                            promises.push(def);
+                            def.resolve();
                         }
                     );
                 });
             }
+            // Resolve when all the files are loaded
+            $.when.apply($, promises).done(function() {
+                deferred.resolve();
+            });
+            return deferred.promise();
         }
     });
 
