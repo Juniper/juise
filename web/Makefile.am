@@ -73,7 +73,6 @@ EXTERNAL_FILES = \
     external/d3/d3.v3.min.js \
     external/ember/ember.js \
     external/ember-restless/ember-restless+extras.js \
-    external/ember-restless/ember-restless.js \
     external/gmaps/gmaps.js \
     external/handlebars/handlebars.js \
     external/jqgrid/grid.locale-en.js \
@@ -91,7 +90,6 @@ EXTERNAL_FILES = \
     external/jquery-qtip/jquery.qtip.js \
     external/jquery-qtip/jquery.qtip.min.css \
     external/jquery-qtip/jquery.qtip.min.js \
-    external/jquery-ui/jquery-ui-1.10.2.js \
     external/jquery-ui/jquery-ui.js \
     external/jquery-ui/jquery-ui.min.js \
     external/qunit/qunit-1.12.0.css \
