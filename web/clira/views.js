@@ -446,35 +446,6 @@ Clira.PrefsButtonView = Ember.View.extend({
 
 
 /*
- * View extending dynamic forms to handle displaying and saving clira
- * preferences using localStorage backed ember-restless
- */
-Clira.GeneralPrefView = Clira.DynFormView.extend({
-    title: "Preferences",
-    buttons: {
-        cancel: function() {
-            this.get('parentView').destroy();
-        },
-        save: function() {
-            var clira_prefs = $.clira.prefs;
-            // Iterate fieldValues and save them back into Clira.Preference
-            $.each(viewContext.get('fieldValues'), function(k, v) {
-                var pref = Clira.Preference.find(k);
-                if (pref) {
-                    pref.set('value', v);
-                    pref.saveRecord();
-
-                    // Update $.clira.pref
-                    clira_prefs[k] = v;
-                }
-            });
-            this.get('parentView').destroy();
-        }
-    }
-});
-
-
-/*
  * View to display a map. Reads latitude and longitude data from map object in
  * context along with required height of the map
  */
