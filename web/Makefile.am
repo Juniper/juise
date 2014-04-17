@@ -27,6 +27,7 @@ BASE_FILES = \
     clira/clira.js \
     clira/clira.muxer.js \
     clira/clira.prefs.js \
+    clira/clira.prefs.views.js \
     clira/clira.slax \
     clira/controllers.js \
     clira/db.php \
@@ -50,7 +51,9 @@ BASE_FILES = \
     clira/system/version.slax \
     clira/system/welcome.js \
     clira/templates/history.hbs \
+    clira/templates/location.hbs \
     clira/templates/show-commands.hbs \
+    clira/templates/welcome.hbs \
     clira/views.js \
     css/clira.css \
     favicon.ico \
