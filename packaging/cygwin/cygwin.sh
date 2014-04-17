@@ -26,11 +26,13 @@ fi
 CWD=`pwd`
 BUILDDIR="$CWD/build"
 STAGEDIR="$BUILDDIR/stage"
-VERSION=`grep "PACKAGE_VERSION='" ../../configure | cut -d "'" -f 2`
 
 mkdir -p ${STAGEDIR}
 cd ../..
 autoreconf -f -i
+
+VERSION=`grep "PACKAGE_VERSION='" ./configure | cut -d "'" -f 2`
+
 cd $BUILDDIR
 ../../../configure --enable-mixer --enable-clira --with-lighttpd-src=$1 --with-php-cgi=/usr/bin/php-cgi
 make install DESTDIR=$STAGEDIR

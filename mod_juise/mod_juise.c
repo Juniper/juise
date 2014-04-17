@@ -51,6 +51,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <fdevent.h>
 #include <signal.h>

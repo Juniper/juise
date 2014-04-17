@@ -21,7 +21,6 @@ EXTRA_DIST = \
 BASE_FILES = \
     bin/form2.js \
     bin/list-command-files.slax \
-    bin/topology-ospf.slax \
     clira/app.js \
     clira/builtins.js \
     clira/clira.html \
@@ -43,8 +42,13 @@ BASE_FILES = \
     clira/system/history.js \
     clira/system/location.js \
     clira/system/on-device.js \
+    clira/system/preference.js \
     clira/system/topology.js \
+    clira/system/topology.slax \
     clira/system/unit-test-commands.js \
+    clira/system/version.js \
+    clira/system/version.slax \
+    clira/system/welcome.js \
     clira/templates/history.hbs \
     clira/templates/show-commands.hbs \
     clira/views.js \
