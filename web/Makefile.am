@@ -16,7 +16,8 @@ EXTRA_DIST = \
     Makefile.am \
     Makefile.in \
     lighttpd.conf.in \
-    lighttpd-wrapper.sh
+    lighttpd-wrapper.sh \
+    run-clira.sh
 
 BASE_FILES = \
     bin/form2.js \
@@ -184,6 +185,9 @@ nobase_dist_webdata_DATA = ${WEB_FILES}
 nobase_dist_sysconf_DATA = \
     lighttpd.conf \
     lighttpd-wrapper.sh
+
+nobase_dist_sbin_SCRIPTS = \
+    run-clira.sh
 
 EXTRA_DIST += ${WEB_FILES}
 

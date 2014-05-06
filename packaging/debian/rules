@@ -19,7 +19,7 @@ override_dh_auto_configure:
 override_dh_install:
 	mkdir -p $(CURDIR)/debian/tmp/usr/lib/lighttpd-for-juise
 	mv $(CURDIR)/debian/tmp/usr/lib/mod_juise.so $(CURDIR)/debian/tmp/usr/lib/lighttpd-for-juise
-	mv $(CURDIR)/debian/tmp/etc/lighttpd.conf $(CURDIR)/debian/tmp/etc/clira.conf
+	mv $(CURDIR)/debian/tmp/etc/lighttpd.conf $(CURDIR)/debian/tmp/usr/share/doc/juise/lighttpd-clira-example.conf
 	dh_install
 
 override_dh_auto_install:

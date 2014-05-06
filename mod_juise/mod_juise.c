@@ -68,6 +68,7 @@
 #include "version.h"
 
 #include <libslax/slax.h>
+#include <pwd.h>
 #include "mod_juise.h"
 
 #define LOGERR(_fmt...) \
@@ -894,8 +895,17 @@ mod_juise_create_env (server *srv, connection *con,
     }
 
     if (!buffer_is_empty(p->conf.mixer)) {
+	struct passwd *pwd = getpwuid(getuid());
+	char userbuf[BUFSIZ];
+
+	bzero(userbuf, sizeof(userbuf));
+	if (pwd && pwd->pw_name) {
+	    snprintf(userbuf, sizeof(userbuf), " --user %s", pwd->pw_name);
+	}
+
 	argv[i++] = "--mixer";
-	snprintf(buf, sizeof(buf), "%s --user %s", p->conf.mixer->ptr, getlogin());
+	snprintf(buf, sizeof(buf), "%s%s", p->conf.mixer->ptr, 
+		userbuf[0] ? userbuf : "");
 	argv[i++] = buf;
     }
 
