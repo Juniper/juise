@@ -34,8 +34,6 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
 LIBSLAX_REQUIRED_VERSION=0.12.3
-LIBSSH2_REQUIRED_VERSION=1.4.2
-SQLITE3_REQUIRED_VERSION=3.0.0
 
 AC_PROG_CC
 AM_PROG_AR
@@ -403,86 +401,35 @@ AC_SUBST(SLAX_OXTRADOCDIR)
 # ---- handle libssh2 (which does not have a libssh2-config)
 #
 
-AC_ARG_WITH(libssh2-prefix,
-        [  --with-libssh2-prefix=[PFX]           Specify location of libssh2 config],
-        LIBSSH2_PREFIX=$withval,
-        LIBSSH2_PREFIX=$prefix
-)
+AC_ARG_WITH(ssh2,
+  AC_HELP_STRING([--with-ssh2=PATH],[Use ssh2 installed under PATH]),
+  [
+    case $with_ssh2 in
+      *)
+        LDFLAGS="$LDFLAGS -L$with_ssh2/lib"
+        CPPFLAGS="$CPPFLAGS -I$with_ssh2/include"
+        ;;
+    esac
+  ])
 
-AC_ARG_WITH(libssh2-include-prefix,
-        [  --with-libssh2-include-prefix=[PFX]   Specify location of libssh2 headers],
-        LIBSSH2_INCLUDE="$withval",
-        LIBSSH2_INCLUDE="$LIBSSH2_PREFIX/include",
-)
-LIBSSH2_CFLAGS=-I$LIBSSH2_INCLUDE
-
-AC_ARG_WITH(libssh2-libs-prefix,
-        [  --with-libssh2-libs-prefix=[PFX]      Specify location of libssh2 libs],
-        LIBSSH2_LIBS="-L$withval -lssh2",
-        LIBSSH2_LIBS="-L$LIBSSH2_PREFIX/lib -lssh2"
-)
-
-AC_MSG_CHECKING([version of libssh])
-
-if test -f $LIBSSH2_INCLUDE/libssh2.h
-then
-        LIBSSH2_VERSION=`grep 'LIBSSH2_VERSION ' $LIBSSH2_INCLUDE/libssh2.h | awk -F'"' '{print $2}'`
-
-        if test VERSION_TO_NUMBER(echo $LIBSSH2_VERSION) -ge VERSION_TO_NUMBER(echo $LIBSSH2_REQUIRED_VERSION)
-        then
-                AC_MSG_RESULT($LIBSSH2_VERSION found)
-        else
-                AC_MSG_ERROR(Version $LIBSSH2_VERSION found. You need at least libssh2 $LIBSSH2_REQUIRED_VERSION for this version of juise)
-        fi
-else
-    AC_MSG_NOTICE([libssh2 not found; see http://www.libssh2.org/.])
-    NEED_MIXER=no
-fi
-
-AC_SUBST(LIBSSH2_CFLAGS)
-AC_SUBST(LIBSSH2_LIBS)
+AC_CHECK_LIB(ssh2, libssh2_channel_open_ex, , AC_MSG_ERROR(No ssh2 library))
 
 #
 # ---- handle sqlite3
 #
 
-AC_ARG_WITH(sqlite3-prefix,
-        [  --with-sqlite3-prefix=[PFX]           Specify location of sqlite3 config],
-        SQLITE3_PREFIX=$withval,
-        SQLITE3_PREFIX=$prefix
-)
+AC_ARG_WITH(sqlite3,
+  AC_HELP_STRING([--with-sqlite3=PATH],[Use sqlite3 installed under PATH]),
+  [
+    case $with_sqlite3 in
+      *)
+        LDFLAGS="$LDFLAGS -L$with_sqlite3/lib"
+        CPPFLAGS="$CPPFLAGS -I$with_sqlite3/include"
+        ;;
+    esac
+  ])
 
-AC_ARG_WITH(sqlite3-include-prefix,
-        [  --with-sqlite3-include-prefix=[PFX]   Specify location of sqlite3 headers],
-        SQLITE3_INCLUDE="$withval",
-        SQLITE3_INCLUDE="$SQLITE3_PREFIX/include",
-)
-SQLITE3_CFLAGS=-I$SQLITE3_INCLUDE
-
-AC_ARG_WITH(sqlite3-libs-prefix,
-        [  --with-sqlite3-libs-prefix=[PFX]      Specify location of sqlite3 libs],
-        SQLITE3_LIBS="-L$withval -lsqlite3",
-        SQLITE3_LIBS="-L$SQLITE3_PREFIX/lib -lsqlite3"
-)
-
-AC_MSG_CHECKING([version of sqlite3])
-
-if test -f $SQLITE3_INCLUDE/sqlite3.h
-then
-        SQLITE3_VERSION=`grep 'SQLITE_VERSION ' $SQLITE3_INCLUDE/sqlite3.h | awk -F'"' '{print $2}'`
-
-        if test VERSION_TO_NUMBER(echo $SQLITE3_VERSION) -ge VERSION_TO_NUMBER(echo $SQLITE3_REQUIRED_VERSION)
-        then
-                AC_MSG_RESULT($SQLITE3_VERSION found)
-        else
-                AC_MSG_ERROR(Version $SQLITE3_VERSION found. You need at least sqlite3 $SQLITE3_REQUIRED_VERSION for this version of juise)
-        fi
-else
-	AC_MSG_NOTICE([sqlite3 not found; see http://www.sqlite.org/.])
-fi
-
-AC_SUBST(SQLITE3_CFLAGS)
-AC_SUBST(SQLITE3_LIBS)
+AC_CHECK_LIB(sqlite3, sqlite3_open, , AC_MSG_ERROR(No sqlite3 library))
 
 #
 # ---- end of noise
@@ -696,14 +643,6 @@ AC_MSG_NOTICE([summary of build options:
   libslax libs:     ${LIBSLAX_LIBS}
   libslax libdir:   ${SLAX_LIBDIR}
   libslax extdir:   ${SLAX_EXTDIR}
-
-  libssh2 version:  ${LIBSSH2_VERSION}
-  libssh2 cflags:   ${LIBSSH2_CFLAGS}
-  libssh2 libs:     ${LIBSSH2_LIBS}
-
-  sqlite3 version:  ${SQLITE3_VERSION}
-  sqlite3 cflags:   ${SQLITE3_CFLAGS}
-  sqlite3 libs:     ${SQLITE3_LIBS}
 
   libpcre cflags:   ${PCRE_CFLAGS}
   libpcre libs:     ${PCRE_LIB}
