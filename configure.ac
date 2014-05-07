@@ -402,7 +402,7 @@ AC_SUBST(SLAX_OXTRADOCDIR)
 #
 
 AC_ARG_WITH(ssh2,
-  AC_HELP_STRING([--with-ssh2=PATH],[Use ssh2 installed under PATH]),
+  AC_HELP_STRING([--with-ssh2=PATH],[Use libssh2 installed under PATH]),
   [
     case $with_ssh2 in
       *)
@@ -412,7 +412,12 @@ AC_ARG_WITH(ssh2,
     esac
   ])
 
-AC_CHECK_LIB(ssh2, libssh2_channel_open_ex, , AC_MSG_ERROR(No ssh2 library))
+HAVE_LIBSSH2=no
+AC_CHECK_LIB(ssh2, libssh2_channel_open_ex, HAVE_LIBSSH2=yes, HAVE_LIBSSH2=no)
+if test "$HAVE_LIBSSH2" == "no" -a "$NEED_MIXER" == "yes"
+then
+        AC_MSG_ERROR(--enable-mixer specified but libssh2 libraries not installed)
+fi
 
 #
 # ---- handle sqlite3
@@ -429,7 +434,13 @@ AC_ARG_WITH(sqlite3,
     esac
   ])
 
-AC_CHECK_LIB(sqlite3, sqlite3_open, , AC_MSG_ERROR(No sqlite3 library))
+HAVE_SQLITE3=no
+AC_CHECK_LIB(sqlite3, sqlite3_open, HAVE_SQLITE3=yes, HAVE_SQLITE3=no)
+
+if test "$HAVE_SQLITE3" == "no" -a "$NEED_MIXER" == "yes"
+then
+        AC_MSG_ERROR(--enable-mixer specified but libsqlite3 libraries not installed)
+fi
 
 #
 # ---- end of noise
