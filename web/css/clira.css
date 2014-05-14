@@ -741,8 +741,9 @@ div.dyn-form {
 }
 
 div.dyn-form-wrapper {
-    width: 400px;
+    display: inline-block;
     border: 1px solid #ccc;
+    min-width: 400px;
 }
 
 div.dyn-form-title {
@@ -753,6 +754,7 @@ div.dyn-form-title {
 }
 
 div.dyn-form-item {
+    display: inline-block;
     text-align: center;
     padding: 2px 10px 2px 10px;
 }
@@ -763,6 +765,7 @@ div.dyn-form-message {
 }
 
 div.dyn-form-item label {
+    float: left;
     padding-left: 10px;
     padding-right: 5px;
 }
@@ -774,21 +777,40 @@ div.dyn-form-buttons {
 
 div.dyn-form-item label, 
 div.dyn-form-item input, 
+div.dyn-form-item select, 
 div.dyn-form-item div {
-    display: table-cell;
+    float: left;
+    line-height: 20px;
+    margin-top: 5px;
+    min-width: 100px;
     text-align: left;
 }
 
-div.dyn-form-item input {
+div.dyn-form-item input,
+div.dyn-form-item select {
     border: solid 1px #CCC;
-    height: 1.8em;
     margin-top: 5px;
-    width: 100%;
+    width: auto;
+}
+
+div.dyn-form-item .mandatory {
+    border-color: rgb(213, 119, 0);
+}
+
+div.dyn-form-item input:focus {
+    border: solid 1px rgb(180, 180, 200);
+    box-shadow: 0px 0px 3px rgba(100, 100, 200, 0.8);
 }
 
 div.dyn-form-boolean {
+    margin-left: -40px;
     text-align: left;
     vertical-align: middle;
+}
+
+div.dyn-form-item .dyn-radio-button {
+    margin-left: -30px;
+    margin-right: -40px;
 }
 
 .history-element .command {

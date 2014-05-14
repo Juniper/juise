@@ -158,19 +158,37 @@
       </div>
       {{#each field in fields}}
         <div class="dyn-form-item">
-          <label>{{field.title}}</label>
+          {{#unless field.radio}}
+            <label>
+              {{#if field.nokeyword}}
+                {{field.help}}
+              {{else}}
+                {{field.title}}
+              {{/if}}
+            </label>
+          {{/unless}}  
           {{#if field.boolean}}
             <div class="dyn-form-boolean">
               {{view Clira.DynCheckbox fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value"}}
             </div>
+          {{else}} {{#if field.select}}
+            {{view Clira.DynSelect contentBinding="field.data" fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" optionValuePath="content" optionLabelPath="content"}}
           {{else}}
             {{#if field.secret}}
               {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password"}}
             {{else}}
-              {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value"}}
+              {{#if field.radio}}
+                {{#each field.data}}
+                  {{view Clira.DynRadioButton nameBinding="field.name" value="this" valuesBinding="controller.fieldValues" valueBinding="this"}}
+                  <label>{{this}}</label>
+                {{/each}}
+              {{else}}
+                {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" fieldBinding="field"}}
+              {{/if}}
             {{/if}}
-          {{/if}}
+          {{/if}}{{/if}}
         </div>
+        {{#if field.nokeyword}}<br/>{{/if}}
       {{/each}}
       {{#if buttons}}
         <div class="dyn-form-buttons">

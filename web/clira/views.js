@@ -91,6 +91,38 @@ Clira.DynFormView = Ember.ContainerView.extend({
  * View to handle text inputbox in dynamic forms
  */
 Clira.DynTextField = Ember.TextField.extend({
+    init: function() {
+        var field = this.get('field');
+        if (field && field['mandatory'] > 0) {
+            this.classNames.push('mandatory');
+        } else {
+            var idx = this.classNames.indexOf('mandatory');
+            if (idx > -1) {
+                this.classNames.splice(idx, 1);
+            }
+        }
+        this._super();
+    },
+    didInsertElement: function() {
+        var fieldId = this.get('fieldId'),
+            field = this.get('field');
+
+        if (field && field['help']) {
+            this.$().qtip({
+                content: {
+                    text: field['help'] 
+                },
+                hide: {
+                    fixed: true
+                },
+                position: {
+                    my: 'middle left',
+                    at: 'middle right'
+                },
+                style: 'qtip-bootstrap'
+            });
+        }
+    },
     // We observe on value changes and update fieldValues
     valueChange: function() {
         var fieldId = this.get('fieldId');
@@ -112,6 +144,59 @@ Clira.DynCheckbox = Ember.Checkbox.extend({
         if (values && fieldId) {
             values[fieldId] = this.get('checked');
         }
+    }.observes('checked')
+});
+
+/*
+ * View to handle input select in dynamic forms
+ */
+Clira.DynSelect = Ember.Select.extend({
+    click: function() {
+        var fieldId = this.get('fieldId');
+        var values = this.get('values');
+        if (values && fieldId) {
+            values[fieldId] = this.get('selection');
+        }
+    }
+});
+
+/*
+ * View to handle radio buttons in dynamic forms
+ */
+Clira.DynRadioButton = Ember.View.extend({
+    tagName: 'input',
+    type: 'radio',
+    classNames: ['dyn-radio-button'],
+    attributeBindings: ['name', 'type', 'value', 'values', 'class'],
+    click: function() {
+        this.set('selection', this.$().val());
+    },
+    checked: function() {
+        return this.get('value') == this.get('selection');   
+    }.property(),
+    valueChange: function() {
+        var fieldId = this.get('name');
+        var values = this.get('values');
+        if (values && fieldId) {
+            values[fieldId] = this.get('selection');
+        }
+    }.observes('selection')
+});
+
+
+/*
+ * View handling options on welcome screen
+ */
+Clira.WelcomeCheck = Ember.Checkbox.extend({
+    didInsertElement: function() {
+        if (localStorage['hideWelcome'] == "true") {
+            this.set('checked', true);
+        } else {
+            this.set('checked', false);
+        }
+    },
+    valueChange: function() {
+        localStorage['hideWelcome'] = this.get('checked');
     }.observes('checked')
 });
 

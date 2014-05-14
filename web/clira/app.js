@@ -128,7 +128,11 @@ jQuery(function ($) {
             commandNumber: 0,
             context: this,
         };
-        $.clira.executeCommand('show welcome screen', content);
+
+        // Display welcome screen only if not hidden
+        if (localStorage['hideWelcome'] == 'false') {
+            $.clira.executeCommand('show welcome screen', content);
+        }
     });
 
     $.clira.prefsInit();
