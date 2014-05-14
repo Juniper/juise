@@ -1,0 +1,9 @@
+juise
+-----
+
+This is the JUISE (Juniper User Interface Scripting Environment) package.
+It allows you to run operational/commit scripts against remote devices without
+actually being logged into those devices.
+
+For more information on juise, please visit https://github.com/Juniper/juise
+

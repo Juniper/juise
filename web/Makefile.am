@@ -16,18 +16,19 @@ EXTRA_DIST = \
     Makefile.am \
     Makefile.in \
     lighttpd.conf.in \
-    lighttpd-wrapper.sh
+    lighttpd-wrapper.sh \
+    run-clira.sh
 
 BASE_FILES = \
     bin/form2.js \
     bin/list-command-files.slax \
-    bin/topology-ospf.slax \
     clira/app.js \
     clira/builtins.js \
     clira/clira.html \
     clira/clira.js \
     clira/clira.muxer.js \
     clira/clira.prefs.js \
+    clira/clira.prefs.views.js \
     clira/clira.slax \
     clira/controllers.js \
     clira/db.php \
@@ -43,10 +44,17 @@ BASE_FILES = \
     clira/system/history.js \
     clira/system/location.js \
     clira/system/on-device.js \
+    clira/system/preference.js \
     clira/system/topology.js \
+    clira/system/topology.slax \
     clira/system/unit-test-commands.js \
+    clira/system/version.js \
+    clira/system/version.slax \
+    clira/system/welcome.js \
     clira/templates/history.hbs \
+    clira/templates/location.hbs \
     clira/templates/show-commands.hbs \
+    clira/templates/welcome.hbs \
     clira/views.js \
     css/clira.css \
     favicon.ico \
@@ -177,6 +185,9 @@ nobase_dist_webdata_DATA = ${WEB_FILES}
 nobase_dist_sysconf_DATA = \
     lighttpd.conf \
     lighttpd-wrapper.sh
+
+nobase_dist_sbin_SCRIPTS = \
+    run-clira.sh
 
 EXTRA_DIST += ${WEB_FILES}
 

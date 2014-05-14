@@ -1,0 +1,19 @@
+Source: juise
+Section: utils
+Priority: extra
+Maintainer: Rob Johnston <rjohnst@juniper.net>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev
+Standards-Version: 3.9.3
+Homepage: https://github.com/Juniper/juise
+
+Package: juise
+Architecture: amd64
+Depends: libslax, libsqlite3-0, libssh2-1, php5-cgi, php5-sqlite
+Suggests: lighttpd-for-juise
+Section: utils
+Priority: optional
+Homepage: https://github.com/Juniper/juise
+Description: Juise (Juniper User Interface Scripting Environment)
+ Allows remote execution of RPCs as well as provides the Clira
+ (CLI Remote Access) framework when paired with lighttpd-for-juise
+ See https://github.com/Juniper/juise for more information.
