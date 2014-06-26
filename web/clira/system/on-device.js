@@ -66,6 +66,7 @@ jQuery(function($) {
                                                 xpath.hide();
                                                 $(this).text("show xpath");
                                             }
+                                            return false;
                                         });
                                         return div;
                                     }
@@ -87,8 +88,18 @@ jQuery(function($) {
                     // cname.replace("_", "__", "g"); // Maybe not needed?
                     // classnames can't have periods
                     cname = cname.replace(".", "_", "g");
-                    $.clira.runCommand(view, poss.data.target,
-                                       poss.data.command);
+
+                    var command = poss.data.command
+                                      .replace(/^\s+|\s+$/g,'');
+                    // If user wants a form, build and display form
+                    if (command.indexOf('form', command.length - 4) !== -1) {
+                        command = command.substring(0, 
+                                    command.lastIndexOf(' '));
+                        buildForm(view, command, poss);
+                    } else {
+                        $.clira.runCommand(view, poss.data.target,
+                                            poss.data.command);
+                    }
                 },
                 complete: function (controller, poss, results, value) {
                     if (!(poss.data.target && poss.data.command))
@@ -194,5 +205,176 @@ jQuery(function($) {
                 + cl + "</div>"
         }
         return res;
+    }
+
+    function buildForm (view, command, poss) {
+        var nodeinfo = "";
+        var muxer = $.clira.muxer();
+
+        // Execute complete RPC and get available options
+        muxer.rpc({
+            div: view.$(),
+            view: view,
+            target: poss.data.target,
+            payload: '<complete>'
+                    + command + ' ?'
+                    + '</complete>',
+            onreply: function (data) {
+                nodeinfo += data;
+            },
+            oncomplete: function () {
+                var $xmlDoc = $($.parseXML(nodeinfo)),
+                    dataValues = [],
+                    nokeyItem = null,
+                    selects = {};
+
+                if (true) {
+                    var fields = [];
+                    $xmlDoc.find("expand-item").each(
+                        function (n, item) {
+                            var $this = $(this),
+                                type = $this.find('type').text(),
+                                enter = $this.find('enter').length,
+                                data = $this.find('data').length,
+                                nokeyword =
+                                $this.find('flag-nokeyword').length, 
+                                help = $this.find('help').text(),
+                                mandatory =
+                                $this.find('flag-mandatory').length,
+                                hidden = $this.find('hidden').length,
+                                name = $this.find('name').text();
+
+                            if (hidden > 0) {
+                                return;
+                            }
+
+                            if (mandatory > 0) {
+                                name = name + ' (*)';
+                            }
+
+                            if (type !== 'TYPE_COMMAND' 
+                                && type !== 'TYPE_CHOICE' && enter == 0 
+                                && name !== '|' && data == 0 
+                                && (type === 'TYPE_TOGGLE' || nokeyword == 0)) {
+                                var field = {
+                                    name: name,
+                                    title: $this.find('name').text(),
+                                    type: $this.find('type').text(),
+                                    nokeyword: nokeyword,
+                                    boolean: $this.find('type')
+                                                  .text() == "TYPE_TOGGLE"
+                                };
+
+                                if (help.length > 0) {
+                                    field['help'] = help;
+                                } else {
+                                    field['help'] = name;
+                                }
+
+                                fields.unshift(field);
+                            }
+
+                            if (data > 0) {
+                                dataValues.push(name);
+                            }
+
+                            if (type == 'TYPE_CHOICE') {
+                                var parent = $this.find('parent').text();
+                                if (selects[parent]) {
+                                    selects[parent].push(name);
+                                } else {
+                                    selects[parent] = [name];
+                                }
+                            }
+
+                            if (nokeyword > 0 && data == 0) {
+                                nokeyItem = $this;
+                            }
+                        }
+                    );
+
+                    // Iterate through list of selects
+                    $.each(selects, function(k, v) {
+                        fields.unshift({
+                            name: k,
+                            nokeyword: true,
+                            help: k,
+                            title: k,
+                            radio: true,
+                            data: v
+                        });
+                    });
+
+                    if (nokeyItem) {
+                        var mandatory = nokeyItem.find('flag-mandatory')
+                                                 .length;
+                        var field = {
+                            title: nokeyItem.find('name').text(),
+                            help:  nokeyItem.find('help').text() ?
+                            nokeyItem.find('help').text() :
+                            nokeyItem.find('name').text(),
+                            name: nokeyItem.find('name').text(),
+                            boolean: nokeyItem.find('type')
+                                              .text() == "TYPE_TOGGLE",
+                            mandatory: mandatory,
+                            nokeyword: true,
+                        };
+
+                        if (selects && dataValues.length > 0) {
+                            dataValues.unshift('');
+                            field['select'] = true;
+                            field['data'] = dataValues;
+                        }
+
+                        fields.unshift(field);
+                    }
+
+                    var v = view.get('parentView').container
+                                .lookup('view:DynForm');
+                    v.fields = fields;
+                    v.buttons = [{
+                        caption: "Execute",
+                        onclick: function() {
+                            var values = this.get('controller.fieldValues');
+                            var morecommand = "";
+                            $.each(values, function(k, v) {
+                                var field = null;
+                                for (var i = 0; i < fields.length; i++) {
+                                    if (fields[i].name == k) {
+                                        field = fields[i];
+                                        break;
+                                    }
+                                }
+                                if (field) {
+                                     if (field.nokeyword) {
+                                        if (field.boolean) {
+                                            morecommand += " " + k;
+                                        } else {
+                                            morecommand += " " + v;
+                                        }
+                                    } else if (field.boolean) {
+                                        morecommand += " " + k;
+                                    } else {
+                                        morecommand += " " + k + " " + v;
+                                    }
+                                }
+                            });
+                            this.get('parentView')
+                                .get('parentView').destroy();
+
+                            // Update output header
+                            this.set('controller.command', 
+                                        'on ' + poss.data.target + ' ' 
+                                              + command + morecommand);
+
+                            $.clira.runCommand(view, poss.data.target,
+                                            command + morecommand);
+                        }
+                    }];
+                
+                    view.get('parentView').pushObject(v);
+                }
+            }
+        });
     }
 });

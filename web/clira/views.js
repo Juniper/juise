@@ -52,11 +52,11 @@ JQ.Dialog = Em.View.extend(JQ.Widget, {
  * fieldValues as name:value and the same can be retrieved from 
  * viewContext.get('fieldValues')
  */
-Clira.DynFormView = JQ.Dialog.extend({
-    templateName: "dyn_form",
+Clira.DynFormView = Ember.ContainerView.extend({
     view: null,
     viewContext: null,
     width: "auto",
+    classNames: ['output-content'],
 
     // Set view and view context as globals
     didInsertElement: function() {
@@ -65,13 +65,24 @@ Clira.DynFormView = JQ.Dialog.extend({
         viewContext = view.get('context');
     },
 
+    // Insert view containing form fields
+    init: function() {
+        var dynFormView = Ember.View.create({
+            templateName: 'dyn_form'
+        });
+        this.set('childViews', [dynFormView]);
+        this._super();
+    },
+
     /*
      * Set fields and fieldValues as properties on controller so we can use
      * them in template and to capture the modified values
      */
     willInsertElement: function() {
+        this.get('controller').set('buttons', this.get('buttons'));
         this.get('controller').set('message', this.get('message'));
         this.get('controller').set('fields', this.get('fields'));
+        this.get('controller').set('title', this.get('title'));
         this.get('controller').set('fieldValues', {});
     }
 });
@@ -80,6 +91,38 @@ Clira.DynFormView = JQ.Dialog.extend({
  * View to handle text inputbox in dynamic forms
  */
 Clira.DynTextField = Ember.TextField.extend({
+    init: function() {
+        var field = this.get('field');
+        if (field && field['mandatory'] > 0) {
+            this.classNames.push('mandatory');
+        } else {
+            var idx = this.classNames.indexOf('mandatory');
+            if (idx > -1) {
+                this.classNames.splice(idx, 1);
+            }
+        }
+        this._super();
+    },
+    didInsertElement: function() {
+        var fieldId = this.get('fieldId'),
+            field = this.get('field');
+
+        if (field && field['help']) {
+            this.$().qtip({
+                content: {
+                    text: field['help'] 
+                },
+                hide: {
+                    fixed: true
+                },
+                position: {
+                    my: 'middle left',
+                    at: 'middle right'
+                },
+                style: 'qtip-bootstrap'
+            });
+        }
+    },
     // We observe on value changes and update fieldValues
     valueChange: function() {
         var fieldId = this.get('fieldId');
@@ -101,6 +144,59 @@ Clira.DynCheckbox = Ember.Checkbox.extend({
         if (values && fieldId) {
             values[fieldId] = this.get('checked');
         }
+    }.observes('checked')
+});
+
+/*
+ * View to handle input select in dynamic forms
+ */
+Clira.DynSelect = Ember.Select.extend({
+    click: function() {
+        var fieldId = this.get('fieldId');
+        var values = this.get('values');
+        if (values && fieldId) {
+            values[fieldId] = this.get('selection');
+        }
+    }
+});
+
+/*
+ * View to handle radio buttons in dynamic forms
+ */
+Clira.DynRadioButton = Ember.View.extend({
+    tagName: 'input',
+    type: 'radio',
+    classNames: ['dyn-radio-button'],
+    attributeBindings: ['name', 'type', 'value', 'values', 'class'],
+    click: function() {
+        this.set('selection', this.$().val());
+    },
+    checked: function() {
+        return this.get('value') == this.get('selection');   
+    }.property(),
+    valueChange: function() {
+        var fieldId = this.get('name');
+        var values = this.get('values');
+        if (values && fieldId) {
+            values[fieldId] = this.get('selection');
+        }
+    }.observes('selection')
+});
+
+
+/*
+ * View handling options on welcome screen
+ */
+Clira.WelcomeCheck = Ember.Checkbox.extend({
+    didInsertElement: function() {
+        if (localStorage['hideWelcome'] == "true") {
+            this.set('checked', true);
+        } else {
+            this.set('checked', false);
+        }
+    },
+    valueChange: function() {
+        localStorage['hideWelcome'] = this.get('checked');
     }.observes('checked')
 });
 
@@ -192,7 +288,13 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
     insertNewline: function() {
         this.ui.close();
         this.get('targetObject').executeCommand();
-    }
+    },
+
+    // Scroll up and focus the input field when on command change
+    scrollUp: function() {
+        $("html, body").animate({ scrollTop: 0 }, 300);
+        this.$().focus();
+    }.observes('targetObject.command')
 });
 
 
@@ -244,6 +346,7 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
         if (!this.get('controller').parseErrors) {
             var contentView = Ember.View.create({
                 layoutName: "output_content_layout",
+                underlay: true,
                 templateName: this.get('controller').contentTemplate,
 
                 didInsertElement: function() {
@@ -257,7 +360,22 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
             });
             this.pushObject(contentView);
         }
-    }
+    },
+
+    /*
+     * When views are stacked in a output container, we hide the views which
+     * has underlay set to true
+     */
+    toggleChildVisibility: function() {
+        var childViews = this.get('_childViews');
+        for (var i = childViews.length - 2; i >= 0; i--) {
+            if (childViews[i].underlay) {
+                childViews[i].set('isVisible', false);
+            }
+        }
+
+        childViews[childViews.length - 1].set('isVisible', true);
+    }.observes('childViews')
 });
 
 
@@ -382,6 +500,20 @@ Clira.MessageView = Ember.View.extend({
 
 
 /*
+ * View to display the list of recently used devices
+ */
+Clira.RecentDevicesView = Ember.View.extend({
+    isVisible: false,
+
+    toggleVisibility: function() {
+        if (this.get('controller').content.length > 0) {
+            this.set('isVisible', true);
+        }
+    }.observes('controller.content.@each')
+});
+
+
+/*
  * View for clira preferences button
  */
 Clira.PrefsButtonView = Ember.View.extend({
@@ -389,93 +521,11 @@ Clira.PrefsButtonView = Ember.View.extend({
 
     // Create a preferences dialog as childView and append
     click: function() {
-        this.createChildView(Clira.PreferencesDialog).append();
-    }
-});
-
-
-/*
- * View to display preferences dialog and handle devices, group and general
- * preferences
- */
-Clira.PreferencesDialog = Ember.View.extend({
-    templateName: "preferences",
-    isVisible: false,
-
-    actions: {
-        generalPref: function() {
-            var prefs = Clira.Preference.find(),
-                fields = [];
-
-            // Sanitize before creating a form
-            if (prefs) {
-                prefs.forEach(function(item) {
-                    pref = item.__data;
-                    if (pref.type == "boolean") {
-                        pref['boolean'] = true;
-
-                        if (pref.value == "true") {
-                            pref['value'] = true;
-                        } else {
-                            pref['value'] = false;
-                        }
-                    } else {
-                        pref['boolean'] = false;
-                    }
-                    fields.push(pref);
-                });
-            }
-            this.createChildView(Clira.GeneralPrefView, {fields: fields}).append();
+        var content = {
+            command: 'edit preferences',
+            context: this,
         }
-    },
-
-    /*
-     * We use jqGrid to read device and group config from db and display 
-     * them in corresponding preferences modal
-     */
-    didInsertElement: function() {
-        $.proxy($("#prefs-main-form").dialog({
-            buttons: {
-                'close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            height: 210,
-            resizable: false,
-            width: 320
-        }), this);
-
-        // Build devices and group preferences form dialogs using jqGrid
-        $.clira.buildPrefForms();
-    }
-});
-
-
-/*
- * View extending dynamic forms to handle displaying and saving clira
- * preferences using localStorage backed ember-restless
- */
-Clira.GeneralPrefView = Clira.DynFormView.extend({
-    title: "Preferences",
-    buttons: {
-        cancel: function() {
-            $(this).dialog('close');
-        },
-        save: function() {
-            var clira_prefs = $.clira.prefs;
-            // Iterate fieldValues and save them back into Clira.Preference
-            $.each(viewContext.get('fieldValues'), function(k, v) {
-                var pref = Clira.Preference.find(k);
-                if (pref) {
-                    pref.set('value', v);
-                    pref.saveRecord();
-
-                    // Update $.clira.pref
-                    clira_prefs[k] = v;
-                }
-            });
-            $(this).dialog('close');
-        }
+        $.clira.executeCommand('edit preferences', content);
     }
 });
 

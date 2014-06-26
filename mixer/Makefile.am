@@ -29,8 +29,8 @@ LIBS = \
     ${LIBXSLT_LIBS} \
     -lexslt \
     ${LIBXML_LIBS} \
-    ${LIBSSH2_LIBS} \
-    ${SQLITE3_LIBS}
+    -lssh2 \
+    -lsqlite3
 
 noinst_HEADERS = \
     buffer.h \

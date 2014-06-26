@@ -113,6 +113,7 @@ Clira.CommandInputController = Em.ObjectController.extend({
             command: finalCommand,
             commandNumber: this.get('commandNumber'),
             completed: false,
+            context: this,
             messages: parseErrors,
             output: output,
             parse: parse,
@@ -162,6 +163,42 @@ Clira.CommandInputController = Em.ObjectController.extend({
 
 
 /*
+ * Array controller to hold the list of recently used devices
+ */
+Clira.RecentDevicesController = Em.ArrayController.extend({
+    content: Em.A(),
+    needs: ['commandInput'],
+    actions: {
+        'onDevice': function(target) {
+            // On click, fill command input
+            this.set('controllers.commandInput.command', 'on ' + target + ' ');
+        }
+    },
+
+    /*
+     * Add recently used list of devices to top of the list
+     */
+    addDevice: function(device) {
+        if (this.content.contains(device)) {
+            this.content.removeObject(device);
+        }
+        this.content.insertAt(0, device);
+    },
+    
+    init: function() {
+        this.get('controllers.commandInput.command');
+    },
+
+    /*
+     * Recently used list of devices as a property on content of array
+     */
+    ru: function() {
+        return this.content;
+    }.property('@each')
+});
+
+
+/*
  * OutputsController is an ArrayController that holds outputs from commands.
  * For each command run, we create an array item of type OutputContainer and
  * add OutputsController.
@@ -176,6 +213,7 @@ Clira.OutputsController = Em.ArrayController.extend();
 Clira.OutputContainerController = Em.Controller.extend({
     data: null,
     contentTemplate: null,
+    needs: ['recentDevices'],
 
     // Action functions to handle close and toggle button clicks
     actions: {
@@ -191,12 +229,20 @@ Clira.OutputContainerController = Em.Controller.extend({
                 controller.get('view')
                           .set('isVisible', !controller.get('view.isVisible'));
             });
+        },
+        commandClick: function() {
+            this.set('context.command', this.get('command'));
         }
     },
 
     init: function() {
         // Set template name to be used for output content
         this.contentTemplate = this.get('contentTemplate');
+
+        // Register recentDevices controller
+        this.container = new Em.Container();
+        this.container.register('controller:recentDevices', 
+                                Clira.RecentDevicesController);
     },
 
     /*
@@ -217,6 +263,8 @@ Clira.OutputContainerController = Em.Controller.extend({
         }
     }.observes('output')
 });
+/* recent used list of devices to the top of list
+ */
 
 
 /*

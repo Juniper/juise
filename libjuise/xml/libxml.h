@@ -34,8 +34,12 @@ XML_TYPEDEF(_xmlDoc, lx_document_t);
 XML_TYPEDEF(_xmlNode, lx_node_t);
 XML_TYPEDEF(_xsltStylesheet, lx_stylesheet_t);
 XML_TYPEDEF(_xmlNodeSet, lx_nodeset_t);
-XML_TYPEDEF(_xmlSaveCtxt, lx_output_t);
 XML_TYPEDEF(_xmlXPathObject, lx_xpath_t);
+
+typedef struct {
+    xmlSaveCtxt	    *context;
+    xmlBuffer	    *buffer;
+} lx_output_t;
 
 /* Helper types */
 typedef int lx_cookie_t;
@@ -158,10 +162,28 @@ lx_output_t *
 lx_output_open_fd (int fd);
 
 /*
- * Close an output file handle
+ * Open an output buffer (string)
+ */
+lx_output_t *
+lx_output_open_buffer (void);
+
+/*
+ * Close an output file/buffer handle
  */
 void
 lx_output_close (lx_output_t *handle);
+
+/*
+ * Return the output buffer as a string
+ */
+const char *
+lx_output_buffer (lx_output_t *handle);
+
+/*
+ * Free the output data structure and buffer (if any)
+ */
+void
+lx_output_cleanup (lx_output_t *handle);
 
 /*
  * Write a document to a file

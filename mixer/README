@@ -1,0 +1,156 @@
+                               mixer README
+                   Rob Johnston <rjohnst@juniper.net>
+=============================================================================
+
+Mixer is a daemon that manages connections to SSH-enabled Netconf-speaking
+devices. It bridges the gap between the web browser/slax scripts and the
+devices Clira wishes to run rpcs on.
+
+This document briefly describes the interaction between mixer and the various
+parts of Clira.
+
+Clira can communicate with the router in two ways.  The first is via a direct
+connection between the browser and the router via Websocket.  The second is
+via a .slax script which requests for a connection to a router to be made.
+Each of these connection methods use mixer as an intermediary.
+
+DIRECT BROWSER <-> ROUTER MIXER INTERACTION VIA WEBSOCKET
+---------------------------------------------------------
+
+When a browser running Clira needs to get rpc data from a router, it
+communicates directly with the router via a Websocket.
+
+lighttpd-for-juise includes mod_websocket compiled in which is configured to
+listen on a specific URL (/mixer).  When a Websocket request comes in on this
+URL, it launches mixer (/usr/bin/mixer --user <username>).  The first time
+mixer is run for a user, it launches in 'server mode' which means it will fork
+itself and run in the background.  This server mode mixer is the one which
+will hold all the SSH connections to the routers.
+
+When you create a Muxer() javascript object via $.clira.muxer(), eg:
+
+$.clira.muxer().rpc( ... );
+
+several things happen.  First, a new Muxer() object is created which then
+creates and opens a new Websocket to /mixer.  This causes lighttpd (via
+mod_websocket) to launch the mixer binary and opens direct communication
+between the browser and mixer.
+
+After the Websocket is open, it sends over an "authinit" mixer command, which
+tells mixer that this associated Muxer will be used for all future SSH
+authentication related interactions (host key acceptance, passphrase input,
+password input, etc).  mixer replies back to the "authinit" mixer command with
+a response of the internal id used to represent this websocket connection
+(Auth Websocket ID) as well as the internal muxer id used (Mixer Auth Muxer
+ID).  The Muxer() stores this information for future authentication use.
+
+See the secton below entitled "MIXER FRAMING PROTOCOL" for more information on
+the actual framing protocol that mixer communicates to the browser with.
+
+Now that this is all set up, an rpc can go across the mixer.  Muxer() sends
+the rpc over the Websocket via a mixer "rpc" command.  This includes the
+device you wish to connect to as well as the rpc to be executed.  For an
+example, we will assume you have a router called "mx480" configured in Clira
+and you are running a "show version" command on it.
+
+mixer then checks its internal session table to see if any connections are
+open to "mx480".  Seeing that there are none, it attempts to open one.  Let's
+assume during SSH negotiation, "mx480" requires a password which requires us
+to prompt the user back on the browser.  The mixer server then responds back
+over the websocket with a "password" mixer query.  The Muxer() javascript
+object sees this request and prompts the user in the browser for the password.
+The user then enters the password and Muxer() sends the password back to mixer
+which then sends it back to the router which then authenticates the
+connection.
+
+mixer then runs the rpc on the router, and the router returns rpc data back to
+mixer which then sends it back to the browser for the browser to handle it.
+
+The connection is cached in mixer, and keepalives are sent to the router to
+keep the connection alive.  Any future requests to "mx480" will use the
+already-negoatiated connection.
+
+.SLAX SCRIPT <-> ROUTER MIXER INTERACTION
+-----------------------------------------
+
+The other (much more complicated) method of communication with the router is
+via .slax script.  If a .slax script issues a jcs:open to open a connection to
+a router, we need it to use mixer to communicate with the router rather than a
+direct ssh connection.
+
+lighttpd-for-juise is configured to handle .slax scripts as cgi scripts via
+mod_juise.  When a request for a .slax script comes in, mod_juise fires up the
+juise binary to read the .slax script and execute it.  By default, the juise
+binary uses direct ssh connection to communicate with the router.  We override
+this default behavior because in the Clira-world we need to use mixer to
+communicate with the router.
+
+This is done via the --mixer command line argument to juise.
+
+The best way to explain this is by example again.  Let's say the user executes
+a Clira command that requires a .slax script to be run.  This .slax script has
+a jcs:open("mx240") command in it, which will open the connection to the
+device configured under the name "mx240".  After this, a jcs:execute() is done
+on the connection to issue an rpc.
+
+When you request a .slax sript via: $.clira.muxer().slax( ... ), the Muxer()
+object sets several request headers to the ajax call to the .slax script:
+
+X-Mixer-Auth-Muxer-ID: This is the muxer id of the "authinit" connection to be
+  used for authentication prompts
+X-Mixer-Auth-WebSocket-ID: This is the websocket id of the browser's
+  connection to the mixer
+X-Mixer-Auth-Div-ID: This is the <div> "id" of the current output block so
+  mixer knows where to render any authentication popups
+
+These request variables are propagated over to the juise binary via
+environment variables (mod_juise takes care of this).
+
+After the juise binary has been launched to handle this request, it begins
+processing the .slax script.  Once it reaches the jcs:open("mx240") command,
+it launches the mixer binary (passed in via the --mixer command line argument)
+to handle this request.
+
+Since mixer speaks the framing protocol previously mentioned, the juise binary
+needs to speak this as well.  As soon as the mixer conneciton is open, it
+attempts to connect to "mx240".  Since no connection exists, mixer opens a new
+SSH connection to "mx240".  Let's assume another password is required.  Since
+we no longer have a direct line of communication between mixer and the browser
+at this point (we are no longer communicating via mod_websocket, we are coming
+in through mod_juise), we need to have mixer use the already open "authinit"
+authentication Muxer connection we already have established.
+
+When we make the request to "mx240", we pass in the values we know about above
+(auth-muxer-id, auth-websocket-id, auth-div-id).  When mixer determines it
+needs to prompt for a password, it searches its connection table for the
+"auth-websocket-id" which should be the open "authinit" websocket directly
+back to the browser.  It then sends a "password" request over that websocket
+to the "auth-muxer-id" Muxer() connection and passes over the "auth-div-id"
+<div> id so the browser knows where to render the prompt.  We also send over
+the request id so that when we receive the response back from the user, we
+know which request this maps to.  The "authinit" Muxer() now receives this
+password prompt and has all the information it needs to prompt the user for a
+password.  After the user enters the password, it is sent back over the
+"authinit" Muxer() connection along with the request id.  We look up the
+request via request id and then establish the SSH connection.  Now that the
+connection is established, juise can continue processing the script and issue
+the rpc to the device.
+
+MIXER FRAMING PROTOCOL
+----------------------
+
+Since the Websocket interface between lighttpd and mixer does not contain a
+framing protocol, we roll our own.
+
+The format of this is:
+
+#<version>.<length>.<operation>.<muxer-id>.<attributes>\n
+<data>
+
+For example:
+
+#01.00000180.rpc     .00000001.host="router" user="test"\n
+<command>show interfaces terse</command>
+
+More information can be found in mixer/websocket.c
+

@@ -1167,8 +1167,7 @@ rpc_parse_mime_list (char *str)
 	}
 
 	if (i == (sizeof(mtypemap) / sizeof(rpc_media_type_map_t))) {
-	    fprintf(stdout, "Content-Type: " MEDIA_TYPE_APPLICATION_XML "\n\n");
-	    fflush(stdout);
+	    output_format = strdup( MEDIA_TYPE_APPLICATION_XML );
 	}
 
 	if (output_format != NULL)
@@ -1224,7 +1223,7 @@ rpc_build_data (lx_document_t *docp, lx_node_t *nodep, char *str)
     if (childp) {
 	cur = childp->xmlChildrenNode;
 	while (cur != NULL) {
-	    newp = xmlDocCopyNode(childp, docp, 1);
+	    newp = xmlDocCopyNode(cur, docp, 1);
 	    if (newp) {
 		xmlAddChild(nodep, newp);
 	    } else {
@@ -1399,7 +1398,7 @@ do_run_rpc (const char *scriptname UNUSED, const char *input UNUSED,
     /* Parse Accept header and set output format */
     accept_header = getenv("HTTP_ACCEPT");
 
-    if (accept_header && !output_format) {
+    if (!output_format) {
 	output_format = rpc_parse_mime_list(accept_header);
 
 	if (output_format == NULL) {
@@ -1698,6 +1697,7 @@ print_help (void)
 "\t--junoscript OR -J: use junoscript API protocol\n"
 "\t--load OR -l: load commit script changes in test mode\n"
 "\t--lib <dir> OR -L <dir>: search directory for extension libraries\n"
+"\t--mixer OR -M: use mixer connection (if available)\n"
 "\t--no-randomize: do not initialize the random number generator\n"
 "\t--param <name> <value> OR -a <name> <value>: pass parameters\n"
 "\t--protocol <name> OR -P <name>: use the given API protocol\n"
@@ -1816,6 +1816,9 @@ main (int argc UNUSED, char **argv, char **envp)
 	    } else if (streq(cp, "--lib") || streq(cp, "-L")) {
 		slaxDynAdd(*++argv);
 
+	    } else if (streq(cp, "--mixer") || streq(cp, "-M")) {
+		jsio_set_mixer(*++argv);
+
 	    } else if (streq(cp, "--no-randomize")) {
 		randomize = 0;
 
@@ -1888,6 +1891,15 @@ main (int argc UNUSED, char **argv, char **envp)
 
 	    } else if (streq(cp, "--xml")) {
 		func = do_emit_xml;
+
+	    } else if (streq(cp, "--auth-muxer-id")) {
+		jsio_set_auth_muxer_id(cp);
+
+	    } else if (streq(cp, "--auth-websocket-id")) {
+		jsio_set_auth_websocket_id(cp);
+	    
+	    } else if (streq(cp, "--auth-div-id")) {
+		jsio_set_auth_div_id(cp);
 
 	    } else {
 		fprintf(stderr, "invalid option: %s\n", cp);
@@ -2026,6 +2038,21 @@ main (int argc UNUSED, char **argv, char **envp)
 
     if (ssh_agent_forwarding)
 	jsio_add_ssh_options("-A");
+
+    cp = getenv("HTTP_X_MIXER_AUTH_MUXER_ID");
+    if (cp) {
+	jsio_set_auth_muxer_id(cp);
+    }
+
+    cp = getenv("HTTP_X_MIXER_AUTH_WEBSOCKET_ID");
+    if (cp) {
+	jsio_set_auth_websocket_id(cp);
+    }
+    
+    cp = getenv("HTTP_X_MIXER_AUTH_DIV_ID");
+    if (cp) {
+	jsio_set_auth_div_id(cp);
+    }
 
     if (opt_ignore_arguments) {
 	static char *null_args[] = { NULL };
