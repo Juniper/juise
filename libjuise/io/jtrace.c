@@ -37,7 +37,6 @@
 
 #include "juiseconfig.h"
 #include <libslax/slax.h>
-#include <libslax/slaxconfig.h>
 #include <libslax/slaxdata.h>
 #include <libslax/xmlsoft.h>
 
