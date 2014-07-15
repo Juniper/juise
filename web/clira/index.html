@@ -69,6 +69,9 @@
       {{view Clira.IconView iconClass="ui-icon-closethick" onClick="close"}}
       {{view Clira.IconView iconClass="ui-icon-minusthick,ui-icon-plusthick" onClick="collapse"}}
       <b {{action "commandClick"}}>{{controller.command}}</b>
+      {{#if stopButton}}{{#if muxid}}{{#unless completed}}
+        <button class="stop_button" {{action "stopAction" muxer muxid}}>STOP</button>
+      {{/unless}}{{/if}}{{/if}}
       <div class="command-number">
         ({{controller.commandNumber}})
       </div>
@@ -132,8 +135,12 @@
       <table id="prefs-devices-grid"></table>
       <div id="prefs-devices-pager"></div>
     </div>
+  </script>
 
-    <div id="prefs-devices-connect" title="Connection Status" style="display:none; text-align:left"></div>
+  <script type="text/x-handlebars" data-template-name="conn_status">
+    <div id="prefs-devices-connect" title="Connection Status">
+      <div id="connect-status"></div>
+    </div>
   </script>
 
   <script type="text/x-handlebars" data-template-name="groups_pref">
@@ -160,40 +167,46 @@
         <div class="dyn-form-item">
           {{#unless field.radio}}
             <label>
-              {{#if field.nokeyword}}
-                {{field.help}}
-              {{else}}
-                {{field.title}}
-              {{/if}}
+              {{field.label}}
             </label>
           {{/unless}}  
-          {{#if field.boolean}}
+          {{#if field.spacer}}
+          {{else}} {{#if field.boolean}}
             <div class="dyn-form-boolean">
-              {{view Clira.DynCheckbox fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value"}}
+              {{view Clira.DynCheckbox errorCountBinding="errorCount" errorsBinding="fieldErrors" fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value" fieldBinding="field" valueBinding="field.value"}}
             </div>
           {{else}} {{#if field.select}}
-            {{view Clira.DynSelect contentBinding="field.data" fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" optionValuePath="content" optionLabelPath="content"}}
+            {{view Clira.DynAutoComplete errorCountBinding="errorCount" errorsBinding="fieldErrors" contentBinding="field.data" fieldIdBinding="field.name" valuesBinding="fieldValues" fieldBinding="field" valueBinding="field.value" optionValuePath="content" optionLabelPath="content"}}
           {{else}}
             {{#if field.secret}}
-              {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password"}}
+              {{view Clira.DynTextField errorCountBinding="errorCount" errorsBinding="fieldErrors" fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password" fieldBinding="field"}}
             {{else}}
               {{#if field.radio}}
+                <div class="dyn-radiogroup">
                 {{#each field.data}}
-                  {{view Clira.DynRadioButton nameBinding="field.name" value="this" valuesBinding="controller.fieldValues" valueBinding="this"}}
+                  {{view Clira.DynRadioButton errorCountBinding="controller.errorCount" errorsBinding="controller.fieldErrors" 
+                    nameBinding="field.name" valueBinding="this" valuesBinding="controller.fieldValues" selectionBinding="field.value" fieldBinding="field"}}
                   <label>{{this}}</label>
                 {{/each}}
+                </div>
               {{else}}
-                {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" fieldBinding="field"}}
+                {{view Clira.DynTextField errorCountBinding="errorCount" errorsBinding="fieldErrors" fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" fieldBinding="field"}}
               {{/if}}
             {{/if}}
-          {{/if}}{{/if}}
+          {{/if}}{{/if}}{{/if}}
         </div>
-        {{#if field.nokeyword}}<br/>{{/if}}
+        {{#if field.nokeyword}}
+          {{#unless field.boolean}}<br>{{/unless}}
+        {{/if}}
+        {{#if field.spacer}}<br>{{/if}}
       {{/each}}
+      {{#if mandatoryFields}}
+        <br><br><div class="dyn-form-item"><i> (*) Mandatory field</i></div>
+      {{/if}}
       {{#if buttons}}
         <div class="dyn-form-buttons">
           {{#each button in buttons}}
-            {{view JQ.ButtonView labelBinding="button.caption" clickBinding="button.onclick"}}
+            {{view Clira.DynButton validateBinding="button.validate" errorCountBinding="errorCount" errorsBinding="fieldErrors" labelBinding="button.caption" clickBinding="button.onclick" valuesBinding="fieldValues" fieldBinding="field"}}
           {{/each}}
         </div>
       {{/if}}
