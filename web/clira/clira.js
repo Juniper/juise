@@ -348,6 +348,20 @@ jQuery(function ($) {
             return muxer;
         },
         runCommand: function runCommand (view, target, command, onComplete) {
+            this.runCommandInternal(view, target, command, onComplete, null);
+        },        
+        /*
+         * runCommandInternal takes additional parameters that dictates how to
+         * run the command. 'format' is the format in which RPC should request
+         * output in and defaults to html. 'stream' is boolean when set will
+         * send RPC with stream flag and receives streaming RPC output.
+         * 'onReplyRender' when specified will be called with data received
+         * per reply. 'onCompleteRender' will be run once the RPC is completed
+         */
+        runCommandInternal: function runCommandInternal (view, target, command,
+                                                         onComplete, format, 
+                                                         stream, onReplyRender,
+                                                         onCompleteRender) {
             var output = null,
                 domElement = false;
             
@@ -366,7 +380,7 @@ jQuery(function ($) {
                 });
                 view = Ember.View.views["pseudo_view"]
                             .createChildView(pseudoView);
-                view.append();
+                view.appendTo(output);
             } else {
                 output = view.$();
             }
@@ -380,12 +394,30 @@ jQuery(function ($) {
             if (muxer == undefined)
                 openMuxer();
 
-            var full = [ ];
+            // Set muxer on the controller
+            view.set('controller.muxer', muxer);
 
+            var full = [ ];
+            var payload = "<command format=";
+
+            if (format) {
+                payload += "'" + format + "'";
+            } else {
+                payload += "'html'";
+            }
+
+            if (stream) {
+                payload += " stream='stream'";
+            }
+
+            payload += ">" + command + "</command>";
+            var op = '',
+                cache = [];
             muxer.rpc({
                 div: output,
+                view: view,
                 target: target,
-                payload: "<command format='html'>" + command + "</command>",
+                payload: payload,
                 onreply: function (data) {
                     $.dbgpr("rpc: reply: full.length " + full.length
                             + ", data.length " + data.length);
@@ -398,11 +430,28 @@ jQuery(function ($) {
                     // rest wait until the RPC is complete.  Ideally, there
                     // should also be a timer to render what we've got if
                     // the output RPC stalls.
-                    if (full.length <= 2) {
+                    if (stream) {
+                        cache.push(data);
+                        if (cache.length > 5) {
+                            cache = cache.splice(cache.length - 5);
+                        }
+                        op = cache.join("");
+                    } else {
+                        op = full.join("");
+                    }
+
+                    if (stream || full.length <= 2) {
                         if (domElement) {
                             output.html(data);
                         } else {
-                            view.get('controller').set('output', data);
+                            if (onReplyRender) {
+                                view.get('controller')
+                                    .set('output',
+                                         onReplyRender(op));
+                            } else {
+                                view.get('controller')
+                                    .set('output', op);
+                            }
                         }
                     }
                 },
@@ -412,7 +461,14 @@ jQuery(function ($) {
                         output.html(full.join(""));
                     } else {
                         view.get('controller').set('completed', true);
-                        view.get('controller').set('output', full.join(""));
+                        if (onCompleteRender) {
+                            view.get('controller')
+                                .set('output', 
+                                     onCompleteRender(full.join("")));
+                        } else {
+                            view.get('controller')
+                                .set('output', full.join(""));
+                        }
                     }
 
                     // Add this device to list of recently used devices
@@ -423,6 +479,9 @@ jQuery(function ($) {
                     }
                 },
                 onclose: function (event, message) {
+                    if (stream) {
+                        this.oncomplete();
+                    }
                     $.dbgpr("muxer: rpc onclose");
                     if (full.length == 0) {
                         $.clira.makeAlert(view, message,
