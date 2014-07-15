@@ -31,8 +31,8 @@ object with following properties
 
 * __name__: name for the command file / package
 * __templatesFile__: optional path to file containing handlebars templates 
-for commands. Note that templates file will have each template in <script> 
-tag with template name available in data-template-name
+for commands. Note that templates file will have each template in `<script>` 
+tag with template name available in _data-template-name_
 * __commands__: Array containing command objects
 
 ####Each command object has following properties:
