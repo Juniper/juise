@@ -27,7 +27,9 @@ jQuery(function ($) {
                 help: "Reload CLIRA command set",
                 execute: function (view, cmd, parse, poss) {
                     view.set('controller.output', "Reloading commands");
-                    $.clira.loadCommandFiles();
+                    $.clira.loadCommandFiles().done(function() {
+                        view.set('controller.output', "Done loading commands");
+                    });
                 }
             },
             {
