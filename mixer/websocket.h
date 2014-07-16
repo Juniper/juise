@@ -18,6 +18,7 @@
 #define MX_OP_RPC	"rpc"
 #define MX_OP_HTMLRPC	"htmlrpc"
 #define MX_OP_AUTHINIT	"authinit"
+#define MX_OP_DATA	"data"
 
 void
 mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp);
