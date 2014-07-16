@@ -639,7 +639,19 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
             return $("<li></li>")
                 .data("item.autocomplete", item)
                 .append(append)
+                .css('width', $('#command-input-box').width())
                 .appendTo(ul);
+        };
+
+        // Adjust position to match with command input box
+        this.ui.options.position = {
+            my: 'left top',
+            at: 'left bottom',
+            of: $('#command-input-box')
+        };
+
+        this.ui._resizeMenu = function() {
+            this.menu.element.outerWidth($("#command-top").outerWidth());
         };
     },
 
