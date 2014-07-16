@@ -344,6 +344,8 @@ div#input-top {
 
 div#input-history .pulldown {
     border: solid 1px rgb(180, 180, 200);
+    max-height: 300px;
+    overflow-y: auto;
     padding: 0px;
     width: 100%;
 }
