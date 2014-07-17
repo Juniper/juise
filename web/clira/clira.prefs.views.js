@@ -76,7 +76,7 @@ Clira.PreferencesDialog = Ember.View.extend({
                 of: '#' + elementId 
             },
             resizable: false,
-            width: 320,
+            width: 220,
         });
     }
 });
