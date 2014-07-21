@@ -259,6 +259,9 @@ mx_request_rpc_send (mx_sock_t *msp, mx_buffer_t *mbp,
     if (newp != mbp)
 	mx_buffer_free(newp);
 
+    /* save channel for future use */
+    mrp->mr_channel = mcp;
+
     return FALSE;
 }
 

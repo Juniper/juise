@@ -76,7 +76,7 @@ Clira.PreferencesDialog = Ember.View.extend({
                 of: '#' + elementId 
             },
             resizable: false,
-            width: 320,
+            width: 220,
         });
     }
 });
@@ -493,43 +493,80 @@ Clira.DevicesPrefView = Ember.View.extend({
             },
             afterSubmit: function(response, formdata) {
                 if (formdata["connect"] == "yes") {
-                    $("#prefs-devices-connect").dialog({
-                        autoOpen: true,
-                        dialogClass: 'inline-dialog',
-                        height: 300,
-                        width: 400,
-                        resizable: false,
-                        modal: true,
-                        buttons: {
-                            'Close': function() {
-                                $(this).dialog("close");
-                            }
-                        },
-                        close: function() {
-                        },
-                        open: function() {
-                            var content = "<div id=\"connecting\">Attempting to establish connection to '"
-                            + formdata["name"] + "' (" + formdata["username"] + "@" + formdata["hostname"]
-                            + ":" + formdata["port"] + ") ...</div><div class=\"output-replace\"></div>";
-                            var $newp = jQuery(content);
-                            $("div#prefs-devices-connect").empty();
-                            $("div#prefs-devices-connect").append($newp);
-
-                            var $out = $("div#prefs-devices-connect div.output-replace");
-                            $.clira.runCommand($out, formdata["name"], ".noop-command", 
-                                function (success, $output) {
-                                    var msg = "<div style=\"font-weight: bold\">";
-                                    if (success) {
-                                        msg += "Connection successful.  You can now use this device in CLIRA.";
-                                    } else {
-                                        msg += "Connection NOT successful.  Please check your device connection settings and try again.";
+                    view.set('isVisible', false);
+                    var cv = Ember.View.extend({
+                        classNames: ['output-content'],
+                        templateName: 'conn_status',
+                        underlay: true,
+                        didInsertElement: function() {
+                            var that = this;
+                            var elementId = this.elementId;
+                            $("#prefs-devices-connect").dialog({
+                                autoOpen: true,
+                                dialogClass: 'inline-dialog',
+                                height: 300,
+                                appendTo: '#' + elementId,
+                                width: 400,
+                                resizable: false,
+                                draggable: 'false',
+                                modal: false,
+                                position: {
+                                    my: 'left',
+                                    at: 'left',
+                                    of: '#' + elementId
+                                },
+                                buttons: {
+                                    'Close': function() {
+                                        view.set('isVisible', true);
+                                        $(this).dialog("close");
                                     }
-                                    msg += "</div>";
-                                    $output.append(msg);
+                                },
+                                close: function() {
+                                },
+                                open: function() {                                    
+                                    var content = "<div id=\"connecting\">"
+                                                + "Attempting to establish "
+                                                + "connection to '"
+                                                + formdata["name"] + "' (" 
+                                                + formdata["username"] + "@" 
+                                                + formdata["hostname"]
+                                                + ":" + formdata["port"] 
+                                                + ") ...</div><div class="
+                                                + "\"output-replace\"></div>";
+                                    var $newp = jQuery(content);
+                                    $('#' + that.elementId 
+                                            + ' #connect-status').empty();
+                                    $('#' + that.elementId 
+                                            + ' #connect-status').append($newp);
+
+                                    var $out = $('div#' 
+                                                    + that.elementId 
+                                                    + ' div.output-replace');
+                                    $.clira.runCommand(that, formdata["name"], 
+                                                        ".noop-command", 
+                                                        function (success, $output) {
+                                            var msg = "<div style="
+                                                    + "\"font-weight: bold\">";
+                                            if (success) {
+                                                msg += "Connection successful"
+                                                    + ".  You can now use this"
+                                                    + "device in CLIRA.";
+                                            } else {
+                                                msg += "Connection NOT "
+                                                    + "successful.  Please "
+                                                    + "check your device "
+                                                    + "connection settings " 
+                                                    + "and try again.";
+                                            }
+                                            msg += "</div>";
+                                            $out.append(msg);
+                                        }
+                                    );
                                 }
-                            );
+                            });
                         }
                     });
+                    view.get('parentView').pushObject(cv.create());
                 }
                 return [ true, "" ];
             }

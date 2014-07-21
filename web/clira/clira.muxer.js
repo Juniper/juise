@@ -283,7 +283,9 @@ jQuery(function ($) {
         if (muxer.authmuxid) {
             attrs += " authmuxid=\"" + this.authmuxid + "\"";
         }
-        if (options.div) {
+        if (options.view) {
+            attrs += " authdivid=\"" + options.view.get("elementId") + "\"";
+        } else if (options.div) {
             attrs += " authdivid=\"" + options.div.attr("id") + "\"";
         }
 
@@ -298,6 +300,10 @@ jQuery(function ($) {
         var message = makeMessage(op, muxid, attrs, payload);
 
         this.sendMessage(message);
+
+        if (options.view) {
+            options.view.set('controller.muxid', muxid);
+        }
     }
 
     //
@@ -367,6 +373,13 @@ jQuery(function ($) {
                 }
             }
         });
+    }
+
+    /*
+     * Sends message to a given muxid
+     */
+    function muxerSendData (message, muxid) {
+    	this.sendMessage(makeMessage("data", muxid, "", message));
     }
 
     function muxerSendMessage (message) {
@@ -444,6 +457,7 @@ jQuery(function ($) {
         psphrase: muxerPsPhrase,
         psword: muxerPsWord,
         sendMessage: muxerSendMessage,
+        sendData: muxerSendData,
         queueRequest: muxerQueueRequest,
         runQueue: muxerRunQueue,
         isOpen: function () {

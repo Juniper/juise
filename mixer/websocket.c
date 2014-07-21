@@ -707,6 +707,37 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	} else if (streq(operation, "password")) {
 	} else if (streq(operation, "unknown-host")) {
 #endif
+	} else if (streq(operation, MX_OP_DATA)) {
+	    mx_request_t *mrp = mx_request_find(muxid, reqid);
+
+	    if (mrp == NULL)
+		goto fatal;
+
+	    mx_sock_session_t *mssp = mx_session(mrp);
+	    if (mssp == NULL) {
+		mx_request_error(mrp, "no session");
+		return TRUE;
+	    }
+	    mx_channel_t *mcp;
+	    if (mrp->mr_channel) {
+		mcp = mrp->mr_channel;
+	    } else {
+		mx_request_error(mrp, "no previous rpc channel");
+		return TRUE;
+	    }
+
+	    mx_buffer_t *newp = mx_buffer_create(0);
+	    memcpy(newp->mb_data, 
+		   strndupa(mbp->mb_data + mbp->mb_start, mbp->mb_len), 
+		   mbp->mb_len);
+	    newp->mb_len = mbp->mb_len;
+
+	    size_t len = mx_channel_write_buffer(mcp, newp);
+
+	    mx_log("%d sent data %u", mcp->mc_id, len);
+
+	    if (newp)
+		mx_buffer_free(newp);
 	} else {
 	    mx_log("%s websocket: unknown request '%s'",
 		    mx_sock_title(&mswp->msw_base), operation);
