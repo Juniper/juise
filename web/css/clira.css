@@ -807,6 +807,20 @@ div.dyn-form-item .is-error:focus {
     border-color: rgb(213, 11, 0);
 }
 
+div.dyn-form-item .is-loading-data {
+    background-image: url('/images/icons/loading.gif');
+    background-position-x: right;
+    background-position-y: center;
+    background-repeat: no-repeat;
+}
+
+div.dyn-form-item .is-data-ready {
+    background-image: url('/images/icons/dropdown.png');
+    background-position-x: right;
+    background-position-y: center;
+    background-repeat: no-repeat;
+}
+
 div.dyn-form-item input:focus {
     border: solid 1px rgb(180, 180, 200);
     box-shadow: 0px 0px 3px rgba(100, 100, 200, 0.8);
