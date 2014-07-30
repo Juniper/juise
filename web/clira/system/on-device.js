@@ -300,298 +300,60 @@ jQuery(function($) {
         return res;
     }
 
-    function formatLabel (name) {
-        var words = ['SNMP', 'ISSU', 'IPv4', 'IPv6', 'IP', 'TE', 'ISO', 'CCC',
-                     'MAC', 'TOS', 'TTL'];
-
-        var label = name.replace(/-/g, ' ');
-        label = label.charAt(0).toUpperCase() + label.slice(1);
-
-        label = label.split(' ');
-        
-        var op = '';
-
-        for (var i = 0; i < label.length; i++) {
-            for (var j = 0; j < words.length; j++) {
-                if (label[i].toUpperCase() == words[j].toUpperCase()) {
-                    break;
-                }
-            }
-            if (j == words.length) {
-                op += label[i];
-            } else {
-                op += words[j];
-            }
-
-            if (i < label.length - 1) {
-                op += ' ';
-            }
-        }
-
-        return op;
-    }
 
     function buildForm (view, command, poss) {
-        var nodeinfo = "";
-        var muxer = $.clira.muxer();
+        var buttons =  [{
+            caption: "Execute",
+            validate: true,
+            onclick: function() {
+                var values = this.get('controller.fieldValues'),
+                    fields = this.get('controller.fields');
+                var morecommand = "";
 
-        // Execute complete RPC and get available options
-        muxer.rpc({
-            div: view.$(),
-            view: view,
-            target: poss.data.target,
-            payload: '<complete>'
-                    + command + ' ?'
-                    + '</complete>',
-            onreply: function (data) {
-                nodeinfo += data;
-            },
-            oncomplete: function () {
-                var $xmlDoc = $($.parseXML(nodeinfo)),
-                    nokeyItem = null,
-                    dataValues = {},
-                    noname = 0,
-                    fields = [],
-                    mandatoryFields = false,
-                    firstNokeyItem = null;
-
-                dataValues['_nokeyItem'] = [];
-
-                $xmlDoc.find("expand-item").each(
-                    function(n, item) {
-                        var $this = $(this),
-                            hidden = $this.find('hidden').length,
-                            enter = $this.find('enter').length,
-                            data = $this.find('data').length
-                            type = $this.find('type').text(),
-                            match = $this.find('match').text(),
-                            matchMessage = $this.find('match-message').text(),
-                            rangeMin = $this.find('range-min').text(),
-                            rangeMax = $this.find('range-max').text(),
-                            name = $this.find('name').text();
-
-                        if (type === 'TYPE_COMMAND' || hidden > 0 || enter > 0
-                            || name === '|') {
-                            return;
-                        }
-
-                        if (!name) {
-                            name = '_clira' + noname;
-                            noname++;
-                        }
-
-                        var label = formatLabel(name);
-
-                        if ($this.find('flag-mandatory').length > 0) {
-                            label += ' *';
-                            mandatoryFields = true;
-                        }
-
-                        // Each field has an errors object that holds error
-                        // messages of each type. Following are the class of
-                        // errors
-                        // mandatory: Field is mandatory
-                        // match: Regular expression match fail
-                        // type: Type mismatch
-                        // rangeMin: Value less than minimum allowed
-                        // rangeMax: Value more than maximum allowed
-                        if ($this.find('flag-mandatory').length) {
-                            errors = {
-                                mandatory: name + ' is mandatory'
-                            };
-                            errorCount = 1;
-                        } else {
-                            errors = {};
-                            errorCount = 0;
-                        }
-
-                        var item = {
-                            name: name,
-                            title: name,
-                            fieldType: type,
-                            hidden: hidden,
-                            label: label,
-                            help: $this.find('help').text(),
-                            match: match,
-                            matchMessage: matchMessage,
-                            nokeyword: $this.find('flag-nokeyword').length,
-                            mandatory: $this.find('flag-mandatory').length,
-                            boolean: type == 'TYPE_TOGGLE',
-                            type: type == 'TYPE_TOGGLE' ? 2 : 3,
-                            errors: errors,
-                            errorCount: errorCount
-                        };
-
-                        if (rangeMin) {
-                            item['rangeMin'] = rangeMin;
-                        }
-
-                        if (rangeMax) {
-                            item['rangeMax'] = rangeMax;
-                        }
-
-                        if ($this.find('data').length > 0) {
-                            var dName = $this.find('data').text();
-                            if (dName) {
-                                if (dataValuse[dName]) {
-                                    dataValues[dName].push(name);
-                                } else {
-                                    dataValues[dName] = [name];
-                                }
-                            } else {
-                                dataValues['_nokeyItem'].push(name);
-                            }
-                        } else if (type === 'TYPE_CHOICE' 
-                                    && $this.find('parent').length > 0) {
-                            var parent = $this.find('parent').text();
-                            if (dataValues[parent]) {
-                                dataValues[parent].push(name);
-                            } else {
-                                dataValues[parent] = [name];
-                            }
-                        } else {
-                            fields.unshift(item);
-                            if (firstNokeyItem == null && item.nokeyword > 0) {
-                                firstNokeyItem = name;
-                            }
-                        }
-                    }
-                );
-
-                if (mandatoryFields) {
-                    view.get('controller').set('mandatoryFields', true);
+                if (this.get('errorCount') > 0) {
+                    return false;
                 }
 
-                // Assign data to fields
-                $.each(fields, function(i, v) {
-                    if (v.name == firstNokeyItem) {
-                        fields[i].select = true;
-                        fields[i].data = dataValues['_nokeyItem'];
-                    } else if (dataValues[v.name]) {
-                        fields[i].select = true;
-                        fields[i].data = dataValues[v.name];
-                    } else {
-                        fields[i].select = false;
+                for (var i = 0; i < fields.length; i++) {
+                    if (fields[i].spacer) {
+                        continue;    
                     }
-                });
-
-                // Add missing field names
-                $.each(dataValues, function(k, v) {
-                    if (k == '_nokeyItem') {
-                        return;
-                    }
-
-                    for (var i = 0; i < fields.length; i++) {
-                        if (fields[i].name == v.name) {
-                            break;
+                    if (values.hasOwnProperty(fields[i].name) 
+                            && values[fields[i].name]) {
+                        if (fields[i].nokeyword)  {
+                            if (fields[i].boolean) {
+                                morecommand += " " + fields[i].name;
+                            } else {
+                                morecommand += " " 
+                                    + values[fields[i].name];
+                            }
+                        } else if (fields[i].boolean) {
+                            morecommand += " " + fields[i].name;
+                        } else {
+                            morecommand += " " + fields[i].name 
+                                + " " + values[fields[i].name];
                         }
                     }
+                }
+                this.get('parentView').get('parentView').destroy();
 
-                    if (i == fields.length) {
-                        var item = {                            
-                            name: k,
-                            nokeyword: true,
-                            help: k,
-                            title: k,
-                            label: formatLabel(k),
-                            radio: true,
-                            data: v,
-                            type: 0
-                        };
-                        fields.push(item);
-                    }
-                });
+                // Update output header
+                this.set('controller.command', 
+                         'on ' + poss.data.target + ' ' 
+                         + command + morecommand);
 
-                //Sort fields so they can be rendered properly
-                fields.sort(function(a, b) {
-                    if (a.mandatory == 1) {
-                        return -1;
-                    } else if (b.mandatory == 1) {
-                        return 1;
-                    } else {
-                        if (a.boolean && !b.boolean) {
-                            return 1;
-                        } else if (!a.boolean && b.boolean) {
-                            return -1;
-                        } else if (a.radio) {
-                            return 1;
-                        } else if (b.radio) {
-                            return -1;
-                        } else if (a.label.length > 20 
-                            && a.label.length > b.label.length) {
-                            return 1;
-                        }
-                    }
-                    return -1;
-                });
-
-                var prevType = -1;
-                // Group fields together
+                executeInternal(view, poss.data.target, 
+                                command + morecommand);
+             }
+        }, {
+        caption: "Reset",
+            onclick: function() {
+                var fields = this.get('controller.fields');
                 fields.forEach(function(field) {
-                    if (prevType >= 0 && field.type != prevType) {
-                        fields.splice(fields.indexOf(field), 0, 
-                                        { spacer: true });
-                    }
-                    prevType = field.type;
+                    Ember.set(field, 'value', null);
                 });
-
-                var v = view.get('parentView').container
-                            .lookup('view:DynForm');
-                v.fields = fields;
-                v.buttons = [{
-                    caption: "Execute",
-                    validate: true,
-                    onclick: function() {
-                        var values = this.get('controller.fieldValues');
-                        var morecommand = "";
-
-                        if (this.get('errorCount') > 0) {
-                            return false;
-                        }
-
-                        for (var i = 0; i < fields.length; i++) {
-                            if (fields[i].spacer) {
-                                continue;    
-                            }
-                            if (values.hasOwnProperty(fields[i].name) 
-                                    && values[fields[i].name]) {
-                                if (fields[i].nokeyword)  {
-                                    if (fields[i].boolean) {
-                                        morecommand += " " + fields[i].name;
-                                    } else {
-                                        morecommand += " " 
-                                                     + values[fields[i].name];
-                                    }
-                                } else if (fields[i].boolean) {
-                                    morecommand += " " + fields[i].name;
-                                } else {
-                                    morecommand += " " + fields[i].name 
-                                                 + " " + values[fields[i].name];
-                                }
-                            }
-                        }
-                        this.get('parentView').get('parentView').destroy();
-
-                        // Update output header
-                        this.set('controller.command', 
-                                    'on ' + poss.data.target + ' ' 
-                                          + command + morecommand);
-
-                        executeInternal(view, poss.data.target, 
-                                                command + morecommand);
-                    }
-                }, {
-                    caption: "Reset",
-                    onclick: function() {
-                        var fields = this.get('controller.fields');
-                        fields.forEach(function(field) {
-                            Ember.set(field, 'value', null);
-                        });
-                    }
-                }];
-
-                view.get('parentView').pushObject(v);
             }
-        });
-    }
+       }];
+       $.clira.buildAutoForm(poss.data.target, command, view, buttons);
+   }
 });
