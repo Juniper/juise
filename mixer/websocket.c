@@ -726,11 +726,7 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 		return TRUE;
 	    }
 
-	    mx_buffer_t *newp = mx_buffer_create(0);
-	    memcpy(newp->mb_data, 
-		   strndupa(mbp->mb_data + mbp->mb_start, mbp->mb_len), 
-		   mbp->mb_len);
-	    newp->mb_len = mbp->mb_len;
+	    mx_buffer_t *newp = mx_buffer_copy(mbp, mbp->mb_len);
 
 	    size_t len = mx_channel_write_buffer(mcp, newp);
 
