@@ -475,7 +475,7 @@ jQuery(function ($) {
                     view.get('controller').get('controllers.recentDevices')
                                           .addDevice(target);
                     if ($.isFunction(onComplete)) {
-                        onComplete(true, output);
+                        onComplete(view, true, full.join(""));
                     }
                 },
                 onclose: function (event, message) {
@@ -487,7 +487,7 @@ jQuery(function ($) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
                         if ($.isFunction(onComplete)) {
-                            onComplete(false, output);
+                            onComplete(view, false, output);
                         }
                     }
                 },

@@ -63,8 +63,10 @@ BASE_FILES = \
     images/empty.png \
     images/gear.png \
     images/icons/doubleSize.png \
+    images/icons/dropdown.png \
     images/icons/juniper-favicon.ico \
     images/icons/loading.png \
+    images/icons/loading.gif \
     images/icons/size1p5.png \
     images/juise.png \
     images/logo.png \
