@@ -79,7 +79,6 @@ static session_type_t js_default_stype = ST_JUNOSCRIPT;
 static int js_auth_muxer_id;
 static int js_auth_websocket_id;
 static char *js_auth_div_id;
-static int js_muxid = 0;
 
 static unsigned jsio_flags;
 static char js_netconf_ns_attr[] = "xmlns=\"" XNM_NETCONF_NS "\"";

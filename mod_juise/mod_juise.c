@@ -867,7 +867,7 @@ mod_juise_create_env (server *srv, connection *con,
     char *sdup = NULL, *cp;
     char *http_auth = NULL, *user = NULL, *pass = NULL;
     data_string *ds;
-    char buf[BUFSIZ];
+    char cbuf[BUFSIZ];
 
 #ifndef __WIN32
     /* set up args */
@@ -903,10 +903,10 @@ mod_juise_create_env (server *srv, connection *con,
 	    snprintf(userbuf, sizeof(userbuf), " --user %s", pwd->pw_name);
 	}
 
-	argv[i++] = "--mixer";
-	snprintf(buf, sizeof(buf), "%s%s", p->conf.mixer->ptr, 
+	argv[i++] = strdup("--mixer");
+	snprintf(cbuf, sizeof(cbuf), "%s%s", p->conf.mixer->ptr, 
 		userbuf[0] ? userbuf : "");
-	argv[i++] = buf;
+	argv[i++] = cbuf;
     }
 
     if (con->physical.path->used > 1)
