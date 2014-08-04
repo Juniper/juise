@@ -192,7 +192,7 @@ jQuery(function($) {
             }
 
             $.clira.runCommandInternal(view, target, command, 
-                                                    null, ex.format,
+                                                    onComplete, ex.format,
                                                     ex.stream, ex.onReplyRender,
                                                     ex.onCompleteRender);
 
@@ -202,8 +202,19 @@ jQuery(function($) {
             }
 
         } else {
-            $.clira.runCommandInternal(view, target, command, null, 'html',
-                                       false);
+            $.clira.runCommandInternal(view, target, command, onComplete, 
+                                       'html', false);
+        }
+    }
+
+    function onComplete(view, success, output) {
+        if (success) {
+            // If we have error running RPC, catch and let the user know
+            var $xmlDoc = $($.parseXML(output));
+                
+            if ($xmlDoc.find('rpc-error').length > 0) {
+                view.set('controller.output', 'Failed to run command');
+            }
         }
     }
 
