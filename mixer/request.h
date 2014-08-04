@@ -17,7 +17,7 @@ int
 mx_request_start_rpc (mx_sock_websocket_t *mswp, mx_request_t *mrp);
 
 mx_request_t *
-mx_request_find (mx_muxid_t muxid, int reqid);
+mx_request_find (mx_muxid_t muxid, unsigned reqid);
 
 void
 mx_request_free (mx_request_t *mrp);
