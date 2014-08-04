@@ -118,7 +118,7 @@ typedef struct mx_request_s {
     mx_muxid_t mr_muxid;	/* Muxer ID (client's ID) */
     mx_muxid_t mr_auth_muxid;	/* Muxer Auth ID (if different) */
     char *mr_auth_divid;	/* Client div ID to place auth prompts */
-    int mr_auth_websocketid;	/* Websocket ID to use for Authentication */
+    unsigned mr_auth_websocketid; /* Websocket ID to use for Authentication */
     unsigned mr_authid;		/* Request Auth ID (if different than mr_id) */
     unsigned mr_flags;          /* Flags for this request */
     char *mr_name;		/* Request name (tag) */
