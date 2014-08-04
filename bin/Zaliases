@@ -14,8 +14,8 @@ set opts=' \
 --with-libslax-prefix=/Users/phil/work/root \
 --with-lighttpd-obj=/Users/phil/work/slax/lighttpd-for-juise/build \
 --with-lighttpd-src=/Users/phil/work/slax/lighttpd-for-juise \
---with-libssh2-prefix=/Users/phil/work/root \
---with-sqlite3-prefix=/opt/local \
+--with-ssh2=/Users/phil/work/root \
+--with-sqlite3=/opt/local \
 --with-lighttpd-lib=/Users/phil/work/root/lib \
 --with-php-cgi=/opt/local/bin/php-cgi \
 '
