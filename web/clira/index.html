@@ -166,7 +166,13 @@
         <div class="dyn-form-item">
           {{#unless field.radio}}
             <label>
-              {{field.label}}
+              {{#if field.title}}
+                {{field.title}}
+              {{else}}{{#if field.label}}
+                  {{field.label}}
+              {{else}}
+                  {{field.name}}
+              {{/if}}{{/if}}
             </label>
           {{/unless}}  
           {{#if field.spacer}}
