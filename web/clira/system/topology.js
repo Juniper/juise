@@ -22,7 +22,8 @@ jQuery(function ($) {
                 name: "target",
                 type: "string",
                 help: "Remote taget to pull OSPF database from",
-                nokeyword: true
+                nokeyword: true,
+                mandatory: true
             }],
             execute: topology
         }]
