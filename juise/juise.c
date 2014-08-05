@@ -2024,6 +2024,8 @@ main (int argc UNUSED, char **argv, char **envp)
 	slaxLogEnable(TRUE);
 
     exsltRegisterAll();
+    slaxDynMarkExslt();
+
     ext_jcs_register_all();
 
     jsio_init(jsio_flags);
