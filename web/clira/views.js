@@ -93,7 +93,7 @@ Clira.DynFormView = Ember.ContainerView.extend({
         if (this.hasOwnProperty('fields')) {
             this.get('fields').forEach(function(field) {
                 if (field.mandatory) {
-                    errorCount++;
+                    field.errorCount++;
                     fieldErrors[field.name] = field.name + ' is mandatory';
                 }
             });
@@ -117,11 +117,9 @@ Clira.DynTextField = Ember.TextField.extend({
             if (!field.errors.hasOwnProperty(errorType)) {
                 this.set('field.errors.' + errorType, message);
                 field.errorCount++;
-                this.set('errorCount', ++errorCount);
             }
         } else if (field.errors && field.errors.hasOwnProperty(errorType)) {
             field.errorCount--;
-            this.set('errorCount', --errorCount);
             delete field.errors[errorType]
         }
     },
