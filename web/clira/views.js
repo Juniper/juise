@@ -374,10 +374,15 @@ Clira.DynAutoComplete = JQ.AutoCompleteView.extend({
                             }
 
                             that.ui.source = function(value, response) {
-                                response(data.toArray()
-                                        .filter(function(element) {
-                                    return element.indexOf(value.term) == 0;
-                                }));
+                                if (!field.hasOwnProperty('filter') 
+                                    || field.filter) {
+                                    response(data.toArray()
+                                            .filter(function(element) {
+                                        return element.indexOf(value.term) == 0;
+                                    }));
+                                } else {
+                                    response(data.toArray());
+                                }
                             };
                         });
                         v.destroy();
@@ -388,9 +393,13 @@ Clira.DynAutoComplete = JQ.AutoCompleteView.extend({
                 this.set('isDataReady', true);
             }
             this.ui.source = function(value, response) {
-                response(content.filter(function(element) {
-                    return element.indexOf(value.term) == 0;
-                }));
+                if (!field.hasOwnProperty('filter') || field.filter) {
+                    response(content.filter(function(element) {
+                        return element.indexOf(value.term) == 0;
+                    }));
+                } else {
+                    response(content);
+                }
             };
         }
 
