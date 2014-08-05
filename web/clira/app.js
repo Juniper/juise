@@ -120,16 +120,20 @@ JQ.Widget = Em.Mixin.create({
 });
 
 jQuery(function ($) {
-    // Load command files
-    $.clira.loadCommandFiles();
+    // Load command files and display welcome screen when done
+    $.clira.loadCommandFiles().done(function() {
+        var content = {
+            command: 'Welcome',
+            completed: false,
+            commandNumber: 0,
+            context: this,
+        };
+
+        // Display welcome screen only if not hidden
+        if (localStorage['hideWelcome'] == 'false') {
+            $.clira.executeCommand('show welcome screen', content);
+        }
+    });
+
     $.clira.prefsInit();
-
-    // Icons on debug container
-    $.clira.decorateIcons($("#debug-container"));
-
-    // Hide debug container when not debugging
-    if (localStorage['debug'] 
-            && JSON.parse(localStorage['debug']) == true) {
-        $("#debug-container").css({ display: "inline" });
-    }
 });

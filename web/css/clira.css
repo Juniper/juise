@@ -344,6 +344,8 @@ div#input-top {
 
 div#input-history .pulldown {
     border: solid 1px rgb(180, 180, 200);
+    max-height: 300px;
+    overflow-y: auto;
     padding: 0px;
     width: 100%;
 }
@@ -352,6 +354,7 @@ div#mru-pulldown {
     margin-top: 40px;
     position: absolute;
     width: 100%;
+    z-index: 9999;
 }
 
 div#mru-pulldown .mru-item {
@@ -362,6 +365,16 @@ div#mru-pulldown .mru-item:hover {
     background: rgb(242, 244, 255);
     cursor: pointer;
     font-weight: 700;
+}
+
+div#recent-devices {
+    margin-top: 10px;
+}
+
+div#recent-devices a {
+    color: rgb(0, 50, 112);
+    cursor: pointer;
+    text-decoration: underline;
 }
 
 div#input-top .logo {
@@ -469,7 +482,13 @@ div.command-number {
     float: right;
 }
 
+div#ember-view .output-content {
+    float: left;
+    position: relative;
+}
+
 div.output-content {
+    display: block;
     font-size: 12px;
     padding: 10px;
 }
@@ -683,6 +702,16 @@ div.map-small {
     height: 200px;
 }
 
+div.inline-dialog {
+    box-shadow: none;
+    margin-left: 20px;
+    position: relative;
+}
+
+.inline-dialog .ui-dialog-titlebar-close {
+    display: none;
+}
+
 div#prefs-title {
     font-size: 120%;
     font-weight: 600;
@@ -709,39 +738,114 @@ div.ui-yf-item div {
 }
 
 div.dyn-form {
+    padding: 5px;
     width: auto;
 }
 
+div.dyn-form-wrapper {
+    display: inline-block;
+    border: 1px solid #ccc;
+    min-width: 400px;
+}
+
+div.dyn-form-title {
+    background-color: #1478dc;
+    padding: 10px;
+    color: white;
+    font-size: 1.1em;
+}
+
 div.dyn-form-item {
+    display: inline-block;
     text-align: center;
+    padding: 2px 10px 2px 10px;
 }
 
 div.dyn-form-message {
     text-align: left;
+    padding: 5px 10px 5px 10px;
 }
 
 div.dyn-form-item label {
+    float: left;
     padding-left: 10px;
     padding-right: 5px;
 }
 
+div.dyn-form-buttons {
+    text-align: center;
+    padding: 5px 10px 10px 10px;
+}
+
 div.dyn-form-item label, 
 div.dyn-form-item input, 
+div.dyn-form-item select, 
 div.dyn-form-item div {
-    display: table-cell;
+    float: left;
+    line-height: 20px;
+    margin-top: 5px;
+    min-width: 100px;
     text-align: left;
 }
 
-div.dyn-form-item input {
+div.dyn-form-item input,
+div.dyn-form-item select {
     border: solid 1px #CCC;
-    height: 1.8em;
     margin-top: 5px;
-    width: 100%;
+    width: auto;
+}
+
+div.dyn-form-item .mandatory {
+    border-color: rgb(213, 119, 0);
+}
+
+div.dyn-form-item .is-error {
+    border-color: rgb(213, 11, 0);
+}
+
+div.dyn-form-item .is-error:focus {
+    border-color: rgb(213, 11, 0);
+}
+
+div.dyn-form-item .is-loading-data {
+    background-image: url('/images/icons/loading.gif');
+    background-position-x: right;
+    background-position-y: center;
+    background-repeat: no-repeat;
+}
+
+div.dyn-form-item .is-data-ready {
+    background-image: url('/images/icons/dropdown.png');
+    background-position-x: right;
+    background-position-y: center;
+    background-repeat: no-repeat;
+}
+
+div.dyn-form-item input:focus {
+    border: solid 1px rgb(180, 180, 200);
+    box-shadow: 0px 0px 3px rgba(100, 100, 200, 0.8);
 }
 
 div.dyn-form-boolean {
+    margin-left: -40px;
     text-align: left;
     vertical-align: middle;
+}
+
+div.dyn-form-item .dyn-radio-button {
+    margin-left: -30px;
+    margin-right: -40px;
+}
+
+div.dyn-radiogroup {
+    border-bottom: 1px solid rgb(230, 230, 230);
+    border-top: 1px solid rgb(230, 230, 230);
+    padding: 5px;
+}
+
+.dyn-dropdown-item {
+    max-height: 200px;
+    overflow-y: auto;
 }
 
 .history-element .command {
@@ -840,4 +944,43 @@ div.xpath {
 
 .ui-state-warning .ui-icon {
     background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
+}
+
+.stop_button {
+    background-color: #f24537;
+    background: -moz-linear-gradient( center top, #f24537 5%, #c62d1f 100% );
+    background: -webkit-gradient( linear, left top, left bottom, color-stop(0.05, #f24537), color-stop(1, #c62d1f) );
+    border: 1px solid #d02718;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    box-shadow: inset 0px 1px 0px 0px #f5978e;
+    color: #ffffff;
+    display: inline-block;
+    filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#f24537', endColorstr='#c62d1f');
+    font-family: Courier New;
+    font-size: 10px;
+    font-style: normal;
+    font-weight: bold;
+    height: 16px;
+    line-height: 16px;
+    margin-left: 5px;
+    text-align: center;
+    text-decoration: none;
+    text-indent: 0.4px;
+    text-shadow: 1px 1px 0px #810e05;
+    width: 37px;
+}
+
+.stop_button:hover {
+    background-color: #c62d1f;
+    background: -moz-linear-gradient( center top, #c62d1f 5%, #f24537 100% );
+    background: -webkit-gradient( linear, left top, left bottom, color-stop(0.05, #c62d1f), color-stop(1, #f24537) );
+    filter:progid: DXImageTransform.Microsoft.gradient(startColorstr='#c62d1f', endColorstr='#f24537');
+}
+
+.stop_button:active {
+    position: relative;
+    top: 1px;
 }

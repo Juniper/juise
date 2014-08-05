@@ -25,7 +25,7 @@ JQ.AutoCompleteView = Ember.TextField.extend(JQ.Widget, {
 // Ember view for the JQuery UI Button widget
 JQ.ButtonView = Em.View.extend(JQ.Widget, {
     uiType: 'button',
-    uiOptions: ['label', 'disabled', 'icons', 'text'],
+    uiOptions: ['label', 'disabled', 'icons', 'text', 'title'],
     tagName: 'button'
 });
 
@@ -52,11 +52,12 @@ JQ.Dialog = Em.View.extend(JQ.Widget, {
  * fieldValues as name:value and the same can be retrieved from 
  * viewContext.get('fieldValues')
  */
-Clira.DynFormView = JQ.Dialog.extend({
-    templateName: "dyn_form",
+Clira.DynFormView = Ember.ContainerView.extend({
     view: null,
     viewContext: null,
     width: "auto",
+    underlay: true,
+    classNames: ['output-content'],
 
     // Set view and view context as globals
     didInsertElement: function() {
@@ -65,14 +66,40 @@ Clira.DynFormView = JQ.Dialog.extend({
         viewContext = view.get('context');
     },
 
+    // Insert view containing form fields
+    init: function() {
+        var dynFormView = Ember.View.create({
+            templateName: 'dyn_form'
+        });
+        this.set('childViews', [dynFormView]);
+        this._super();
+    },
+
     /*
      * Set fields and fieldValues as properties on controller so we can use
      * them in template and to capture the modified values
      */
     willInsertElement: function() {
+        this.get('controller').set('buttons', this.get('buttons'));
         this.get('controller').set('message', this.get('message'));
         this.get('controller').set('fields', this.get('fields'));
+        this.get('controller').set('title', this.get('title'));
         this.get('controller').set('fieldValues', {});
+
+        // Run through fields and see if we have any mandatory fields
+        var errorCount = 0;
+        var fieldErrors = {};
+
+        if (this.hasOwnProperty('fields')) {
+            this.get('fields').forEach(function(field) {
+                if (field.mandatory) {
+                    errorCount++;
+                    fieldErrors[field.name] = field.name + ' is mandatory';
+                }
+            });
+        }
+        this.get('controller').set('errorCount', errorCount);
+        this.get('controller').set('fieldErrors', fieldErrors);
     }
 });
 
@@ -80,13 +107,137 @@ Clira.DynFormView = JQ.Dialog.extend({
  * View to handle text inputbox in dynamic forms
  */
 Clira.DynTextField = Ember.TextField.extend({
-    // We observe on value changes and update fieldValues
+    classNameBindings: ['isError'],
+    isError: false,
+
+    // Helper function to update errors on this field
+    processError: function(errorType, allowNull, isError, message) {
+        var field = this.get('field');
+        if (!(!this.get('value') && allowNull) && isError) {
+            if (!field.errors.hasOwnProperty(errorType)) {
+                this.set('field.errors.' + errorType, message);
+                field.errorCount++;
+                this.set('errorCount', ++errorCount);
+            }
+        } else if (field.errors && field.errors.hasOwnProperty(errorType)) {
+            field.errorCount--;
+            this.set('errorCount', --errorCount);
+            delete field.errors[errorType]
+        }
+    },
+
+    didInsertElement: function() {
+        var fieldId = this.get('fieldId'),
+            field = this.get('field');
+
+        if (field && field['help']) {
+            var qtipText = this.checkErrors();
+            this.$().qtip({
+                content: {
+                    title: '<b>' + field['name'] + '</b>',
+                    text: qtipText
+                },
+                hide: {
+                    fixed: true
+                },
+                position: {
+                    my: 'middle left',
+                    at: 'middle right'
+                },
+                style: 'qtip-tipped'
+            });
+        }
+    },
+
+    // Sets error class for input field and also returns error text to be
+    // displayed in tooltip
+    checkErrors: function() {
+        var qtipText = '',
+            field = this.get('field');
+        
+        qtipText += field.help;
+
+        // Check if we are mandatory
+        if (field.mandatory) {
+            this.processError('mandatory', false, !this.get('value'), 
+                                field.name + ' is mandatory');
+        }
+
+        // If there is a match statement, run against it
+        if (field.match) {
+            var re = new RegExp(field.match, 'i');
+            this.processError('match', true, !re.test(this.get('value')),
+                                field.matchMessage);
+        }
+
+        // Type specific validations
+        if (field.fieldType) {
+            var ft = field.fieldType;
+            if (ft == 'TYPE_UINT' || ft == 'TYPE_INT' || ft == 'TYPE_FLOAT' 
+                || ft == 'TYPE_UFLOAT') {
+                this.processError('type', true, isNaN(this.get('value')),
+                                    'Number required');
+            }
+        }
+
+        // Range validations
+        if (field.rangeMin) {
+            // In case of string, range is allowed string length
+            if (field.fieldType == 'TYPE_STRING') {
+                this.processError('rangeMin', true, 
+                            this.get('value') 
+                                && this.get('value').len < field.rangeMin, 
+                            field.name + ' must be minimum ' 
+                                + field.rangeMin + ' characters');
+            } else {
+                this.processError('rangeMin', true, 
+                            parseFloat(this.get('value')) < field.rangeMin,
+                            field.name + ' should be greater than ' 
+                                + field.rangeMin);
+            }
+        }
+
+        if (field.rangeMax) {
+            // In case of string, range is allowed string length
+            if (field.fieldType == 'TYPE_STRING') {
+                this.processError('rangeMax', true, 
+                            this.get('value') 
+                                && this.get('value').len > field.rangeMax, 
+                            field.name + ' cannot be more than ' 
+                                + field.rangeMax + ' characters');
+            } else {
+                this.processError('rangeMax', true, 
+                                parseFloat(this.get('value')) > field.rangeMax,
+                                field.name + ' should be less than ' 
+                                    + field.rangeMax);
+            }
+        }
+
+        // Compile list of error messages on this field
+        if (field.errorCount > 0) {
+            qtipText += '<br><br><span style="color:red">'
+                      + '<b>Errors</b></span><br>';
+            $.each(field.errors, function(k, v) {
+                qtipText += '<li>' + v + '</li>';
+            });
+            this.set('isError', true);
+        } else {
+            this.set('isError', false);
+        }
+        return qtipText;
+    },
+
+    // We observe on value changes and update fieldValues, errors
     valueChange: function() {
         var fieldId = this.get('fieldId');
         var values = this.get('values');
+        var field = this.get('field');
+        var errorCount = this.get('errorCount');
+
         if (values && fieldId) {
             values[fieldId] = this.get('value');
         }
+        this.$().qtip('option', 'content.text', this.checkErrors());
     }.observes('value')
 });
 
@@ -94,13 +245,403 @@ Clira.DynTextField = Ember.TextField.extend({
  * View to handle input checkbox in dynamic forms
  */
 Clira.DynCheckbox = Ember.Checkbox.extend({
+    didInsertElement: function() {
+        var fieldId = this.get('fieldId'),
+            field = this.get('field');
+
+        if (field && field['help']) {
+            this.$().qtip({
+                content: {
+                    title: '<b>' + field['title'] + '</b>',
+                    text: field['help'] 
+                },
+                hide: {
+                    fixed: true
+                },
+                position: {
+                    my: 'middle left',
+                    at: 'middle right'
+                },
+                style: 'qtip-tipped'
+            });
+        }
+    },
     // We observe on value changes and update fieldValues
     valueChange: function() {
         var fieldId = this.get('fieldId');
         var values = this.get('values');
+        var field = this.get('field');
+        var fieldErrors = this.get('errors');
+        var errorCount = this.get('errorCount');
         if (values && fieldId) {
             values[fieldId] = this.get('checked');
         }
+    }.observes('checked')
+});
+
+/*
+ * View to handle input select in dynamic forms
+ */
+Clira.DynSelect = Ember.Select.extend({
+    click: function() {
+        var fieldId = this.get('fieldId');
+        var values = this.get('values');
+        if (values && fieldId) {
+            values[fieldId] = this.get('selection');
+        }
+    }.observes('selection')
+});
+
+/*
+ * View to handle autocomplete input fields in dynamic forms
+ */
+Clira.DynAutoComplete = JQ.AutoCompleteView.extend({
+    classNameBindings: ['isDataReady', 'isError', 'isLoadingData'],
+    isDataReady: false,
+    isError: false,
+    isLoadingData: false,
+    attributeBindings: ['autocomplete', 'maxlength', 'spellcheck', 
+                        'fieldId', 'values'],
+    maxlength: '2048',
+    spellcheck: 'false',
+    autocomplete: 'on',
+    minLength: 0,
+
+    didInsertElement: function() {
+        this._super.apply(this, arguments);
+        var content = this.get('content').toArray(),
+            fieldId = this.get('fieldId'),
+            field = this.get('field'),
+            that = this;
+
+        // If we have dataRPC field set, we need to get data for
+        // completion if not already available
+        if (content.length == 0 && field.dataRPC) {
+            this.ui.source = function() {};
+            var nodeinfo = '',
+                muxer = $.clira.muxer(),
+                that = this,
+                v = Em.View.create({controller: Em.Object.create()});
+
+                // Display data loading spinner
+                that.set('isLoadingData', true);
+
+                muxer.rpc({
+                    div: v.$(),
+                    view: v,
+                    target: field.completeTarget,
+                    payload: field.dataRPC,
+                    onreply: function (data) {
+                        nodeinfo += data;
+                    },
+                    oncomplete: function () {                        
+                        var $xmlDoc = $($.parseXML(nodeinfo)),
+                            data = [],
+                            dataNoChoice = [],
+                            items;
+
+                        // Remove data loading spinner
+                        if (!that.isDestroyed)
+                            that.set('isLoadingData', false);
+                            
+                        if (field.config) {
+                            items = $xmlDoc.find('choice');
+                        } else {
+                            items = $xmlDoc.find('expand-item');
+                        }
+
+                        items.each(function (n, item) {
+                            var $this = $(this),
+                                type = $this.find('type').text(),
+                                parent = $this.find('parent').text();
+
+                            if (parent == field.name) {
+                                data.push($this.find('name').text());
+                            } else if (field.config) {
+                                if (type == 'TYPE_CHOICE') {
+                                    data.push($this.find('id').text());
+                                } else {
+                                    dataNoChoice.push($this.find('id').text());
+                                }
+                            }
+                        }).promise().done(function() {
+                            // We will be a string if we have choices
+                            field.fieldType = 'TYPE_STRING';
+                            if (data.length == 1 && dataNoChoice.length > 0)
+                                data = dataNoChoice;
+
+                            if (data.length > 0) {
+                                if (!that.isDestroyed)
+                                    that.set('isDataReady', true);
+                            }
+
+                            that.ui.source = function(value, response) {
+                                response(data.toArray()
+                                        .filter(function(element) {
+                                    return element.indexOf(value.term) == 0;
+                                }));
+                            };
+                        });
+                        v.destroy();
+                    }
+                });
+        } else {
+            if (content.length > 0) {
+                this.set('isDataReady', true);
+            }
+            this.ui.source = function(value, response) {
+                response(content.filter(function(element) {
+                    return element.indexOf(value.term) == 0;
+                }));
+            };
+        }
+
+        this.ui._renderItem = function renderItemOverride(ul, item) {
+            var append = "<a>";
+            append += "<div>" + item.value;
+            append += "</div></a>";
+            return $("<li></li>")
+                .append(append)
+                .appendTo(ul);
+
+        };
+
+        this.ui._resizeMenu = function() {
+            var ul = this.menu.element;
+            ul.removeClass('ui-autocomplete');
+            ul.outerWidth(Math.max(ul.width( "" ).outerWidth(),
+                            this.element.outerWidth()));
+            ul.addClass('dyn-dropdown-item');
+        };
+
+        // Handle focus events
+        var that = this;
+        this.$().focus(function(event, ui) {
+            that.$().autocomplete("search");
+        });
+
+        // Handle qtip
+        if (field && field['help']) {
+            var qtipText = this.checkErrors();
+            this.$().qtip({
+                content: {
+                    title: '<b>' + field['name'] + '</b>',
+                    text: qtipText
+                },
+                hide: {
+                    fixed: true
+                },
+                position: {
+                    my: 'middle left',
+                    at: 'middle right'
+                },
+                style: 'qtip-tipped'
+            });
+        }
+
+    },
+
+    // Helper function to update errors on this field
+    processError: function(errorType, allowNull, isError, message) {
+        var field = this.get('field');
+        if (!(!this.get('value') && allowNull) && isError) {
+            if (!field.errors.hasOwnProperty(errorType)) {
+                this.set('field.errors.' + errorType, message);
+                field.errorCount++;
+                this.set('errorCount', ++errorCount);
+            }
+        } else if (field.errors && field.errors.hasOwnProperty(errorType)) {
+            field.errorCount--;
+            this.set('errorCount', --errorCount);
+            delete field.errors[errorType]
+        }
+    },
+
+    // Sets error class for input field and also returns error text to be
+    // displayed in tooltip
+    checkErrors: function() {
+        var qtipText = '',
+            field = this.get('field');
+        
+        qtipText += field.help;
+
+        // Check if we are mandatory
+        if (field.mandatory) {
+            this.processError('mandatory', false, !this.get('value'), 
+                                field.name + ' is mandatory');
+        }
+
+        // If there is a match statement, run against it
+        if (field.match) {
+            var re = new RegExp(field.match, 'i');
+            this.processError('match', true, !re.test(this.get('value')),
+                                field.matchMessage);
+        }
+
+        // Type specific validations
+        if (field.fieldType) {
+            var ft = field.fieldType;
+            if (ft == 'TYPE_UINT' || ft == 'TYPE_INT' || ft == 'TYPE_FLOAT' 
+                || ft == 'TYPE_UFLOAT') {
+                this.processError('type', true, isNaN(this.get('value')),
+                                    'Number required');
+            }
+        }
+
+        // Range validations
+        if (field.rangeMin) {
+            // In case of string, range is allowed string length
+            if (field.fieldType == 'TYPE_STRING') {
+                this.processError('rangeMin', true, 
+                            this.get('value') 
+                                && this.get('value').len < field.rangeMin, 
+                            field.name + ' must be minimum ' 
+                                + field.rangeMin + ' characters');
+            } else {
+                this.processError('rangeMin', true, 
+                            parseFloat(this.get('value')) < field.rangeMin,
+                            field.name + ' should be greater than ' 
+                                + field.rangeMin);
+            }
+        }
+
+        if (field.rangeMax) {
+            // In case of string, range is allowed string length
+            if (field.fieldType == 'TYPE_STRING') {
+                this.processError('rangeMax', true, 
+                            this.get('value') 
+                                && this.get('value').len > field.rangeMax, 
+                            field.name + ' cannot be more than ' 
+                                + field.rangeMax + ' characters');
+            } else {
+                this.processError('rangeMax', true, 
+                                parseFloat(this.get('value')) > field.rangeMax,
+                                field.name + ' should be less than ' 
+                                    + field.rangeMax);
+            }
+        }
+
+        // Compile list of error messages on this field
+        if (field.errorCount > 0) {
+            qtipText += '<br><br><span style="color:red">'
+                      + '<b>Errors</b></span><br>';
+            $.each(field.errors, function(k, v) {
+                qtipText += '<li>' + v + '</li>';
+            });
+            this.set('isError', true);
+        } else {
+            this.set('isError', false);
+        }
+        return qtipText;
+    },
+
+    // We observe on value changes and update fieldValues
+    valueChange: function() {
+        var fieldId = this.get('fieldId');
+        var values = this.get('values');
+        var field = this.get('field');
+        var errorCount = this.get('errorCount');
+
+        if (values && fieldId) {
+            values[fieldId] = this.get('value');
+        }
+
+        this.$().qtip('option', 'content.text', this.checkErrors());
+    }.observes('value')
+});
+
+/*
+ * View to handle radio buttons in dynamic forms
+ */
+Clira.DynRadioButton = Ember.View.extend({
+    tagName: 'input',
+    type: 'radio',
+    classNames: ['dyn-radio-button'],
+    attributeBindings: ['name', 'type', 'value', 'values', 'class'],
+    click: function() {
+        this.set('selection', this.$().val());
+    },
+    checked: function() {
+        return this.get('value') == this.get('selection');
+    }.property(),
+    valueChange: function() {
+        var fieldId = this.get('name');
+        var values = this.get('values');
+        if (values && fieldId) {
+            values[fieldId] = this.get('selection');
+        }
+
+        // Clear the selection if we are resetting
+        if (!this.get('selection')) {
+            this.$().removeAttr('checked');
+        }
+    }.observes('selection')
+});
+
+/*
+ * View to handle buttons in dynamic forms. If 'validate' is set, button will
+ * be enabled only when there are no errors in the form
+ */
+Clira.DynButton = JQ.ButtonView.extend({
+    attributeBindings: ['title'],
+    init: function() {
+        this._super();
+        if (!this.get('validate')) {
+            return;
+        }
+
+        var formErrors = this.get('errors');
+        var errmsg = '';
+        
+        $.each(formErrors, function(k, v) {
+            errmsg += k + ' : ' + v + '\n';
+        });
+
+        if (this.get('errorCount') > 0) {
+            this.set('disabled', true);
+            this.set('title', errmsg);
+        } else {
+            this.set('disabled', false);
+            this.set('title', '');
+        }
+    },
+
+    statusChange: function() {
+        if (!this.get('validate')) {
+            return;
+        }
+
+        var formErrors = this.get('errors');
+        var errmsg = '';
+        
+        $.each(formErrors, function(k, v) {
+            errmsg += k + ' : ' + v + '\n';
+        });
+
+        if (this.get('errorCount') > 0) {
+            this.set('disabled', true);
+            this.set('title', errmsg);
+        } else {
+            this.set('disabled', false);
+            this.set('title', '');
+        }
+    }.observes('errorCount')
+});
+
+
+/*
+ * View handling options on welcome screen
+ */
+Clira.WelcomeCheck = Ember.Checkbox.extend({
+    didInsertElement: function() {
+        if (localStorage['hideWelcome'] == "true") {
+            this.set('checked', true);
+        } else {
+            this.set('checked', false);
+        }
+    },
+    valueChange: function() {
+        localStorage['hideWelcome'] = this.get('checked');
     }.observes('checked')
 });
 
@@ -179,7 +720,19 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
             return $("<li></li>")
                 .data("item.autocomplete", item)
                 .append(append)
+                .css('width', $('#command-input-box').width())
                 .appendTo(ul);
+        };
+
+        // Adjust position to match with command input box
+        this.ui.options.position = {
+            my: 'left top',
+            at: 'left bottom',
+            of: $('#command-input-box')
+        };
+
+        this.ui._resizeMenu = function() {
+            this.menu.element.outerWidth($("#command-top").outerWidth());
         };
     },
 
@@ -192,7 +745,13 @@ Clira.AutoComplete = JQ.AutoCompleteView.extend({
     insertNewline: function() {
         this.ui.close();
         this.get('targetObject').executeCommand();
-    }
+    },
+
+    // Scroll up and focus the input field when on command change
+    scrollUp: function() {
+        $("html, body").animate({ scrollTop: 0 }, 300);
+        this.$().focus();
+    }.observes('targetObject.command')
 });
 
 
@@ -244,6 +803,7 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
         if (!this.get('controller').parseErrors) {
             var contentView = Ember.View.create({
                 layoutName: "output_content_layout",
+                underlay: true,
                 templateName: this.get('controller').contentTemplate,
 
                 didInsertElement: function() {
@@ -257,7 +817,22 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
             });
             this.pushObject(contentView);
         }
-    }
+    },
+
+    /*
+     * When views are stacked in a output container, we hide the views which
+     * has underlay set to true
+     */
+    toggleChildVisibility: function() {
+        var childViews = this.get('_childViews');
+        for (var i = childViews.length - 2; i >= 0; i--) {
+            if (childViews[i].underlay) {
+                childViews[i].set('isVisible', false);
+            }
+        }
+
+        childViews[childViews.length - 1].set('isVisible', true);
+    }.observes('childViews')
 });
 
 
@@ -382,6 +957,20 @@ Clira.MessageView = Ember.View.extend({
 
 
 /*
+ * View to display the list of recently used devices
+ */
+Clira.RecentDevicesView = Ember.View.extend({
+    isVisible: false,
+
+    toggleVisibility: function() {
+        if (this.get('controller').content.length > 0) {
+            this.set('isVisible', true);
+        }
+    }.observes('controller.content.@each')
+});
+
+
+/*
  * View for clira preferences button
  */
 Clira.PrefsButtonView = Ember.View.extend({
@@ -389,93 +978,11 @@ Clira.PrefsButtonView = Ember.View.extend({
 
     // Create a preferences dialog as childView and append
     click: function() {
-        this.createChildView(Clira.PreferencesDialog).append();
-    }
-});
-
-
-/*
- * View to display preferences dialog and handle devices, group and general
- * preferences
- */
-Clira.PreferencesDialog = Ember.View.extend({
-    templateName: "preferences",
-    isVisible: false,
-
-    actions: {
-        generalPref: function() {
-            var prefs = Clira.Preference.find(),
-                fields = [];
-
-            // Sanitize before creating a form
-            if (prefs) {
-                prefs.forEach(function(item) {
-                    pref = item.__data;
-                    if (pref.type == "boolean") {
-                        pref['boolean'] = true;
-
-                        if (pref.value == "true") {
-                            pref['value'] = true;
-                        } else {
-                            pref['value'] = false;
-                        }
-                    } else {
-                        pref['boolean'] = false;
-                    }
-                    fields.push(pref);
-                });
-            }
-            this.createChildView(Clira.GeneralPrefView, {fields: fields}).append();
+        var content = {
+            command: 'edit preferences',
+            context: this,
         }
-    },
-
-    /*
-     * We use jqGrid to read device and group config from db and display 
-     * them in corresponding preferences modal
-     */
-    didInsertElement: function() {
-        $.proxy($("#prefs-main-form").dialog({
-            buttons: {
-                'close': function() {
-                    $(this).dialog("close");
-                }
-            },
-            height: 210,
-            resizable: false,
-            width: 320
-        }), this);
-
-        // Build devices and group preferences form dialogs using jqGrid
-        $.clira.buildPrefForms();
-    }
-});
-
-
-/*
- * View extending dynamic forms to handle displaying and saving clira
- * preferences using localStorage backed ember-restless
- */
-Clira.GeneralPrefView = Clira.DynFormView.extend({
-    title: "Preferences",
-    buttons: {
-        cancel: function() {
-            $(this).dialog('close');
-        },
-        save: function() {
-            var clira_prefs = $.clira.prefs;
-            // Iterate fieldValues and save them back into Clira.Preference
-            $.each(viewContext.get('fieldValues'), function(k, v) {
-                var pref = Clira.Preference.find(k);
-                if (pref) {
-                    pref.set('value', v);
-                    pref.saveRecord();
-
-                    // Update $.clira.pref
-                    clira_prefs[k] = v;
-                }
-            });
-            $(this).dialog('close');
-        }
+        $.clira.executeCommand('edit preferences', content);
     }
 });
 

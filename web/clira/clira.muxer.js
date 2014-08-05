@@ -15,7 +15,7 @@ jQuery(function ($) {
     var mx_muxid = 0;           // Identify the muxer operation
     var MX_HEADER_SIZE = 31;
     var MX_HEADER_SIZE1 = 32;
-    var MX_DUMP_SIZE = 80;
+    var MX_DUMP_SIZE = 200;
     var MX_HEADER_FIELD = 8;
 
     function pad (val, width, lfill, rfill) {
@@ -55,11 +55,15 @@ jQuery(function ($) {
         muxer.ws.onopen = function (event) {
             $.dbgpr("muxer: WebSocket is now open");
             muxer.opened = true;
+            
             if (muxer.pendingMessages) {
                 $.dbgpr("muxer: sending pending messages ("
                         + muxer.pendingMessages.length + ")");
                 while (muxer.pendingMessages.length > 0) {
-                    muxer.ws.send(muxer.pendingMessages.shift());
+                    var message = muxer.pendingMessages.shift();
+                    $.dbgpr("wssend: " + message.length
+                        + ":: " + message.substring(0, message.length));
+                    muxer.ws.send(message);
                 }
             }
 
@@ -95,6 +99,42 @@ jQuery(function ($) {
             $.dbgpr("muxer: ws.onerror");
             muxer.ws.close();
         }
+        
+        // Now that the WebSocket connection to mixer is set up, send over a
+        // authinit message to let mixer know to use this connection for
+        // future auth requests
+        muxer.sendMessage(makeMessage("authinit", this.authmuxid));
+        $.dbgpr("muxer: auth muxid for this Muxer is " + this.authmuxid);
+        muxer.muxMap[this.authmuxid] = {
+            muxid: this.authmuxid,
+            onauthinit: function (data) {
+                muxer.authwebsocketid = data;
+                $.dbgpr("muxer: Auth WebSocket id/muxid is: (" +
+                        muxer.authwebsocketid + "/" + muxer.authmuxid + ")");
+                muxer.runQueue();
+            },
+            onhostkey: function (data) {
+                $.dbgpr("muxer: authmuxid " + muxer.authmuxid + 
+                        " received [hostkey] '" + data + "'");
+                var response = JSON.parse(data);
+                muxer.onhostkey.call(muxer.muxMap[response.muxid],
+                    Ember.View.views[response.authdivid], response);
+            },
+            onpsphrase: function (data) {
+                $.dbgpr("muxer: authmuxid " + muxer.authmuxid + 
+                        " received [psphrase] '" + data + "'");
+                var response = JSON.parse(data);
+                muxer.onpsphrase.call(muxer.muxMap[response.muxid],
+                    Ember.View.views[response.authdivid], response);
+            },
+            onpsword: function (data) {
+                $.dbgpr("muxer: authmuxid " + muxer.authmuxid + 
+                        " received [psword] '" + data + "'");
+                var response = JSON.parse(data);
+                muxer.onpsword.call(muxer.muxMap[response.muxid],
+                    Ember.View.views[response.authdivid], response);
+            }
+        };
     }
 
     function forceClose (event, muxer) {
@@ -123,6 +163,7 @@ jQuery(function ($) {
         muxer.ws = undefined;
         muxer.opening = muxer.opened = false;
         muxer.muxMap = [ ];
+        muxer.authmuxid = muxer.authwebsocketid = 0;
     }
 
     function muxerClose () {
@@ -151,8 +192,8 @@ jQuery(function ($) {
             var op = substr(data, 13, MX_HEADER_FIELD).trim();
             var muxid  = parseInt(substr(data, 22, MX_HEADER_FIELD), 10);
 
-            $.dbgpr("muxer: header [" + op + "] [" + len
-                    + "] [" + muxid + "]");
+            $.dbgpr("muxer: header [op: " + op + "] [len: " + len
+                    + "] [muxid: " + muxid + "]");
 
             if (h1 != "#01.") {
                 $.dbgpr("muxer: bad header: [" + h1 + "]");
@@ -221,6 +262,17 @@ jQuery(function ($) {
     // - onerror: callback function when bad things happen
     //
     function muxerRpc (options) {
+        var muxer = this;
+
+        if (muxer.authwebsocketid <= 0) {
+            // We have yet to receive a websocket id from our authinit.  This
+            // means we're still waiting for mixer to be launched.  Queue this
+            // request up.
+            options.muxerRpc = true;
+            muxer.queueRequest(options);
+            return;
+        }
+
         var attrs = "target=\"" + options.target + "\"";
         var muxid = ++mx_muxid;
         var payload = options.payload;
@@ -228,60 +280,111 @@ jQuery(function ($) {
             payload = "<command>" + options.command + "</command>";
         if (options.create == "no")
             attrs += " create=\"no\"";
+        if (muxer.authmuxid) {
+            attrs += " authmuxid=\"" + this.authmuxid + "\"";
+        }
+        if (options.view) {
+            attrs += " authdivid=\"" + options.view.get("elementId") + "\"";
+        } else if (options.div) {
+            attrs += " authdivid=\"" + options.div.attr("id") + "\"";
+        }
 
         var op = options.op;
         if (op == undefined)
             op = "rpc";
 
         options.muxid = muxid;
-        if (options.output) {
-            $.extend(options, {
-                onhostkey: function (data) {
-                    var self = this;
-                    promptForHostKey(this.output, data, function (response) {
-                        muxer.hostkey(self, response);
-                    });
-                },
-                onpsphrase: function (data) {
-                    var self = this;
-                    promptForSecret(this.output, data, function (response) {
-                        muxer.psphrase(self, response);
-                    });
-                },
-                onpsword: function (data) {
-                    var self = this;
-                    promptForSecret(this.output, data, function (response) {
-                        muxer.psword(self, response);
-                    });
-                },
-                onclose: function (event, message) {
-                    $.dbgpr("muxer: rpc onclose");
-                    if (full.length == 0) {
-                        $.clira.makeAlert(this.output, message,
-                                          "internal failure (websocket)");
-                    }
-                },
-                onerror: function (message) {
-                    $.dbgpr("muxer: rpc onerror");
-                    if (full.length == 0) {
-                        $.clira.makeAlert(this.output, message,
-                                          "internal failure (websocket)");
-                    }
-                },
-            });
-        }
 
         this.muxMap[muxid] = options;
 
         var message = makeMessage(op, muxid, attrs, payload);
 
         this.sendMessage(message);
+
+        if (options.view) {
+            options.view.set('controller.muxid', muxid);
+        }
+    }
+
+    //
+    // Queue this request up since we haven't received our authinit data back
+    // yet
+    //
+    function muxerQueueRequest (options)
+    {
+        this.queue.push(options);
+    }
+
+    //
+    // Run through our queue (if any)
+    //
+    function muxerRunQueue ()
+    {
+        while (this.queue.length) {
+            var options = this.queue.shift();
+            if (options.muxerRpc){
+                this.rpc(options);
+            } else if (options.muxerSlax) {
+                this.slax(options);
+            }
+        }
+    }
+
+    //
+    // Run a .slax script that possibly has jcs:execute or jcs:open calls (use
+    // mixer connection)
+    // - script: url to the slax script
+    // - args: key value arguments to send to the slax script via HTTP
+    // - view: view that the slax script should output into
+    // - oncomplete: called when script is done being executed
+    // - onerror: called when script fails to execute
+    // - type: type of slax data to expect (xml, html, text) [optional]
+    //
+    function muxerSlax (options) {
+        var muxer = this;
+
+        if (muxer.authwebsocketid <= 0) {
+            // We have yet to receive a websocket id from our authinit.  This
+            // means we're still waiting for mixer to be launched.  Queue this
+            // request up.
+            options.muxerSlax = true;
+            muxer.queueRequest(options);
+            return;
+        }
+
+        $.ajax({
+            url: options.script,
+            type: 'GET',
+            data: options.args,
+            dataType: options.type ? options.type : 'html',
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader('X-Mixer-Auth-Muxer-ID', muxer.authmuxid);
+                xhr.setRequestHeader('X-Mixer-Auth-WebSocket-ID', muxer.authwebsocketid);
+                xhr.setRequestHeader('X-Mixer-Auth-Div-ID', options.view.$().attr("id"));
+            },
+            success: function (data, textStatus, jqXHR) {
+                if (options.oncomplete) {
+                    options.oncomplete(data);
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                if (options.onerror) {
+                    options.onerror(errorThrown)
+                }
+            }
+        });
+    }
+
+    /*
+     * Sends message to a given muxid
+     */
+    function muxerSendData (message, muxid) {
+    	this.sendMessage(makeMessage("data", muxid, "", message));
     }
 
     function muxerSendMessage (message) {
-        var dlen = message.length; // MX_HEADER_SIZE;
         $.dbgpr("wssend: " + message.length
-                + ":: " + message.substring(0, dlen));
+                + ":: " + message.substring(0, message.length));
 
         if (this.isOpen()) {
             this.ws.send(message);
@@ -301,22 +404,25 @@ jQuery(function ($) {
         $.dbgpr("muxer: error: " + error);
     }
 
-    function muxerSimpleOp (muxer, options, answer, attrs, op) {
+    function muxerSimpleOp (muxer, options, answer, attrs, op, extra) {
+        if (extra && extra.reqid) {
+            attrs += " reqid=\"" + extra.reqid + "\"";
+        }
         var message = makeMessage(op, options.muxid, attrs, answer);
 
         muxer.sendMessage(message);
     }
 
-    function muxerHostkey (options, answer) {
-        muxerSimpleOp(this, options, answer, "", "hostkey");
+    function muxerHostkey (options, answer, extra) {
+        muxerSimpleOp(this, options, answer, "", "hostkey", extra);
     }
 
-    function muxerPsPhrase (options, answer) {
-        muxerSimpleOp(this, options, answer, "", "psphrase");
+    function muxerPsPhrase (options, answer, extra) {
+        muxerSimpleOp(this, options, answer, "", "psphrase", extra);
     }
 
-    function muxerPsWord (options, answer) {
-        muxerSimpleOp(this, options, answer, "", "psword");
+    function muxerPsWord (options, answer, extra) {
+        muxerSimpleOp(this, options, answer, "", "psword", extra);
     }
 
     //
@@ -335,10 +441,14 @@ jQuery(function ($) {
         $.extend(this, options);
         this.muxMap = [ ];
         this.id = ++mx_id;
+        this.authmuxid = ++mx_muxid;
+        this.authwebsocketid = -1;
+        this.queue = [ ];
     }
 
     $.extend(Muxer.prototype, {
         rpc: muxerRpc,
+        slax: muxerSlax,
         open: muxerOpen,
         close:  muxerClose,
         onerror: muxerError,
@@ -347,6 +457,9 @@ jQuery(function ($) {
         psphrase: muxerPsPhrase,
         psword: muxerPsWord,
         sendMessage: muxerSendMessage,
+        sendData: muxerSendData,
+        queueRequest: muxerQueueRequest,
+        runQueue: muxerRunQueue,
         isOpen: function () {
             return (this.ws != undefined
                     && this.ws.readyState == WebSocket.OPEN)

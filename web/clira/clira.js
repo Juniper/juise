@@ -78,54 +78,28 @@ jQuery(function ($) {
             else tgtHistory.focus();
         },
 
-        cliraInit: function cliraInit (need_history, submit) {
-            $.clira.prefsInit();
-            $.clira.decorateIcons($("#debug-container"));
+        /*
+         * Executes given command and inserts output container into the page
+         */
+        executeCommand: function executeCommand (command, content) {
+            var parse = $.clira.parse(command);
 
-            if (need_history) {
-                $.clira.cmdHistory = $.mruPulldown({
-                    name: "command-history",
-                    top: $("#command-top"),
-                    clearIcon: $("#command-clear"),
-                    entryClass: "command-history-entry",
-                    click: function (me) {
-                        if (tgtHistory)
-                            tgtHistory.close();
+            if (parse.possibilities.length > 0) {
+                var poss = parse.possibilities[0];
+                content.contentTemplate = poss.command.templateName;
+                content.poss = poss;            
+
+                if (content.commandNumber == undefined) {
+                    if ($.clira.commandCount) {
+                        content.commandNumber = ++$.clira.commandCount;
+                    } else {
+                        content.commandNumber = 1;
                     }
-                });
-
-                tgtHistory = $.mruPulldown({
-                    name: "target-history",
-                    top: $("#target-top"),
-                    clearIcon: $("#target-clear"),
-                    multiple: $("#target-history-form"),
-                    history: $("#target-history"),
-                    entryClass: "target-history-entry",
-                    focusAfter: $("#command-input"),
-                    click: function (me) {
-                        if ($.clira.cmdHistory)
-                            $.clira.cmdHistory.close();
-                    }
-                });
-            }
-
-            $("#target-input-form").submit(submit);
-            $("#command-input-form").submit(submit);
-
-            $("#input-enter").text("Enter").button({
-                text: true
-            }).click(function (e) {
-                submit(e);
-                $.clira.cmdHistory.focus();
-                $(this).blur();
-                return false;
-            });
-
-            $("#juise").button();
-
-            if (localStorage['debug'] 
-                    && JSON.parse(localStorage['debug']) == false) {
-                $("#debug-container").css({ display: "none" });
+                }
+                
+                Clira.__container__.lookup('controller:outputs')
+                     .unshiftObject(Clira.OutputContainerController
+                                         .create(content));
             }
         }
     });
@@ -300,103 +274,6 @@ jQuery(function ($) {
         }
     }
 
-    function cliInit () {
-        cmdHistory = $.mruPulldown({
-            name: "command-history",
-            top: $("#command-top"),
-            clearIcon: $("#command-clear"),
-            entryClass: "command-history-entry",
-            click: function (me) {
-                if (tgtHistory)
-                    tgtHistory.close();
-            }
-        });
-
-        tgtHistory = $.mruPulldown({
-            name: "target-history",
-            top: $("#target-top"),
-            clearIcon: $("#target-clear"),
-            multiple: $("#target-history-form"),
-            history: $("#target-history"),
-            entryClass: "target-history-entry",
-            focusAfter: $("#command-input"),
-            click: function (me) {
-                if (cmdHistory)
-                    cmdHistory.close();
-            }
-        });
-
-        $("#target-input-form").submit(commandSubmit);
-        $("#command-input-form").submit(commandSubmit);
-
-        $("#input-enter").text("Enter").button({
-            text: true
-        }).click(function (e) {
-            commandSubmit(e);
-            cmdHistory.focus();
-            $(this).blur();
-            return false;
-        });
-
-        $.clira.prefsInit();
-    }
-
-    function commandSubmit (event) {
-        event.preventDefault();
-        $.dbgpr("commandSubmit:", event.type);
-
-        if (tgtHistory)
-            tgtHistory.close();
-        $.clira.cmdHistory.close();
-  
-        var command = $.clira.cmdHistory.value();
-        if (command == "") {
-            $.dbgpr("submit; skipping since command value is empty");
-            $.clira.cmdHistory.focus();
-            return false;
-        }
-
-        //
-        // Since multiple targets are allowed in the target field,
-        // we need to break the target string up into distinct values.
-        //
-        var count = 0;
-        var tset = [ ];
-        var tname = "";
-        var cname = "";
-        var value = tgtHistory.value();
-
-        $.dbgpr("commandSubmit: target [", target,
-                "] command [", command, "]");
-
-        if (value == "") {
-            $.dbgpr("submit: no target, but still working");
-            commmandWrapperAdd(undefined, command);
-
-        } else {
-            $(value.split(" ")).each(function (i, x) {
-                if (x != "") {
-                    count += 1;
-                    tset.push(x);
-                    commmandWrapperAdd(x, command);
-                    tgtHistory.markUsed(x);
-                    tname += " " + x;
-                    cname += "_" + x.replace("_", "__", "g");
-                }
-            });
-
-            tname = tname.substr(1);
-            cname = cname.substr(1);
-            if (cname && cname != "")
-                $.clira.targetListMarkUsed(tname, cname, null);
-        }
-
-        $.clira.cmdHistory.markUsed(command);
-        $.clira.commandOutputTrim(count);
-
-        return false;
-    }
-
     function parseParams (cmdline) {
         var argv = cmdline.split(" ");
         var params = { };
@@ -406,142 +283,10 @@ jQuery(function ($) {
         return params;
     }
 
-    function commmandWrapperAdd (target, command) {
-        var test;
-        var local;
-
-        $.dbgpr("commmandWrapperAdd", target, command);
-
-        var content = "<div class='output-wrapper ui-widget "
-            +     "ui-widget-content ui-corner-all'>"
-            + "<div class='output-header ui-state-default "
-            +     "ui-widget-header ui-corner-all'>"
-            + "<button class='icon-remove-section'></button>"
-            + "<button class='icon-hide-section hidden'></button>"
-            + "<button class='icon-unhide-section'></button>"
-            + "<button class='keeper icon-keeper-section'></button>";
-
-        if (target) {
-            content += "<div class='target-value rounded buttonish green'>"
-                + target
-                + "</div><div class='label'> -> </div>";
-        }
-
-        content += "<div class='command-value rounded blue'>"
-            + command
-            + "</div><div class='command-number'>"
-            + " (" + ++command_number + ")"
-            + "</div></div><div class='output-content can-hide'>"
-
-        if (command.substring(0, 10) == "test form ") {
-            test = command.substring(10);
-            if (testForms[test]) {
-                content += "<div class='ui-yform'></div>";
-            } else {
-                test = undefined;
-            }
-            content += "<div class='output-replace'></div>";
-
-        } else if (command.substring(0, 6) == "local ") {
-            local = command.substring(6);
-            content += "<div class='output-replace'>"
-                + loadingMessage;
-                + "</div>";
-
-        } else if ($.clira.prefs.live_action) {
-            content += "<div class='output-replace'>"
-                + loadingMessage;
-                + "</div>";
-
-        } else {
-            content += "<div class='output-replace'>"
-                + "test-output\nmore\nand more and more\noutput\n";
-                + "</div>";
-        }
-
-        content += "</div>";
-
-        var $newp = jQuery(content);
-        $output.prepend($newp);
-        if ($.clira.prefs.slide_speed > 0)
-            $newp.slideUp(0).slideDown($.clira.prefs.slide_speed);
-        divUnhide($newp);
-
-        if (test) {
-            var yd = $("div.ui-yform", $newp);
-            var yf = $.yform(testForms[test], yd);
-
-            yf.buildForm(function (yform, guide) {
-                hideCommandForm(yform);
-                var $out = yform.form.parents("div.output-content")
-                .find("div.output-replace");
-                $out.html(loadingMessage);
-
-                var rpc = yform.buildRpc();
-                runRpc(yform, $out, rpc, tgtHistory.value());
-            });
-            yf.focus();
-
-        } else if (local) {
-            var $out = $("div.output-replace", $newp);
-            $out.slideUp(0).slideDown($.clira.prefs.slide_speed);
-
-            var params = parseParams("script " + local);
-            var name = params["script"];
-
-            $out.load("/local/" + name, params,
-                      function (text, status, http) {
-                          loadHttpReply(text, status, http,
-                                        $(this), $out);
-                      });
-
-        } else if ($.clira.prefs.live_action) {
-            var $out = $("div.output-replace", $newp);
-            if ($.clira.prefs.muxer) {
-                $.clira.runCommand($out, target, command);
-
-                if (muxer == undefined) {
-                    openMuxer();
-                }
-
-                // Resolve our group/device
-                $.getJSON(
-                    "/clira/db.php?p=group_members",
-                    { target: target },
-                    function (json) {
-                        $.each(json.devices, function (i, name) {
-                            $.clira.runCommand($out, name, command);
-                        });
-                    }
-                ).fail(function fail (x, message, err) {
-                    // Failure means we assume it's a single target
-                    $.clira.runCommand($out, target, command);
-                });
-            }
-        }
-
-        $.clira.decorateIcons($newp);
-
-        if (target) {
-            $(".target-value", $newp).click(function () {
-                tgtHistory.close();
-                tgtHistory.select($(this).text());
-                $.clira.cmdHistory.focus();
-            });
-        }
-
-        $(".command-value", $newp).click(function () {
-            $.clira.cmdHistory.close();
-            $.clira.cmdHistory.select($(this).text());
-            $.clira.cmdHistory.focus();
-        });
-
-        return false;
-    }
-
     function openMuxer () {
-        if (muxer)
-            muxer.close();
+        if (muxer) {
+            return;
+        }
 
         muxer = $.Muxer({
             url: $.clira.prefs.mixer,
@@ -556,7 +301,33 @@ jQuery(function ($) {
             },
             onclose: function (event) {
                 $.dbgpr("clira: WebSocket has closed");
-                muxer.failed = true;
+                // This muxer has been closed.  Completely nuke it since we
+                // only hold one muxer in memory per browser instance.
+                muxer = undefined;
+            },
+            onhostkey: function (view, data) {
+                var self = this;
+                promptForHostKey(view, data, function (response) {
+                    muxer.hostkey(self, response, data);
+                });
+            },
+            onpsphrase: function (view, data) {
+                var self = this;
+                promptForSecret(view, data, function (response) {
+                        muxer.psphrase(self, response, data);
+                }, function() {
+                    $.clira.makeAlert(view,
+                        "Incorrect or unspecified passphrase");
+                });
+            },
+            onpsword: function (view, data) {
+                var self = this;
+                promptForSecret(view, data, function (response) {
+                    muxer.psword(self, response, data);
+                }, function() {
+                    $.clira.makeAlert(view, 
+                        "Incorrect or unspecified password");
+                });
             }
         });
 
@@ -577,6 +348,20 @@ jQuery(function ($) {
             return muxer;
         },
         runCommand: function runCommand (view, target, command, onComplete) {
+            this.runCommandInternal(view, target, command, onComplete, null);
+        },        
+        /*
+         * runCommandInternal takes additional parameters that dictates how to
+         * run the command. 'format' is the format in which RPC should request
+         * output in and defaults to html. 'stream' is boolean when set will
+         * send RPC with stream flag and receives streaming RPC output.
+         * 'onReplyRender' when specified will be called with data received
+         * per reply. 'onCompleteRender' will be run once the RPC is completed
+         */
+        runCommandInternal: function runCommandInternal (view, target, command,
+                                                         onComplete, format, 
+                                                         stream, onReplyRender,
+                                                         onCompleteRender) {
             var output = null,
                 domElement = false;
             
@@ -595,7 +380,7 @@ jQuery(function ($) {
                 });
                 view = Ember.View.views["pseudo_view"]
                             .createChildView(pseudoView);
-                view.append();
+                view.appendTo(output);
             } else {
                 output = view.$();
             }
@@ -609,12 +394,30 @@ jQuery(function ($) {
             if (muxer == undefined)
                 openMuxer();
 
-            var full = [ ];
+            // Set muxer on the controller
+            view.set('controller.muxer', muxer);
 
+            var full = [ ];
+            var payload = "<command format=";
+
+            if (format) {
+                payload += "'" + format + "'";
+            } else {
+                payload += "'html'";
+            }
+
+            if (stream) {
+                payload += " stream='stream'";
+            }
+
+            payload += ">" + command + "</command>";
+            var op = '',
+                cache = [];
             muxer.rpc({
                 div: output,
+                view: view,
                 target: target,
-                payload: "<command format='html'>" + command + "</command>",
+                payload: payload,
                 onreply: function (data) {
                     $.dbgpr("rpc: reply: full.length " + full.length
                             + ", data.length " + data.length);
@@ -627,11 +430,28 @@ jQuery(function ($) {
                     // rest wait until the RPC is complete.  Ideally, there
                     // should also be a timer to render what we've got if
                     // the output RPC stalls.
-                    if (full.length <= 2) {
+                    if (stream) {
+                        cache.push(data);
+                        if (cache.length > 5) {
+                            cache = cache.splice(cache.length - 5);
+                        }
+                        op = cache.join("");
+                    } else {
+                        op = full.join("");
+                    }
+
+                    if (stream || full.length <= 2) {
                         if (domElement) {
                             output.html(data);
                         } else {
-                            view.get('controller').set('output', data);
+                            if (onReplyRender) {
+                                view.get('controller')
+                                    .set('output',
+                                         onReplyRender(op));
+                            } else {
+                                view.get('controller')
+                                    .set('output', op);
+                            }
                         }
                     }
                 },
@@ -641,42 +461,33 @@ jQuery(function ($) {
                         output.html(full.join(""));
                     } else {
                         view.get('controller').set('completed', true);
-                        view.get('controller').set('output', full.join(""));
+                        if (onCompleteRender) {
+                            view.get('controller')
+                                .set('output', 
+                                     onCompleteRender(full.join("")));
+                        } else {
+                            view.get('controller')
+                                .set('output', full.join(""));
+                        }
                     }
 
+                    // Add this device to list of recently used devices
+                    view.get('controller').get('controllers.recentDevices')
+                                          .addDevice(target);
                     if ($.isFunction(onComplete)) {
-                        onComplete(true, output);
+                        onComplete(view, true, full.join(""));
                     }
                 },
-                onhostkey: function (data) {
-                    var self = this;
-                    promptForHostKey(view, target, data, function (response) {
-                        muxer.hostkey(self, response);
-                    });
-                },
-                onpsphrase: function (data) {
-                    var self = this;
-                    promptForSecret(view, target, data, function (response) {
-                        muxer.psphrase(self, response);
-                    }, function() {
-                        muxer.close();
-                    });
-                },
-                onpsword: function (data) {
-                    var self = this;
-                    promptForSecret(view, target, data, function (response) {
-                        muxer.psword(self, response);
-                    }, function() {
-                        muxer.close();
-                    });
-                },
                 onclose: function (event, message) {
+                    if (stream) {
+                        this.oncomplete();
+                    }
                     $.dbgpr("muxer: rpc onclose");
                     if (full.length == 0) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
                         if ($.isFunction(onComplete)) {
-                            onComplete(false, output);
+                            onComplete(view, false, output);
                         }
                     }
                 },
@@ -691,6 +502,313 @@ jQuery(function ($) {
                     }
                 }
             });
+        },
+
+        runSlax: function (options) {
+            if (!muxer) {
+                openMuxer();
+            }
+
+            muxer.slax({
+                script: options.script,
+                view: options.view,
+                type: options.type,
+                args: options.args,
+                oncomplete: function (data) {
+                    if (options.success) {
+                        options.success(data);
+                    }
+                },
+                onerror: function (data) {
+                    if (options.failure) {
+                        options.failure(data)
+                    }
+                }
+            });
+        },
+
+        /*
+         * Looks up the available options under given command and builds a
+         * form out of them along with data that each of the field may accept
+         */
+        buildAutoForm: function buildForm (target, command, view, buttons,
+                                            title) {
+            var nodeinfo = "";
+            var muxer = $.clira.muxer();
+
+            // Execute complete RPC and get available options
+            muxer.rpc({
+                div: view.$(),
+                view: view,
+                target: target,
+                payload: '<complete>'
+                        + command + ' ?'
+                        + '</complete>',
+                onreply: function (data) {
+                    nodeinfo += data;
+                },
+                oncomplete: function () {
+                    var $xmlDoc = $($.parseXML(nodeinfo)),
+                        nokeyItem = null,
+                        dataValues = {},
+                        noname = 0,
+                        fields = [],
+                        mandatoryFields = false,
+                        firstNokeyItem = null;
+
+                    dataValues['_nokeyItem'] = [];
+
+                    // Build list of fields along with their meta data to be
+                    // used to build the form
+                    $xmlDoc.find("expand-item").each(
+                        function(n, item) {
+                            var $this = $(this),
+                                hidden = $this.find('hidden').length,
+                                enter = $this.find('enter').length,
+                                data = $this.find('data').length
+                                type = $this.find('type').text(),
+                                match = $this.find('match').text(),
+                                matchMessage = $this.find('match-message').text(),
+                                rangeMin = $this.find('range-min').text(),
+                                rangeMax = $this.find('range-max').text(),
+                                name = $this.find('name').text();
+
+                            if (type === 'TYPE_COMMAND' || hidden > 0 || enter > 0
+                                || name === '|') {
+                                return;
+                            }
+
+                            if (!name) {
+                                name = '_clira' + noname;
+                                noname++;
+                            }
+
+                            var label = $.clira.formatLabel(name);
+
+                            if ($this.find('flag-mandatory').length > 0) {
+                                label += ' *';
+                                mandatoryFields = true;
+                            }
+
+                            // Each field has an errors object that holds error
+                            // messages of each type. Following are the
+                            // different types of errors
+                            // mandatory: Field is mandatory
+                            // match: Regular expression match fail
+                            // type: Type mismatch
+                            // rangeMin: Value less than minimum allowed
+                            // rangeMax: Value more than maximum allowed
+                            if ($this.find('flag-mandatory').length) {
+                                errors = {
+                                    mandatory: name + ' is mandatory'
+                                };
+                                errorCount = 1;
+                            } else {
+                                errors = {};
+                                errorCount = 0;
+                            }
+
+                            var item = {
+                                name: name,
+                                title: name,
+                                fieldType: type,
+                                hidden: hidden,
+                                label: label,
+                                help: $this.find('help').text(),
+                                match: match,
+                                matchMessage: matchMessage,
+                                nokeyword: $this.find('flag-nokeyword').length,
+                                mandatory: $this.find('flag-mandatory').length,
+                                boolean: type == 'TYPE_TOGGLE',
+                                type: type == 'TYPE_TOGGLE' ? 2 : 3,
+                                errors: errors,
+                                errorCount: errorCount
+                            };
+
+                            if (rangeMin) {
+                                item['rangeMin'] = rangeMin;
+                            }
+
+                            if (rangeMax) {
+                                item['rangeMax'] = rangeMax;
+                            }
+
+                            if ($this.find('data').length > 0) {
+                                var dName = $this.find('data').text();
+                                if (dName) {
+                                    if (dataValuse[dName]) {
+                                        dataValues[dName].push(name);
+                                    } else {
+                                        dataValues[dName] = [name];
+                                    }
+                                } else {
+                                    dataValues['_nokeyItem'].push(name);
+                                }
+                            } else if (type === 'TYPE_CHOICE' 
+                                        && $this.find('parent').length > 0) {
+                                var parent = $this.find('parent').text();
+                                if (dataValues[parent]) {
+                                    dataValues[parent].push(name);
+                                } else {
+                                    dataValues[parent] = [name];
+                                }
+                            } else {
+                                fields.unshift(item);
+                                if (firstNokeyItem == null && item.nokeyword > 0) {
+                                    firstNokeyItem = name;
+                                }
+                            }
+                        }
+                    );
+
+                    // If we have mandatoryFields flag set, we display
+                    // mandatory fields message at bottom of the form
+                    if (mandatoryFields) {
+                        view.get('controller').set('mandatoryFields', true);
+                    }
+
+                    // Assign data to fields
+                    $.each(fields, function(i, v) {
+                        if (v.name == firstNokeyItem) {
+                            fields[i].select = true;
+                            fields[i].data = dataValues['_nokeyItem'];
+                        } else if (dataValues[v.name]) {
+                            fields[i].select = true;
+                            fields[i].data = dataValues[v.name];
+                        } else {
+                            // Expand one level further and get the completion
+                            // data for this field
+                            if (fields[i].type != 'TYPE_TOGGLE') {
+                                // If we are building a config form, we should
+                                // set config flag and read expansion data
+                                // differently
+                                if (command.indexOf('show configuration ') 
+                                            == 0) {
+                                    fields[i].config = true;
+                                    fields[i].dataRPC =
+                                        '<get-node-information><path>' 
+                                        + command.slice(19, command
+                                                            .lastIndexOf(' '))
+                                                .replace(/ /g, '/') 
+                                        + '/' + fields[i].name
+                                        + '</path></get-node-information>';
+                                } else {
+                                    fields[i].dataRPC = '<complete>' + command
+                                                      + ' ' + fields[i].name
+                                                      + ' ?</complete>';
+                                }
+                                fields[i].completeTarget = target;
+                                fields[i].select = true;
+                                fields[i].data = [];
+                            } else {
+                                fields[i].select = false;
+                            }
+                        }
+                    });
+
+                    // Add missing field names
+                    $.each(dataValues, function(k, v) {
+                        if (k == '_nokeyItem') {
+                            return;
+                        }
+
+                        for (var i = 0; i < fields.length; i++) {
+                            if (fields[i].name == v.name) {
+                                break;
+                            }
+                        }
+
+                        if (i == fields.length) {
+                            var item = {                            
+                                name: k,
+                                nokeyword: true,
+                                help: k,
+                                title: k,
+                                label: $.clira.formatLabel(k),
+                                radio: true,
+                                data: v,
+                                type: 0
+                            };
+                            fields.push(item);
+                        }
+                    });
+
+                    //Sort fields so they can be rendered properly
+                    fields.sort(function(a, b) {
+                        if (a.mandatory == 1) {
+                            return -1;
+                        } else if (b.mandatory == 1) {
+                            return 1;
+                        } else {
+                            if (a.boolean && !b.boolean) {
+                                return 1;
+                            } else if (!a.boolean && b.boolean) {
+                                return -1;
+                            } else if (a.radio) {
+                                return 1;
+                            } else if (b.radio) {
+                                return -1;
+                            } else if (a.label.length > 20 
+                                && a.label.length > b.label.length) {
+                                return 1;
+                            }
+                        }
+                        return -1;
+                    });
+
+                    var prevType = -1;
+                    // Group fields together
+                    fields.forEach(function(field) {
+                        if (prevType >= 0 && field.type != prevType) {
+                            fields.splice(fields.indexOf(field), 0, 
+                                            { spacer: true });
+                        }
+                        prevType = field.type;
+                    });
+
+                    var v = view.get('parentView').container
+                                .lookup('view:DynForm');
+                    v.fields = fields;
+                    v.buttons = buttons;
+                    v.title = title;
+                    view.get('parentView').pushObject(v);
+                }
+            });
+        },
+
+        /*
+         * Helper function to format the labels so they can be rendered
+         * properly on form
+         */
+        formatLabel: function formatLabel (name) {
+            var words = ['SNMP', 'ISSU', 'IPv4', 'IPv6', 'IP', 'TE', 'ISO', 
+                        'CCC', 'MAC', 'TOS', 'TTL'];
+
+            var label = name.replace(/-/g, ' ');
+            label = label.charAt(0).toUpperCase() + label.slice(1);
+
+            label = label.split(' ');
+        
+            var op = '';
+
+            for (var i = 0; i < label.length; i++) {
+                for (var j = 0; j < words.length; j++) {
+                    if (label[i].toUpperCase() == words[j].toUpperCase()) {
+                        break;
+                    }
+                }
+                if (j == words.length) {
+                    op += label[i];
+                } else {
+                    op += words[j];
+                }
+
+                if (i < label.length - 1) {
+                    op += ' ';
+                }
+            }
+
+            return op;
         },
 
         prefsChangeMuxer: function prefsChangeMuxer (value, initial, prev) {
@@ -773,60 +891,73 @@ jQuery(function ($) {
         }
     });
 
-    function promptForHostKey (view, target, prompt, onclick) {
+    function promptForHostKey (view, data, onclick) {
         var hostKeyView = Clira.DynFormView.extend({
-            title: "Host key for " + target,
-            buttons: {
-                Accept: function() {
+            title: "Host key for " + data.target,
+            buttons: [{
+                caption: "Accept",
+                onclick: function() {
+                    var onclick = this.get('parentView.parentView.onclick');
                     onclick("yes");
-                    $(this).dialog("close");
-                },
-                Decline: function() {
-                    onclick("no");
-                    $(this).dialog("close");
+                    this.get('parentView.parentView').destroy();
                 }
-            },
-            close: function() {
-                onclick("no");
-            }
+            },{
+                caption: "Decline",
+                onclick: function() {
+                    var onclick = this.get('parentView.parentView.onclick');
+                    onclick("no");
+                    this.get('parentView.parentView').destroy();
+                }
+            }]
         }); 
-        view.createChildView(hostKeyView, 
-                                {message: prompt.split(/(?:\n)+/)}).append();
+
+        /*
+         * Register hostKeyView, get an instance and push it to the container
+         */
+        view.get('parentView').container.register('view:hostKey', hostKeyView);
+        var hkv = view.get('parentView').container.lookup('view:hostKey');
+        hkv.message = data.prompt.split(/(?:\n)+/); 
+        hkv.onclick = onclick;
+        view.get('parentView').pushObject(hkv);
     }
 
-    function promptForSecret (view, target, prompt, onclick, onclose) {
-        var title = "Password: ";
-        $.ajax({
-            url: 'db.php?p=device&name=' + target,
-            success: function(result) {
-                title += result['username'] + '@' + result['hostname'];
-            },
-            async: false
-        });
+    function promptForSecret (view, data, onclick, onclose) {
         var secretView = Clira.DynFormView.extend({
-            title: title,
-            buttons: {
-                Enter: function() {
-                    onclick(viewContext.get('fieldValues').password);
-                    $(this).context.enter = true;
-                    $(this).dialog("close");
-                },
-                Cancel: function() {
-                    $(this).dialog("close");
+            title: data.target,
+            buttons: [{
+                caption: "Enter",
+                onclick: function() {
+                    var onclick = this.get('parentView.parentView.onclick');
+                    onclick(this.get('controller.fieldValues').password);
+                    this.$().context.enter = true;
+                    this.get('parentView.parentView').destroy();
                 }
-            },
-            close: function() {
-                if (!this.$().context.enter)
-                    onclose();
-            }
+            },{
+                caption: "Cancel",
+                onclick: function() {
+                    if (!this.$().context.enter) {
+                        this.get('parentView.parentView.onclose')();
+                    }
+                    this.get('parentView.parentView').destroy();
+                }
+            }]
         });
         var fields = [{
             name: "password",
             title: "",
             secret: true
         }];
-        view.createChildView(secretView, {fields: fields, 
-                            message: prompt.split(/(?:\n)+/)}).append();
+
+        /*
+         * Register secretView, get an instance and push it to the container
+         */
+        view.get('parentView').container.register('view:secret', secretView);
+        var sv = view.get('parentView').container.lookup('view:secret');
+        sv.fields = fields;
+        sv.onclick = onclick;
+        sv.onclose = onclose;
+        sv.message = data.prompt.split(/(?:\n)+/);
+        view.get('parentView').pushObject(sv);
     }
 
     function loadHttpReply (text, status, http, $this, $output) {
@@ -913,25 +1044,16 @@ jQuery(function ($) {
 
     function runRpc (yform, $output, rpc, target) {
         $.dbgpr("runrpc:", rpc);
-        if ($.clira.prefs.live_action) {
-            $output.slideUp(0).slideDown($.clira.prefs.slide_speed);
-            $output.load("/clira/clira.slax",
-                         {
-                             target: target, // target is optional
-                             rpc: rpc,       // rpc is in string form
-                             form: "false"   // don't want form in reply
-                         },
-                         function (text, status, http) {
-                             loadHttpReply(text, status, http,
-                                           $(this), $output);
-                         });
-        } else {
-            $output.text("RPC:\n" + rpc);
-        }
-    }
-
-    if (false) {
-        $.clira.cliraInit(true, commandSubmit);
-        tgtHistory.focus();
+        
+        $output.slideUp(0).slideDown($.clira.prefs.slide_speed);
+        $output.load("/clira/clira.slax", 
+            {
+                target: target, // target is optional
+                rpc: rpc,       // rpc is in string form
+                form: "false"   // don't want form in reply
+            }, function (text, status, http) {
+                loadHttpReply(text, status, http, $(this), $output);
+            }
+        );
     }
 });

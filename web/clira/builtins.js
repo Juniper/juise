@@ -25,16 +25,18 @@ jQuery(function ($) {
             {
                 command: "reload commands",
                 help: "Reload CLIRA command set",
-                execute: function ($output, cmd, parse, poss) {
-                    $output.text("Reloading commands");
-                    $.clira.loadCommandFiles();
+                execute: function (view, cmd, parse, poss) {
+                    view.set('controller.output', "Reloading commands");
+                    $.clira.loadCommandFiles().done(function() {
+                        view.set('controller.output', "Done loading commands");
+                    });
                 }
             },
             {
                 command: "test something",
                 help: "mumble mumble",
-                execute: function ($output, cmd, parse, poss) {
-                    $output.text("Testing....");
+                execute: function (view, cmd, parse, poss) {
+                    view.set('controller.output', "Testing....");
                     var filename = "/clira/test.js";
 
                     $.ajax({

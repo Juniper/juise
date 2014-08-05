@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+export DEB_BUILD_OPTIONS += nocheck
+
+%:
+	dh $@  --with autotools-dev
+
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-mixer --enable-clira --with-lighttpd-src=$(LIGHTTPD_FOR_JUISE)
+
+override_dh_install:
+	mkdir -p $(CURDIR)/debian/tmp/usr/lib/lighttpd-for-juise
+	mv $(CURDIR)/debian/tmp/usr/lib/mod_juise.so $(CURDIR)/debian/tmp/usr/lib/lighttpd-for-juise
+	mv $(CURDIR)/debian/tmp/etc/lighttpd.conf $(CURDIR)/debian/tmp/usr/share/doc/juise/lighttpd-clira-example.conf
+	dh_install
+
+override_dh_auto_install:
+	dh_auto_install --destdir=$(CURDIR)/debian/tmp

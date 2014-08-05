@@ -10,6 +10,68 @@
  */
 
 jQuery(function($) {
+    /*
+     * Some commands may need to use different output formats or format the
+     * returned output. We maintain a list of commands that need these
+     * exceptions. Before executing a command, we match it against these
+     * exceptions and use specified format or use onReplyRender/
+     * onCompleteRender functions before rendering output to the container
+     */
+    var exceptions = [
+        {
+            command: 'ping',
+            format: 'xml',
+            stream: true,
+            maxHeight: 150,
+            stop: true,
+            stopAction: function(muxer, muxid) {
+                /* RPC sync will end streaming command */
+                muxer.sendData("]]>]]>", muxid);
+            },
+            onReplyRender: function(data) {
+                return '<pre>' + data.replace(/\n/g, '<br>') + '</pre>';
+            },
+            onCompleteRender: function(data) {
+                return '<pre>' + data.replace(/\n/g, '<br>') + '</pre>';
+            }
+        },
+        {
+            command: 'monitor',
+            format: 'xml',
+            stream: true,
+            stop: true,
+            maxHeight: 300,
+            stopAction: function(muxer, muxid) {
+                /* RPC sync will end streaming command */
+                muxer.sendData("]]>]]>", muxid);
+            },
+            onReplyRender: function(data) {
+                return '<pre>' + data.replace(/\n/g, '<br>') + '</pre>';
+            },
+            onCompleteRender: function(data) {
+                return '<pre>' + data.replace(/\n/g, '<br>') + '</pre>';
+            }
+        },
+        {
+            command: 'traceroute',
+            format: 'xml',
+            stream: true,
+            stop: true,
+            maxHeight: 150,
+            stopAction: function(muxer, muxid) {
+                /* RPC sync will end streaming command */
+                muxer.sendData("]]>]]>", muxid);
+            },
+            onReplyRender: function(data) {
+                return '<pre>' + data.replace(/\n/g, '<br>') + '</pre>';
+            },
+            onCompleteRender: function(data) {
+                return '<pre>' + data.replace(/\n/g, '<br>') + '</pre>';
+            }
+        }
+
+    ];
+
     jQuery.clira.commandFile({
         name: "on-device",
         commands: [
@@ -66,6 +128,7 @@ jQuery(function($) {
                                                 xpath.hide();
                                                 $(this).text("show xpath");
                                             }
+                                            return false;
                                         });
                                         return div;
                                     }
@@ -76,7 +139,7 @@ jQuery(function($) {
                                 },
                                 style: "qtip-tipped"
                             });
-                        })
+                        });
                     }, 0);
                 },
                 execute: function (view, cmd, parse, poss) {
@@ -87,8 +150,18 @@ jQuery(function($) {
                     // cname.replace("_", "__", "g"); // Maybe not needed?
                     // classnames can't have periods
                     cname = cname.replace(".", "_", "g");
-                    $.clira.runCommand(view, poss.data.target,
-                                       poss.data.command);
+
+                    var command = poss.data.command
+                                      .replace(/^\s+|\s+$/g,'');
+                    // If user wants a form, build and display form
+                    if (command.indexOf('form', command.length - 4) !== -1) {
+                        command = command.substring(0, 
+                                    command.lastIndexOf(' '));
+                        buildForm(view, command, poss);
+                    } else {
+                        executeInternal(view, poss.data.target,
+                                                poss.data.command);
+                    }
                 },
                 complete: function (controller, poss, results, value) {
                     if (!(poss.data.target && poss.data.command))
@@ -102,6 +175,48 @@ jQuery(function($) {
             }
         ]
     });
+    
+    function executeInternal(view, target, command) {
+        var ex = null;
+        // Check if we are exception
+        $.each(exceptions, function(k, v) {
+            if (command.indexOf(v.command) == 0) {
+                ex = v;
+            }
+        });
+
+        if (ex) {
+            if (ex.maxHeight) {
+                view.$().css("height", ex.maxHeight);
+                view.$().css("overflow-y", "auto");
+            }
+
+            $.clira.runCommandInternal(view, target, command, 
+                                                    onComplete, ex.format,
+                                                    ex.stream, ex.onReplyRender,
+                                                    ex.onCompleteRender);
+
+            if (ex.stop && ex.stopAction) {
+                view.get('controller').set('stopButton', true);
+                view.set('controller._actions.stopAction', ex.stopAction);
+            }
+
+        } else {
+            $.clira.runCommandInternal(view, target, command, onComplete, 
+                                       'html', false);
+        }
+    }
+
+    function onComplete(view, success, output) {
+        if (success) {
+            // If we have error running RPC, catch and let the user know
+            var $xmlDoc = $($.parseXML(output));
+                
+            if ($xmlDoc.find('rpc-error').length > 0) {
+                view.set('controller.output', 'Failed to run command');
+            }
+        }
+    }
 
     function addCompletions(controller, poss, target, command, results) {
         var completion = "";
@@ -195,4 +310,61 @@ jQuery(function($) {
         }
         return res;
     }
+
+
+    function buildForm (view, command, poss) {
+        var buttons =  [{
+            caption: "Execute",
+            validate: true,
+            onclick: function() {
+                var values = this.get('controller.fieldValues'),
+                    fields = this.get('controller.fields');
+                var morecommand = "";
+
+                if (this.get('errorCount') > 0) {
+                    return false;
+                }
+
+                for (var i = 0; i < fields.length; i++) {
+                    if (fields[i].spacer) {
+                        continue;    
+                    }
+                    if (values.hasOwnProperty(fields[i].name) 
+                            && values[fields[i].name]) {
+                        if (fields[i].nokeyword)  {
+                            if (fields[i].boolean) {
+                                morecommand += " " + fields[i].name;
+                            } else {
+                                morecommand += " " 
+                                    + values[fields[i].name];
+                            }
+                        } else if (fields[i].boolean) {
+                            morecommand += " " + fields[i].name;
+                        } else {
+                            morecommand += " " + fields[i].name 
+                                + " " + values[fields[i].name];
+                        }
+                    }
+                }
+                this.get('parentView').get('parentView').destroy();
+
+                // Update output header
+                this.set('controller.command', 
+                         'on ' + poss.data.target + ' ' 
+                         + command + morecommand);
+
+                executeInternal(view, poss.data.target, 
+                                command + morecommand);
+             }
+        }, {
+        caption: "Reset",
+            onclick: function() {
+                var fields = this.get('controller.fields');
+                fields.forEach(function(field) {
+                    Ember.set(field, 'value', null);
+                });
+            }
+       }];
+       $.clira.buildAutoForm(poss.data.target, command, view, buttons);
+   }
 });

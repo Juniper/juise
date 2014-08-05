@@ -27,7 +27,7 @@ jQuery(function ($) {
     var commandFiles = [ ];
 
     $.extend($.clira, {
-        debug: true,           // Have debug output use $.dbgpr()
+        debug: false,           // Have debug output use $.dbgpr()
         commands:  [ ],         // The set of commands we accept
         types: { },             // Set of builtin types
         bundles: { },           // Define a set of bundled arguments
@@ -164,6 +164,8 @@ jQuery(function ($) {
             }
         },
         loadCommandFiles: function loadCommandFiles () {
+            var deferred = $.Deferred(),
+                promises = [];
             // Load (or reload) the set of command files, which we
             // get from our web server.
             $.ajax("/bin/list-command-files.slax")
@@ -193,15 +195,37 @@ jQuery(function ($) {
 
                     $.dbgpr("load command files success: " + data.files.length);
                     $.each(data.files, function (i, filename) {
-                        $.clira.loadFile(filename, "commandFile");
+                        var def = new $.Deferred();
+                        $.clira.loadFile(filename, "commandFile").then(
+                            function() {
+                                // Resolve only if we are done loading the
+                                // commandFile
+                                var commandLoaded = function() {
+                                    if ($.clira.commandLoading == false) {
+                                        def.resolve();
+                                        clearInterval(timer);
+                                    }
+                                };
+                                var timer = setInterval(commandLoaded, 100);
+                            }
+                        );
+                        promises.push(def);
+                    });
+
+                    // Resolve when all the files are loaded
+                    $.when.apply($, promises).done(function() {
+                        deferred.resolve();
                     });
                 })
                 .fail(function loadCommandFilesFail (jqxhr, settings,
                                                      exception) {
                     $.dbgpr("load command files failed");
+                    deferred.reject();
                 });
+            return deferred.promise();
         },
         loadFile: function loadFile (filename, classname) {
+            var deferred = $.Deferred();
             commandFilenames.push(filename);
 
             // jQuery's getScript/ajax logic will get a script and
@@ -219,6 +243,9 @@ jQuery(function ($) {
                     ga.setAttribute("class", classname);
                     ga.async = "true";
                     ga.src = filename;
+                    ga.onload = ga.onreadystatechange = function() {
+                        deferred.resolve();
+                    };
                     var s = document.getElementById('last-script-in-header');
                     s.parentNode.insertBefore(ga, s);
                 })();
@@ -236,6 +263,7 @@ jQuery(function ($) {
                 var last = $last.get(0);
                 last.parentNode.insertBefore(tag, last);
             }
+            return deferred.promise();
         },
         onload: function onload (name, data) {
             $.dbgpr("clira: load: " + name);
@@ -302,17 +330,25 @@ jQuery(function ($) {
         $.clira.buildObject(this, base, null, null);
     }
     $.clira.commandFile = function (base) {
+        // Boolean indicating we have started loading command
+        $.clira.commandLoading = true;
         var me = new CommandFile(base);
         if (me.init)
             me.init();
-        me.onload();
-        commandFiles.push(me);
-        return me;
+        me.onload().then(function() {
+            commandFiles.push(me);
+            // We are done loading the command
+            $.clira.commandLoading = false;
+            return me;
+        });
     }
     $.extend(CommandFile.prototype, {
         onload: function () {
-            $.dbgpr("clira: load: " + this.name);
+            var deferred = $.Deferred(),
+                promises = [];
 
+            $.dbgpr("clira: load: " + this.name);
+            
             // We have an array of commands
             if (this.commands)
                 $.clira.addCommand(this.commands);
@@ -320,8 +356,13 @@ jQuery(function ($) {
             if (this.prereqs) {
                 $.each(this.prereqs, function (i, filename) {
                     var $p = $("script.prereq[src = '" + filename + "']");
-                    if ($p.length == 0)
-                        $.clira.loadFile(filename, "prereq");
+                    if ($p.length == 0) {
+                        var def = new $.Deferred();
+                        $.clira.loadFile(filename, "prereq").then(function() {
+                            def.resolve();
+                        });
+                        promises.push(def);
+                    }
                 });
             }
 
@@ -337,12 +378,20 @@ jQuery(function ($) {
                         function() {
                             var templateName = $(this)
                                                 .attr('data-template-name');
+                            var def = new $.Deferred();
                             Em.TEMPLATES[templateName] = Em.Handlebars
                                                     .compile($(this).html());
+                            promises.push(def);
+                            def.resolve();
                         }
                     );
                 });
             }
+            // Resolve when all the files are loaded
+            $.when.apply($, promises).done(function() {
+                deferred.resolve();
+            });
+            return deferred.promise();
         }
     });
 

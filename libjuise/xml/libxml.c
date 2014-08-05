@@ -415,9 +415,11 @@ lx_nodeset_size (lx_nodeset_t *nodeset)
 lx_output_t *
 lx_output_open (const char *filename)
 {
-    lx_output_t *handle;
-
-    handle = xmlSaveToFilename(filename, NULL, XML_SAVE_FORMAT);
+    lx_output_t *handle = calloc(sizeof(lx_output_t), 1);
+    
+    if (handle) {
+	handle->context = xmlSaveToFilename(filename, NULL, XML_SAVE_FORMAT);
+    }
 
     return handle;
 }
@@ -428,9 +430,32 @@ lx_output_open (const char *filename)
 lx_output_t *
 lx_output_open_fd (int fd)
 {
-    lx_output_t *handle;
+    lx_output_t *handle = calloc(sizeof(lx_output_t), 1);
 
-    handle = xmlSaveToFd(fd, NULL, XML_SAVE_FORMAT);
+    if (handle) {
+	handle->context = xmlSaveToFd(fd, NULL, XML_SAVE_FORMAT);
+    }
+
+    return handle;
+}
+
+/*
+ * Open an output buffer (string)
+ */
+lx_output_t *
+lx_output_open_buffer (void)
+{
+    lx_output_t *handle = calloc(sizeof(lx_output_t), 1);
+
+    if (handle) {
+	handle->buffer = xmlBufferCreate();
+	if (!handle->buffer) {
+	    free(handle);
+	    return NULL;
+	}
+	handle->context = xmlSaveToBuffer(handle->buffer, NULL,
+		XML_SAVE_FORMAT);
+    }
 
     return handle;
 }
@@ -442,7 +467,11 @@ static lx_output_t *
 lx_output_open_trace (void)
 {
     int fd;
-    lx_output_t *handle;
+    lx_output_t *handle = calloc(sizeof(lx_output_t), 1);
+
+    if (!handle) {
+	return NULL;
+    }
 
     trace_file_flush(trace_file);
 
@@ -450,11 +479,10 @@ lx_output_open_trace (void)
     if (fd < 0)
 	return NULL;
 
-    handle = xmlSaveToFd(fd, NULL, XML_SAVE_FORMAT);
+    handle->context = xmlSaveToFd(fd, NULL, XML_SAVE_FORMAT);
 
     return handle;
 }
-
 
 /*
  * Close an output file handle
@@ -462,8 +490,29 @@ lx_output_open_trace (void)
 void
 lx_output_close (lx_output_t *handle)
 {
-    xmlSaveFlush(handle);
-    xmlSaveClose(handle);
+    xmlSaveFlush(handle->context);
+    xmlSaveClose(handle->context);
+}
+
+/*
+ * Return the output buffer as a string
+ */
+const char *
+lx_output_buffer (lx_output_t *handle)
+{
+    return (const char *)xmlBufferContent(handle->buffer);
+}
+
+/*
+ * Free the output data structure and buffer (if any)
+ */
+void
+lx_output_cleanup (lx_output_t *handle)
+{
+    if (handle->buffer) {
+	xmlBufferFree(handle->buffer);
+    }
+    free(handle);
 }
 
 /*
@@ -472,7 +521,7 @@ lx_output_close (lx_output_t *handle)
 void
 lx_output_document (lx_output_t *handle, lx_document_t *docp)
 {
-    xmlSaveDoc(handle, docp);
+    xmlSaveDoc(handle->context, docp);
 }
 
 /*
@@ -481,8 +530,8 @@ lx_output_document (lx_output_t *handle, lx_document_t *docp)
 void
 lx_output_node (lx_output_t *handle, lx_node_t *nodep)
 {
-    xmlSaveTree(handle, nodep);
-    xmlSaveFlush(handle);
+    xmlSaveTree(handle->context, nodep);
+    xmlSaveFlush(handle->context);
 }
 
 /*
@@ -504,8 +553,8 @@ lx_trace_node (lx_node_t *nodep, const char *fmt, ...)
 	if (handle == NULL)
 	    return;
 
-	xmlSaveTree(handle, nodep);
-	xmlSaveFlush(handle);
+	xmlSaveTree(handle->context, nodep);
+	xmlSaveFlush(handle->context);
 
 	lx_output_close(handle);
 	trace(trace_file, TRACE_ALL, "end dump");
@@ -535,8 +584,8 @@ lx_trace_document (lx_document_t *docp, const char *fmt, ...)
 	if (handle == NULL)
 	    return;
 	
-	xmlSaveDoc(handle, docp);
-	xmlSaveFlush(handle);
+	xmlSaveDoc(handle->context, docp);
+	xmlSaveFlush(handle->context);
 
 	lx_output_close(handle);
 	trace(trace_file, TRACE_ALL, "end dump");
@@ -554,6 +603,6 @@ void
 lx_output_children (lx_output_t *handle, lx_node_t *nodep)
 {
     for (nodep = nodep->children; nodep; nodep = nodep->next) {
-	xmlSaveTree(handle, nodep);
+	xmlSaveTree(handle->context, nodep);
     }
 }

@@ -25,6 +25,7 @@
               <td width="16px">{{render 'pulldown'}}</td>
             </tr>
           </table>
+          <div id="recent-devices">{{render 'recentDevices'}}</div>
         </div>
         <div id="mru-pulldown">
           {{render 'mruPulldown'}}
@@ -37,6 +38,13 @@
       {{render 'outputs'}}
     </div>
     {{view Clira.PseudoView}}
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="recent_devices">
+    <i>Recent devices:</i>
+    {{#each ru}}
+      <a {{action "onDevice" this}}>{{this}}</a>&nbsp;
+    {{/each}}
   </script>
   
   <script type="text/x-handlebars" data-template-name="pulldown">
@@ -60,8 +68,13 @@
     <div class="output-header ui-state-default ui-widget-header ui-corner-all">
       {{view Clira.IconView iconClass="ui-icon-closethick" onClick="close"}}
       {{view Clira.IconView iconClass="ui-icon-minusthick,ui-icon-plusthick" onClick="collapse"}}
-      <b>{{controller.command}}</b>
-    </div>
+      <b {{action "commandClick"}}>{{controller.command}}</b>
+      {{#if stopButton}}{{#if muxid}}{{#unless completed}}
+        <button class="stop_button" {{action "stopAction" muxer muxid}}>STOP</button>
+      {{/unless}}{{/if}}{{/if}}
+      <div class="command-number">
+        ({{controller.commandNumber}})
+      </div>
   </script>
 
   <script type="text/x-handlebars" data-template-name="output_content">
@@ -105,65 +118,105 @@
   </script>
 
   <script type="text/x-handlebars" data-template-name="preferences">
-    <div id="prefs-main-form" title="Preferences">
+    <div class="prefs-main-form" title="Preferences">
       <div class="setupgrid">
         <ul class="setupgrid">
-          <li><a id="prefs-devices" href="#">Set Up Devices</a></li>
-          <li><a id="prefs-groups" href="#">Set Up Groups</a></li>
+          <li><a id="prefs-devices" href="#" {{action "devicesPref" target="view"}}>Set Up Devices</a></li>
           <li><a id="prefs-general" href="#" {{action "generalPref" target="view"}}>General Preferences</a></li>
         </ul>
       </div>
     </div>
+  </script>
 
+  <script type="text/x-handlebars" data-template-name="devices_pref">
     <div id="prefs-devices-form" title="Devices">
       <p>The devices that CLIRA can access are listed below.</p>
       <table id="prefs-devices-grid"></table>
       <div id="prefs-devices-pager"></div>
     </div>
+  </script>
 
+  <script type="text/x-handlebars" data-template-name="conn_status">
+    <div id="prefs-devices-connect" title="Connection Status">
+      <div id="connect-status"></div>
+    </div>
+  </script>
+
+  <script type="text/x-handlebars" data-template-name="groups_pref">
     <div id="prefs-groups-form" title="Groups">
       <p>Groups of devices that CLIRA can access are listed below.</p>
       <table id="prefs-groups-grid"></table>
       <div id="prefs-groups-pager"></div>
     </div>
-
-    <div id="prefs-devices-connect" title="Connection Status" style="display:none; text-align:left"></div>
   </script>
 
   <script type="text/x-handlebars" data-template-name="dyn_form">
-    <div class="dyn-form-message">
-      {{#each message}}
-        {{.}}<br>
-      {{/each}}
-    </div>
-    {{#each field in fields}}
-      <div class="dyn-form-item">
-        <label>{{field.title}}</label>
-        {{#if field.boolean}}
-          <div class="dyn-form-boolean">
-            {{view Clira.DynCheckbox fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value"}}
-          </div>
-        {{else}}
-          {{#if field.secret}}
-            {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password"}}
-          {{else}}
-            {{view Clira.DynTextField fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value"}}
-          {{/if}}
-        {{/if}}
+    <div class="dyn-form-wrapper">
+      {{#if title}}
+        <div class="dyn-form-title">
+          {{title}}
+        </div>
+      {{/if}}
+      <div class="dyn-form-message">
+        {{#each message}}
+          {{.}}<br>
+        {{/each}}
       </div>
-    {{/each}}
-  </script>
-
-  <div id="debug-container" class="ui-widget ui-corner-all">
-    <div class="ui-state-default ui-widget-header ui-corner-all">
-      <button class="icon-remove-section"></button>
-      <button class="icon-hide-section"></button>
-      <button class="icon-unhide-section"></button>
-      <button class="icon-clear-section"></button>
-      <div id="debug-title" class="ui-corner-all">Debug Log:</div>
+      {{#each field in fields}}
+        <div class="dyn-form-item">
+          {{#unless field.radio}}
+            <label>
+              {{#if field.label}}
+                {{field.label}}
+              {{else}}{{#if field.title}}
+                  {{field.title}}
+              {{else}}
+                  {{field.name}}
+              {{/if}}{{/if}}
+            </label>
+          {{/unless}}  
+          {{#if field.spacer}}
+          {{else}} {{#if field.boolean}}
+            <div class="dyn-form-boolean">
+              {{view Clira.DynCheckbox errorCountBinding="errorCount" errorsBinding="fieldErrors" fieldIdBinding="field.name" valuesBinding="fieldValues" checkedBinding="field.value" fieldBinding="field" valueBinding="field.value"}}
+            </div>
+          {{else}} {{#if field.select}}
+            {{view Clira.DynAutoComplete errorCountBinding="errorCount" errorsBinding="fieldErrors" contentBinding="field.data" fieldIdBinding="field.name" valuesBinding="fieldValues" fieldBinding="field" valueBinding="field.value" optionValuePath="content" optionLabelPath="content"}}
+          {{else}}
+            {{#if field.secret}}
+              {{view Clira.DynTextField errorCountBinding="errorCount" errorsBinding="fieldErrors" fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" type="password" fieldBinding="field"}}
+            {{else}}
+              {{#if field.radio}}
+                <div class="dyn-radiogroup">
+                {{#each field.data}}
+                  {{view Clira.DynRadioButton errorCountBinding="controller.errorCount" errorsBinding="controller.fieldErrors" 
+                    nameBinding="field.name" valueBinding="this" valuesBinding="controller.fieldValues" selectionBinding="field.value" fieldBinding="field"}}
+                  <label>{{this}}</label>
+                {{/each}}
+                </div>
+              {{else}}
+                {{view Clira.DynTextField errorCountBinding="errorCount" errorsBinding="fieldErrors" fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" fieldBinding="field"}}
+              {{/if}}
+            {{/if}}
+          {{/if}}{{/if}}{{/if}}
+        </div>
+        {{#if field.nokeyword}}
+          {{#unless field.boolean}}<br>{{/unless}}
+        {{/if}}
+        {{#if field.spacer}}<br>{{/if}}
+      {{/each}}
+      {{#if mandatoryFields}}
+        <br><br><div class="dyn-form-item"><i> (*) Mandatory field</i></div>
+      {{/if}}
+      {{#if buttons}}
+        <div class="dyn-form-buttons">
+          {{#each button in buttons}}
+            {{view Clira.DynButton validateBinding="button.validate" errorCountBinding="errorCount" errorsBinding="fieldErrors" labelBinding="button.caption" clickBinding="button.onclick" valuesBinding="fieldValues" fieldBinding="field"}}
+          {{/each}}
+        </div>
+      {{/if}}
     </div>
-    <div id="debug-log" class="can-hide">&nbsp;</div>
-  </div>
+  </script>
 
   <script src="/external/jquery/jquery.js"></script>
   <script src="/external/jquery-ui/jquery-ui.js"></script>
@@ -185,6 +238,7 @@
   <script src="app.js"></script>
   <script src="models.js"></script>
   <script src="views.js"></script>
+  <script src="clira.prefs.views.js"></script>
   <script src="controllers.js" id="last-script-in-header"></script>
 </body>
 </html>
