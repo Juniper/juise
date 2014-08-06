@@ -93,7 +93,7 @@ Clira.DynFormView = Ember.ContainerView.extend({
         if (this.hasOwnProperty('fields')) {
             this.get('fields').forEach(function(field) {
                 if (field.mandatory) {
-                    field.errorCount++;
+                    errorCount++;
                     fieldErrors[field.name] = field.name + ' is mandatory';
                 }
             });
@@ -112,14 +112,17 @@ Clira.DynTextField = Ember.TextField.extend({
 
     // Helper function to update errors on this field
     processError: function(errorType, allowNull, isError, message) {
-        var field = this.get('field');
+        var field = this.get('field'),
+            errorCount = this.get('errorCount');
         if (!(!this.get('value') && allowNull) && isError) {
             if (!field.errors.hasOwnProperty(errorType)) {
                 this.set('field.errors.' + errorType, message);
                 field.errorCount++;
+                this.set('errorCount', ++errorCount);
             }
         } else if (field.errors && field.errors.hasOwnProperty(errorType)) {
             field.errorCount--;
+            this.set('errorCount', --errorCount);
             delete field.errors[errorType]
         }
     },
@@ -450,7 +453,8 @@ Clira.DynAutoComplete = JQ.AutoCompleteView.extend({
 
     // Helper function to update errors on this field
     processError: function(errorType, allowNull, isError, message) {
-        var field = this.get('field');
+        var field = this.get('field'),
+            errorCount = this.get('errorCount');
         if (!(!this.get('value') && allowNull) && isError) {
             if (!field.errors.hasOwnProperty(errorType)) {
                 this.set('field.errors.' + errorType, message);
