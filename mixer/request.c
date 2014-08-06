@@ -18,6 +18,7 @@
 #include "channel.h"
 #include "netconf.h"
 #include "websocket.h"
+#include "db.h"
 
 static unsigned mx_request_id; /* Monotonically increasing ID number */
 static mx_request_list_t mx_request_list; /* List of outstanding requests */
@@ -292,7 +293,7 @@ mx_request_start_rpc (mx_sock_websocket_t *mswp, mx_request_t *mrp)
 }
 
 mx_request_t *
-mx_request_find (mx_muxid_t muxid, int reqid)
+mx_request_find (mx_muxid_t muxid, unsigned reqid)
 {
     mx_request_t *mrp;
 

@@ -56,6 +56,7 @@ Clira.DynFormView = Ember.ContainerView.extend({
     view: null,
     viewContext: null,
     width: "auto",
+    underlay: true,
     classNames: ['output-content'],
 
     // Set view and view context as globals
@@ -295,8 +296,10 @@ Clira.DynSelect = Ember.Select.extend({
  * View to handle autocomplete input fields in dynamic forms
  */
 Clira.DynAutoComplete = JQ.AutoCompleteView.extend({
-    classNameBindings: ['isError'],
+    classNameBindings: ['isDataReady', 'isError', 'isLoadingData'],
+    isDataReady: false,
     isError: false,
+    isLoadingData: false,
     attributeBindings: ['autocomplete', 'maxlength', 'spellcheck', 
                         'fieldId', 'values'],
     maxlength: '2048',
@@ -306,14 +309,92 @@ Clira.DynAutoComplete = JQ.AutoCompleteView.extend({
 
     didInsertElement: function() {
         this._super.apply(this, arguments);
-        var content = this.get('content').toArray();
-        var fieldId = this.get('fieldId'),
-            field = this.get('field');
-        this.ui.source = function(value, response) {
-            response(content.filter(function(element) {
-                return element.indexOf(value.term) == 0;
-            }));
-        };
+        var content = this.get('content').toArray(),
+            fieldId = this.get('fieldId'),
+            field = this.get('field'),
+            that = this;
+
+        // If we have dataRPC field set, we need to get data for
+        // completion if not already available
+        if (content.length == 0 && field.dataRPC) {
+            this.ui.source = function() {};
+            var nodeinfo = '',
+                muxer = $.clira.muxer(),
+                that = this,
+                v = Em.View.create({controller: Em.Object.create()});
+
+                // Display data loading spinner
+                that.set('isLoadingData', true);
+
+                muxer.rpc({
+                    div: v.$(),
+                    view: v,
+                    target: field.completeTarget,
+                    payload: field.dataRPC,
+                    onreply: function (data) {
+                        nodeinfo += data;
+                    },
+                    oncomplete: function () {                        
+                        var $xmlDoc = $($.parseXML(nodeinfo)),
+                            data = [],
+                            dataNoChoice = [],
+                            items;
+
+                        // Remove data loading spinner
+                        if (!that.isDestroyed)
+                            that.set('isLoadingData', false);
+                            
+                        if (field.config) {
+                            items = $xmlDoc.find('choice');
+                        } else {
+                            items = $xmlDoc.find('expand-item');
+                        }
+
+                        items.each(function (n, item) {
+                            var $this = $(this),
+                                type = $this.find('type').text(),
+                                parent = $this.find('parent').text();
+
+                            if (parent == field.name) {
+                                data.push($this.find('name').text());
+                            } else if (field.config) {
+                                if (type == 'TYPE_CHOICE') {
+                                    data.push($this.find('id').text());
+                                } else {
+                                    dataNoChoice.push($this.find('id').text());
+                                }
+                            }
+                        }).promise().done(function() {
+                            // We will be a string if we have choices
+                            field.fieldType = 'TYPE_STRING';
+                            if (data.length == 1 && dataNoChoice.length > 0)
+                                data = dataNoChoice;
+
+                            if (data.length > 0) {
+                                if (!that.isDestroyed)
+                                    that.set('isDataReady', true);
+                            }
+
+                            that.ui.source = function(value, response) {
+                                response(data.toArray()
+                                        .filter(function(element) {
+                                    return element.indexOf(value.term) == 0;
+                                }));
+                            };
+                        });
+                        v.destroy();
+                    }
+                });
+        } else {
+            if (content.length > 0) {
+                this.set('isDataReady', true);
+            }
+            this.ui.source = function(value, response) {
+                response(content.filter(function(element) {
+                    return element.indexOf(value.term) == 0;
+                }));
+            };
+        }
 
         this.ui._renderItem = function renderItemOverride(ul, item) {
             var append = "<a>";

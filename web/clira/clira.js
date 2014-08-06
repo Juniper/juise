@@ -475,7 +475,7 @@ jQuery(function ($) {
                     view.get('controller').get('controllers.recentDevices')
                                           .addDevice(target);
                     if ($.isFunction(onComplete)) {
-                        onComplete(true, output);
+                        onComplete(view, true, full.join(""));
                     }
                 },
                 onclose: function (event, message) {
@@ -487,7 +487,7 @@ jQuery(function ($) {
                         $.clira.makeAlert(view, message,
                                           "internal failure (websocket)");
                         if ($.isFunction(onComplete)) {
-                            onComplete(false, output);
+                            onComplete(view, false, output);
                         }
                     }
                 },
@@ -525,6 +525,290 @@ jQuery(function ($) {
                     }
                 }
             });
+        },
+
+        /*
+         * Looks up the available options under given command and builds a
+         * form out of them along with data that each of the field may accept
+         */
+        buildAutoForm: function buildForm (target, command, view, buttons,
+                                            title) {
+            var nodeinfo = "";
+            var muxer = $.clira.muxer();
+
+            // Execute complete RPC and get available options
+            muxer.rpc({
+                div: view.$(),
+                view: view,
+                target: target,
+                payload: '<complete>'
+                        + command + ' ?'
+                        + '</complete>',
+                onreply: function (data) {
+                    nodeinfo += data;
+                },
+                oncomplete: function () {
+                    var $xmlDoc = $($.parseXML(nodeinfo)),
+                        nokeyItem = null,
+                        dataValues = {},
+                        noname = 0,
+                        fields = [],
+                        mandatoryFields = false,
+                        firstNokeyItem = null;
+
+                    dataValues['_nokeyItem'] = [];
+
+                    // Build list of fields along with their meta data to be
+                    // used to build the form
+                    $xmlDoc.find("expand-item").each(
+                        function(n, item) {
+                            var $this = $(this),
+                                hidden = $this.find('hidden').length,
+                                enter = $this.find('enter').length,
+                                data = $this.find('data').length
+                                type = $this.find('type').text(),
+                                match = $this.find('match').text(),
+                                matchMessage = $this.find('match-message').text(),
+                                rangeMin = $this.find('range-min').text(),
+                                rangeMax = $this.find('range-max').text(),
+                                name = $this.find('name').text();
+
+                            if (type === 'TYPE_COMMAND' || hidden > 0 || enter > 0
+                                || name === '|') {
+                                return;
+                            }
+
+                            if (!name) {
+                                name = '_clira' + noname;
+                                noname++;
+                            }
+
+                            var label = $.clira.formatLabel(name);
+
+                            if ($this.find('flag-mandatory').length > 0) {
+                                label += ' *';
+                                mandatoryFields = true;
+                            }
+
+                            // Each field has an errors object that holds error
+                            // messages of each type. Following are the
+                            // different types of errors
+                            // mandatory: Field is mandatory
+                            // match: Regular expression match fail
+                            // type: Type mismatch
+                            // rangeMin: Value less than minimum allowed
+                            // rangeMax: Value more than maximum allowed
+                            if ($this.find('flag-mandatory').length) {
+                                errors = {
+                                    mandatory: name + ' is mandatory'
+                                };
+                                errorCount = 1;
+                            } else {
+                                errors = {};
+                                errorCount = 0;
+                            }
+
+                            var item = {
+                                name: name,
+                                title: name,
+                                fieldType: type,
+                                hidden: hidden,
+                                label: label,
+                                help: $this.find('help').text(),
+                                match: match,
+                                matchMessage: matchMessage,
+                                nokeyword: $this.find('flag-nokeyword').length,
+                                mandatory: $this.find('flag-mandatory').length,
+                                boolean: type == 'TYPE_TOGGLE',
+                                type: type == 'TYPE_TOGGLE' ? 2 : 3,
+                                errors: errors,
+                                errorCount: errorCount
+                            };
+
+                            if (rangeMin) {
+                                item['rangeMin'] = rangeMin;
+                            }
+
+                            if (rangeMax) {
+                                item['rangeMax'] = rangeMax;
+                            }
+
+                            if ($this.find('data').length > 0) {
+                                var dName = $this.find('data').text();
+                                if (dName) {
+                                    if (dataValuse[dName]) {
+                                        dataValues[dName].push(name);
+                                    } else {
+                                        dataValues[dName] = [name];
+                                    }
+                                } else {
+                                    dataValues['_nokeyItem'].push(name);
+                                }
+                            } else if (type === 'TYPE_CHOICE' 
+                                        && $this.find('parent').length > 0) {
+                                var parent = $this.find('parent').text();
+                                if (dataValues[parent]) {
+                                    dataValues[parent].push(name);
+                                } else {
+                                    dataValues[parent] = [name];
+                                }
+                            } else {
+                                fields.unshift(item);
+                                if (firstNokeyItem == null && item.nokeyword > 0) {
+                                    firstNokeyItem = name;
+                                }
+                            }
+                        }
+                    );
+
+                    // If we have mandatoryFields flag set, we display
+                    // mandatory fields message at bottom of the form
+                    if (mandatoryFields) {
+                        view.get('controller').set('mandatoryFields', true);
+                    }
+
+                    // Assign data to fields
+                    $.each(fields, function(i, v) {
+                        if (v.name == firstNokeyItem) {
+                            fields[i].select = true;
+                            fields[i].data = dataValues['_nokeyItem'];
+                        } else if (dataValues[v.name]) {
+                            fields[i].select = true;
+                            fields[i].data = dataValues[v.name];
+                        } else {
+                            // Expand one level further and get the completion
+                            // data for this field
+                            if (fields[i].type != 'TYPE_TOGGLE') {
+                                // If we are building a config form, we should
+                                // set config flag and read expansion data
+                                // differently
+                                if (command.indexOf('show configuration ') 
+                                            == 0) {
+                                    fields[i].config = true;
+                                    fields[i].dataRPC =
+                                        '<get-node-information><path>' 
+                                        + command.slice(19, command
+                                                            .lastIndexOf(' '))
+                                                .replace(/ /g, '/') 
+                                        + '/' + fields[i].name
+                                        + '</path></get-node-information>';
+                                } else {
+                                    fields[i].dataRPC = '<complete>' + command
+                                                      + ' ' + fields[i].name
+                                                      + ' ?</complete>';
+                                }
+                                fields[i].completeTarget = target;
+                                fields[i].select = true;
+                                fields[i].data = [];
+                            } else {
+                                fields[i].select = false;
+                            }
+                        }
+                    });
+
+                    // Add missing field names
+                    $.each(dataValues, function(k, v) {
+                        if (k == '_nokeyItem') {
+                            return;
+                        }
+
+                        for (var i = 0; i < fields.length; i++) {
+                            if (fields[i].name == v.name) {
+                                break;
+                            }
+                        }
+
+                        if (i == fields.length) {
+                            var item = {                            
+                                name: k,
+                                nokeyword: true,
+                                help: k,
+                                title: k,
+                                label: $.clira.formatLabel(k),
+                                radio: true,
+                                data: v,
+                                type: 0
+                            };
+                            fields.push(item);
+                        }
+                    });
+
+                    //Sort fields so they can be rendered properly
+                    fields.sort(function(a, b) {
+                        if (a.mandatory == 1) {
+                            return -1;
+                        } else if (b.mandatory == 1) {
+                            return 1;
+                        } else {
+                            if (a.boolean && !b.boolean) {
+                                return 1;
+                            } else if (!a.boolean && b.boolean) {
+                                return -1;
+                            } else if (a.radio) {
+                                return 1;
+                            } else if (b.radio) {
+                                return -1;
+                            } else if (a.label.length > 20 
+                                && a.label.length > b.label.length) {
+                                return 1;
+                            }
+                        }
+                        return -1;
+                    });
+
+                    var prevType = -1;
+                    // Group fields together
+                    fields.forEach(function(field) {
+                        if (prevType >= 0 && field.type != prevType) {
+                            fields.splice(fields.indexOf(field), 0, 
+                                            { spacer: true });
+                        }
+                        prevType = field.type;
+                    });
+
+                    var v = view.get('parentView').container
+                                .lookup('view:DynForm');
+                    v.fields = fields;
+                    v.buttons = buttons;
+                    v.title = title;
+                    view.get('parentView').pushObject(v);
+                }
+            });
+        },
+
+        /*
+         * Helper function to format the labels so they can be rendered
+         * properly on form
+         */
+        formatLabel: function formatLabel (name) {
+            var words = ['SNMP', 'ISSU', 'IPv4', 'IPv6', 'IP', 'TE', 'ISO', 
+                        'CCC', 'MAC', 'TOS', 'TTL'];
+
+            var label = name.replace(/-/g, ' ');
+            label = label.charAt(0).toUpperCase() + label.slice(1);
+
+            label = label.split(' ');
+        
+            var op = '';
+
+            for (var i = 0; i < label.length; i++) {
+                for (var j = 0; j < words.length; j++) {
+                    if (label[i].toUpperCase() == words[j].toUpperCase()) {
+                        break;
+                    }
+                }
+                if (j == words.length) {
+                    op += label[i];
+                } else {
+                    op += words[j];
+                }
+
+                if (i < label.length - 1) {
+                    op += ' ';
+                }
+            }
+
+            return op;
         },
 
         prefsChangeMuxer: function prefsChangeMuxer (value, initial, prev) {

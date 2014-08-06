@@ -62,9 +62,9 @@ jQuery(function ($) {
             name: "stay_on_page",
             def: false,
             type: "boolean",
-            label: "Stay",
+            label: "Give warning if leaving this page",
             change: prefsSetupConfirmExit,
-            title: "Give warning if leaving this page"
+            title: "Stay"
         },
         {
             name: "theme",
@@ -77,8 +77,8 @@ jQuery(function ($) {
             name: "mixer",
             def: "ws://127.0.0.1:3000/mixer",
             type: "string",
-            label: "Mixer Location",
-            title: "Address of the Mixer server",
+            label: "Address of the Mixer server",
+            title: "Mixer Location11",
             change: $.clira.prefsChangeMuxer
         },
     ];

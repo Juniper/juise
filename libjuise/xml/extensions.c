@@ -1566,6 +1566,8 @@ ext_jcs_register_all (void)
     slaxRegisterFunction(JCS_FULL_NS, "receive", ext_jcs_receive);
     slaxRegisterFunction(JCS_FULL_NS, "send", ext_jcs_send);
 
+    slaxDynMarkLoaded(JCS_FULL_NS);
+
     return 0;
 }
 

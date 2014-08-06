@@ -691,7 +691,7 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 		    operation, attrs);
 	    if (mrp) {
 		/* now send back the websocket/muxid used for auth */
-		snprintf(buf, sizeof(buf), "%lu", mswp->msw_base.ms_id);
+		snprintf(buf, sizeof(buf), "%u", mswp->msw_base.ms_id);
 		mx_websocket_send_simple(&mswp->msw_base,
 			mrp, buf, MX_OP_AUTHINIT, "reply with auth init info",
 			FALSE);
@@ -716,25 +716,21 @@ mx_websocket_handle_request (mx_sock_websocket_t *mswp, mx_buffer_t *mbp)
 	    mx_sock_session_t *mssp = mx_session(mrp);
 	    if (mssp == NULL) {
 		mx_request_error(mrp, "no session");
-		return TRUE;
+		return;
 	    }
 	    mx_channel_t *mcp;
 	    if (mrp->mr_channel) {
 		mcp = mrp->mr_channel;
 	    } else {
 		mx_request_error(mrp, "no previous rpc channel");
-		return TRUE;
+		return;
 	    }
 
-	    mx_buffer_t *newp = mx_buffer_create(0);
-	    memcpy(newp->mb_data, 
-		   strndupa(mbp->mb_data + mbp->mb_start, mbp->mb_len), 
-		   mbp->mb_len);
-	    newp->mb_len = mbp->mb_len;
+	    mx_buffer_t *newp = mx_buffer_copy(mbp, mbp->mb_len);
 
-	    size_t len = mx_channel_write_buffer(mcp, newp);
+	    size_t blen = mx_channel_write_buffer(mcp, newp);
 
-	    mx_log("%d sent data %u", mcp->mc_id, len);
+	    mx_log("%d sent data %u", mcp->mc_id, (unsigned) blen);
 
 	    if (newp)
 		mx_buffer_free(newp);
