@@ -650,7 +650,7 @@ ext_jcs_send (xmlXPathParserContext *ctxt, int nargs)
     }
 
     xmlXPathObject *sop = valuePop(ctxt);
-    if (sop == NULL || sop->nodeset == NULL) {
+    if (sop == NULL || sop->nodesetval == NULL) {
         if (sop)
             xmlXPathFreeObject(sop);
 	xmlFree(str);
