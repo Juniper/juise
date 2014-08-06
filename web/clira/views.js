@@ -244,7 +244,11 @@ Clira.DynTextField = Ember.TextField.extend({
         var errorCount = this.get('errorCount');
 
         if (values && fieldId) {
-            values[fieldId] = this.get('value');
+            if (this.get('value')) {
+                values[fieldId] = this.get('value');
+            } else {
+                delete values[fieldId];
+            }
         }
         this.$().qtip('option', 'content.text', this.checkErrors());
     }.observes('value')
@@ -562,7 +566,11 @@ Clira.DynAutoComplete = JQ.AutoCompleteView.extend({
         var errorCount = this.get('errorCount');
 
         if (values && fieldId) {
-            values[fieldId] = this.get('value');
+            if (this.get('value')) {
+                values[fieldId] = this.get('value');
+            } else {
+                delete values[fieldId];
+            }
         }
 
         this.$().qtip('option', 'content.text', this.checkErrors());
