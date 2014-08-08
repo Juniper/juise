@@ -37,7 +37,6 @@
 #include <libexslt/exslt.h>
 #include <libxslt/xsltutils.h>
 #include <libslax/slax.h>
-#include <libslax/slaxconfig.h>
 #include <libslax/slaxdata.h>
 #include <libslax/xmlsoft.h>
 
@@ -2073,5 +2072,5 @@ main (int argc UNUSED, char **argv, char **envp)
 
     jsio_cleanup();
 
-    return 0;
+    exit(slaxGetExitCode());
 }

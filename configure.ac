@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.5.10], [phil@juniper.net])
+AC_INIT([juise], [0.6.0], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 
 case $prefix in
@@ -33,7 +33,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 #
 LIBXML_REQUIRED_VERSION=2.7.7
 LIBXSLT_REQUIRED_VERSION=1.1.26
-LIBSLAX_REQUIRED_VERSION=0.12.3
+LIBSLAX_REQUIRED_VERSION=0.18.0
 
 AC_PROG_CC
 AM_PROG_AR
