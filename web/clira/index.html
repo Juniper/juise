@@ -164,8 +164,9 @@
       </div>
       {{#each field in fields}}
         <div class="dyn-form-item">
-          {{#unless field.radio}}
+          {{#unless field.radio}}{{#unless field.hidden}}
             <label>
+              {{#if field.header}}<h3>{{/if}}
               {{#if field.label}}
                 {{field.label}}
               {{else}}{{#if field.title}}
@@ -173,8 +174,9 @@
               {{else}}
                   {{field.name}}
               {{/if}}{{/if}}
+              {{#if field.header}}</h3>{{/if}}
             </label>
-          {{/unless}}  
+          {{/unless}}{{/unless}}
           {{#if field.spacer}}
           {{else}} {{#if field.boolean}}
             <div class="dyn-form-boolean">
@@ -195,7 +197,7 @@
                 {{/each}}
                 </div>
               {{else}}
-                {{view Clira.DynTextField errorCountBinding="errorCount" errorsBinding="fieldErrors" fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" fieldBinding="field"}}
+                {{view Clira.DynTextField typeBinding="field.type" errorCountBinding="errorCount" errorsBinding="fieldErrors" fieldIdBinding="field.name" valuesBinding="fieldValues" valueBinding="field.value" fieldBinding="field"}}
               {{/if}}
             {{/if}}
           {{/if}}{{/if}}{{/if}}

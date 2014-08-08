@@ -156,6 +156,11 @@ Clira.DynTextField = Ember.TextField.extend({
                 style: 'qtip-tipped'
             });
         }
+
+        // If we are hidden field, set type of input to hidden
+        if (field.hidden == true) {
+            this.$().prop('type', 'hidden');
+        }
     },
 
     // Sets error class for input field and also returns error text to be
