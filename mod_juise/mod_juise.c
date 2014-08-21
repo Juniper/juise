@@ -1190,6 +1190,9 @@ mod_juise_create_env (server *srv, connection *con,
 	    if ((s = getenv("LD_LIBRARY_PATH")) != NULL) {
 		mod_juise_env_add(&env, CONST_STR_LEN("LD_LIBRARY_PATH"), s, strlen(s));
 	    }
+	    if ((s = getenv("DYLD_LIBRARY_PATH")) != NULL) {
+		mod_juise_env_add(&env, CONST_STR_LEN("DYLD_LIBRARY_PATH"), s, strlen(s));
+	    }
 #ifdef __CYGWIN__
 	    /* CYGWIN needs SYSTEMROOT */
 	    if ((s = getenv("SYSTEMROOT")) != NULL) {
