@@ -766,14 +766,33 @@ jQuery(function ($) {
                         prevType = field.type;
                     });
 
-                    var v = view.get('parentView').container
-                                .lookup('view:DynForm');
-                    v.fields = fields;
-                    v.buttons = buttons;
-                    v.title = title;
-                    view.get('parentView').pushObject(v);
+                    $.clira.buildForm(view, fields, buttons, title);
                 }
             });
+        },
+
+        /*
+         * Builds a form with given fields, buttons and appends it to provided
+         * view
+         */
+        buildForm: function buildForm (view, fields, buttons, title) {
+            var v = view.get('parentView').container
+                        .lookup('view:DynForm');
+
+            // Add errors, errorCount to fields if the user has missed them
+            for (var i = 0; i < fields.length; i++) {
+                if (!fields[i].hasOwnProperty.errors) {
+                    fields[i].errors = {};
+                }
+                if (!fields[i].hasOwnProperty.errorCount) {
+                    fields[i].errorCount = 0;
+                }
+            }
+
+            v.fields = fields;
+            v.buttons = buttons;
+            v.title = title;
+            view.get('parentView').pushObject(v);
         },
 
         /*
