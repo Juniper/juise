@@ -23,6 +23,10 @@
     font-size: 70%;
 }
 
+.error {
+    color: #FF0000;
+}
+
 div.text, div.decoration, div.default, div.header-line {
     color: #505050;
     font-family: monospace;
