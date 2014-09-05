@@ -87,11 +87,13 @@ Clira.DynFormView = Ember.ContainerView.extend({
 
         // Look for default values in fields and set them in fieldValues
         var fieldValues = {};
-        $.each(this.get('fields'), function(i, field) {
-            if (field.name && field.value) {
-                fieldValues[field.name] = field.value;
-            }
-        });
+        if (this.get('fields')) {
+            $.each(this.get('fields'), function(i, field) {
+                if (field.name && field.value) {
+                    fieldValues[field.name] = field.value;
+                }
+            });
+        }
         this.get('controller').set('fieldValues', fieldValues);
 
         // Run through fields and see if we have any mandatory fields
