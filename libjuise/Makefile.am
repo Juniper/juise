@@ -13,6 +13,9 @@ juiseincdir = ${includedir}/libjuise
 if JUISE_WARNINGS_HIGH
 JUISE_WARNINGS = HIGH
 endif
+if HAVE_GCC
+GCC_WARNINGS = yes
+endif
 include ${top_srcdir}/warnings.mk
 
 AUTOMAKE_OPTIONS = subdir-objects
