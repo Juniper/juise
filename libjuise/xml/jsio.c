@@ -551,7 +551,6 @@ js_mixer_message_parse (js_session_t *jsp, char *buf, int bufsiz)
 {
     mx_header_t *mhp;
     js_mx_buffer_t *jmbp = jsp->js_mx_buffer;
-    char *trailer;
     char *cp = jmbp->jmb_data + jmbp->jmb_start;
     char *ep = jmbp->jmb_data + jmbp->jmb_start + jmbp->jmb_len;
 
@@ -580,7 +579,7 @@ js_mixer_message_parse (js_session_t *jsp, char *buf, int bufsiz)
 	goto fatal;
     }
 
-    trailer = cp = mhp->mh_trailer;
+    cp = mhp->mh_trailer;
     for (; cp < ep; cp++) {
 	if (*cp == '\n') {
 	    break;
@@ -1528,7 +1527,7 @@ js_rpc_send_simple (js_session_t *jsp, const char *rpc_name)
 {
     FILE *fp = jsp->js_fpout;
     int is_mixer = (jsp->js_key.jss_type == ST_MIXER);
-    char buf[BUFSIZ], rpc[BUFSIZ];
+    char buf[1024], rpc[128];
 
     jsio_trace("rpc name: %s", rpc_name);
 
@@ -1882,7 +1881,7 @@ js_session_open_localhost (js_session_opts_t *jsop, int flags,
     js_session_t *jsp;
     js_session_opts_t jso; 
     int conn_addr_len, conn_sock;
-    char auth_rpc[4 * BUFSIZ];
+    char auth_rpc[BUFSIZ];
     char *auth_resp;
     struct sockaddr_un conn_addr;
 
@@ -2077,7 +2076,7 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	 * this out to a valid argv array
 	 */
 	static char whitespace[] = " \t\n\r";
-	const char *cp = js_mixer, *sp, *ep = js_mixer + strlen(js_mixer);
+	const char *cp = js_mixer, *ep = js_mixer + strlen(js_mixer);
 	char buf[BUFSIZ], *bp = buf;
 	int bufsiz = sizeof(buf);
 	char *ap;
@@ -2088,7 +2087,7 @@ js_session_open (js_session_opts_t *jsop, int flags)
 		break;
 	    }
 
-	    for (ap = bp, sp = cp; cp < ep; cp++) {
+	    for (ap = bp; cp < ep; cp++) {
 		if (ap - bp > bufsiz) {
 		    char *np = alloca(bufsiz * 2);
 		    memcpy(np, bp, bufsiz);
