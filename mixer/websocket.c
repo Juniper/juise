@@ -771,22 +771,22 @@ void
 mx_websocket_init (void)
 {
     static mx_type_info_t mti = {
-    mti_type: MST_WEBSOCKET,
-    mti_name: "websocket",
-    mti_letter: "W",
-    mti_print: mx_websocket_print,
-    mti_prep: mx_websocket_prep,
-    mti_poller: mx_websocket_poller,
-    mti_spawn: mx_websocket_spawn,
-    mti_check_hostkey: mx_websocket_check_hostkey,
-    mti_get_passphrase: mx_websocket_get_passphrase,
-    mti_get_password: mx_websocket_get_password,
-    mti_write: mx_websocket_write,
-    mti_write_complete: mx_websocket_write_complete,
-    mti_error: mx_websocket_error,
-    mti_close: mx_websocket_close,
+	.mti_type = MST_WEBSOCKET,
+	.mti_name = "websocket",
+	.mti_letter = "W",
+	.mti_print = mx_websocket_print,
+	.mti_prep = mx_websocket_prep,
+	.mti_poller = mx_websocket_poller,
+	.mti_spawn = mx_websocket_spawn,
+	.mti_check_hostkey = mx_websocket_check_hostkey,
+	.mti_get_passphrase = mx_websocket_get_passphrase,
+	.mti_get_password = mx_websocket_get_password,
+	.mti_write = mx_websocket_write,
+	.mti_write_complete = mx_websocket_write_complete,
+	.mti_error = mx_websocket_error,
+	.mti_close = mx_websocket_close,
 #if 0
-    mti_set_channel: mx_websocket_set_channel,
+	.mti_set_channel = mx_websocket_set_channel,
 #endif
     };
 
