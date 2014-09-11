@@ -26,6 +26,7 @@ HIGH_WARNINGS?= ${MEDIUM_WARNINGS} \
     -Wparentheses \
     -Wreturn-type \
     -Wshadow \
+    -Wno-strict-aliasing \
     -Wswitch \
     -Wtrigraphs \
     -Wuninitialized \
