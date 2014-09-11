@@ -867,7 +867,7 @@ mod_juise_create_env (server *srv, connection *con,
     char *sdup = NULL, *cp;
     char *http_auth = NULL, *user = NULL, *pass = NULL;
     data_string *ds;
-    char cbuf[BUFSIZ];
+    char cbuf[256];
 
 #ifndef __WIN32
     /* set up args */
