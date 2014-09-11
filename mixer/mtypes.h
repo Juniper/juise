@@ -274,7 +274,7 @@ extern mx_type_info_t mx_type_info[MST_MAX + 1];
 static inline mx_type_info_t *
 mx_mti_number (mx_type_t type)
 {
-    static mx_type_info_t mti_null = { mti_name: "null/zero/nada" };
+    static mx_type_info_t mti_null = { .mti_name = "null/zero/nada" };
 
     if (type > MST_MAX)
 	return &mti_null;
