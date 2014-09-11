@@ -193,11 +193,11 @@ void
 mx_console_init (void)
 {
     static mx_type_info_t mti = {
-    mti_type: MST_CONSOLE,
-    mti_name: "console",
-    mti_letter: "P",
-    mti_poller: mx_console_poller,
-    mti_spawn: mx_console_spawn,
+	.mti_type = MST_CONSOLE,
+	.mti_name = "console",
+	.mti_letter = "P",
+	.mti_poller = mx_console_poller,
+	.mti_spawn = mx_console_spawn,
     };
 
     mx_type_info_register(MX_TYPE_INFO_VERSION, &mti);
