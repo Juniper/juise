@@ -1596,8 +1596,8 @@ do_run_rpc_on_box (const char *scriptname UNUSED, const char *input UNUSED,
     if (operation == NULL || operation[0] == '\0')
         errx(1, "missing operation");
 
-    if (asprintf(&newuri, "%.*s%s%s", operation - uri + 1, uri, localhost, 
-		 operation) < 0) {
+    if (asprintf(&newuri, "%.*s%s%s", (int)(operation - uri + 1),
+		 uri, localhost, operation) < 0) {
 	errx(1, "Failed building REQUEST_URI");
     }
 
