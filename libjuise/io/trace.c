@@ -458,11 +458,6 @@ trace_msg (trace_file_t *traceptr, char *trace_buffer, u_int trace_it, int *msg_
     int  trace_buf_remaining;
     int  trace_msg_len;
     int  fmt_len;
-#ifdef HAVE_STATFS
-    struct statfs fs_stat;
-    int64_t fs_bytes_avail;
-#endif
-
     trace_msg_len = 0;
     trace_buf_remaining = TRACE_BUFSIZE - TRACE_POSTAMBLE_SIZE;	/* save room */
 
@@ -518,11 +513,14 @@ trace_msg (trace_file_t *traceptr, char *trace_buffer, u_int trace_it, int *msg_
      * free space sufficient to store trace message now
      */
     if (traceptr->trace_file_fs_full) {
-        if (statfs(traceptr->trace_file, &fs_stat) == -1) {
+	struct statfs *fsp = alloca(sizeof(*fsp));
+	int64_t fs_bytes_avail;
+
+        if (statfs(traceptr->trace_file, fsp) == -1) {
             return return_buffer;
         }
 
-        fs_bytes_avail = fs_stat.f_bavail * (int64_t) fs_stat.f_bsize;
+        fs_bytes_avail = fsp->f_bavail * (int64_t) fsp->f_bsize;
         if (fs_bytes_avail < (int64_t) trace_msg_len) {
             return return_buffer;
         } else {
