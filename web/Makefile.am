@@ -24,7 +24,6 @@ BASE_FILES = \
     bin/list-command-files.slax \
     clira/app.js \
     clira/builtins.js \
-    clira/clira.html \
     clira/clira.js \
     clira/clira.muxer.js \
     clira/clira.prefs.js \
