@@ -24,7 +24,7 @@ device's configuration and the results of those script tested on that
 device.
 
 Check our
-[github release page](https://github.com/Juniper/libslax/releases)
+[github release page](https://github.com/Juniper/juise/releases)
 to find the latest release.
 
 Please visit the 
