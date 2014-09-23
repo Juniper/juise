@@ -35,7 +35,6 @@ lib_LTLIBRARIES = libjuise.la
 juiseinc_HEADERS = 
 
 noinst_HEADERS = \
-    juiseconfig.h \
     common/allocadup.h \
     common/aux_types.h \
     common/bits.h \
