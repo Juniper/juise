@@ -180,7 +180,6 @@ static void
 main_loop (void)
 {
     mx_sock_t *msp;
-    int waiting = FALSE;
     int rc;
 
     for (;;) {
@@ -252,8 +251,6 @@ main_loop (void)
 		       (mx_pollfd[i].revents & POLLERR) ? " pollerr" : "");
 	    }
 	}
-
-	waiting = FALSE;
 
 	mindex = -1;
 	TAILQ_FOREACH(msp, &mx_sock_list, ms_link) {

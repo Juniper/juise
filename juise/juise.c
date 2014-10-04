@@ -37,7 +37,6 @@
 #include <libexslt/exslt.h>
 #include <libxslt/xsltutils.h>
 #include <libslax/slax.h>
-#include <libslax/slaxconfig.h>
 #include <libslax/slaxdata.h>
 #include <libslax/xmlsoft.h>
 
@@ -1597,8 +1596,8 @@ do_run_rpc_on_box (const char *scriptname UNUSED, const char *input UNUSED,
     if (operation == NULL || operation[0] == '\0')
         errx(1, "missing operation");
 
-    if (asprintf(&newuri, "%.*s%s%s", operation - uri + 1, uri, localhost, 
-		 operation) < 0) {
+    if (asprintf(&newuri, "%.*s%s%s", (int)(operation - uri + 1),
+		 uri, localhost, operation) < 0) {
 	errx(1, "Failed building REQUEST_URI");
     }
 
@@ -2073,5 +2072,5 @@ main (int argc UNUSED, char **argv, char **envp)
 
     jsio_cleanup();
 
-    return 0;
+    exit(slaxGetExitCode());
 }

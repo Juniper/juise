@@ -650,7 +650,9 @@ ext_jcs_send (xmlXPathParserContext *ctxt, int nargs)
     }
 
     xmlXPathObject *sop = valuePop(ctxt);
-    if (sop == NULL) {
+    if (sop == NULL || sop->nodesetval == NULL) {
+        if (sop)
+            xmlXPathFreeObject(sop);
 	xmlFree(str);
 	LX_ERR("jcs:send: null connection argument\n");
 	return;
@@ -722,7 +724,9 @@ ext_jcs_receive (xmlXPathParserContext *ctxt, int nargs)
     } 
 
     xmlXPathObject *sop = valuePop(ctxt);
-    if (sop == NULL) {
+    if (sop == NULL || sop->nodesetval == NULL) {
+        if (sop)
+            xmlXPathFreeObject(sop);
 	LX_ERR("jcs:receive: null argument\n");
 	return;
     }
@@ -835,7 +839,9 @@ ext_jcs_execute (xmlXPathParserContext *ctxt, int nargs)
     }
 
     xmlXPathObject *sop = valuePop(ctxt);
-    if (sop == NULL) {
+    if (sop == NULL || sop->nodesetval == NULL) {
+        if (sop)
+            xmlXPathFreeObject(sop);
 	xmlXPathFreeObject(xop);
 	LX_ERR("jcs:execute: null argument\n");
 	return;
@@ -977,7 +983,9 @@ ext_jcs_gethello (xmlXPathParserContext *ctxt, int nargs)
     }
 
     xop = valuePop(ctxt);
-    if (xop == NULL) {
+    if (xop == NULL || xop->nodesetval == NULL) {
+        if (xop)
+            xmlXPathFreeObject(xop);
 	LX_ERR("xnm:invoke: null argument\n");
 	return;
     }

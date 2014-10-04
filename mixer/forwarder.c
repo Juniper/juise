@@ -190,17 +190,17 @@ void
 mx_forwarder_init (void)
 {
     static mx_type_info_t mti = {
-    mti_type: MST_FORWARDER,
-    mti_name: "forwarder",
-    mti_letter: "F",
-    mti_print: mx_forwarder_print,
-    mti_prep: mx_forwarder_prep,
-    mti_poller: mx_forwarder_poller,
-    mti_spawn: mx_forwarder_spawn,
-    mti_write: mx_forwarder_write,
-    mti_set_channel: mx_forwarder_set_channel,
-    mti_close: mx_forwarder_close,
-    mti_is_buf: mx_forwarder_is_buf,
+	.mti_type = MST_FORWARDER,
+	.mti_name = "forwarder",
+	.mti_letter = "F",
+	.mti_print = mx_forwarder_print,
+	.mti_prep = mx_forwarder_prep,
+	.mti_poller = mx_forwarder_poller,
+	.mti_spawn = mx_forwarder_spawn,
+	.mti_write = mx_forwarder_write,
+	.mti_set_channel = mx_forwarder_set_channel,
+	.mti_close = mx_forwarder_close,
+	.mti_is_buf = mx_forwarder_is_buf,
     };
 
     mx_type_info_register(MX_TYPE_INFO_VERSION, &mti);

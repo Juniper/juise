@@ -154,12 +154,12 @@ void
 mx_listener_init (void)
 {
     static mx_type_info_t mti = {
-    mti_type: MST_LISTENER,
-    mti_name: "listener",
-    mti_letter: "L",
-    mti_print: mx_listener_print,
-    mti_poller: mx_listener_poller,
-    mti_close: mx_listener_close,
+	.mti_type = MST_LISTENER,
+	.mti_name = "listener",
+	.mti_letter = "L",
+	.mti_print = mx_listener_print,
+	.mti_poller = mx_listener_poller,
+	.mti_close = mx_listener_close,
     };
 
     mx_type_info_register(MX_TYPE_INFO_VERSION, &mti);

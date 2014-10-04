@@ -843,13 +843,13 @@ void
 mx_session_init (void)
 {
     static mx_type_info_t mti = {
-    mti_type: MST_SESSION,
-    mti_name: "session",
-    mti_letter: "S",
-    mti_print: mx_session_print,
-    mti_prep: mx_session_prep,
-    mti_poller: mx_session_poller,
-    mti_close: mx_session_close,
+	.mti_type = MST_SESSION,
+	.mti_name = "session",
+	.mti_letter = "S",
+	.mti_print = mx_session_print,
+	.mti_prep = mx_session_prep,
+	.mti_poller = mx_session_poller,
+	.mti_close = mx_session_close,
     };
 
     char buf[MAXPATHLEN];
