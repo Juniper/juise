@@ -497,7 +497,7 @@ li.indline1 {
  
   } 
   @top-right {
-       content: "August 2014";
+       content: "October 2014";
  
   } 
   @top-center {
@@ -21985,7 +21985,7 @@ jQuery(function ($) {
 </tr>
 <tr>
 <td class="header left"></td>
-<td class="header right">August 20, 2014</td>
+<td class="header right">October 4, 2014</td>
 </tr>
 </table></div>
 <p id="title" class="title">The JUISE Project: JUNOS User Interface Scripting Environment<br><span class="filename">juise-manual</span></p>
@@ -22156,9 +22156,8 @@ jQuery(function ($) {
 <a id="getting-juise" href="#getting-juise">Getting JUISE</a>
 </h2>
 <p id="doc_section_1_1_p_1">JUISE is available as an open-source project via google code using the following URL:</p>
-<div id="doc_figure_u.1"></div> <pre>
-    http://juise.googlecode.com
-	    </pre> <p id="doc_section_1_1_p_3">Refer to the ./README file for building instructions.</p>
+<p id="doc_section_1_1_p_2"> <a href="http://juise.googlecode.com">http://juise.googlecode.com</a></p>
+<p id="doc_section_1_1_p_3">Refer to the ./README file for building instructions.</p>
 <p id="doc_section_1_1_p_4">Note that juise has a number of prerequisite software packages, including libxslt, libxml2, libpcre, libslax, and others.</p>
 </div>
 </div>
@@ -22185,7 +22184,7 @@ jQuery(function ($) {
 <a id="syntax" href="#syntax">Syntax</a>
 </h2>
 <p id="doc_section_2_1_p_1">The juise command line interface is as follows:</p>
-<div id="doc_figure_u.2"></div> <pre>
+<div id="doc_figure_u.1"></div> <pre>
   Usage: juise [[user]@target] [options] [script] [param value]*
 	    </pre> <p id="doc_section_2_1_p_3">The juise command is normally invoked with the name of the script to be run, a set of options are used to tailor the execution of the script, and a set of name/value parameter pairs that are passed as parameters to the script, as they are for the JUNOS "op" command.</p>
 <div class="content">
@@ -22195,7 +22194,7 @@ jQuery(function ($) {
 <a id="the-target-argument" href="#the-target-argument">The Target Argument</a>
 </h3>
 <p id="doc_section_2_1_1_p_1">If the first non-option argument contains an '@' and the --target option is not present, the argument will be taken as the default target. This value will be used as the "local" device for configuration retrieval and for any jcs:open() call that does not provide an explicit target. This argument can be either "user@device" or "@device" (with the current login name used as the user name).</p>
-<div id="doc_figure_u.3"></div> <pre>
+<div id="doc_figure_u.2"></div> <pre>
     juise my-login@my-router ...
     juise @my-router ...
 	    </pre> </div>
@@ -22219,19 +22218,19 @@ jQuery(function ($) {
 <p id="doc_section_3_1_p_2">Commit script can also change the configuration in two distinct ways. Normal changes are added to the candidate configuration before it is passed to the rest of the JUNOS subcomponents for validation. These changes are normal parts of the configuration data set.</p>
 <p id="doc_section_3_1_p_3">In contrast, transient changes are not part of the normal configuration data set, since they are not visible in the candidate configuration nor are they saved in rollback data sets. But they are exposed to JUNOS subcomponents during validation, allowing the commit script to create second order configuration information based on the first order data in the candidate configuration.</p>
 <p id="doc_section_3_1_p_4">The typical commit script relies heavily upon XPath to find errant configuration. They typically follow the pattern:</p>
-<div id="doc_figure_u.4"></div> <pre>
+<div id="doc_figure_u.3"></div> <pre>
     if (xpath/to/find/bad/config) {
         report bad config;
     }
 	    </pre> <p id="doc_section_3_1_p_6">or:</p>
-<div id="doc_figure_u.5"></div> <pre>
+<div id="doc_figure_u.4"></div> <pre>
     for-each (some/list/that/needs/to/be/checked) {
         if (xpath/to/find/bad/config) {
             report bad config;
         }
     }
 	    </pre> <p id="doc_section_3_1_p_8">Consider this example:</p>
-<div id="doc_figure_u.6"></div> <pre>
+<div id="doc_figure_u.5"></div> <pre>
     version 1.1;
 
     import "../import/junos.xsl";
@@ -22262,7 +22261,7 @@ jQuery(function ($) {
 <a id="testing-commit-scripts" href="#testing-commit-scripts">Testing Commit Scripts</a>
 </h2>
 <p id="doc_section_3_2_p_1">juise can be used to test commit scripts by using the "&#8209;c" option. The target device can be given with either the --target (-T) option. If no target is given and the first argument contains an '@', then this is used as the target.</p>
-<div id="doc_figure_u.7"></div> <pre>
+<div id="doc_figure_u.6"></div> <pre>
     % juise -c me@my-router my-script.slax
 	    </pre> <p id="doc_section_3_2_p_3">To execute the commit script, juise tries to reproduce the environment which the script would run under JUNOS. juise starts by downloading the configuration in the same format used by on-box commit scripts, with expanded inheritance and group and change attributes. This configuration is wrapped in an input document (the &lt;op&#8209;script&#8209;input&gt; element) to be passed to the script. The wrapper is identical to the JUNOS wrapper, complete with the &lt;junos&#8209;context&gt; element.</p>
 <p id="doc_section_3_2_p_4">The &lt;op&#8209;script&#8209;input&gt; element is passed as input to the script, which runs normally, inspecting the configuration and generating, &lt;xnm:error&gt;, &lt;xnm:warning&gt;, &lt;syslog&gt;, &lt;change&gt;, and &lt;transient&gt; elements as needed.</p>
@@ -22293,7 +22292,7 @@ jQuery(function ($) {
 </tr>
 </tbody>
 </table></div>
-<div id="doc_figure_u.8"></div> <pre>
+<div id="doc_figure_u.7"></div> <pre>
     % cat fix-domain.slax
     version 1.1;
 
@@ -22350,7 +22349,7 @@ jQuery(function ($) {
 <a id="debugging-commit-scripts" href="#debugging-commit-scripts">Debugging Commit Scripts</a>
 </h2>
 <p id="doc_section_3_3_p_1">The libslax debugger (sdb) can be used to debug commit scripts. Use the "&#8209;d" option to trigger the debugger.</p>
-<div id="doc_figure_u.9"></div> <pre>
+<div id="doc_figure_u.8"></div> <pre>
     % juise -d -c me@my-router my-script.slax
     sdb: The SLAX Debugger (version 0.12.2)
     Type 'help' for help
@@ -22405,17 +22404,17 @@ jQuery(function ($) {
 <a id="running-op-scripts" href="#running-op-scripts">Running Op Scripts</a>
 </h2>
 <p id="doc_section_4_2_p_1">The juise command can be used to execute op scripts:</p>
-<div id="doc_figure_u.10"></div> <pre>
+<div id="doc_figure_u.9"></div> <pre>
     juise [options] [[user]@target] script-name [name value]*
 	    </pre> <p id="doc_section_4_2_p_3">The arguments to an op script are a name and a value, similar to the "op" command under JUNOS:</p>
-<div id="doc_figure_u.11"></div> <pre>
+<div id="doc_figure_u.10"></div> <pre>
     op script-name [name value]*
 	    </pre> <p id="doc_section_4_2_p_5">The name is arbitrary but should correspond to global parameters declared inside the script using the "param" statement.</p>
-<div id="doc_figure_u.12"></div> <pre>
+<div id="doc_figure_u.11"></div> <pre>
     juise @my-box my-script address 10.1.2.3 vlan fluffy
 	    </pre> <p id="doc_section_4_2_p_7">The script is run on the local machine, with jcs:open() able to connect to the device, and output is displayed on the user's terminal.</p>
 <p id="doc_section_4_2_p_8">To invoke the debugger on a script, use the "&#8209;d" option:</p>
-<div id="doc_figure_u.13"></div> <pre>
+<div id="doc_figure_u.12"></div> <pre>
     juise -d @my-box my-script address 10.1.2.3 vlan fluffy
 	    </pre> </div>
 <div class="content">
@@ -22432,16 +22431,16 @@ jQuery(function ($) {
 <a id="usrlocalbinslax" href="#usrlocalbinslax">"#!/usr/local/bin/slax"</a>
 </h3>
 <p id="doc_section_4_3_1_p_1">The SLAX parser supports the "#!" mechanism which is a normal part of the unix environment. This allows scripts beginning with the line "#!/usr/bin/slax" to be executed directly from the command line.</p>
-<div id="doc_figure_u.14"></div> <pre>
+<div id="doc_figure_u.13"></div> <pre>
     #!/usr/local/bin/slax
     match / { message "this works"; }
 	    </pre> <p id="doc_section_4_3_1_p_3">If this script file is given the appropriate "executable" permission bit (such as "chmod a+x works"), then the command "works" will work.</p>
-<div id="doc_figure_u.15"></div> <pre>
+<div id="doc_figure_u.14"></div> <pre>
     % works
     this works
     %
 	    </pre> <p id="doc_section_4_3_1_p_5">Additional options can be added to the "#!" line:</p>
-<div id="doc_figure_u.16"></div> <pre>
+<div id="doc_figure_u.15"></div> <pre>
     #!/usr/bin/slax -g --param check yes
 	    </pre> </div>
 </div>
@@ -22464,13 +22463,13 @@ jQuery(function ($) {
 </h1>
 <p id="doc_section_6_p_1">juise can perform as a NETCONF server, accepting NETCONF RPCs and returning XML data. RPCs are serviced by invoking local scripts on the server machine (aka "juise box").</p>
 <p id="doc_section_6_p_2">The server can be invoked in two ways. The more traditional invocation uses the "&#8209;R" or "&#8209;&#8209;run&#8209;server" option. The most common way to run a NETCONF server is to make an sshd_config file listing the service. In JUNOS, we do this as follows:</p>
-<div id="doc_figure_u.17"></div> <pre>
+<div id="doc_figure_u.16"></div> <pre>
     Subsystem netconf /usr/libexec/ui/netconf
 	    </pre> <p id="doc_section_6_p_4">A juise box would require something like:</p>
-<div id="doc_figure_u.18"></div> <pre>
+<div id="doc_figure_u.17"></div> <pre>
     Subsystem netconf /usr/local/bin/juise --run-server -P netconf
 	    </pre> <p id="doc_section_6_p_6">This service can be advertised using inetd with the following configuration lines:</p>
-<div id="doc_figure_u.19"></div> <pre>
+<div id="doc_figure_u.18"></div> <pre>
     netconf stream tcp nowait/75/150 root \
         /usr/sbin/sshd sshd -i -f /var/etc/sshd_config \
         -o SubsystemOnly=netconf -o Protocol=2
@@ -22497,7 +22496,7 @@ jQuery(function ($) {
 <p id="doc_section_6_2_p_2">The JUISE_SCRIPT_DIR environment variable and the "&#8209;D" option are used to provide a set of search directories. The default path is the directory $prefix/share/juise/scripts/, or the value given for --with-script-dir=DIR to the "configure" script at build time.</p>
 <p id="doc_section_6_2_p_3">For each directory in the search path, juise looks for a file with the name of the RPC method and a suitable extension. The list of extensions is "slax", "xsl", "xslt", "sh", "pl", and "" (none).</p>
 <p id="doc_section_6_2_p_4">For example if a client sends an RPC like:</p>
-<div id="doc_figure_u.20"></div> <pre>
+<div id="doc_figure_u.19"></div> <pre>
     &lt;rpc&gt;
         &lt;get-some-information&gt;
             &lt;type&gt;fish&lt;/type&gt;
@@ -22506,7 +22505,7 @@ jQuery(function ($) {
     &lt;/rpc&gt;
 	    </pre> <p id="doc_section_6_2_p_6">The juise NETCONF server will look in for "get&#8209;some&#8209;information.slax" in $prefix/share/juise/scripts/ and will load and run that script.</p>
 <p id="doc_section_6_2_p_7">In the following example, the "test.slax" script is accessed using the "test" RPC via the "xml&#8209;mode" command.</p>
-<div id="doc_figure_u.21"></div> <pre>
+<div id="doc_figure_u.20"></div> <pre>
     % cat /usr/local/share/juise/scripts/test.slax
     version 1.1;
     match / {
@@ -22567,7 +22566,7 @@ jQuery(function ($) {
 <dt>--indent OR -g</dt>
 <dd>Make indented output as if the script contained:</dd>
 </dl>
-<div id="doc_figure_u.22"></div> <pre>
+<div id="doc_figure_u.21"></div> <pre>
     output-method {
         indent "yes";
     }
@@ -22618,7 +22617,7 @@ jQuery(function ($) {
 <a id="setting-the-import-path" href="#setting-the-import-path">Setting The Import Path</a>
 </h3>
 <p id="doc_section_7_2_1_p_1">JUNOS scripts typically import junos.xsl using the following statement:</p>
-<div id="doc_figure_u.23"></div> <pre>
+<div id="doc_figure_u.22"></div> <pre>
     import "../import/junos.xsl";
 	    </pre> <p id="doc_section_7_2_1_p_3">JUISE installs this file, along with other import files, in the $prefix/share/juise/import directory.</p>
 <p id="doc_section_7_2_1_p_4">In addition, JUISE will look at the environment variables JUISEPATH and SLAXPATH. These variables list a set of colon-separated directories to be searched for import and include files.</p>
@@ -22644,10 +22643,10 @@ jQuery(function ($) {
 </h1>
 <p id="doc_section_8_p_1">The JUISE project includes a plug-in module for the "lighttpd" (pronounced "lightey") web server. This plug-in allows scripts to be run directly from lighttpd while allowing SSH credentials established using "ssh&#8209;agent" to be inherited by the SLAX script. SSH connections, including those from the jcs:open() call, can then be opened without prompting for a passphrase.</p>
 <p id="doc_section_8_p_2">A suitable lighttpd.conf file is provided with juise, installed in the $prefix/share/juise/web/ directory. lighttpd can be started by using the "&#8209;f" option and this file:</p>
-<div id="doc_figure_u.24"></div> <pre>
+<div id="doc_figure_u.23"></div> <pre>
     lighttpd -f $prefix/share/juise/web/lighttpd.conf
 	    </pre> <p id="doc_section_8_p_4">To add mod_juise to an existing lighttpd server, add the following line to your lighttpd.conf file:</p>
-<div id="doc_figure_u.25"></div> <pre>
+<div id="doc_figure_u.24"></div> <pre>
     juise.assign = ( ".slax" =&gt; "juise.cgi" )
 	    </pre> <div class="content">
 <h2 id="doc_section_8_1">
@@ -22753,15 +22752,15 @@ jQuery(function ($) {
 </tbody>
 </table></div>
 <p id="doc_section_8_1_p_2">The following lines are functionally equivalent:</p>
-<div id="doc_figure_u.26"></div> <pre>
+<div id="doc_figure_u.25"></div> <pre>
     expr "User is " _ $REMOTE_USER;
     expr "User is " _ $cgi/remote-user;
 	    </pre> <p id="doc_section_8_1_p_4">In addition $cgi has an element named "parameters" which has the fields of $QUERY_STRING broken into individual elements. These are also available as global parameters. The following lines are functionally equivalent:</p>
-<div id="doc_figure_u.27"></div> <pre>
+<div id="doc_figure_u.26"></div> <pre>
     expr "'from' parameter is " _ $cgi/parameters/from;
     expr "'from' parameter is " _ $from;
 	    </pre> <p id="doc_section_8_1_p_6">The full set of parameters can be accessed using this parameters element:</p>
-<div id="doc_figure_u.28"></div> <pre>
+<div id="doc_figure_u.27"></div> <pre>
     for-each ($cgi/parameters) {
         expr "Parameter '" _ name() _ "' is '" _ . _ "'";
     }
@@ -22781,12 +22780,12 @@ jQuery(function ($) {
 <a id="attributes" href="#attributes">Attributes</a>
 </h2>
 <p id="doc_section_8_3_p_1">Any non-namespace attributes given on the &lt;cgi&gt; element is converted into a header field in the HTTP reply message. The attribute name is the header field and the attribute value is the header value.</p>
-<div id="doc_figure_u.29"></div> <pre>
+<div id="doc_figure_u.28"></div> <pre>
     &lt;cgi Content-Type="text/html" X-Address=$REMOTE_ADDR&gt;
         ...
     &lt;/cgi&gt;
 	    </pre> <p id="doc_section_8_3_p_3">The above element would be turned into:</p>
-<div id="doc_figure_u.30"></div> <pre>
+<div id="doc_figure_u.29"></div> <pre>
     Content-Type: text/html
     X-Address: 10.1.2.3
 	    </pre> <p id="doc_section_8_3_p_5">Additional attributes and elements may be defined under the &lt;cgi&gt; element. For future proofing, script should avoid attributes and elements whose names being with "junos", "cgi", or "juise".</p>
@@ -22821,11 +22820,11 @@ jQuery(function ($) {
 <a id="extensions" href="#extensions">Extension Libraries for juise</a>
 </h1>
 <p id="doc_section_11_p_1">The JUISE project includes the jcs extension library which allows invocation of NETCONF RPCs. This library is identical to the jcs library available under JUNOS. This section details the extension functions and element of those libraries.</p>
-<div class="digress tooltip note:" id="idp10126656"><table class="tooltip" cellpadding="0" cellspacing="0" id="table-idp10126656">
+<div class="digress tooltip note:" id="idp17480672"><table class="tooltip" cellpadding="0" cellspacing="0" id="table-idp17480672">
 <tr><td><div class="fancy-tooltip-header">note:: </div></td></tr>
 <tr><td><div class="fancy-tooltip-body"> <p>The jcs extension library is not a dynamic extension library and is only available when using the juise command. This needs to change, but is low priority.</p> </div></td></tr>
 </table></div>
-<a href="?" tabindex="9999" class="digress-anchor" onClick="return popClick(event, 'idp10126656'); " onmouseover="popUp(event, 'idp10126656')" onmouseout="popDown(event, 'idp10126656')"><span class="digress digress-anchor">[note:]</span></a><div class="content">
+<a href="?" tabindex="9999" class="digress-anchor" onClick="return popClick(event, 'idp17480672'); " onmouseover="popUp(event, 'idp17480672')" onmouseout="popDown(event, 'idp17480672')"><span class="digress digress-anchor">[note:]</span></a><div class="content">
 <h2 id="doc_section_11_1">
 <div class="self-section-number">
 <a href="#doc_section_11_1">11.1</a> </div>
@@ -22910,7 +22909,7 @@ jQuery(function ($) {
 </table></div>
 <p id="doc_section_11_1_1_p_7"> </p>
 <ul><li>If three arguments are provided, the first argument is the name of the device to connect with, the second is the username, and the third is the password.</li></ul>
-<div id="doc_figure_u.31"></div> <pre>
+<div id="doc_figure_u.30"></div> <pre>
     SYNTAX::
         node-set jcs:open();
         node-set jcs:open(hostname);
@@ -22932,7 +22931,7 @@ jQuery(function ($) {
 </h3>
 <p id="doc_section_11_1_2_p_1">The jcs:execute() function invokes RPCs using a connection returned by jcs:open(). RPCs are invoked and their results returned using a persistent connection, allowing stateful RPCs, such as locking the configuration database.</p>
 <p id="doc_section_11_1_2_p_2">The first argument is the connection, as returned by jcs:open(). If the second argument is a string, it is the name of an RPC operation. Otherwise the second argument is a node-set containing the operation to be invoked.</p>
-<div id="doc_figure_u.32"></div> <pre>
+<div id="doc_figure_u.31"></div> <pre>
     SYNTAX::
         node-set jcs:execute(conn, method);
         node-set jcs:execute(conn, rpc);
@@ -22953,7 +22952,7 @@ jQuery(function ($) {
 </h3>
 <p id="doc_section_11_1_3_p_1">The jcs:invoke() function invokes RPCs but does not use or require a persistent connection. RPCs are stateless, since any connection needed is temporary, so operations like locking the configuration database should be avoided since the lock will be immediately released.</p>
 <p id="doc_section_11_1_3_p_2">If the argument to jcs:invoke is a string, it is the name of an RPC operation. Otherwise the argument is a node-set containing the operation to be invoked.</p>
-<div id="doc_figure_u.33"></div> <pre>
+<div id="doc_figure_u.32"></div> <pre>
     SYNTAX::
         node-set jcs:invoke(method);
         node-set jcs:invoke(rpc);
@@ -22973,7 +22972,7 @@ jQuery(function ($) {
 <a id="jcs-close" href="#jcs-close">jcs:close</a>
 </h3>
 <p id="doc_section_11_1_4_p_1">The jcs:close() function closes a connection opened by jcs:open(), releasing any resources on both the local and remote side.</p>
-<div id="doc_figure_u.34"></div> <pre>
+<div id="doc_figure_u.33"></div> <pre>
     SYNTAX::
         void jcs:close(conn);
 	    </pre> </div>
