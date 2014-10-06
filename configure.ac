@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.6.0], [phil@juniper.net])
+AC_INIT([juise], [0.6.1], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 
 case $prefix in
@@ -174,6 +174,19 @@ AC_ARG_ENABLE([libedit],
     [HAVE_LIBEDIT=no])
 AC_MSG_RESULT([$HAVE_LIBEDIT])
 AM_CONDITIONAL([HAVE_LIBEDIT], [test "$HAVE_LIBEDIT" != "no"])
+
+AC_MSG_CHECKING([compiler for gcc])
+HAVE_GCC=no
+if test "${CC}" != ""; then
+    HAVE_GCC=`${CC} --version 2>&1 | grep -i ' GCC'`
+    if test "${HAVE_GCC}" != ""; then
+        HAVE_GCC=yes
+    else
+        HAVE_GCC=no
+    fi
+fi
+AC_MSG_RESULT([$HAVE_GCC])
+AM_CONDITIONAL([HAVE_GCC], [test "$HAVE_GCC" = "yes"])
 
 AC_MSG_CHECKING([whether to build with __printflike])
 AC_ARG_ENABLE([printflike],
@@ -637,7 +650,8 @@ AC_MSG_NOTICE([summary of build options:
   juise version:    ${VERSION} ${LIBJUISE_VERSION_EXTRA}
   host type:        ${host}
   install prefix:   ${prefix}
-  compiler:         ${CC}
+
+  compiler:         ${CC} (${HAVE_GCC:-no})
   compiler flags:   ${CFLAGS}
   library types:    Shared=${enable_shared}, Static=${enable_static}
 
