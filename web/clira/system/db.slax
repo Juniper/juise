@@ -39,7 +39,7 @@ var $json-opts = {
  */
 var $db-options = {
     <engine> "sqlite";
-    <database> os:userinfo()//dir _ "/.juise/mixer.db";
+    <database> os:user-info()//dir _ "/.juise/mixer.db";
 }
 
 /*
