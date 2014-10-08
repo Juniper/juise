@@ -631,13 +631,14 @@ AC_CONFIG_FILES([
   extensions/Makefile
   mixer/Makefile
   web/Makefile
-  web/lighttpd.conf
+  web/clira.conf
   import/Makefile
   tests/Makefile
   packaging/juise.pc
   packaging/juise.spec
   packaging/juise.space.spec
   packaging/juise.rb.base
+  packaging/juise.clira.spec
   packaging/freebsd/port-Makefile
 ])
 AC_OUTPUT

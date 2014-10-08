@@ -49,11 +49,14 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %{_bindir}/*
+%{_sbindir}/*
 %{_libdir}/*
 %{_libdir}/pkgconfig/juise.pc
 %{_libdir}/lib*
+%{_datarootdir}/juise/*
 %{_datadir}/doc/juise/*
 %{_libexecdir}/juise/*
 %{_datadir}/juise/import/*
 %{_mandir}/*/*
 %docdir %{_mandir}/*/*
+

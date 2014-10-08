@@ -8,16 +8,11 @@
 # using the SOFTWARE, you agree to be bound by the terms of that
 # LICENSE.
 
-# CLEANFILES = lighttpd.conf
-
 webdatadir = $(datadir)/juise/web
 
 EXTRA_DIST = \
     Makefile.am \
-    Makefile.in \
-    lighttpd.conf.in \
-    lighttpd-wrapper.sh \
-    run-clira.sh
+    Makefile.in
 
 BASE_FILES = \
     bin/form2.js \
@@ -183,31 +178,13 @@ WEB_FILES = \
     ${THEME_EXCITE_BIKE}
 
 nobase_dist_webdata_DATA = ${WEB_FILES}
-nobase_dist_sysconf_DATA = \
-    lighttpd.conf \
-    lighttpd-wrapper.sh
+nobase_dist_doc_DATA = \
+    clira.conf
 
 nobase_dist_sbin_SCRIPTS = \
     run-clira.sh
 
 EXTRA_DIST += ${WEB_FILES}
-
-#INSTALL_WEB_FILES =  \
-#    lighttpd.conf \
-#    ${WEB_FILES}
-
-#not-yet-install-exec-hook:
-#	@echo "Installing Web Files ... "
-#	@for file in ${INSTALL_WEB_FILES} ; do \
-#		if [ -f $$file ]; then \
-#			rfile=$$file ; \
-#		else \
-#			rfile=${srcdir}/$$file ; \
-#		fi ; \
-#		mdir=${JUISE_WEB_DIR}/`dirname $$file` ; \
-#		mkdir -p $$mdir ; \
-#		cp $$rfile $$mdir/ ; \
-#        done
 
 svnignore:
 	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
