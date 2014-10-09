@@ -4,9 +4,10 @@
 #
 
 JUISEHOME=$HOME/.juise
-BASE_CLIRA_CONF=/usr/share/doc/juise/lighttpd-clira-example.conf
+BASE_CLIRA_CONF=/usr/share/doc/juise/clira.conf
 CLIRA_CONF=$JUISEHOME/lighttpd-clira.conf
 LIGHTTPD_PIDFILE=$JUISEHOME/lighttpd.pid
+MODULES_DIR=/usr/lib
 
 usage ()
 {
@@ -41,7 +42,7 @@ start ()
 	fi
 
 	# Fire 'er up
-	/usr/sbin/lighttpd-for-juise -f $CLIRA_CONF > /dev/null
+	/usr/sbin/lighttpd-for-juise -m $MODULES_DIR -f $CLIRA_CONF > /dev/null
 
 	echo "Clira started!"
 }
@@ -80,6 +81,13 @@ if [ -e $LIGHTTPD_PIDFILE ]; then
 	then
 		LIGHTTPD_RUNNING=yes
 	fi
+fi
+
+# Figure out our lighttpd-for-juise modules directory
+if [ -d /usr/lib64/lighttpd-for-juise ]; then
+	MODULES_DIR=/usr/lib64/lighttpd-for-juise
+elif [ -d /usr/lib/lighttpd-for-juise ]; then
+	MODULES_DIR=/usr/lib/lighttpd-for-juise
 fi
 
 if [ "$1" = "start" ]; then
