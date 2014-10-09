@@ -67,6 +67,7 @@
 
 #include "version.h"
 
+#include <libxml/parserInternals.h> 
 #include <libslax/slax.h>
 #include <pwd.h>
 #include "mod_juise.h"
