@@ -27,6 +27,7 @@ Requires: libxml2
 Requires: libxslt
 Requires: sqlite
 Requires: psmisc
+requires: libssh2
 
 %description
 Welcome to juise, the JUNOS User Interface Scripting Environment.

@@ -25,7 +25,6 @@ BASE_FILES = \
     clira/clira.prefs.views.js \
     clira/clira.slax \
     clira/controllers.js \
-    clira/db.php \
     clira/index.html \
     clira/models.js \
     clira/parser-test.html \
@@ -33,6 +32,7 @@ BASE_FILES = \
     clira/parser.output.js \
     clira/parser.test.js \
     clira/parser.types.js \
+    clira/system/db.slax \
     clira/system/debug.js \
     clira/system/fancy.js \
     clira/system/history.js \
