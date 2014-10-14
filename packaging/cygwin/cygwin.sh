@@ -34,7 +34,7 @@ autoreconf -f -i
 VERSION=`grep "PACKAGE_VERSION='" ./configure | cut -d "'" -f 2`
 
 cd $BUILDDIR
-../../../configure --enable-mixer --enable-clira --with-lighttpd-src=$1 --with-php-cgi=/usr/bin/php-cgi
+../../../configure --enable-mixer --enable-clira --with-lighttpd-src=$1
 make install DESTDIR=$STAGEDIR
 cd $STAGEDIR && tar -cjf ../../juise-$VERSION.tar.bz2 *
 cd $STAGEDIR
