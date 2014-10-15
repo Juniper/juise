@@ -567,13 +567,6 @@ AC_ARG_WITH(cgi-dir,
 )
 AC_SUBST(JUISE_CGI_DIR)
 
-AC_ARG_WITH(php-cgi,
-        [  --with-php-cgi=[DIR]           Specify location of php-cgi binary],
-        [PHP_CGI=$withval],
-        [PHP_CGI=$prefix/bin/php-cgi]
-)
-AC_SUBST(PHP_CGI)
-
 JUISE_LIBS=-ljuise
 AC_SUBST(JUISE_LIBS)
 JUISE_SRCDIR='${srcdir}'
@@ -677,7 +670,6 @@ AC_MSG_NOTICE([summary of build options:
   lighttpd obj:     ${LIGHTTPD_OBJ}
   lighttpd libdir:  ${LIGHTTPD_LIBDIR}
   lighttpd modules: ${LIGHTTPD_MOD}
-  php cgi binary:   ${PHP_CGI}
 
   warnings:         ${JUISE_WARNINGS:-no}
   debug:            ${JUISE_DEBUG:-no}
