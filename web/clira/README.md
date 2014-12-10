@@ -140,6 +140,26 @@ the following arguments
     * _view_: View to render the output in
     * _target_: Target device to run the command on
     * _command_: Command to be executed
+    * _format_: Format in which output to be returned
+    * _onComplete_: Callback function that gets called when the command  execution is finished. onCommand callback has the following signature `onCommand(view, status, output)`
+
+* __$.clira.configure()__: This function can be used to load and commit configuration to a device. It takes the following arguments
+    * _target_: Target device to configure
+    * _config_: Configuration to load. Default is text configuration. Can also load xml cofiguration by specifying format xml as 4th argument
+    * _onComplete_: Callback function that gets trigged once the command completes execution. It gets called with result of execution (true for success and false for failure) as first argument and output of execution as second
+    * _format_: Optional 4th argument to override the default text configuration input. We can load xml configuration by setting this to `xml`
+
+* __$.clira.loadConfig()__: This function can be used to load configuration to a target device. It takes the following arguments
+    * _target_: Target device to load the configuration on
+    * _config_: Configuration to load in text or xml format
+    * _onComplete_: Callback that gets triggered once the command completes execution. It gets called with result of execution as first argument and output as second
+    * _format_: Optional argument to override the default text configuration input. We can load xml configuration by settings this to `xml`
+    * _action_: Optional argument to override the load action. Default load action is `merge`
+
+* __$.clira.commitConfig()__: This function can be used to commit configuration changes to the device. It takes the following arguments
+    * _target_: Target device to commit the configuration on
+    * _check_: Flag that tells if we need just a commit check
+    * _onComplete_: Callback that gets trigged when this operation completes. First argument to callback is the execution status (true for success and false for failure) and second argument is the output data
 
 ###Tracing
 One can use browser’s __console__ functions to _trace/debug_ that application 
