@@ -347,8 +347,8 @@ jQuery(function ($) {
             }
             return muxer;
         },
-        runCommand: function runCommand (view, target, command, onComplete) {
-            this.runCommandInternal(view, target, command, onComplete, null);
+        runCommand: function runCommand (view, target, command, format, onComplete) {
+            this.runCommandInternal(view, target, command, format, onComplete);
         },        
         /*
          * runCommandInternal takes additional parameters that dictates how to
@@ -359,7 +359,7 @@ jQuery(function ($) {
          * per reply. 'onCompleteRender' will be run once the RPC is completed
          */
         runCommandInternal: function runCommandInternal (view, target, command,
-                                                         onComplete, format, 
+                                                         format, onComplete,
                                                          stream, onReplyRender,
                                                          onCompleteRender) {
             var output = null,
@@ -367,35 +367,39 @@ jQuery(function ($) {
             
             /*
              * If runCommand is called without a view, create a pseudo view
-             * and use for pop ups that need user input
+             * and use for pop ups that need user input. If user explicitly
+             * passes null for view, he wants to simply run the command and
+             * return output
              */
-            if (view instanceof jQuery) {
-                output = view;
-                domElement = true;
-                var pseudoView = Ember.View.extend({
-                    init: function() {
-                        this._super();
-                        this.set('controller', Ember.Controller.create());
-                    }
-                });
-                view = Ember.View.views["pseudo_view"]
-                            .createChildView(pseudoView);
-                view.appendTo(output);
-            } else {
-                output = view.$();
-            }
+            if (view) {
+                if (view instanceof jQuery) {
+                    output = view;
+                    domElement = true;
+                    var pseudoView = Ember.View.extend({
+                        init: function() {
+                            this._super();
+                            this.set('controller', Ember.Controller.create());
+                        }
+                    });
+                    view = Ember.View.views["pseudo_view"]
+                                .createChildView(pseudoView);
+                    view.appendTo(output);
+                } else {
+                    output = view.$();
+                }
 
-            if (domElement) {
-                output.html(loadingMessage);
-            } else {
-                view.get('controller').set('output', loadingMessage);
+                if (domElement) {
+                    output.html(loadingMessage);
+                } else {
+                    view.get('controller').set('output', loadingMessage);
+                }
             }
 
             if (muxer == undefined)
                 openMuxer();
 
             // Set muxer on the controller
-            view.set('controller.muxer', muxer);
+            if (view) view.set('controller.muxer', muxer);
 
             var full = [ ];
             var payload = "<command format=";
@@ -419,6 +423,8 @@ jQuery(function ($) {
                 target: target,
                 payload: payload,
                 onreply: function (data) {
+                    data = data.replace(/<rpc-reply .*>/, "")
+                               .replace(/<\/rpc-reply>/, "");
                     $.dbgpr("rpc: reply: full.length " + full.length
                             + ", data.length " + data.length);
                     full.push(data);
@@ -441,41 +447,50 @@ jQuery(function ($) {
                     }
 
                     if (stream || full.length <= 2) {
-                        if (domElement) {
-                            output.html(data);
-                        } else {
-                            if (onReplyRender) {
-                                view.get('controller')
-                                    .set('output',
-                                         onReplyRender(op));
+                        if (view) {
+                            if (domElement) {
+                                output.html(data);
                             } else {
-                                view.get('controller')
-                                    .set('output', op);
+                                if (onReplyRender) {
+                                    view.get('controller')
+                                        .set('output',
+                                             onReplyRender(op));
+                                } else {
+                                    view.get('controller')
+                                        .set('output', op);
+                                }
                             }
                         }
                     }
                 },
                 oncomplete: function () {
                     $.dbgpr("rpc: complete");
-                    if (domElement) {
-                        output.html(full.join(""));
-                    } else {
-                        view.get('controller').set('completed', true);
-                        if (onCompleteRender) {
-                            view.get('controller')
-                                .set('output', 
-                                     onCompleteRender(full.join("")));
+                    if (view) {
+                        if (domElement) {
+                            output.html(full.join(""));
                         } else {
-                            view.get('controller')
-                                .set('output', full.join(""));
+                            view.get('controller').set('completed', true);
+                            if (onCompleteRender) {
+                                view.get('controller')
+                                    .set('output', 
+                                onCompleteRender(full.join("")));
+                            } else {
+                                view.get('controller')
+                                    .set('output', full.join(""));
+                            }
                         }
+
+                        // Add this device to list of recently used devices
+                        view.get('controller').get('controllers.recentDevices')
+                                              .addDevice(target);
                     }
 
-                    // Add this device to list of recently used devices
-                    view.get('controller').get('controllers.recentDevices')
-                                          .addDevice(target);
                     if ($.isFunction(onComplete)) {
-                        onComplete(view, true, full.join(""));
+                        if (view) {
+                            onComplete(view, true, full.join(""));
+                        } else {
+                            onComplete(true, full.join(""));
+                        }
                     }
                 },
                 onclose: function (event, message) {
@@ -494,8 +509,10 @@ jQuery(function ($) {
                 onerror: function (message) {
                     $.dbgpr("muxer: rpc onerror");
                     if (full.length == 0) {
-                        $.clira.makeAlert(view, message,
-                                          "internal failure (websocket)");
+                        if (view) {
+                            $.clira.makeAlert(view, message,
+                                        "internal failure (websocket)");
+                        }
                         if ($.isFunction(onComplete)) {
                             onComplete(false, output);
                         }

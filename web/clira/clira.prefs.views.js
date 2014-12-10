@@ -544,6 +544,7 @@ Clira.DevicesPrefView = Ember.View.extend({
                                                     + ' div.output-replace');
                                     $.clira.runCommand(that, formdata["name"], 
                                                         ".noop-command", 
+                                                        'html',
                                                         function (success, $output) {
                                             var msg = "<div style="
                                                     + "\"font-weight: bold\">";

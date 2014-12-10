@@ -192,7 +192,7 @@ jQuery(function($) {
             }
 
             $.clira.runCommandInternal(view, target, command, 
-                                                    onComplete, ex.format,
+                                                    ex.format, onComplete, 
                                                     ex.stream, ex.onReplyRender,
                                                     ex.onCompleteRender);
 
@@ -202,8 +202,8 @@ jQuery(function($) {
             }
 
         } else {
-            $.clira.runCommandInternal(view, target, command, onComplete, 
-                                       'html', false);
+            $.clira.runCommandInternal(view, target, command, 'html', 
+                                       onComplete, false);
         }
     }
 
