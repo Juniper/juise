@@ -516,6 +516,144 @@ jQuery(function ($) {
                 }
             });
         },
+        
+        /*
+         * Load merges and commits given configuration to target device.
+         * Default config format is text.
+         */
+        configure: function(target, config, onComplete, format) {
+            $.clira.loadConfig(target, config, function(status, data) {
+                if (status) {
+                    $.clira.commitConfig(target, false, onComplete);
+                } else {
+                    onComplete(status, data);
+                }
+            }, format);
+        },
+
+        /*
+         * Loads given configuration and returns the status to onComplete
+         * callback. First argument to callback is status which is true when
+         * load succeded and false when failure. Second argument contains any
+         * messages from loading configuration. Default action is merge
+         */
+        loadConfig: function (target, config, onComplete, format, action) {
+            if (muxer == undefined)
+                openMuxer();
+
+            var full = [],
+                success = true,
+                payload = "<load-configuration";
+
+            if (format) {
+                payload += " format='" + format + "'";
+            } else {
+                payload += " format='text'";
+            }
+
+            if (action) {
+                payload += " action='" + action + "'";
+            } else {
+                payload += " action='merge'";
+            }
+
+            if (format === "xml") {
+                payload += "><configuration>" + config
+                        +   "</configuration>";
+            } else {
+                payload += "><configuration-text>" + config
+                        +   "</configuration-text>";
+            }
+            payload += "</load-configuration>";
+
+            muxer.rpc({
+                div: null,
+                view: null,
+                target: target,
+                payload: payload,
+                onreply: function (data) {
+                    $.dbgpr("load: reply: full.length " + full.length
+                            + ", data.length " + data.length);
+                    if (data.indexOf("<rpc-error>") != -1) 
+                        success = false;
+                    full.push(data);
+                },
+                oncomplete: function () {
+                    $.dbgpr("load: complete");
+
+                    if ($.isFunction(onComplete)) {
+                        onComplete(success, full.join(""));
+                    }
+                },
+                onclose: function (event, message) {
+                    $.dbgpr("muxer: load onclose");
+                    if (full.length == 0) {
+                        if ($.isFunction(onComplete)) {
+                            onComplete(false, output);
+                        }
+                    }
+                },
+                onerror: function (message) {
+                    $.dbgpr("muxer: load onerror");
+                    if ($.isFunction(onComplete)) {
+                        onComplete(false, full.join(""));
+                    }
+                }
+            });
+        },
+
+        /*
+         * Issues a commit to the device
+         */
+        commitConfig: function(target, check, onComplete) {
+            if (muxer == undefined)
+                openMuxer();
+
+            var full = [],
+                success = true,
+                payload = "<commit>";
+
+            if (check) {
+                payload += "<check/>";
+            }
+
+            payload += "</commit>";
+
+            muxer.rpc({
+                div: null,
+                view: null,
+                target: target,
+                payload: payload,
+                onreply: function (data) {
+                    $.dbgpr("commit: reply: full.length " + full.length
+                            + ", data.length " + data.length);
+                    if (data.indexOf("<rpc-error>") != -1)
+                        success = false;
+                    full.push(data);
+                },
+                oncomplete: function () {
+                    $.dbgpr("commit: complete");
+
+                    if ($.isFunction(onComplete)) {
+                        onComplete(success, full.join(""));
+                    }
+                },
+                onclose: function (event, message) {
+                    $.dbgpr("muxer: commit onclose");
+                    if (full.length == 0) {
+                        if ($.isFunction(onComplete)) {
+                            onComplete(false, output);
+                        }
+                    }
+                },
+                onerror: function (message) {
+                    $.dbgpr("muxer: commit onerror");
+                    if ($.isFunction(onComplete)) {
+                        onComplete(false, full.join(""));
+                    }
+                }
+            });
+        },
 
         runSlax: function (options) {
             if (!muxer) {
