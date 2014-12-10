@@ -1,0 +1,44 @@
+version 1.1;
+
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns os extension = "http://xml.libslax.org/os";
+ns xutil extension = "http://xml.libslax.org/xutil";
+ns set extension = "http://exslt.org/sets";
+ns math extension = "http://exslt.org/math";
+
+param $target;
+
+var $json-opts = {
+    <pretty>;
+}
+
+match / {
+    <cgi Content-Type="application/json"> {
+        if ($target) {
+            var $conn = jcs:open($target);
+            var $rpc = <get-virtual-chassis-port-statistics>;
+            var $vcfp = jcs:execute($conn, $rpc);
+            var $data := {
+                call first-pass($vcfp);
+            }
+            copy-of xutil:xml-to-json($data, $json-opts);
+        }
+    }
+}
+
+template first-pass ($vcfp) {
+    <json> {
+        <stats type="array"> {
+            for-each ($vcfp//multi-routing-engine-item) {
+                var $re-id = jcs:split("fpc", re-name, 2)[2];
+                for-each (.//statistics) {
+                    <stats type="member"> {
+                        <name> "vcp-" _ $re-id _  jcs:split("vcp-...", port-name, 2)[2];
+                        <in type="number"> input-bytes;
+                        <out type="number"> output-bytes;
+                    }
+                }
+            }
+        }
+    }
+}

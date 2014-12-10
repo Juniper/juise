@@ -86,7 +86,7 @@ echo "Updating MacPorts & installing necessary prerequisites into ${CLIRA_HOME}.
 cd ${CLIRA_HOME}
 echo "rsync://sea.us.rsync.macports.org/release/tarballs/ports.tar [default]" > ${CLIRA_HOME}/etc/macports/sources.conf
 bin/port -v selfupdate
-bin/port -v install php5 +fastcgi libssh2 libxml2 pcre readline php5-posix php5-sqlite curl
+bin/port -v install libssh2 libxml2 pcre readline curl
 rm -rf var/macports/build/* var/macports/distfiles/* var/macports/packages/* var/macports/software/* var/macports/sources/*
 echo "MacPorts preqrequisites installed..."
 
@@ -115,7 +115,7 @@ make distclean
 VERSION=`grep "PACKAGE_VERSION='" ./configure | cut -d "'" -f 2`
 
 cd ${BUILDDIR}
-../../../configure --enable-mixer --enable-clira --with-lighttpd-src=$2 --with-php-cgi=${CLIRA_HOME}/bin/php-cgi --prefix=${CLIRA_HOME} --with-libslax-prefix=${CLIRA_HOME} --with-ssh2=${CLIRA_HOME}
+../../../configure --enable-mixer --enable-clira --with-lighttpd-src=$2 --prefix=${CLIRA_HOME} --with-libslax-prefix=${CLIRA_HOME} --with-ssh2=${CLIRA_HOME}
 make install
 cd ..
 

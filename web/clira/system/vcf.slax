@@ -1,0 +1,98 @@
+version 1.1;
+
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns os extension = "http://xml.libslax.org/os";
+ns xutil extension = "http://xml.libslax.org/xutil";
+ns set extension = "http://exslt.org/sets";
+ns math extension = "http://exslt.org/math";
+
+param $target;
+
+var $json-opts = {
+    <pretty>;
+}
+
+match / {
+    <cgi Content-Type="application/json"> {
+        if ($target) {
+            var $conn = jcs:open($target);
+
+            var $rpc1 = <get-virtual-chassis-port-information>;
+            var $vcfp = jcs:execute($conn, $rpc1);
+
+            var $rpc2 = <get-configuration data="committed" inherit="inherit">;
+            var $vcfc = jcs:execute($conn, $rpc2);
+
+            var $data := {
+                call first-pass($vcfp, $vcfc);
+            }
+            copy-of xutil:xml-to-json($data, $json-opts);
+        }
+    }
+}
+
+template first-pass ($vcfp, $vcfc) {
+    <json> {
+        <spines type="array"> {
+            for-each ($vcfp//multi-routing-engine-item) {
+                var $re-id = jcs:split("fpc", re-name, 2)[2];
+                if ($vcfc//virtual-chassis/member[name=$re-id]/role == "routing-engine") {
+                    <spines type="member"> {
+                        <name> re-name;
+                        <children type="array"> {
+                            for-each (.//port-information) {
+                                <children type="member"> {
+                                    <name> "vcp-" _ $re-id _ "/" _ port-name;
+                                    <type> port-type;
+                                    <status> port-status;
+                                    <speed> port-speed;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        <leaves type="array"> {
+            for-each ($vcfp//multi-routing-engine-item) {
+                var $re-id = jcs:split("fpc", re-name, 2)[2];
+                if ($vcfc//virtual-chassis/member[name=$re-id]/role == "line-card") {
+                    <leaves type="member"> {
+                        <name> re-name;
+                        <children type="array"> {
+                            for-each (.//port-information) {
+                                <children type="member"> {
+                                    <name> "vcp-" _ $re-id _ "/" _ port-name;
+                                    <type> port-type;
+                                    <status> port-status;
+                                    <speed> port-speed;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        <links type="array"> {
+            for-each ($vcfp//multi-routing-engine-item) {
+                var $re-id = jcs:split("fpc", re-name, 2)[2];
+                for-each (.//port-information) {
+                    if (neighbor-id) {
+                        <links type="member"> {
+                            <from> "vcp-" _ $re-id _ "/" _ port-name;
+                            <to> "vcp-" _ neighbor-id _ jcs:split("vcp-...", neighbor-interface, 2)[2];
+                            var $nid = neighbor-id;
+                            if ($vcfc//virtual-chassis/member[name=$re-id]/role == $vcfc//virtual-chassis/member[name=$nid]/role) {
+                                    <type> "intra";
+                                } else {
+                                    <type> "inter";
+                                }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
