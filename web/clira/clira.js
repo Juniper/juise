@@ -486,11 +486,7 @@ jQuery(function ($) {
                     }
 
                     if ($.isFunction(onComplete)) {
-                        if (view) {
-                            onComplete(view, true, full.join(""));
-                        } else {
-                            onComplete(true, full.join(""));
-                        }
+                        onComplete(view, true, full.join(""));
                     }
                 },
                 onclose: function (event, message) {
@@ -514,7 +510,7 @@ jQuery(function ($) {
                                         "internal failure (websocket)");
                         }
                         if ($.isFunction(onComplete)) {
-                            onComplete(false, output);
+                            onComplete(view, false, output);
                         }
                     }
                 }
