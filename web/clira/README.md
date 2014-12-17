@@ -22,7 +22,9 @@ extended views specific to __CLIRA__ are available in
 `juise/web/clira/views.js`. __CLIRA__ is built using ember framework. Should 
 you need any more views than already available, please read about  emberjs 
 and extending views at [http://emberjs.com/guides/getting-started/]
-(http://emberjs.com/guides/getting-started/).
+(http://emberjs.com/guides/getting-started/). A screencast showing how to
+write and test CLIRA applications is available at
+[https://vimeo.com/114750244](https://vimeo.com/114750244)
 
 ###Adding command file
 Loading a command file calls `clira.commandFile()` function with an array of 
