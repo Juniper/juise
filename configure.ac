@@ -625,6 +625,7 @@ AC_CONFIG_FILES([
   mixer/Makefile
   web/Makefile
   web/clira.conf
+  web/run-clira.sh
   import/Makefile
   tests/Makefile
   packaging/juise.pc

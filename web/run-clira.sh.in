@@ -3,11 +3,12 @@
 # This script starts/stops the Clira (CLI Remote Access) service
 #
 
+PREFIX=@prefix@
 JUISEHOME=$HOME/.juise
-BASE_CLIRA_CONF=/usr/share/doc/juise/clira.conf
+BASE_CLIRA_CONF=$PREFIX/share/doc/juise/clira.conf
 CLIRA_CONF=$JUISEHOME/lighttpd-clira.conf
 LIGHTTPD_PIDFILE=$JUISEHOME/lighttpd.pid
-MODULES_DIR=/usr/lib
+MODULES_DIR=$PREFIX/lib
 
 usage ()
 {
@@ -29,20 +30,20 @@ start ()
 		sed -i "s,/var/run/lighttpd.pid,$LIGHTTPD_PIDFILE,g" $CLIRA_CONF
 	fi
 
-	if [ ! -x /usr/bin/mixer ]; then
-		echo "/usr/bin/mixer not found!  Are you sure you have it installed?"
+	if [ ! -x $PREFIX/bin/mixer ]; then
+		echo "$PREFIX/bin/mixer not found!  Are you sure you have it installed?"
 		exit
 	fi
 
-	/usr/bin/mixer --create-db > /dev/null
+	$PREFIX/bin/mixer --create-db > /dev/null
 
-	if [ ! -x /usr/sbin/lighttpd-for-juise ]; then
-		echo "/usr/sbin/lighttpd-for-juise not found!  Are you sure you have it installed?"
+	if [ ! -x $PREFIX/sbin/lighttpd-for-juise ]; then
+		echo "$PREFIX/sbin/lighttpd-for-juise not found!  Are you sure you have it installed?"
 		exit
 	fi
 
 	# Fire 'er up
-	/usr/sbin/lighttpd-for-juise -m $MODULES_DIR -f $CLIRA_CONF > /dev/null
+	$PREFIX/sbin/lighttpd-for-juise -m $MODULES_DIR -f $CLIRA_CONF > /dev/null
 
 	echo "Clira started!"
 }
@@ -84,10 +85,10 @@ if [ -e $LIGHTTPD_PIDFILE ]; then
 fi
 
 # Figure out our lighttpd-for-juise modules directory
-if [ -d /usr/lib64/lighttpd-for-juise ]; then
-	MODULES_DIR=/usr/lib64/lighttpd-for-juise
-elif [ -d /usr/lib/lighttpd-for-juise ]; then
-	MODULES_DIR=/usr/lib/lighttpd-for-juise
+if [ -d $PREFIX/lib64/lighttpd-for-juise ]; then
+	MODULES_DIR=$PREFIX/lib64/lighttpd-for-juise
+elif [ -d $PREFIX/lib/lighttpd-for-juise ]; then
+	MODULES_DIR=$PREFIX/lib/lighttpd-for-juise
 fi
 
 if [ "$1" = "start" ]; then
