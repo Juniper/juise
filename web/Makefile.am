@@ -96,8 +96,8 @@ EXTERNAL_FILES = \
     external/jquery-qtip/jquery.qtip.min.js \
     external/jquery-ui/jquery-ui.js \
     external/jquery-ui/jquery-ui.min.js \
-    external/qunit/qunit-1.12.0.css \
-    external/qunit/qunit-1.12.0.js
+    external/qunit/qunit.css \
+    external/qunit/qunit.js
 
 THEME_BLACK_TIE = \
     themes/black-tie/jquery-ui-black-tie.css \

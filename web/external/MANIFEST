@@ -80,3 +80,9 @@ site: http://qtip2.com/
 version: v2.1.1
 date: 2013-08-06
 license: MIT
+
+name: qunit
+site: http://qunitjs.com/
+version: 1.16.0
+date: 2014-12-03
+license: MIT

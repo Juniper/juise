@@ -220,14 +220,18 @@ Clira.OutputContainerController = Em.Controller.extend({
         close: function(controller) {
             controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 
                                                     function() {
-                controller.get('view').get('parentView').destroy();
+                Ember.run(function() {
+                    controller.get('view').get('parentView').destroy();
+                });
             });
         },
         collapse: function(controller) {
             controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 
                                                     function() {
-                controller.get('view')
+                Ember.run(function() {
+                    controller.get('view')
                           .set('isVisible', !controller.get('view.isVisible'));
+                });
             });
         },
         commandClick: function() {
