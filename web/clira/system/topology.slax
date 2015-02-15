@@ -10,12 +10,13 @@ version 1.1;
  * LICENSE.
  */
 
-ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns jcs extension = "http://xml.juniper.net/junos/commit-scripts/1.0";
 ns os extension = "http://xml.libslax.org/os";
 ns xutil extension = "http://xml.libslax.org/xutil";
 ns set extension = "http://exslt.org/sets";
 ns math extension = "http://exslt.org/math";
 
+param $input = "/Users/phil/work/slax/juise/web/clira/system/ospf.xml";
 param $target;
 
 output-method text;
@@ -26,20 +27,29 @@ var $json-opts = {
 
 match / {
     <cgi Content-type="application/json"> {
-        var $conn = jcs:open($target);
-        var $rpc = <get-ospf-database-information> {
-            <extensive>;
-        }
-        var $doc = jcs:execute($conn, $rpc);
+	if ($target == "canned") {
+	    var $doc = document($input);
+	    call process($doc = $doc/ospf-database-information);
 
-	var $data := {
-            call first-pass($doc);
+	} else {
+	    var $conn = jcs:open($target);
+	    var $rpc = <get-ospf-database-information> {
+		<extensive>;
+	    }
+		var $doc = jcs:execute($conn, $rpc);
+	    call process($doc);
 	}
-	var $two := {
-	    call second-pass($data);
-	}
-	copy-of xutil:xml-to-json($two, $json-opts);
     }
+}
+
+template process ($doc) {
+    var $data := {
+	call first-pass($doc);
+    }
+    var $two := {
+	call second-pass($data);
+    }
+    copy-of xutil:xml-to-json($two, $json-opts);
 }
 
 template second-pass ($data) {
