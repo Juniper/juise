@@ -178,13 +178,16 @@ WEB_FILES = \
     ${THEME_EXCITE_BIKE}
 
 nobase_dist_webdata_DATA = ${WEB_FILES}
-nobase_dist_doc_DATA = \
+dist_doc_DATA = \
     clira.conf
 
-nobase_dist_sbin_SCRIPTS = \
+dist_bin_SCRIPTS = \
     run-clira.sh
 
 EXTRA_DIST += ${WEB_FILES}
 
 svnignore:
 	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
+
+install-exec-hook:
+	${MV} ${DESTDIR}/${bindir}/run-clira.sh ${DESTDIR}/${bindir}/run-clira
