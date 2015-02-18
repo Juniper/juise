@@ -141,6 +141,15 @@ AC_MSG_RESULT([$NEED_MIXER])
 AM_CONDITIONAL([NEED_MIXER], [test "$NEED_MIXER" != "no"])
 AC_SUBST(NEED_MIXER)
 
+AC_MSG_CHECKING([whether to build delta])
+AC_ARG_ENABLE([delta],
+    [  --enable-delta        Build the delta binary],
+    [NEED_DELTA=$enableval],
+    [NEED_DELTA=no])
+AC_MSG_RESULT([$NEED_DELTA])
+AM_CONDITIONAL([NEED_DELTA], [test "$NEED_DELTA" != "no"])
+AC_SUBST(NEED_DELTA)
+
 AC_MSG_CHECKING([whether to build with debugging])
 AC_ARG_ENABLE([debug],
     [  --enable-debug        Turn on debugging],
@@ -623,6 +632,7 @@ AC_CONFIG_FILES([
   mod_juise/Makefile
   extensions/Makefile
   mixer/Makefile
+  delta/Makefile
   web/Makefile
   web/clira.conf
   web/run-clira.sh
@@ -679,4 +689,5 @@ AC_MSG_NOTICE([summary of build options:
   printf-like:      ${HAVE_PRINTFLIKE:-no}
   build clira:      ${NEED_CLIRA:-no}
   build mixer:      ${NEED_MIXER:-no}
+  build delta:      ${NEED_DELTA:-no}
 ])
