@@ -4,6 +4,7 @@ alias Zautoreconf "(cd $top_src ; autoreconf)"
 
 set opts=' \
 --enable-clira \
+--enable-delta \
 --enable-debug  \
 --enable-warnings \
 --enable-readline \
