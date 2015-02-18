@@ -16,6 +16,10 @@ if NEED_MIXER
 SUBDIRS += mixer
 endif
 
+if NEED_DELTA
+SUBDIRS += delta
+endif
+
 if HAVE_LIGHTTPD
 SUBDIRS += mod_juise web
 endif
