@@ -5,8 +5,11 @@
  */
 
 #include <stdlib.h>
-#include <ddl/memory.h>
-#include <ddl/dmalloc.h>
+
+#include "juiseconfig.h"
+#include <libjuise/common/aux_types.h>
+#include <libjuise/memory/memory.h>
+#include <libjuise/memory/dmalloc.h>
 
 malloc_error_func_t malloc_error_func;
 
