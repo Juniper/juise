@@ -34,3 +34,4 @@ missing
 Makefile.in
 configure
 libjuise/juiseconfig.h.in
+.DS_Store
