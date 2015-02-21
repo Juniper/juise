@@ -42,19 +42,23 @@
 #include <assert.h>
 #include <errno.h>
 #include <machine/endian.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
-#include <junoscript/error.h>
-#include <jnx/swversion.h>
-#include <jnx/aux_types.h>
-#include <jnx/logging.h>
-#include <ddl/ddl_compat.h>
-#include <ddl/memory.h>
-#include <ddl/dmalloc.h>
-#include <ddl/util.h>
-#include <ddl/dbase.h>
+#include "juiseconfig.h"
+#include <libjuise/common/aux_types.h>
+#include <libjuise/string/strextra.h>
+#include <libjuise/io/logging.h>
+#include <libjuise/io/io.h>
+#include <libjuise/memory/memory.h>
+#include <libjuise/memory/dmalloc.h>
 
 #define MGD_COMPONENT_NAME	"MGD"
 #define DBM_ALLOC_ROUNDUP	(512*1024)
+
+#define ERRMSG(_tag, _flags, _msg...) syslog((_flags), _msg)
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define DBM_MY_ENDIAN	DBM_LITTLE_ENDIAN
@@ -64,16 +68,15 @@
 #define DBM_MY_ENDIAN	endianness_unknown!!!!!!!
 #endif
 
-#ifdef HOSTPROG
+#define DBM_VERSION_MAJOR 1
+#define DBM_VERSION_MINOR 0
+
 # ifndef MAP_CORE
 #   define MAP_CORE 0
 # endif
 # ifndef MAP_NOCOUNT
 #   define MAP_NOCOUNT 0
 # endif
-#endif
-
-extern u_int32_t sequence_number[]; /* From libddl */
 
 /*
  * gets memory from the system via mmaping a file.  This was written for SunOS
@@ -102,24 +105,6 @@ typedef struct dbm_mmap_s {
 #define NUM_DBM_MAP	8
 dbm_mmap_t dbm_mmap_table[ NUM_DBM_MAP ];
 dbm_mmap_t *dbm_mmap_top = dbm_mmap_table;
-
-/*
- * reclaim reserved address space to keep other mmap calls
- * out of our backyard
- */
-static void
-dbm_reclaim_reserved_address_space (caddr_t addr)
-{
-    if (addr >= (caddr_t) dbm_schema_address() &&
-	addr <  (caddr_t)dbm_max_address())
-	mmap((void *)dbm_schema_address(), dbm_max_address() - dbm_schema_address(),
-	     PROT_NONE, MAP_FIXED | MAP_ANON | MAP_NOCOUNT, -1, 0);
-    else if (ddl_api_compat.reserve_address_space &&
-	     addr >= (caddr_t)dbm_compat_address() &&
-	     addr <  (caddr_t)dbm_schema_address())
-	mmap((void *)dbm_compat_address(), dbm_schema_address() - dbm_compat_address(),
-	     PROT_NONE, MAP_FIXED | MAP_ANON | MAP_NOCOUNT, -1, 0);
-}
 
 /*
  * Finds the matching dbm_mmap_t entry from top of stack
@@ -196,7 +181,6 @@ dbm_mmap (dbm_memory_t *dbmp, size_t nbytes)
     size_t size;
     caddr_t addr;
     const char *estr;
-    int error;
 
     for (map = dbm_mmap_top - 1; map >= dbm_mmap_table; map--)
 	if (map->dmm_dbmp == dbmp) break;
@@ -270,23 +254,6 @@ dbm_mmap (dbm_memory_t *dbmp, size_t nbytes)
 	return NULL;
     }
 
-    error = dbm_set_vmbase_map(addr, size, TRUE);
-    if (error) {
-	if (malloc_error_func)
-	    (*malloc_error_func)("configuration database size limit exceeded");
-	ERRMSG(UI_DBASE_ACCESS_FAILED, LOG_ERR,
-	       "Unable to reaccess configuration database file '%s', "
-	       "address %p, size %#lx: %s",
-	       map->dmm_filename, addr, (u_long) size,
-	       strerror(error));
-
-        /*
-         * Restore mmap to last size.
-         */
-        dbm_re_mmap(map, dbmp->dm_size);
-	return NULL;
-    }
-
     addr += dbmp->dm_top;
     dbmp->dm_top += nbytes;
 
@@ -304,7 +271,6 @@ static void
 dbm_make_reparations (dbm_mmap_t *thief, caddr_t addr)
 {
     dbm_mmap_t *map;
-    int error;
 
     if (thief) addr = (caddr_t) thief->dmm_dbmp;
 
@@ -320,7 +286,6 @@ dbm_make_reparations (dbm_mmap_t *thief, caddr_t addr)
     if (thief) thief->dmm_dbmp = NULL;
 
     addr = dbm_re_mmap(map, map->dmm_size);
-
     if (addr != (caddr_t) map->dmm_dbmp) {
 	ERRMSG(UI_DBASE_ACCESS_FAILED, LOG_ERR,
 	       "Unable to reaccess configuration database file '%s', "
@@ -328,18 +293,6 @@ dbm_make_reparations (dbm_mmap_t *thief, caddr_t addr)
 	       map->dmm_filename, addr, (u_long) map->dmm_size,
 	       (addr == (caddr_t) -1) ? strerror(errno) : "invalid address");
 	abort();
-	return;
-    }
-
-    error = dbm_set_vmbase_map(addr, map->dmm_size, TRUE);
-    if (error) {
-	ERRMSG(UI_DBASE_ACCESS_FAILED, LOG_ERR,
-	       "Unable to reaccess configuration database file '%s', "
-	       "address %p, size %#lx: %s",
-	       map->dmm_filename, addr, (u_long) map->dmm_size,
-	       strerror(error));
-	abort();
-	return;
     }
 }
 
@@ -358,11 +311,7 @@ dbm_close (dbm_memory_t *dbmp)
 	return;
     }
 
-    dbm_set_vmbase_map((void *)map->dmm_dbmp, map->dmm_dbmp->dm_size, FALSE);
     munmap((void *) map->dmm_dbmp,  map->dmm_dbmp->dm_size);
-
-    /* keep the largest possible address space reserved */
-    dbm_reclaim_reserved_address_space((caddr_t)map->dmm_dbmp);
 
     safe_close(map->dmm_fd);
 
@@ -394,18 +343,6 @@ dbm_sync (dbm_memory_t *dbmp)
 
     msync((void *) map->dmm_dbmp,  map->dmm_dbmp->dm_size, MS_ASYNC);
 }    
-
-unsigned int
-dbm_sequence_number_get (dbm_memory_t *dbmp, int pkg)
-{
-    return dbmp ? dbmp->dm_sequence[ pkg ] : ~0U;
-}
-
-void
-dbm_sequence_number_set (dbm_memory_t *dbmp, int pkg, unsigned int seq)
-{
-    dbmp->dm_sequence[ pkg ] = seq;
-}
 
 size_t
 dbm_size (dbm_memory_t *dbmp)
@@ -447,13 +384,6 @@ dbm_lock (dbm_memory_t *dbmp)
 
                 addr = dbm_re_mmap(map, dbmp->dm_size);
 		if (addr != (caddr_t) dbmp) {
-		    if (malloc_error_func)
-			(*malloc_error_func)("database could not be remapped");
-		    INSIST(!"mmap: could not remap file");
-		}
-
-		rc = dbm_set_vmbase_map(addr, dbmp->dm_size, TRUE);
-		if (rc) {
 		    if (malloc_error_func)
 			(*malloc_error_func)("database could not be remapped");
 		    INSIST(!"mmap: could not remap file");
@@ -517,6 +447,7 @@ dbm_get_creator (char *buf, size_t bufsiz, const char *path)
     return rc;
 }
 
+#if 0
 /*
  * dbm_open is the last function in this file so that we can redefine ERRMSG
  */
@@ -526,6 +457,7 @@ do {							\
     if (malloc_error_func) (*malloc_error_func)(_fmt);	\
     logging_event(_prio, #_tag, ERRMSG_TAG_ENTRY(_tag), #_tag ": " _fmt);\
 } while (0)
+#endif
 
 /*
  * dbm_open(): opens (or creates) the in-core database configuration memory
@@ -535,7 +467,7 @@ dbm_memory_t *
 dbm_open (const char *fname, caddr_t dbm_address, size_t header_size,
 	  size_t init_size, unsigned *flagsp)
 {
-    int fd, error;
+    int fd;
     size_t size;
     dbm_mmap_t *map;
     struct stat st;
@@ -553,12 +485,8 @@ dbm_open (const char *fname, caddr_t dbm_address, size_t header_size,
     if (dbm_address) {
 	if (dbm_address == dbm_schema_address())
 	    dflags |= DMMF_FIXED;
-	else if (dbm_address == dbm_compat_address()) {
-	    if (ddl_api_compat.reserve_address_space)
-		dflags |= DMMF_FIXED;
-	} else if (*flagsp & DBMF_FIXED) {
+	else if (*flagsp & DBMF_FIXED)
 	    dflags |= DMMF_FIXED;
-	}
 	
 	for (map = dbm_mmap_top - 1; map >= dbm_mmap_table; map--) {
 	    if (dbm_address == (caddr_t) map->dmm_dbmp) {
@@ -676,12 +604,6 @@ dbm_open (const char *fname, caddr_t dbm_address, size_t header_size,
 	}
     } else init_size = size;
 
-    /* just in case dbm_reserve_address_space didn't happen yet,
-     * attempt to reserve the largest possible address space
-     */
-    if (dbm_address)
-	dbm_reclaim_reserved_address_space(dbm_address);
-
     addr = mmap(dbm_address, init_size, protect,
 		MAP_SHARED | (dflags & DMMF_FIXED ? MAP_FIXED : 0) | MAP_CORE,
 		fd, (off_t) 0);
@@ -712,17 +634,7 @@ dbm_open (const char *fname, caddr_t dbm_address, size_t header_size,
     /* Advise vm system of random access pattern */
     (void) madvise(addr, init_size, MADV_RANDOM);
 
-    error = dbm_set_vmbase_map(addr, init_size, TRUE);
-    if (error) {
-	ERRMSG(UI_DBASE_ACCESS_FAILED, LOG_ERR,
-	       "Unable to reaccess configuration database file '%s', "
-	       "address %p, size %#lx: %s",
-	       map->dmm_filename, dbm_address, (u_long) init_size,
-	       strerror(error));
-	goto mmap_abort;
-    }
-
-    dbmp = (dbm_memory_t *) addr;
+    dbmp = (dbm_memory_t *) (void *) addr;
     if (size == 0) {
 	if (flagsp) *flagsp |= DBMF_CREATED;
 
@@ -730,15 +642,13 @@ dbm_open (const char *fname, caddr_t dbm_address, size_t header_size,
 	dbmp->dm_endian = DBM_MY_ENDIAN;
 	dbmp->dm_major = DBM_VERSION_MAJOR;
 	dbmp->dm_minor = DBM_VERSION_MINOR;
-	memcpy(dbmp->dm_sequence, sequence_number, sizeof(dbmp->dm_sequence));
 	dbmp->dm_size = init_size;
 	dbmp->dm_top = (sizeof(*dbmp) + header_size + PAGE_SIZE - 1) & ~PAGE_MASK;
 	dbmp->dm_header = header_size;
-	strncpy(dbmp->dm_version, swversion_what(), sizeof(dbmp->dm_version));
+	strncpy(dbmp->dm_version, "1.0", sizeof(dbmp->dm_version));
 
 	dbm_malloc_init(dbmp);
-  
-	ddl_object_changed(dbmp, NULL);
+
     } else {
 	if (flagsp) *flagsp &= ~DBMF_CREATED;
 
@@ -776,21 +686,6 @@ dbm_open (const char *fname, caddr_t dbm_address, size_t header_size,
 			   fname, DBM_VERSION_MINOR, dbmp->dm_minor);
 		goto mmap_abort;
 	    }
-	}
-
-	if (flagsp && (*flagsp & DBMF_CHKSEQ)
-		       && !ddl_sequence_number_match(dbmp->dm_sequence,
-						     sequence_number)) {
- 	    if (flagsp && !(*flagsp & DBMF_QUIET)) {
-	        malloc_error_func_set(js_warning);
-	        ERRMSG(UI_DBASE_MISMATCH_SEQUENCE, LOG_WARNING,
-		       "Database header sequence numbers mismatch for "
-		       "file\n         '%s'. If a package has just been\n "
-		       "        added or deleted, please verify and commit "
-		       "the configuration.", fname);
-	        malloc_error_func_set(js_error);
-	    }
-	    goto mmap_abort;
 	}
 
 	if ((caddr_t)dbmp != addr) {
@@ -848,11 +743,7 @@ dbm_open (const char *fname, caddr_t dbm_address, size_t header_size,
     return dbmp;
 
 mmap_abort:
-    dbm_set_vmbase_map(addr, size, FALSE);
     munmap(addr, size);
-
-    /* keep the largest possible address space reserved */
-    dbm_reclaim_reserved_address_space(addr);
 
     if (stolen)
 	dbm_make_reparations(NULL, dbm_address);
@@ -900,39 +791,6 @@ dbm_fd (dbm_memory_t *dbmp)
 	}
     }
     return -1;
-}
-
-ddl_boolean_t
-ddl_is_dbm (dbm_memory_t *dbmp, ddl_node_t *dnp)
-{
-    return (dbmp && dnp && dnf_is_config(dnp));
-}
-
-void *
-ddl_malloc (dbm_memory_t *dbmp, ddl_node_t *dnp, size_t size)
-{
-    if (ddl_is_dbm(dbmp, dnp))
-	return dbm_malloc(dbmp, size);
-    return DDL_PRIVATE_MALLOC(size);
-}
-
-void *
-ddl_calloc (dbm_memory_t *dbmp, ddl_node_t *dnp, size_t count, size_t size)
-{
-    if (ddl_is_dbm(dbmp, dnp))
-	return dbm_calloc(dbmp, count, size);
-    return DDL_PRIVATE_CALLOC(count, size);
-}
-
-void
-ddl_free (dbm_memory_t *dbmp, ddl_node_t *dnp, void *ptr)
-{
-    if (ddl_is_dbm(dbmp, dnp)) {
-	db_free_oid(dbmp, ptr);
-	dmf_clear_nomem(dbmp);
-	return dbm_free(dbmp, ptr);
-    }
-    return DDL_PRIVATE_FREE(ptr);
 }
 
 void *
@@ -1065,37 +923,3 @@ caddr_t dbm_compat_address(void)
 
     return (caddr_t) (DBM_COMPAT_ADDR);
 }
-
-#ifdef __GNUC__
-/*
- * Attempt to reserve the address space that potentially
- * gets occupied by the DDL database at the earliest possible moment
- * without having to mess with all the daemon code
- */
-static void dbm_reserve_address_space (void) __attribute__((constructor));
-
-static void
-dbm_reserve_address_space (void)
-{
-    static char error_message[] = "fatal error - could not reserve address space in \"" __FILE__ "\"\n";
-    void *addr;
-
-    addr = mmap((void *)dbm_schema_address(), dbm_max_address() - dbm_schema_address(),
-		PROT_NONE, MAP_ANON | MAP_NOCOUNT, -1, 0);
-
-    if (addr != (void *)dbm_schema_address()) {
-	write(2, error_message, strlen(error_message));
-	abort();
-    }
-
-    if (ddl_api_compat.reserve_address_space) {
-	addr = mmap((void *)dbm_compat_address(), dbm_schema_address() - dbm_compat_address(),
-		    PROT_NONE, MAP_ANON | MAP_NOCOUNT, -1, 0);
-
-	if (addr != (void *)dbm_compat_address()) {
-	    write(2, error_message, strlen(error_message));
-	    abort();
-	}
-    }
-}
-#endif
