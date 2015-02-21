@@ -41,6 +41,7 @@ noinst_HEADERS = \
     data/parse.h \
     data/parse_ip.h \
     data/patricia.h \
+    data/vatricia.h \
     env/env.h \
     env/env_paths.h \
     io/dbgpr.h \
@@ -52,6 +53,7 @@ noinst_HEADERS = \
     io/rotate_log.h \
     io/trace.h \
     io/trace_priv.h \
+    memory/dmalloc.h \
     string/strextra.h \
     time/time_const.h \
     time/timestr.h \
@@ -69,11 +71,15 @@ JUISEHEADERS = ${noinst_HEADERS}
 
 libjuise_la_SOURCES = \
     data/patricia.c \
+    data/vatricia.c \
     data/parse_ipaddr.c \
     string/snprintf_safe.c \
     string/strndup.c \
     string/strdupf.c \
     time/timestr.c \
+    memory/error.c \
+    memory/getmem.c \
+    memory/malloc.c \
     io/fbuf.c \
     io/jtrace.c \
     io/trace.c \
