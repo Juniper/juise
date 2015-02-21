@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (c) 1996-2003, 2005-2006, 2011, Juniper Networks, Inc.
+ * Copyright (c) 1996-2003, 2005-2006, 2011, 2015, Juniper Networks, Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -19,13 +19,13 @@
 
 #include <libjuise/common/aux_types.h>
 #include <libjuise/common/bits.h>
-#include <libjuise/data/patricia.h>
+#include <libjuise/data/vatricia.h>
 
 /*
  * This table contains a one bit mask of the highest order bit
  * set in a byte for each index value.
  */
-const u_int8_t patricia_hi_bit_table[256] = {
+const u_int8_t vatricia_hi_bit_table[256] = {
     0x00, 0x01, 0x02, 0x02, 0x04, 0x04, 0x04, 0x04,
     0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
     0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
@@ -61,38 +61,38 @@ const u_int8_t patricia_hi_bit_table[256] = {
 };
 
 /*
- * Table to translate from a bit index to the mask part of a patricia
+ * Table to translate from a bit index to the mask part of a vatricia
  * bit number.
  */
-const u_int8_t patricia_bit_masks[8] = {
+const u_int8_t vatricia_bit_masks[8] = {
     0x7f, 0xbf, 0xdf, 0xef, 0xf7, 0xfb, 0xfd, 0xfe
 };
 
 /*
  * Mask for the bit index part of a prefix length.
  */
-#define	PAT_PLEN_BIT_MASK		0x7
+#define	VAT_PLEN_BIT_MASK		0x7
 
-#define	PAT_PLEN_BYTE_MASK		(0xff << 3)
+#define	VAT_PLEN_BYTE_MASK		(0xff << 3)
 
 /*
- * patricia_root_alloc
+ * vatricia_root_alloc
  *
  * Built-in root allocator.
  */
-static patroot *
-patricia_root_alloc (void)
+static vatroot *
+vatricia_root_alloc (void)
 {
-    return (malloc(sizeof(patroot)));
+    return (malloc(sizeof(vatroot)));
 }
 
 /*
- * patricia_root_free
+ * vatricia_root_free
  *
  * Built-in root deallocator.
  */
 static void
-patricia_root_free (patroot *root)
+vatricia_root_free (vatroot *root)
 {
     assert(root);
 
@@ -100,44 +100,44 @@ patricia_root_free (patroot *root)
 }
 
 /*
- * Patricia tree users can specify their own root alloc & free
+ * Vatricia tree users can specify their own root alloc & free
  * functions if they desire. These are used ONLY to allocate
- * and free patroot structures. They are NOT used for patnode
- * structures (the caller is responsible for patnodes). If the
+ * and free vatroot structures. They are NOT used for vatnode
+ * structures (the caller is responsible for vatnodes). If the
  * user doesn't specify his own functions then the built-in
  * functions using malloc/free are used.
  */
-static struct patricia_root_alloc_s {
-    patricia_root_alloc_fn pat_root_alloc;
-    patricia_root_free_fn pat_root_free;
+static struct vatricia_root_alloc_s {
+    vatricia_root_alloc_fn vat_root_alloc;
+    vatricia_root_free_fn vat_root_free;
 } alloc_info = {
-    patricia_root_alloc,
-    patricia_root_free
+    vatricia_root_alloc,
+    vatricia_root_free
 };
 
 void
-patricia_set_allocator (patricia_root_alloc_fn my_alloc,
-                        patricia_root_free_fn my_free)
+vatricia_set_allocator (vatricia_root_alloc_fn my_alloc,
+                        vatricia_root_free_fn my_free)
 {
     assert(my_alloc);
     assert(my_free);
     
-    alloc_info.pat_root_alloc = my_alloc;
-    alloc_info.pat_root_free = my_free;
+    alloc_info.vat_root_alloc = my_alloc;
+    alloc_info.vat_root_free = my_free;
 }
     
 /*
  * Given the length of a key in bytes (not to exceed 256), return the
- * length in patricia bit format.
+ * length in vatricia bit format.
  */
 static inline u_int16_t
-pat_plen_to_bit (u_int16_t plen)
+vat_plen_to_bit (u_int16_t plen)
 {
     u_int16_t result;
 
-    result = (plen & PAT_PLEN_BYTE_MASK) << 5;
-    if (BIT_TEST(plen, PAT_PLEN_BIT_MASK)) {
-	result |= patricia_bit_masks[plen & PAT_PLEN_BIT_MASK];
+    result = (plen & VAT_PLEN_BYTE_MASK) << 5;
+    if (BIT_TEST(plen, VAT_PLEN_BIT_MASK)) {
+	result |= vatricia_bit_masks[plen & VAT_PLEN_BIT_MASK];
     } else {
 	result--;	/* subtract 0x100, or in 0xff */
     }
@@ -146,23 +146,23 @@ pat_plen_to_bit (u_int16_t plen)
 
 
 /*
- * Given the length of a key in patricia bit format, return its length
+ * Given the length of a key in vatricia bit format, return its length
  * in bytes.
  */
-#define	PAT_BIT_TO_LEN(bit)	(((bit) >> 8) + 1)
+#define	VAT_BIT_TO_LEN(bit)	(((bit) >> 8) + 1)
 
 /*
  * Given a key and a key length, traverse a tree to find a match
  * possibility.
  */
-static inline patnode *
-patricia_search (patnode *node, u_int16_t keylen, const u_int8_t *key)
+static inline vatnode *
+vatricia_search (vatnode *node, u_int16_t keylen, const u_int8_t *key)
 {
-    u_int16_t bit = PAT_NOBIT;
+    u_int16_t bit = VAT_NOBIT;
 
     while (bit < node->bit) {
 	bit = node->bit;
-	if (bit < keylen && pat_key_test(key, bit)) {
+	if (bit < keylen && vat_key_test(key, bit)) {
 	    node = node->right;
 	} else {
 	    node = node->left;
@@ -176,21 +176,21 @@ patricia_search (patnode *node, u_int16_t keylen, const u_int8_t *key)
  * the first bit of difference between the keys.
  */
 static inline u_int16_t
-patricia_mismatch (const u_int8_t *k1, const u_int8_t *k2, u_int16_t bitlen)
+vatricia_mismatch (const u_int8_t *k1, const u_int8_t *k2, u_int16_t bitlen)
 {
     u_int16_t i, len;
 
     /*
      * Get the length of the key in bytes.
      */
-    len = PAT_BIT_TO_LEN(bitlen);
+    len = VAT_BIT_TO_LEN(bitlen);
 
     /*
      * Run through looking for a difference.
      */
     for (i = 0; i < len; i++) {
 	if (k1[i] != k2[i]) {
-	    bitlen = pat_makebit(i, k1[i] ^ k2[i]);
+	    bitlen = vat_makebit(i, k1[i] ^ k2[i]);
 	    break;
 	}
     }
@@ -205,8 +205,8 @@ patricia_mismatch (const u_int8_t *k1, const u_int8_t *k2, u_int16_t bitlen)
  * Given a bit number and a starting node, find the leftmost leaf
  * in the (sub)tree.
  */
-static inline patnode *
-patricia_find_leftmost (u_int16_t bit, patnode *node)
+static inline vatnode *
+vatricia_find_leftmost (u_int16_t bit, vatnode *node)
 {
     while (bit < node->bit) {
 	bit = node->bit;
@@ -220,8 +220,8 @@ patricia_find_leftmost (u_int16_t bit, patnode *node)
  * Given a bit number and a starting node, find the rightmost leaf
  * in the (sub)tree.
  */
-static inline patnode *
-patricia_find_rightmost (u_int16_t bit, patnode *node)
+static inline vatnode *
+vatricia_find_rightmost (u_int16_t bit, vatnode *node)
 {
     while (bit < node->bit) {
 	bit = node->bit;
@@ -232,16 +232,16 @@ patricia_find_rightmost (u_int16_t bit, patnode *node)
 
 
 /*
- * patricia_root_init()
- * Initialize a patricia root node.  Allocate one if not provided.
+ * vatricia_root_init()
+ * Initialize a vatricia root node.  Allocate one if not provided.
  */
-patroot *
-patricia_root_init (patroot *root, boolean is_ptr, u_int16_t klen, u_int8_t off)
+vatroot *
+vatricia_root_init (vatroot *root, boolean is_ptr, u_int16_t klen, u_int8_t off)
 {
-    assert(klen && klen <= PAT_MAXKEY);
+    assert(klen && klen <= VAT_MAXKEY);
 
     if (!root) {
-	root = alloc_info.pat_root_alloc();
+	root = alloc_info.vat_root_alloc();
     }
     if (root) {
 	root->root = NULL;
@@ -253,60 +253,60 @@ patricia_root_init (patroot *root, boolean is_ptr, u_int16_t klen, u_int8_t off)
 }
 
 /*
- * patricia_root_delete()
+ * vatricia_root_delete()
  * Delete the root of a tree.  The tree itself must be empty for this to
  * succeed.
  */
 void
-patricia_root_delete (patroot *root)
+vatricia_root_delete (vatroot *root)
 {
     if (root) {
 	assert(root->root == NULL);
-	alloc_info.pat_root_free(root);
+	alloc_info.vat_root_free(root);
     }
 }
 
 /*
- * patricia_node_in_tree
+ * vatricia_node_in_tree
  * Return TRUE if a node is in the tree.  For now, this is only a syntactic
  * check.
  */
 boolean
-patricia_node_in_tree (const patnode *node)
+vatricia_node_in_tree (const vatnode *node)
 {
-    return ((node->bit != PAT_NOBIT) ||
+    return ((node->bit != VAT_NOBIT) ||
 	    (node->right != NULL) ||
 	    (node->left != NULL));
 }
 
 /*
- * patricia_node_init_length()
- * Passed a pointer to a patricia node, initialize it.  Fortunately, this
+ * vatricia_node_init_length()
+ * Passed a pointer to a vatricia node, initialize it.  Fortunately, this
  * is easy.
  */
 void
-patricia_node_init_length (patnode *node, u_int16_t key_bytes)
+vatricia_node_init_length (vatnode *node, u_int16_t key_bytes)
 {
     if (key_bytes) {
-	assert(key_bytes <= PAT_MAXKEY);
-	node->length = patricia_length_to_bit(key_bytes);
+	assert(key_bytes <= VAT_MAXKEY);
+	node->length = vatricia_length_to_bit(key_bytes);
     } else {
-	node->length = PAT_NOBIT;
+	node->length = VAT_NOBIT;
     }
-    node->bit = PAT_NOBIT;
+    node->bit = VAT_NOBIT;
     node->left = NULL;
     node->right = NULL;
 }
 
 /*
- * patricia_add
- * Add a node to a Patricia tree.  Returns TRUE on success.
+ * vatricia_add
+ * Add a node to a Vatricia tree.  Returns TRUE on success.
  */
 boolean
-patricia_add (patroot *root, patnode *node)
+vatricia_add (vatroot *root, vatnode *node)
 {
-    patnode *current;
-    patnode **ptr;
+    vatnode *current;
+    vatnode **ptr;
     u_int16_t bit;
     u_int16_t diff_bit;
     const u_int8_t *key;
@@ -314,24 +314,24 @@ patricia_add (patroot *root, patnode *node)
     /*
      * Make sure this node is not in a tree already.
      */
-    assert((node->bit == PAT_NOBIT) &&
+    assert((node->bit == VAT_NOBIT) &&
 	   (node->right == NULL) &&
 	   (node->left == NULL));
   
-    if (node->length == PAT_NOBIT) {
-	node->length = patricia_length_to_bit(root->key_bytes);
+    if (node->length == VAT_NOBIT) {
+	node->length = vatricia_length_to_bit(root->key_bytes);
     }
 
     /*
      * If this is the first node in the tree, then it gets links to itself.
-     * There is always exactly one node in the tree with PAT_NOBIT for the
+     * There is always exactly one node in the tree with VAT_NOBIT for the
      * bit number.  This node is always a leaf since this avoids ever testing
-     * a bit with PAT_NOBIT, which leaves greater freedom in the choice of
+     * a bit with VAT_NOBIT, which leaves greater freedom in the choice of
      * bit formats.
      */
     if (root->root == NULL) {
 	root->root = node->left = node->right = node;
-	node->bit = PAT_NOBIT;
+	node->bit = VAT_NOBIT;
 	return(TRUE);
     }
 
@@ -339,8 +339,8 @@ patricia_add (patroot *root, patnode *node)
      * Start by waltzing down the tree to see if a duplicate (or a prefix
      * match) of the key is in the tree already.  If so, return FALSE.
      */
-    key = patricia_key(root, node);
-    current = patricia_search(root->root, node->length, key);
+    key = vatricia_key(root, node);
+    current = vatricia_search(root->root, node->length, key);
 
     /*
      * Find the first bit that differs from the node that we did find, to
@@ -349,7 +349,7 @@ patricia_add (patroot *root, patnode *node)
      * equal to the minimum back, and we bail.
      */
     bit = (node->length < current->length) ? node->length : current->length;
-    diff_bit = patricia_mismatch(key, patricia_key(root, current), bit);
+    diff_bit = vatricia_mismatch(key, vatricia_key(root, current), bit);
     if (diff_bit >= bit) {
 	return(FALSE);
     }
@@ -359,12 +359,12 @@ patricia_add (patroot *root, patnode *node)
      * current branch.  Note that if there were parent pointers or a
      * convenient stack, we could back up.  Alas, we apply sweat...
      */
-    bit = PAT_NOBIT;
+    bit = VAT_NOBIT;
     current = root->root;
     ptr = &root->root;
     while (bit < current->bit && current->bit < diff_bit) {
 	bit = current->bit;
-	if (pat_key_test(key, bit)) {
+	if (vat_key_test(key, bit)) {
 	    ptr = &current->right;
 	    current = current->right;
 	} else {
@@ -377,7 +377,7 @@ patricia_add (patroot *root, patnode *node)
      * This is our insertion point.  Do the deed.
      */
     node->bit = diff_bit;
-    if (pat_key_test(key, diff_bit)) {
+    if (vat_key_test(key, diff_bit)) {
 	node->left = current;
 	node->right = node;
     } else {
@@ -389,15 +389,15 @@ patricia_add (patroot *root, patnode *node)
 }
 
 /*
- * patricia_delete()
- * Delete a node from a patricia tree.
+ * vatricia_delete()
+ * Delete a node from a vatricia tree.
  */
 boolean
-patricia_delete (patroot *root, patnode *node)
+vatricia_delete (vatroot *root, vatnode *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
-    patnode **downptr, **upptr, **parent, *current;
+    vatnode **downptr, **upptr, **parent, *current;
     
     /*
      * Is there even a tree?  Is the node in a tree?
@@ -420,8 +420,8 @@ patricia_delete (patroot *root, patnode *node)
      */
     downptr = upptr = NULL;
     parent = &root->root;
-    bit = PAT_NOBIT;
-    key = patricia_key(root, node);
+    bit = VAT_NOBIT;
+    key = vatricia_key(root, node);
 
     while (bit < current->bit) {
 	bit = current->bit;
@@ -429,7 +429,7 @@ patricia_delete (patroot *root, patnode *node)
 	    downptr = parent;
 	}
 	upptr = parent;
-	if (bit < node->length && pat_key_test(key, bit)) {
+	if (bit < node->length && vat_key_test(key, bit)) {
 	    parent = &current->right;
 	} else {
 	    parent = &current->left;
@@ -450,7 +450,7 @@ patricia_delete (patroot *root, patnode *node)
      * Otherwise we'll need to work a bit.
      */
     if (upptr == NULL) {
-	assert(node->bit == PAT_NOBIT);
+	assert(node->bit == VAT_NOBIT);
 	root->root = NULL;
     } else {
 	/*
@@ -473,9 +473,9 @@ patricia_delete (patroot *root, patnode *node)
 	     * We were the no-bit node.  We make our parent the
 	     * no-bit node.
 	     */
-	    assert(node->bit == PAT_NOBIT);
+	    assert(node->bit == VAT_NOBIT);
 	    current->left = current->right = current;
-	    current->bit = PAT_NOBIT;
+	    current->bit = VAT_NOBIT;
 	} else if (current != node) {
 	    /*
 	     * We were not our own `up node', which means we need to
@@ -493,25 +493,25 @@ patricia_delete (patroot *root, patnode *node)
      * Clean out the node.
      */
     node->left = node->right = NULL;
-    node->bit = PAT_NOBIT;
+    node->bit = VAT_NOBIT;
     return(TRUE);
 }
 
 
 /*
- * patricia_find_next()
+ * vatricia_find_next()
  * Given a node, find the lexical next node in the tree.  If the
  * node pointer is NULL the leftmost node in the tree is returned.
  * Returns NULL if the tree is empty or it falls off the right.  Asserts
  * if the node isn't in the tree.
  */
  
-patnode *
-patricia_find_next (patroot *root, patnode *node)
+vatnode *
+vatricia_find_next (vatroot *root, vatnode *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
-    patnode *current, *lastleft;
+    vatnode *current, *lastleft;
 
     /*
      * If there's nothing in the tree we're done.
@@ -526,7 +526,7 @@ patricia_find_next (patroot *root, patnode *node)
      * If he didn't specify a node, return the leftmost guy.
      */
     if (node == NULL) {
-	return (patricia_find_leftmost(PAT_NOBIT, current));
+	return (vatricia_find_leftmost(VAT_NOBIT, current));
     }
 
     /*
@@ -534,11 +534,11 @@ patricia_find_next (patroot *root, patnode *node)
      * left, so we can go right from there.
      */
     lastleft = NULL;
-    key = patricia_key(root, node);
-    bit = PAT_NOBIT;
+    key = vatricia_key(root, node);
+    bit = VAT_NOBIT;
     while (bit < current->bit) {
 	bit = current->bit;
-	if (bit < node->length && pat_key_test(key, bit)) {
+	if (bit < node->length && vat_key_test(key, bit)) {
 	    current = current->right;
 	} else {
 	    lastleft = current;
@@ -551,7 +551,7 @@ patricia_find_next (patroot *root, patnode *node)
      * If we found a left turn go right from there.  Otherwise barf.
      */
     if (lastleft) {
-	return (patricia_find_leftmost(lastleft->bit, lastleft->right));
+	return (vatricia_find_leftmost(lastleft->bit, lastleft->right));
     }
     return (NULL);
 }
@@ -561,75 +561,75 @@ patricia_find_next (patroot *root, patnode *node)
  * receive back a const node..  The called functions are not const --
  * they can't be since they need to return non-const nodes to the 
  * caller -- even though they do not modify the contents of the 
- * tree.  However, if you're exposing the patricias to other modules
+ * tree.  However, if you're exposing the vatricias to other modules
  * that should be looked at, but not modified, these can help.. 
  */
  
-const patnode *
-patricia_cons_find_next (const patroot *root, const patnode *node)
+const vatnode *
+vatricia_cons_find_next (const vatroot *root, const vatnode *node)
 {
-    patroot *r = const_drop(root);
-    patnode *n = const_drop(node);
+    vatroot *r = const_drop(root);
+    vatnode *n = const_drop(node);
 
     /* does not change or modify tree or node */
-    return patricia_find_next(r, n); 
+    return vatricia_find_next(r, n); 
 }
 
-const patnode *
-patricia_cons_find_prev (const patroot *root, const patnode *node)
+const vatnode *
+vatricia_cons_find_prev (const vatroot *root, const vatnode *node)
 {
-    patroot *r = const_drop(root);
-    patnode *n = const_drop(node);
+    vatroot *r = const_drop(root);
+    vatnode *n = const_drop(node);
 
     /* does not change or modify tree or node */    
-    return patricia_find_prev(r, n); 
+    return vatricia_find_prev(r, n); 
 }
 
-const patnode *
-patricia_cons_get (const patroot *root, const u_int16_t key_bytes,
+const vatnode *
+vatricia_cons_get (const vatroot *root, const u_int16_t key_bytes,
 		   const void *key)
 {
-    patroot *r = const_drop(root);
+    vatroot *r = const_drop(root);
 
     /* does not change or modify tree or node */
-    return patricia_get(r, key_bytes, key); 
+    return vatricia_get(r, key_bytes, key); 
 }
 
-const patnode *
-patricia_cons_subtree_match (const patroot *root, const u_int16_t prefix_len,
+const vatnode *
+vatricia_cons_subtree_match (const vatroot *root, const u_int16_t prefix_len,
 			     const void *prefix)
 {
-    patroot *r = const_drop(root);
+    vatroot *r = const_drop(root);
 
     /* does not change or modify tree or node */    
-    return patricia_subtree_match(r, prefix_len, prefix); 
+    return vatricia_subtree_match(r, prefix_len, prefix); 
 }
 
-const patnode *
-patricia_cons_subtree_next (const patroot *root, const patnode *node,
+const vatnode *
+vatricia_cons_subtree_next (const vatroot *root, const vatnode *node,
 			    const u_int16_t prefix_len)
 {
-    patroot *r = const_drop(root);
-    patnode *n = const_drop(node);
+    vatroot *r = const_drop(root);
+    vatnode *n = const_drop(node);
 
     /* does not change or modify tree or node */    
-    return patricia_subtree_next(r, n, prefix_len); 
+    return vatricia_subtree_next(r, n, prefix_len); 
 }
 
 
 /*
- * patricia_find_prev()
+ * vatricia_find_prev()
  * Given a node, find the lexical previous node in the tree.  If the
  * node pointer is NULL the rightmost node in the tree is returned.
  * Returns NULL if the tree is empty or it falls off the left.  Asserts
  * if the node isn't in the tree.
  */
-patnode *
-patricia_find_prev (patroot *root, patnode *node)
+vatnode *
+vatricia_find_prev (vatroot *root, vatnode *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
-    patnode *current, *lastright;
+    vatnode *current, *lastright;
 
     /*
      * If there's nothing in the tree we're done.
@@ -644,7 +644,7 @@ patricia_find_prev (patroot *root, patnode *node)
      * If he didn't specify a node, return the rightmost guy.
      */
     if (node == NULL) {
-	return (patricia_find_rightmost(PAT_NOBIT, current));
+	return (vatricia_find_rightmost(VAT_NOBIT, current));
     }
 
     /*
@@ -652,11 +652,11 @@ patricia_find_prev (patroot *root, patnode *node)
      * right, so we can go right from there.
      */
     lastright = NULL;
-    key = patricia_key(root, node);
-    bit = PAT_NOBIT;
+    key = vatricia_key(root, node);
+    bit = VAT_NOBIT;
     while (bit < current->bit) {
 	bit = current->bit;
-	if (bit < node->length && pat_key_test(key, bit)) {
+	if (bit < node->length && vat_key_test(key, bit)) {
 	    lastright = current;
 	    current = current->right;
 	} else {
@@ -669,40 +669,40 @@ patricia_find_prev (patroot *root, patnode *node)
      * If we found a right turn go right from there.  Otherwise barf.
      */
     if (lastright) {
-	return (patricia_find_rightmost(lastright->bit, lastright->left));
+	return (vatricia_find_rightmost(lastright->bit, lastright->left));
     }
     return (NULL);
 }
 
 
 /*
- * patricia_subtree_match()
+ * vatricia_subtree_match()
  * We're passed in a prefix length, in bits, and a pointer to that
  * many bits of prefix.  Return the leftmost guy for which this
  * is a prefix of the node's key.
  */
-patnode *
-patricia_subtree_match (patroot *root, u_int16_t plen, const void *v_prefix)
+vatnode *
+vatricia_subtree_match (vatroot *root, u_int16_t plen, const void *v_prefix)
 {
     u_int16_t diff_bit, p_bit;
-    patnode *current;
+    vatnode *current;
     const u_int8_t *prefix = v_prefix;
 
     /*
      * If there's nothing in the tree, return NULL.
      */
-    assert(plen && plen <= (PAT_MAXKEY * 8));
+    assert(plen && plen <= (VAT_MAXKEY * 8));
 
     if (root->root == NULL) {
 	return (NULL);
     }
 
     /*
-     * Okay, express the prefix length as a patricia bit number
+     * Okay, express the prefix length as a vatricia bit number
      * and search for someone.
      */
-    p_bit = pat_plen_to_bit(plen);
-    current = patricia_search(root->root, p_bit, prefix);
+    p_bit = vat_plen_to_bit(plen);
+    current = vatricia_search(root->root, p_bit, prefix);
 
     /*
      * If the guy we found is shorter than the prefix length, we're
@@ -718,7 +718,7 @@ patricia_subtree_match (patroot *root, u_int16_t plen, const void *v_prefix)
      * Compare the key of the guy we found to our prefix.  If they
      * match to the prefix length return him, otherwise there is no match.
      */
-    diff_bit = patricia_mismatch(prefix, patricia_key(root, current), p_bit);
+    diff_bit = vatricia_mismatch(prefix, vatricia_key(root, current), p_bit);
     if (diff_bit < p_bit) {
 	return (NULL);
     }
@@ -727,32 +727,32 @@ patricia_subtree_match (patroot *root, u_int16_t plen, const void *v_prefix)
 
 
 /*
- * patricia_subtree_next()
+ * vatricia_subtree_next()
  * Given a node in a subtree, and the prefix length in bits of the prefix
  * common to nodes in the subtree, return the lexical next node in the
  * subtree.  assert()'s if the node isn't in the tree.
  */
-patnode *
-patricia_subtree_next (patroot *root, patnode *node, u_int16_t plen)
+vatnode *
+vatricia_subtree_next (vatroot *root, vatnode *node, u_int16_t plen)
 {
     const u_int8_t *prefix;
     u_int16_t bit, p_bit;
-    patnode *current, *lastleft;
+    vatnode *current, *lastleft;
 
     /*
      * Make sure this is reasonable.
      */
     current = root->root;
     assert(plen && current);
-    p_bit = pat_plen_to_bit(plen);
+    p_bit = vat_plen_to_bit(plen);
     assert(node->length >= p_bit);
 
-    prefix = patricia_key(root, node);
-    bit = PAT_NOBIT;
+    prefix = vatricia_key(root, node);
+    bit = VAT_NOBIT;
     lastleft = NULL;
     while (bit < current->bit) {
 	bit = current->bit;
-	if (bit < node->length && pat_key_test(prefix, bit)) {
+	if (bit < node->length && vat_key_test(prefix, bit)) {
 	    current = current->right;
 	} else {
 	    lastleft = current;
@@ -769,22 +769,22 @@ patricia_subtree_next (patroot *root, patnode *node, u_int16_t plen)
     if (lastleft == NULL || lastleft->bit < p_bit) {
 	return (NULL);
     }
-    return (patricia_find_leftmost(lastleft->bit, lastleft->right));
+    return (vatricia_find_leftmost(lastleft->bit, lastleft->right));
 }
 
 
 /*
- * patricia_get()
+ * vatricia_get()
  * Given a key and its length, find a node which matches.
  */
-patnode *
-patricia_get (patroot *root, u_int16_t key_bytes, const void *key)
+vatnode *
+vatricia_get (vatroot *root, u_int16_t key_bytes, const void *key)
 {
-    return (patricia_get_inline(root, key_bytes, key));
+    return (vatricia_get_inline(root, key_bytes, key));
 }
 
 /*
- * patricia_getnext()
+ * vatricia_getnext()
  * Find the next matching guy in the tree.  This is a classic getnext,
  * except that if we're told to we will return an exact match if we find
  * one.
@@ -793,11 +793,11 @@ patricia_get (patroot *root, u_int16_t key_bytes, const void *key)
  * Some more documentation for this function.
  *  Let's see what Doxygen does with it.
  */
-patnode *
-patricia_getnext (patroot *root, u_int16_t klen, const void *v_key, boolean eq)
+vatnode *
+vatricia_getnext (vatroot *root, u_int16_t klen, const void *v_key, boolean eq)
 {
     u_int16_t bit, bit_len, diff_bit;
-    patnode *current, *lastleft, *lastright;
+    vatnode *current, *lastleft, *lastright;
     const u_int8_t *key = v_key;
 
     assert(klen);
@@ -814,12 +814,12 @@ patricia_getnext (patroot *root, u_int16_t klen, const void *v_key, boolean eq)
      * Search the tree looking for this prefix.  Note the last spot
      * at which we go left.
      */
-    bit_len = patricia_length_to_bit(klen);
-    bit = PAT_NOBIT;
+    bit_len = vatricia_length_to_bit(klen);
+    bit = VAT_NOBIT;
     lastright = lastleft = NULL;
     while (bit < current->bit) {
 	bit = current->bit;
-	if (bit < bit_len && pat_key_test(key, bit)) {
+	if (bit < bit_len && vat_key_test(key, bit)) {
 	    lastright = current;
 	    current = current->right;
 	} else {
@@ -833,7 +833,7 @@ patricia_getnext (patroot *root, u_int16_t klen, const void *v_key, boolean eq)
      * the guy we found and the key occurs.
      */
     bit = (current->length > bit_len) ? bit_len : current->length;
-    diff_bit = patricia_mismatch(key, patricia_key(root, current), bit);
+    diff_bit = vatricia_mismatch(key, vatricia_key(root, current), bit);
 
     /*
      * Three cases here.  Do them one by one.
@@ -851,7 +851,7 @@ patricia_getnext (patroot *root, u_int16_t klen, const void *v_key, boolean eq)
 	/*
 	 * If none of the above, go right from `lastleft'.
 	 */
-    } else if (pat_key_test(key, diff_bit)) {
+    } else if (vat_key_test(key, diff_bit)) {
 	/*
 	 * The key is bigger than the guy we found.  We need to find
 	 * somewhere that tested a bit less than diff_bit where we
@@ -860,12 +860,12 @@ patricia_getnext (patroot *root, u_int16_t klen, const void *v_key, boolean eq)
 	 * we need to search again.
 	 */
 	if (lastleft && lastleft->bit > diff_bit) {
-	    bit = PAT_NOBIT;
+	    bit = VAT_NOBIT;
 	    current = root->root;
 	    lastleft = NULL;
 	    while (bit < current->bit && current->bit < diff_bit) {
 		bit = current->bit;
-		if (pat_key_test(key, bit)) {
+		if (vat_key_test(key, bit)) {
 		    current = current->right;
 		} else {
 		    lastleft = current;
@@ -883,7 +883,7 @@ patricia_getnext (patroot *root, u_int16_t klen, const void *v_key, boolean eq)
 	 * top.
 	 */
 	if (lastright && lastright->bit >= diff_bit) {
-	    return (patricia_search(root->root, diff_bit, key));
+	    return (vatricia_search(root->root, diff_bit, key));
 	}
 	return (current);
     }
@@ -893,28 +893,28 @@ patricia_getnext (patroot *root, u_int16_t klen, const void *v_key, boolean eq)
      * a `lastleft' take a right turn there, otherwise return nothing.
      */
     if (lastleft) {
-	return (patricia_find_leftmost(lastleft->bit, lastleft->right));
+	return (vatricia_find_leftmost(lastleft->bit, lastleft->right));
     }
     return (NULL);
 }
 
 int
-patricia_compare_nodes (patroot *root, patnode* node1, patnode* node2)
+vatricia_compare_nodes (vatroot *root, vatnode* node1, vatnode* node2)
 {
     u_int16_t bit;
     u_int16_t diff_bit;
     const u_int8_t *key_1, *key_2;
     
     bit = (node1->length < node2->length) ? node1->length : node2->length;
-    key_1 = patricia_key(root, node1);
-    key_2 = patricia_key(root, node2);
+    key_1 = vatricia_key(root, node1);
+    key_2 = vatricia_key(root, node2);
     
-    diff_bit = patricia_mismatch(key_1, key_2, bit);
+    diff_bit = vatricia_mismatch(key_1, key_2, bit);
     
     if (diff_bit >= bit)
 	return 0;
     
-    if (pat_key_test(key_1, diff_bit)) {
+    if (vat_key_test(key_1, diff_bit)) {
 	return 1;
     }
     
@@ -929,32 +929,32 @@ patricia_compare_nodes (patroot *root, patnode* node1, patnode* node2)
 
 typedef struct testnode_ {
     int dummy1;				/* Test worst case */
-    patnode patricia;			/* Our node */
+    vatnode vatricia;			/* Our node */
     int key;				/* Our key */
     int dummy2;				/* More worst case */
 } testnode;
 
 static inline testnode *
-pat_to_test (patnode *node)
+vat_to_test (vatnode *node)
 {
     static testnode foo;
     testnode *result;
 
     result = (testnode *) ((int) node -
-			 ((int)&foo.patricia - (int)&foo));
+			 ((int)&foo.vatricia - (int)&foo));
     return(result);
 }
 
 /*
- * patricia_lookup_random
+ * vatricia_lookup_random
  * Lookup a random leaf in the tree.
  */
 
-patnode *
-patricia_lookup_random (patroot *root)
+vatnode *
+vatricia_lookup_random (vatroot *root)
 {
-    patnode *current = root->first;
-    u_short lasttest = PAT_NOBIT;
+    vatnode *current = root->first;
+    u_short lasttest = VAT_NOBIT;
   
     if (!current) {
 	return(NULL);
@@ -975,19 +975,19 @@ patricia_lookup_random (patroot *root)
     return(current);
 }
 
-typedef int patricia_callback (patnode *node);
+typedef int vatricia_callback (vatnode *node);
 
 /*
- * pat_traversal_internal
+ * vat_traversal_internal
  * Internal recursive (debugging only!) function to do a traversal.
  */
 
-int pat_traversal_internal (patnode *node, patricia_callback *callback)
+int vat_traversal_internal (vatnode *node, vatricia_callback *callback)
 {
     int result;
 
     if (node->left->bit > node->bit) {
-	result = pat_traversal_internal(node->left, callback);
+	result = vat_traversal_internal(node->left, callback);
     } else {
 	result = (*callback)(node->left);
     }
@@ -996,7 +996,7 @@ int pat_traversal_internal (patnode *node, patricia_callback *callback)
     }
     
     if (node->right->bit > node->bit) {
-	result = pat_traversal_internal(node->right, callback);
+	result = vat_traversal_internal(node->right, callback);
     } else {
 	result = (*callback)(node->right);
     }
@@ -1006,25 +1006,25 @@ int pat_traversal_internal (patnode *node, patricia_callback *callback)
 }
 
 /*
- * patricia_traversal
+ * vatricia_traversal
  * Traverse the tree in key order, calling the callback function once per
  * key.  Abort the traversal function if the callback function returns
  * FALSE.  Returns FALSE if terminated.  The root gets called back _twice_.
  */
 
 int
-patricia_traversal (patroot *root, patricia_callback *callback)
+vatricia_traversal (vatroot *root, vatricia_callback *callback)
 {
     if (!root->first) {
 	return(TRUE);
     }
-    return(pat_traversal_internal(root->first, callback));
+    return(vat_traversal_internal(root->first, callback));
 }
 
 static long test_count;
 
 int
-test_callback (patnode *node)
+test_callback (vatnode *node)
 {
     test_count++;
     return(TRUE);
@@ -1034,14 +1034,14 @@ test_callback (patnode *node)
 
 main (int argc, char *argv[])
 {
-    patroot *root;
+    vatroot *root;
     testnode *test;
-    patnode *node, *next, *prev;
+    vatnode *node, *next, *prev;
     int i;
     long adds, dels, total, badds, bdels;
     int special_on, special_key;
 
-    root = patricia_init_root(sizeof(int));
+    root = vatricia_init_root(sizeof(int));
     if (!root) {
 	printf("root malloc failed\n");
 	exit(1);
@@ -1066,27 +1066,27 @@ main (int argc, char *argv[])
 		printf("node malloc failed\n");
 		exit(1);
 	    }
-	    patricia_node_init(&test->patricia);
+	    vatricia_node_init(&test->vatricia);
 
 	    /*
 	     * Generate a key not in the tree.
 	     */
 	    do {
 		test->key = grand_log2(32);
-	    } while (patricia_lookup_inline(root, (u_char *)&test->key));
+	    } while (vatricia_lookup_inline(root, (u_char *)&test->key));
 
 	    if (test->key == special_key) {
 		special_on = TRUE;
 	    }
 
-	    if (!patricia_add(root, &test->patricia)) {
+	    if (!vatricia_add(root, &test->vatricia)) {
 
 		printf("node add failed\n");
 		exit(1);
 	    }
 
-	    if (patricia_lookup_inline(root, (u_char *)&test->key) !=
-		&test->patricia) {
+	    if (vatricia_lookup_inline(root, (u_char *)&test->key) !=
+		&test->vatricia) {
 		printf("lookup after add failed, key %x\n",
 		       test->key);
 		exit(1);
@@ -1103,7 +1103,7 @@ main (int argc, char *argv[])
 	    }
 
 	    if (special_on) {
-		if (patricia_lookup_inline(root,
+		if (vatricia_lookup_inline(root,
 					   (u_char *)&special_key) == NULL)
 		{
 		    printf("special failure after add, key %x\n",
@@ -1113,41 +1113,41 @@ main (int argc, char *argv[])
 	    }
 	    break;
 	case 1:				/* Do a lookup */
-	    node = patricia_lookup_random(root);
+	    node = vatricia_lookup_random(root);
 	    if (!node) {
 		assert(total == 0);
 		break;
 	    }
-	    if (patricia_lookup_inline(root, (u_char *)&node->key) !=
+	    if (vatricia_lookup_inline(root, (u_char *)&node->key) !=
 		node) {
-		printf("lookup failed, key %x\n", pat_to_test(node)->key);
+		printf("lookup failed, key %x\n", vat_to_test(node)->key);
 		exit(1);
 	    }
 
 	    i = grand_log2(32);		/* Test lookup_geq */
-	    node = patricia_lookup_geq(root, (u_char *)&i);
+	    node = vatricia_lookup_geq(root, (u_char *)&i);
 	    if (node) {
-		if (i == pat_to_test(node)->key) {
+		if (i == vat_to_test(node)->key) {
 		    break;
-		} else if (ntohl(pat_to_test(node)->key) < ntohl(i)) {
+		} else if (ntohl(vat_to_test(node)->key) < ntohl(i)) {
 		    printf("geq failure 1\n");
 		    exit(1);
 		}
-		prev = patricia_get_previous(root, node);
+		prev = vatricia_get_previous(root, node);
 		if (!prev) {
 		    break;
 		}
-		if (ntohl(pat_to_test(prev)->key) < ntohl(i)) {
+		if (ntohl(vat_to_test(prev)->key) < ntohl(i)) {
 		    break;
 		}
 		printf("geq failure 2\n");
 		exit(1);
 	    } else {
-		node = patricia_lookup_greatest(root);
+		node = vatricia_lookup_greatest(root);
 		if (!node) {
 		    break;
 		}
-		if (ntohl(pat_to_test(node)->key) >= ntohl(i)) {
+		if (ntohl(vat_to_test(node)->key) >= ntohl(i)) {
 		    printf("geq failure 3\n");
 		    exit(1);
 		}
@@ -1155,30 +1155,30 @@ main (int argc, char *argv[])
 	    break;
 	    
 	case 2:				/* Do a delete */
-	    node = patricia_lookup_random(root);
+	    node = vatricia_lookup_random(root);
 	    if (!node) {
 		assert(total == 0);
 		break;
 	    }
-	    if (!patricia_delete(root, node)) {
+	    if (!vatricia_delete(root, node)) {
 		printf("delete failed, key %x\n", node->key);
 		exit(1);
 	    }
 
 	    if (special_on) {
-		if (pat_to_test(node)->key == special_key) {
+		if (vat_to_test(node)->key == special_key) {
 		    special_on = FALSE;
 		} else {
-		    if (patricia_lookup_inline(root,
+		    if (vatricia_lookup_inline(root,
 					       (u_char *)&special_key) == NULL)
 		    {
 			printf("special failure after delete, key %x\n",
-			       pat_to_test(node)->key);
+			       vat_to_test(node)->key);
 			exit(1);
 		    }
 		}
 	    }
-	    free(pat_to_test(node));
+	    free(vat_to_test(node));
 	    dels++;
 	    total--;
 	    if (dels == BHA) {
@@ -1192,7 +1192,7 @@ main (int argc, char *argv[])
 	    break;
 	case 3:				/* Tree traversal */
 	    test_count = 0;
-	    patricia_traversal(root, test_callback);
+	    vatricia_traversal(root, test_callback);
 	    if (test_count) {
 		test_count--;		/* Don't count the root twice */
 	    }
@@ -1205,34 +1205,34 @@ main (int argc, char *argv[])
 	     * Test get next.
 	     */
 	    test_count = 0;
-	    node = patricia_lookup_least(root);
+	    node = vatricia_lookup_least(root);
 	    if (node) {
 		test_count++;
-		prev = patricia_get_previous(root, node);
+		prev = vatricia_get_previous(root, node);
 		if (prev) {
 		    printf("node previous to first");
 		    exit(1);
 		}
 		    
-/*		printf("least %x, total %d\n", pat_to_test(node)->key,
+/*		printf("least %x, total %d\n", vat_to_test(node)->key,
 		total); */
-		for (next = patricia_get_next(root, node);
+		for (next = vatricia_get_next(root, node);
 		     next;
-		     node = next, next = patricia_get_next(root, next)) {
+		     node = next, next = vatricia_get_next(root, next)) {
 		    test_count++;
-		    if (ntohl(pat_to_test(node)->key) >=
-			ntohl(pat_to_test(next)->key)) {
+		    if (ntohl(vat_to_test(node)->key) >=
+			ntohl(vat_to_test(next)->key)) {
 			printf("out of order %x %x\n",
-			       pat_to_test(node)->key,
-			       pat_to_test(next)->key);
+			       vat_to_test(node)->key,
+			       vat_to_test(next)->key);
 			exit(1);
 		    }
-		    prev = patricia_get_previous(root, next);
+		    prev = vatricia_get_previous(root, next);
 		    if (prev != node) {
 			printf("previous not same as get previous");
 			exit(1);
 		    }
-/*		    printf("next %x\n", pat_to_test(next)->key); */
+/*		    printf("next %x\n", vat_to_test(next)->key); */
 		}
 	    }
 	    if (test_count != total) {
