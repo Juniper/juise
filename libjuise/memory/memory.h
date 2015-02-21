@@ -35,10 +35,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include "ddl/dtypes.h"
-#include <jnx/package_info.h>
-#include <ddl/dbm_version.h>
-#include <ddl/dbm_offset.h>
 
 #define DBM_VERSION_SIZE	256 /* Size of version string we embed */
 
@@ -96,6 +92,9 @@
 #define DBM_COMPAT_ADDR_32 (DBM_COMPAT_ADDR + (1 << 30))
 #endif
 
+typedef uint32_t dbm_offset_t;
+#define DBM_OFFSET_NULL		((dbm_offset_t) ~0)
+
 /*
  * dbm_memory_t: The core structure for the dbm memory system. This
  * structure lives at the start of the shared memory segment and
@@ -103,9 +102,14 @@
  * some control fields for versioning and such.
  */
 
-#define DBM_MEMORY_PAGE_COUNT	(1 << (30 - PAGE_SHIFT))	/* 1GB */
-#define DBM_POW2_FRAG_COUNT	(PAGE_SHIFT - 3)		/* PAGE_SIZE / 4 */
-#define DBM_MAX_CONTIG_PAGES	(4 << (20 - PAGE_SHIFT))	/* 4MB */
+#define DBM_PAGE_SHIFT		12
+#define DBM_PAGE_SIZE		(1<<DBM_PAGE_SHIFT)
+#define DBM_PAGE_MASK		(DBM_PAGE_SIZE - 1)
+
+
+#define DBM_MEMORY_PAGE_COUNT	(1 << (30 - DBM_PAGE_SHIFT))	/* 1GB */
+#define DBM_POW2_FRAG_COUNT	(DBM_PAGE_SHIFT - 3)		/* PAGE_SIZE / 4 */
+#define DBM_MAX_CONTIG_PAGES	(4 << (20 - DBM_PAGE_SHIFT))	/* 4MB */
 #define DBM_SLOT_MIN_SIZE	16	/* must be >= sizeof(struct dbm_free_slot_s) */
 
 typedef u_int32_t dbm_mask_t;
@@ -122,21 +126,20 @@ typedef struct dbm_free_page_s {
 } dbm_free_page_t;
 
 typedef struct dbm_page_header_s {
-    dbm_mask_t dph_usage[PAGE_SIZE / DBM_SLOT_MIN_SIZE / sizeof(dbm_mask_t) / NBBY];
+    dbm_mask_t dph_usage[DBM_PAGE_SIZE / DBM_SLOT_MIN_SIZE / sizeof(dbm_mask_t) / NBBY];
 } dbm_page_header_t;
 
 typedef struct dbm_free_slot_s {
     dbm_offset_t dfs_prev, dfs_next;
 } dbm_free_slot_t;
 
-struct dbm_memory_s {
+typedef struct dbm_memory_s {
     u_int8_t dm_endian;	/* Tell us if we have the right endian-ness */
     u_int8_t dm_major;	/* Major version number */
     u_int16_t dm_minor;	/* Minor version number */
     u_int32_t dm_size;	/* Size in bytes of this memory segment */
     u_int32_t dm_top;	/* Top of allocated memory */
     u_int32_t dm_header;	/* Size of the upper layer's header */
-    u_int32_t dm_sequence[ MAX_DDSO ]; /* Sequence number per package */
     char dm_version[ DBM_VERSION_SIZE ]; /* Version string of MGD */
     u_int32_t dm_flags;	/* Flags (DMF_*) */
 
@@ -150,10 +153,10 @@ struct dbm_memory_s {
 
     u_int32_t dm_size_info[DBM_MEMORY_PAGE_COUNT];	/* size information per page */
 
-    dbm_offset_t dm_pow2_frags[DBM_POW2_FRAG_COUNT];	/* 4, 8, ... PAGE_SIZE / 4 */
+    dbm_offset_t dm_pow2_frags[DBM_POW2_FRAG_COUNT];	/* 4, 8, ... DBM_PAGE_SIZE / 4 */
 
     dbm_offset_t dm_known_frags[DBM_KNOWN_FRAG_COUNT];
-};
+} dbm_memory_t;
 
 /* Flags for dm_flags: */
 #define DMF_DEAD	(1<<0)	/* Database is dead (client should refresh) */
@@ -228,5 +231,30 @@ int dbm_is_readonly (dbm_memory_t *dbmp);
 extern caddr_t dbm_max_address(void);
 extern caddr_t dbm_schema_address(void);
 extern caddr_t dbm_compat_address(void);
+
+static inline dbm_offset_t
+dbm_offset_of (dbm_memory_t *dbmp, void *ptr)
+{
+    if (ptr == NULL)
+	return DBM_OFFSET_NULL;
+
+    dbm_offset_t off = (caddr_t) ptr - (caddr_t) dbmp;
+    if (off >= dbmp->dm_size)
+	return DBM_OFFSET_NULL;
+
+    return off;
+}
+
+static inline void *
+dbm_pointer_of (dbm_memory_t *dbmp, dbm_offset_t off)
+{
+    if (off == DBM_OFFSET_NULL || off >= dbmp->dm_size)
+	return NULL;
+
+    caddr_t cp = (caddr_t) dbmp;
+    cp += off;
+
+    return cp;
+}
 
 #endif /* __GLOBALS_H__ */ /* Do not add anything after this line */
