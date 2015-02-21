@@ -39,6 +39,7 @@
 
 typedef u_int8_t boolean;
 typedef unsigned int js_boolean_t;
+typedef unsigned int ddl_boolean_t;
 
 #ifndef	TRUE
 #define TRUE  1
