@@ -50,7 +50,7 @@ delta_SOURCES = \
     delta.c
 
 delta_LDADD = ../libjuise/libjuise.la
-delta_LDFLAGS = -static
+# delta_LDFLAGS = -static
 
 #man_MANS = delta.1x
 #EXTRA_DIST = delta.1x
