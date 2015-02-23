@@ -41,7 +41,6 @@ noinst_HEADERS = \
     data/parse.h \
     data/parse_ip.h \
     data/patricia.h \
-    data/vatricia.h \
     env/env.h \
     env/env_paths.h \
     io/dbgpr.h \
@@ -71,7 +70,6 @@ JUISEHEADERS = ${noinst_HEADERS}
 
 libjuise_la_SOURCES = \
     data/patricia.c \
-    data/vatricia.c \
     data/parse_ipaddr.c \
     string/snprintf_safe.c \
     string/strndup.c \
