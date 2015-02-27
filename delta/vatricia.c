@@ -236,18 +236,19 @@ vatricia_find_rightmost (u_int16_t bit, vat_node_t *node)
  * Initialize a vatricia root node.  Allocate one if not provided.
  */
 vat_root_t *
-vatricia_root_init (vat_root_t *root, u_int16_t klen, u_int8_t off)
+vatricia_root_init (u_int16_t klen, u_int8_t off)
 {
     assert(klen && klen <= VAT_MAXKEY);
 
-    if (!root) {
-	root = alloc_info.vat_root_alloc();
-    }
+    vat_root_t *root;
+
+    root = alloc_info.vat_root_alloc();
     if (root) {
 	root->vr_root = NULL;
 	root->vr_key_bytes = klen;
 	root->vr_key_offset = off;
     }
+
     return root;
 }
 
