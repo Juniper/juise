@@ -19,7 +19,7 @@
 
 #include <libjuise/common/aux_types.h>
 #include <libjuise/common/bits.h>
-#include <libjuise/data/vatricia.h>
+#include "vatricia.h"
 
 /*
  * This table contains a one bit mask of the highest order bit
