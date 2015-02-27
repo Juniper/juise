@@ -125,10 +125,7 @@ typedef struct vat_node_s {
     u_int16_t		vn_bit;		/**< bit number to test for patricia */
     struct vat_node_s	*vn_left;	/**< left branch for patricia search */
     struct vat_node_s	*vn_right;	/**< right branch for same */
-    union {
-	u_int8_t	key[0];		/**< start of key */
-	u_int8_t	*key_ptr[0];	/**< pointer to key */
-    } vatnode_keys;
+    u_int8_t	        *vn_key_ptr[0];	/**< pointer to key */
 } vat_node_t;
 
 /**
@@ -582,7 +579,7 @@ vatricia_node_init (vat_node_t *node) {
 static inline const u_int8_t *
 vatricia_key (vat_root_t *root, vat_node_t *node)
 {
-    return (node->vatnode_keys.key_ptr[0] + root->vr_key_offset);
+    return node->vn_key_ptr[0] + root->vr_key_offset;
 }
 
 /**
@@ -600,7 +597,7 @@ vatricia_key (vat_root_t *root, vat_node_t *node)
 static inline u_int8_t
 vat_key_test (const u_int8_t *key, u_int16_t bit)
 {
-    return(BIT_TEST(key[bit >> 8], (~bit & 0xff)));
+    return BIT_TEST(key[bit >> 8], (~bit & 0xff));
 }
 
 /**
@@ -616,7 +613,7 @@ vat_key_test (const u_int8_t *key, u_int16_t bit)
 static inline u_int16_t
 vatricia_length (vat_node_t *node)
 {
-    return (((node->vn_length) >> 8) + 1);
+    return ((node->vn_length) >> 8) + 1;
 }
 
 /**
@@ -633,9 +630,9 @@ static inline u_int16_t
 vatricia_length_to_bit (u_int16_t length)
 {
     if (length) {
-	return (((length - 1) << 8) | 0xff);
+	return ((length - 1) << 8) | 0xff;
     }
-    return (VAT_NOBIT);
+    return VAT_NOBIT;
 }
 
 /**
@@ -665,7 +662,7 @@ vatricia_get_inline (vat_root_t *root, u_int16_t key_bytes, const void *v_key)
     }
     current = root->vr_root;
     if (!current) {
-	return(0);
+	return 0;
     }
 
     /*
@@ -687,9 +684,9 @@ vatricia_get_inline (vat_root_t *root, u_int16_t key_bytes, const void *v_key)
      */
     if (current->vn_length != bit_len
 	|| bcmp(vatricia_key(root, current), key, key_bytes)) {
-	return (0);
+	return 0;
     }
-    return (current);
+    return current;
 }
 
 /**
@@ -745,9 +742,9 @@ vatricia_isempty (vat_root_t *root)
     {\
         assert(STRUCT_SIZEOF(structname, fieldname) == sizeof(vat_node_t));\
 	if (ptr)\
-	    return(QUIET_CAST(structname *, ((u_char *) ptr) - \
-				    offsetof(structname, fieldname))); \
-	return(NULL); \
+	    return QUIET_CAST(structname *, ((u_char *) ptr) - \
+				    offsetof(structname, fieldname)); \
+	return NULL; \
      }
 
 /**
@@ -802,9 +799,9 @@ procname (vat_node_t *ptr)                                              \
  * @sa vatricia_get
  */
 static inline vat_node_t *
-vatricia_lookup(vat_root_t *root, const void *key)
+vatricia_lookup (vat_root_t *root, const void *key)
 {
-	return (vatricia_get(root, root->vr_key_bytes, key));
+	return vatricia_get(root, root->vr_key_bytes, key);
 }
 
 /**
@@ -829,7 +826,7 @@ vatricia_lookup(vat_root_t *root, const void *key)
 static inline vat_node_t *
 vatricia_lookup_get (vat_root_t *root, void *key)
 {
-    return (vatricia_getnext(root, root->vr_key_bytes, key, TRUE));
+    return vatricia_getnext(root, root->vr_key_bytes, key, TRUE);
 }
 
 /*
@@ -853,7 +850,7 @@ extern const u_int8_t vatricia_hi_bit_table[];
 static inline u_int16_t
 vat_makebit (u_int16_t offset, u_int8_t bit_in_byte)
 {
-    return ((((offset) & 0xff) << 8) | ((~vatricia_hi_bit_table[bit_in_byte]) & 0xff));
+    return (((offset) & 0xff) << 8) | ((~vatricia_hi_bit_table[bit_in_byte]) & 0xff);
 }
 
 #ifdef __cplusplus
