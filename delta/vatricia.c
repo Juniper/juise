@@ -80,10 +80,10 @@ const u_int8_t vatricia_bit_masks[8] = {
  *
  * Built-in root allocator.
  */
-static vatroot *
+static vat_root_t *
 vatricia_root_alloc (void)
 {
-    return (malloc(sizeof(vatroot)));
+    return (malloc(sizeof(vat_root_t)));
 }
 
 /*
@@ -92,7 +92,7 @@ vatricia_root_alloc (void)
  * Built-in root deallocator.
  */
 static void
-vatricia_root_free (vatroot *root)
+vatricia_root_free (vat_root_t *root)
 {
     assert(root);
 
@@ -102,8 +102,8 @@ vatricia_root_free (vatroot *root)
 /*
  * Vatricia tree users can specify their own root alloc & free
  * functions if they desire. These are used ONLY to allocate
- * and free vatroot structures. They are NOT used for vatnode
- * structures (the caller is responsible for vatnodes). If the
+ * and free vat_root_t structures. They are NOT used for var_node_t
+ * structures (the caller is responsible for vat_node_ts). If the
  * user doesn't specify his own functions then the built-in
  * functions using malloc/free are used.
  */
@@ -155,8 +155,8 @@ vat_plen_to_bit (u_int16_t plen)
  * Given a key and a key length, traverse a tree to find a match
  * possibility.
  */
-static inline vatnode *
-vatricia_search (vatnode *node, u_int16_t keylen, const u_int8_t *key)
+static inline vat_node_t *
+vatricia_search (vat_node_t *node, u_int16_t keylen, const u_int8_t *key)
 {
     u_int16_t bit = VAT_NOBIT;
 
@@ -205,8 +205,8 @@ vatricia_mismatch (const u_int8_t *k1, const u_int8_t *k2, u_int16_t bitlen)
  * Given a bit number and a starting node, find the leftmost leaf
  * in the (sub)tree.
  */
-static inline vatnode *
-vatricia_find_leftmost (u_int16_t bit, vatnode *node)
+static inline vat_node_t *
+vatricia_find_leftmost (u_int16_t bit, vat_node_t *node)
 {
     while (bit < node->bit) {
 	bit = node->bit;
@@ -220,8 +220,8 @@ vatricia_find_leftmost (u_int16_t bit, vatnode *node)
  * Given a bit number and a starting node, find the rightmost leaf
  * in the (sub)tree.
  */
-static inline vatnode *
-vatricia_find_rightmost (u_int16_t bit, vatnode *node)
+static inline vat_node_t *
+vatricia_find_rightmost (u_int16_t bit, vat_node_t *node)
 {
     while (bit < node->bit) {
 	bit = node->bit;
@@ -235,8 +235,8 @@ vatricia_find_rightmost (u_int16_t bit, vatnode *node)
  * vatricia_root_init()
  * Initialize a vatricia root node.  Allocate one if not provided.
  */
-vatroot *
-vatricia_root_init (vatroot *root, boolean is_ptr, u_int16_t klen, u_int8_t off)
+vat_root_t *
+vatricia_root_init (vat_root_t *root, boolean is_ptr, u_int16_t klen, u_int8_t off)
 {
     assert(klen && klen <= VAT_MAXKEY);
 
@@ -258,7 +258,7 @@ vatricia_root_init (vatroot *root, boolean is_ptr, u_int16_t klen, u_int8_t off)
  * succeed.
  */
 void
-vatricia_root_delete (vatroot *root)
+vatricia_root_delete (vat_root_t *root)
 {
     if (root) {
 	assert(root->root == NULL);
@@ -272,7 +272,7 @@ vatricia_root_delete (vatroot *root)
  * check.
  */
 boolean
-vatricia_node_in_tree (const vatnode *node)
+vatricia_node_in_tree (const vat_node_t *node)
 {
     return ((node->bit != VAT_NOBIT) ||
 	    (node->right != NULL) ||
@@ -285,7 +285,7 @@ vatricia_node_in_tree (const vatnode *node)
  * is easy.
  */
 void
-vatricia_node_init_length (vatnode *node, u_int16_t key_bytes)
+vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes)
 {
     if (key_bytes) {
 	assert(key_bytes <= VAT_MAXKEY);
@@ -303,10 +303,10 @@ vatricia_node_init_length (vatnode *node, u_int16_t key_bytes)
  * Add a node to a Vatricia tree.  Returns TRUE on success.
  */
 boolean
-vatricia_add (vatroot *root, vatnode *node)
+vatricia_add (vat_root_t *root, vat_node_t *node)
 {
-    vatnode *current;
-    vatnode **ptr;
+    vat_node_t *current;
+    vat_node_t **ptr;
     u_int16_t bit;
     u_int16_t diff_bit;
     const u_int8_t *key;
@@ -393,11 +393,11 @@ vatricia_add (vatroot *root, vatnode *node)
  * Delete a node from a vatricia tree.
  */
 boolean
-vatricia_delete (vatroot *root, vatnode *node)
+vatricia_delete (vat_root_t *root, vat_node_t *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
-    vatnode **downptr, **upptr, **parent, *current;
+    vat_node_t **downptr, **upptr, **parent, *current;
     
     /*
      * Is there even a tree?  Is the node in a tree?
@@ -506,12 +506,12 @@ vatricia_delete (vatroot *root, vatnode *node)
  * if the node isn't in the tree.
  */
  
-vatnode *
-vatricia_find_next (vatroot *root, vatnode *node)
+vat_node_t *
+vatricia_find_next (vat_root_t *root, vat_node_t *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
-    vatnode *current, *lastleft;
+    vat_node_t *current, *lastleft;
 
     /*
      * If there's nothing in the tree we're done.
@@ -565,52 +565,52 @@ vatricia_find_next (vatroot *root, vatnode *node)
  * that should be looked at, but not modified, these can help.. 
  */
  
-const vatnode *
-vatricia_cons_find_next (const vatroot *root, const vatnode *node)
+const vat_node_t *
+vatricia_cons_find_next (const vat_root_t *root, const vat_node_t *node)
 {
-    vatroot *r = const_drop(root);
-    vatnode *n = const_drop(node);
+    vat_root_t *r = const_drop(root);
+    vat_node_t *n = const_drop(node);
 
     /* does not change or modify tree or node */
     return vatricia_find_next(r, n); 
 }
 
-const vatnode *
-vatricia_cons_find_prev (const vatroot *root, const vatnode *node)
+const vat_node_t *
+vatricia_cons_find_prev (const vat_root_t *root, const vat_node_t *node)
 {
-    vatroot *r = const_drop(root);
-    vatnode *n = const_drop(node);
+    vat_root_t *r = const_drop(root);
+    vat_node_t *n = const_drop(node);
 
     /* does not change or modify tree or node */    
     return vatricia_find_prev(r, n); 
 }
 
-const vatnode *
-vatricia_cons_get (const vatroot *root, const u_int16_t key_bytes,
+const vat_node_t *
+vatricia_cons_get (const vat_root_t *root, const u_int16_t key_bytes,
 		   const void *key)
 {
-    vatroot *r = const_drop(root);
+    vat_root_t *r = const_drop(root);
 
     /* does not change or modify tree or node */
     return vatricia_get(r, key_bytes, key); 
 }
 
-const vatnode *
-vatricia_cons_subtree_match (const vatroot *root, const u_int16_t prefix_len,
+const vat_node_t *
+vatricia_cons_subtree_match (const vat_root_t *root, const u_int16_t prefix_len,
 			     const void *prefix)
 {
-    vatroot *r = const_drop(root);
+    vat_root_t *r = const_drop(root);
 
     /* does not change or modify tree or node */    
     return vatricia_subtree_match(r, prefix_len, prefix); 
 }
 
-const vatnode *
-vatricia_cons_subtree_next (const vatroot *root, const vatnode *node,
+const vat_node_t *
+vatricia_cons_subtree_next (const vat_root_t *root, const vat_node_t *node,
 			    const u_int16_t prefix_len)
 {
-    vatroot *r = const_drop(root);
-    vatnode *n = const_drop(node);
+    vat_root_t *r = const_drop(root);
+    vat_node_t *n = const_drop(node);
 
     /* does not change or modify tree or node */    
     return vatricia_subtree_next(r, n, prefix_len); 
@@ -624,12 +624,12 @@ vatricia_cons_subtree_next (const vatroot *root, const vatnode *node,
  * Returns NULL if the tree is empty or it falls off the left.  Asserts
  * if the node isn't in the tree.
  */
-vatnode *
-vatricia_find_prev (vatroot *root, vatnode *node)
+vat_node_t *
+vatricia_find_prev (vat_root_t *root, vat_node_t *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
-    vatnode *current, *lastright;
+    vat_node_t *current, *lastright;
 
     /*
      * If there's nothing in the tree we're done.
@@ -681,11 +681,11 @@ vatricia_find_prev (vatroot *root, vatnode *node)
  * many bits of prefix.  Return the leftmost guy for which this
  * is a prefix of the node's key.
  */
-vatnode *
-vatricia_subtree_match (vatroot *root, u_int16_t plen, const void *v_prefix)
+vat_node_t *
+vatricia_subtree_match (vat_root_t *root, u_int16_t plen, const void *v_prefix)
 {
     u_int16_t diff_bit, p_bit;
-    vatnode *current;
+    vat_node_t *current;
     const u_int8_t *prefix = v_prefix;
 
     /*
@@ -732,12 +732,12 @@ vatricia_subtree_match (vatroot *root, u_int16_t plen, const void *v_prefix)
  * common to nodes in the subtree, return the lexical next node in the
  * subtree.  assert()'s if the node isn't in the tree.
  */
-vatnode *
-vatricia_subtree_next (vatroot *root, vatnode *node, u_int16_t plen)
+vat_node_t *
+vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t plen)
 {
     const u_int8_t *prefix;
     u_int16_t bit, p_bit;
-    vatnode *current, *lastleft;
+    vat_node_t *current, *lastleft;
 
     /*
      * Make sure this is reasonable.
@@ -777,8 +777,8 @@ vatricia_subtree_next (vatroot *root, vatnode *node, u_int16_t plen)
  * vatricia_get()
  * Given a key and its length, find a node which matches.
  */
-vatnode *
-vatricia_get (vatroot *root, u_int16_t key_bytes, const void *key)
+vat_node_t *
+vatricia_get (vat_root_t *root, u_int16_t key_bytes, const void *key)
 {
     return (vatricia_get_inline(root, key_bytes, key));
 }
@@ -793,11 +793,11 @@ vatricia_get (vatroot *root, u_int16_t key_bytes, const void *key)
  * Some more documentation for this function.
  *  Let's see what Doxygen does with it.
  */
-vatnode *
-vatricia_getnext (vatroot *root, u_int16_t klen, const void *v_key, boolean eq)
+vat_node_t *
+vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean eq)
 {
     u_int16_t bit, bit_len, diff_bit;
-    vatnode *current, *lastleft, *lastright;
+    vat_node_t *current, *lastleft, *lastright;
     const u_int8_t *key = v_key;
 
     assert(klen);
@@ -899,7 +899,7 @@ vatricia_getnext (vatroot *root, u_int16_t klen, const void *v_key, boolean eq)
 }
 
 int
-vatricia_compare_nodes (vatroot *root, vatnode* node1, vatnode* node2)
+vatricia_compare_nodes (vat_root_t *root, vat_node_t* node1, vat_node_t* node2)
 {
     u_int16_t bit;
     u_int16_t diff_bit;
@@ -929,13 +929,13 @@ vatricia_compare_nodes (vatroot *root, vatnode* node1, vatnode* node2)
 
 typedef struct testnode_ {
     int dummy1;				/* Test worst case */
-    vatnode vatricia;			/* Our node */
+    vat_node_t vatricia;			/* Our node */
     int key;				/* Our key */
     int dummy2;				/* More worst case */
 } testnode;
 
 static inline testnode *
-vat_to_test (vatnode *node)
+vat_to_test (vat_node_t *node)
 {
     static testnode foo;
     testnode *result;
@@ -950,10 +950,10 @@ vat_to_test (vatnode *node)
  * Lookup a random leaf in the tree.
  */
 
-vatnode *
-vatricia_lookup_random (vatroot *root)
+vat_node_t *
+vatricia_lookup_random (vat_root_t *root)
 {
-    vatnode *current = root->first;
+    vat_node_t *current = root->first;
     u_short lasttest = VAT_NOBIT;
   
     if (!current) {
@@ -975,14 +975,14 @@ vatricia_lookup_random (vatroot *root)
     return(current);
 }
 
-typedef int vatricia_callback (vatnode *node);
+typedef int vatricia_callback (vat_node_t *node);
 
 /*
  * vat_traversal_internal
  * Internal recursive (debugging only!) function to do a traversal.
  */
 
-int vat_traversal_internal (vatnode *node, vatricia_callback *callback)
+int vat_traversal_internal (vat_node_t *node, vatricia_callback *callback)
 {
     int result;
 
@@ -1013,7 +1013,7 @@ int vat_traversal_internal (vatnode *node, vatricia_callback *callback)
  */
 
 int
-vatricia_traversal (vatroot *root, vatricia_callback *callback)
+vatricia_traversal (vat_root_t *root, vatricia_callback *callback)
 {
     if (!root->first) {
 	return(TRUE);
@@ -1024,7 +1024,7 @@ vatricia_traversal (vatroot *root, vatricia_callback *callback)
 static long test_count;
 
 int
-test_callback (vatnode *node)
+test_callback (vat_node_t *node)
 {
     test_count++;
     return(TRUE);
@@ -1034,9 +1034,9 @@ test_callback (vatnode *node)
 
 main (int argc, char *argv[])
 {
-    vatroot *root;
+    vat_root_t *root;
     testnode *test;
-    vatnode *node, *next, *prev;
+    vat_node_t *node, *next, *prev;
     int i;
     long adds, dels, total, badds, bdels;
     int special_on, special_key;
