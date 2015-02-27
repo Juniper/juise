@@ -55,26 +55,28 @@ print_version (void)
 
 /* ---------------------------------------------------------------------- */
 
-typedef struct testnode_s {
+typedef struct test_node_s {
     int t_dummy1;			/* Test worst case */
-    vat_node_t t_vatricia;			/* Our node */
+    vat_node_t t_vatricia;		/* Our node */
+    void *t_pointer;			/* Point to key */
+    int t_dummy3;
     unsigned long t_key;		/* Our key */
     int t_dummy2;			/* More worst case */
-} testnode_t;
+} test_node_t;
 
-VATNODE_TO_STRUCT(vat_to_test, testnode_t, t_vatricia);
+VATNODE_TO_STRUCT(vat_to_test, test_node_t, t_vatricia);
 
 static int
 test_vatricia (void)
 {
-    vat_root_t *root = vatricia_root_init(NULL, 0, sizeof(unsigned long), 0);
+    vat_root_t *root = vatricia_root_init(NULL, sizeof(unsigned long), 0);
     unsigned long key = 1;
     int i;
     int misses = 0;
     int hits = 0;
 
     for (i = 0; i < ROUNDS; i++) {
-	testnode_t *node = calloc(1, sizeof(testnode_t));
+	test_node_t *node = calloc(1, sizeof(test_node_t));
 	if (node == NULL)
 	    break;
 
@@ -84,6 +86,7 @@ test_vatricia (void)
 	vatricia_node_init_length(&node->t_vatricia, sizeof(node->t_key));
 
 	node->t_key = htonl(key);
+	node->t_pointer = &node->t_key;
 
 #if 0
 	printf("%d: %lx\n", i, key);
@@ -105,7 +108,7 @@ test_vatricia (void)
     for (pp = vatricia_find_next(root, NULL), i = 0; pp;
 	 pp = vatricia_find_next(root, pp), i++) {
 
-	testnode_t *node = vat_to_test(pp);
+	test_node_t *node = vat_to_test(pp);
 	if (opt_verbose)
 	    printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key));
 	hits += 1;
