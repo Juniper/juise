@@ -25,8 +25,11 @@
 #include <libjuise/string/strextra.h>
 #include <libjuise/memory/memory.h>
 #include <libjuise/memory/dmalloc.h>
+#include "vatricia.h"
 
 #include "delta.h"
+
+#define ROUNDS 10000000
 
 static void
 print_help (const char *opt)
@@ -48,8 +51,70 @@ print_version (void)
     printf("libjuice version %s\n", LIBJUISE_VERSION);
 }
 
-#define ROUNDS 10000000
+/* ---------------------------------------------------------------------- */
 
+typedef struct testnode_s {
+    int t_dummy1;			/* Test worst case */
+    vatnode t_vatricia;			/* Our node */
+    unsigned long t_key;		/* Our key */
+    int t_dummy2;			/* More worst case */
+} testnode_t;
+
+VATNODE_TO_STRUCT(vat_to_test, testnode_t, t_vatricia);
+
+static int
+test_vatricia (void)
+{
+    vatroot *root = vatricia_root_init(NULL, 0, sizeof(unsigned long), 0);
+    unsigned long key = 1;
+    int i;
+    int misses = 0;
+    int hits = 0;
+
+    for (i = 0; i < ROUNDS; i++) {
+	testnode_t *node = calloc(1, sizeof(testnode_t));
+	if (node == NULL)
+	    break;
+
+	key += i * 3241 + 12;
+	key %= ROUNDS * 2;
+
+	vatricia_node_init_length(&node->t_vatricia, sizeof(node->t_key));
+
+	node->t_key = htonl(key);
+
+#if 0
+	printf("%d: %lx\n", i, key);
+#endif
+
+	if (!vatricia_add(root, &node->t_vatricia)) {
+	    node->t_key = htonl(++key);
+	    if (!vatricia_add(root, &node->t_vatricia)) {
+		misses += 1;
+		printf("%d: %lx failed\n", i, key);
+		free(node);
+	    }
+	}
+    }
+
+    vatnode_t *pp;
+
+    for (pp = vatricia_find_next(root, NULL), i = 0; pp;
+	 pp = vatricia_find_next(root, pp), i++) {
+
+	testnode_t *node = vat_to_test(pp);
+	printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key));
+	hits += 1;
+    }
+
+    printf("hits:  %d\nmisses: %d\n", hits, misses);
+
+    return 0;
+}
+/* ---------------------------------------------------------------------- */
+
+
+#if 0
 void *
 dbm_mmap (dbm_memory_t *dbmp, size_t nbytes)
 {
@@ -66,29 +131,12 @@ dbm_mmap (dbm_memory_t *dbmp, size_t nbytes)
 
     return old_top;
 }
+#endif
 
-int
-main (int argc UNUSED, char **argv UNUSED)
+static int
+test_dbm (void)
 {
     char *cp;
-    int rc = 0;
-
-    for (argv++; *argv; argv++) {
-	cp = *argv;
-	if (*cp != '-')
-	    break;
-
-	if (streq(cp, "--help")) {
-	    print_help(NULL);
-	} else if (streq(cp, "--version") || streq(cp, "-V")) {
-	    print_version();
-	    exit(0);
-
-	} else {
-	    print_help(cp);
-	}
-    }
-
     dbm_memory_t *dbmp;
     size_t init_size;
     void *pointers[8<<10];
@@ -130,6 +178,36 @@ main (int argc UNUSED, char **argv UNUSED)
 		       round, cp, (unsigned long) off, cp2);
 	}
     }
+
+    return 0;
+}
+
+int
+main (int argc UNUSED, char **argv UNUSED)
+{
+    char *cp;
+    int rc = 0;
+
+    malloc_error_func_set(NULL);
+
+    for (argv++; *argv; argv++) {
+	cp = *argv;
+	if (*cp != '-')
+	    break;
+
+	if (streq(cp, "--help")) {
+	    print_help(NULL);
+	} else if (streq(cp, "--version") || streq(cp, "-V")) {
+	    print_version();
+	    exit(0);
+
+	} else {
+	    print_help(cp);
+	}
+    }
+
+    test_dbm();
+    test_vatricia();
 
     return rc;
 }
