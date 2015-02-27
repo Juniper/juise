@@ -36,7 +36,8 @@ LIBS = \
     -lsqlite3
 
 noinst_HEADERS = \
-    delta.h
+    delta.h \
+    vatricia.h
 
 if JUISE_DEBUG
 AM_CFLAGS += -g -DJUISE_DEBUG
@@ -47,10 +48,11 @@ AM_CFLAGS +=
 bin_PROGRAMS = delta
 
 delta_SOURCES = \
-    delta.c
+    delta.c \
+    vatricia.c
 
 delta_LDADD = ../libjuise/libjuise.la
-# delta_LDFLAGS = -static
+delta_LDFLAGS = -static
 
 #man_MANS = delta.1x
 #EXTRA_DIST = delta.1x
