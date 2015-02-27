@@ -83,7 +83,7 @@ const u_int8_t vatricia_bit_masks[8] = {
 static vat_root_t *
 vatricia_root_alloc (void)
 {
-    return (malloc(sizeof(vat_root_t)));
+    return malloc(sizeof(vat_root_t));
 }
 
 /*
@@ -141,7 +141,7 @@ vat_plen_to_bit (u_int16_t plen)
     } else {
 	result--;	/* subtract 0x100, or in 0xff */
     }
-    return (result);
+    return result;
 }
 
 
@@ -168,7 +168,7 @@ vatricia_search (vat_node_t *node, u_int16_t keylen, const u_int8_t *key)
 	    node = node->vn_left;
 	}
     }
-    return (node);
+    return node;
 }
 
 /*
@@ -198,7 +198,7 @@ vatricia_mismatch (const u_int8_t *k1, const u_int8_t *k2, u_int16_t bitlen)
     /*
      * Return what we found, or the original length if no difference.
      */
-    return (bitlen);
+    return bitlen;
 }
 
 /*
@@ -212,7 +212,7 @@ vatricia_find_leftmost (u_int16_t bit, vat_node_t *node)
 	bit = node->vn_bit;
 	node = node->vn_left;
     }
-    return (node);
+    return node;
 }
 
 
@@ -227,7 +227,7 @@ vatricia_find_rightmost (u_int16_t bit, vat_node_t *node)
 	bit = node->vn_bit;
 	node = node->vn_right;
     }
-    return (node);
+    return node;
 }
 
 
@@ -248,7 +248,7 @@ vatricia_root_init (vat_root_t *root, u_int16_t klen, u_int8_t off)
 	root->vr_key_bytes = klen;
 	root->vr_key_offset = off;
     }
-    return (root);
+    return root;
 }
 
 /*
@@ -273,9 +273,9 @@ vatricia_root_delete (vat_root_t *root)
 boolean
 vatricia_node_in_tree (const vat_node_t *node)
 {
-    return ((node->vn_bit != VAT_NOBIT) ||
+    return (node->vn_bit != VAT_NOBIT) ||
 	    (node->vn_right != NULL) ||
-	    (node->vn_left != NULL));
+	    (node->vn_left != NULL);
 }
 
 /*
@@ -331,7 +331,7 @@ vatricia_add (vat_root_t *root, vat_node_t *node)
     if (root->vr_root == NULL) {
 	root->vr_root = node->vn_left = node->vn_right = node;
 	node->vn_bit = VAT_NOBIT;
-	return(TRUE);
+	return TRUE;
     }
 
     /*
@@ -350,7 +350,7 @@ vatricia_add (vat_root_t *root, vat_node_t *node)
     bit = (node->vn_length < current->vn_length) ? node->vn_length : current->vn_length;
     diff_bit = vatricia_mismatch(key, vatricia_key(root, current), bit);
     if (diff_bit >= bit) {
-	return(FALSE);
+	return FALSE;
     }
 
     /*
@@ -384,7 +384,7 @@ vatricia_add (vat_root_t *root, vat_node_t *node)
 	node->vn_left = node;
     }
     *ptr = node;
-    return(TRUE);
+    return TRUE;
 }
 
 /*
@@ -404,7 +404,7 @@ vatricia_delete (vat_root_t *root, vat_node_t *node)
     assert(node->vn_left && node->vn_right);
     current = root->vr_root;
     if (!current) {
-	return (FALSE);
+	return FALSE;
     }
 
     /*
@@ -441,7 +441,7 @@ vatricia_delete (vat_root_t *root, vat_node_t *node)
      * in the tree.
      */
     if (current != node) {
-	return (FALSE);
+	return FALSE;
     }
 
     /*
@@ -493,7 +493,7 @@ vatricia_delete (vat_root_t *root, vat_node_t *node)
      */
     node->vn_left = node->vn_right = NULL;
     node->vn_bit = VAT_NOBIT;
-    return(TRUE);
+    return TRUE;
 }
 
 
@@ -518,14 +518,14 @@ vatricia_find_next (vat_root_t *root, vat_node_t *node)
     current = root->vr_root;
     if (current == NULL) {
 	assert(node == NULL);
-	return (NULL);
+	return NULL;
     }
 
     /*
      * If he didn't specify a node, return the leftmost guy.
      */
     if (node == NULL) {
-	return (vatricia_find_leftmost(VAT_NOBIT, current));
+	return vatricia_find_leftmost(VAT_NOBIT, current);
     }
 
     /*
@@ -550,9 +550,9 @@ vatricia_find_next (vat_root_t *root, vat_node_t *node)
      * If we found a left turn go right from there.  Otherwise barf.
      */
     if (lastleft) {
-	return (vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right));
+	return vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right);
     }
-    return (NULL);
+    return NULL;
 }
 
 /* 
@@ -636,14 +636,14 @@ vatricia_find_prev (vat_root_t *root, vat_node_t *node)
     current = root->vr_root;
     if (current == NULL) {
 	assert(node == NULL);
-	return (NULL);
+	return NULL;
     }
 
     /*
      * If he didn't specify a node, return the rightmost guy.
      */
     if (node == NULL) {
-	return (vatricia_find_rightmost(VAT_NOBIT, current));
+	return vatricia_find_rightmost(VAT_NOBIT, current);
     }
 
     /*
@@ -668,9 +668,9 @@ vatricia_find_prev (vat_root_t *root, vat_node_t *node)
      * If we found a right turn go right from there.  Otherwise barf.
      */
     if (lastright) {
-	return (vatricia_find_rightmost(lastright->vn_bit, lastright->vn_left));
+	return vatricia_find_rightmost(lastright->vn_bit, lastright->vn_left);
     }
-    return (NULL);
+    return NULL;
 }
 
 
@@ -693,7 +693,7 @@ vatricia_subtree_match (vat_root_t *root, u_int16_t plen, const void *v_prefix)
     assert(plen && plen <= (VAT_MAXKEY * 8));
 
     if (root->vr_root == NULL) {
-	return (NULL);
+	return NULL;
     }
 
     /*
@@ -710,7 +710,7 @@ vatricia_subtree_match (vat_root_t *root, u_int16_t plen, const void *v_prefix)
      * not to find any other matches).
      */
     if (p_bit > current->vn_length) {
-	return (NULL);
+	return NULL;
     }
 
     /*
@@ -719,9 +719,9 @@ vatricia_subtree_match (vat_root_t *root, u_int16_t plen, const void *v_prefix)
      */
     diff_bit = vatricia_mismatch(prefix, vatricia_key(root, current), p_bit);
     if (diff_bit < p_bit) {
-	return (NULL);
+	return NULL;
     }
-    return (current);
+    return current;
 }
 
 
@@ -766,9 +766,9 @@ vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t plen)
      */
     assert(current == node);
     if (lastleft == NULL || lastleft->vn_bit < p_bit) {
-	return (NULL);
+	return NULL;
     }
-    return (vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right));
+    return vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right);
 }
 
 
@@ -779,7 +779,7 @@ vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t plen)
 vat_node_t *
 vatricia_get (vat_root_t *root, u_int16_t key_bytes, const void *key)
 {
-    return (vatricia_get_inline(root, key_bytes, key));
+    return vatricia_get_inline(root, key_bytes, key);
 }
 
 /*
@@ -806,7 +806,7 @@ vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean e
      */
     current = root->vr_root;
     if (current == NULL) {
-	return (NULL);
+	return NULL;
     }
 
     /*
@@ -844,7 +844,7 @@ vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean e
 	 * to return that, we're golden.
 	 */
 	if (bit_len < current->vn_length || (eq && bit_len == current->vn_length)) {
-	    return (current);
+	    return current;
 	}
 
 	/*
@@ -882,9 +882,9 @@ vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean e
 	 * top.
 	 */
 	if (lastright && lastright->vn_bit >= diff_bit) {
-	    return (vatricia_search(root->vr_root, diff_bit, key));
+	    return vatricia_search(root->vr_root, diff_bit, key);
 	}
-	return (current);
+	return current;
     }
 
     /*
@@ -892,9 +892,9 @@ vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean e
      * a `lastleft' take a right turn there, otherwise return nothing.
      */
     if (lastleft) {
-	return (vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right));
+	return vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right);
     }
-    return (NULL);
+    return NULL;
 }
 
 int
@@ -941,7 +941,7 @@ vat_to_test (vat_node_t *node)
 
     result = (testnode *) ((int) node -
 			 ((int)&foo.vatricia - (int)&foo));
-    return(result);
+    return result;
 }
 
 /*
@@ -956,7 +956,7 @@ vatricia_lookup_random (vat_root_t *root)
     u_short lasttest = VAT_NOBIT;
   
     if (!current) {
-	return(NULL);
+	return NULL;
     }
 
     /*
@@ -971,7 +971,7 @@ vatricia_lookup_random (vat_root_t *root)
 	}
     } while (current->vn_bit > lasttest);
 
-    return(current);
+    return current;
 }
 
 typedef int vatricia_callback (vat_node_t *node);
@@ -991,7 +991,7 @@ int vat_traversal_internal (vat_node_t *node, vatricia_callback *callback)
 	result = (*callback)(node->vn_left);
     }
     if (!result) {
-	return(FALSE);
+	return FALSE;
     }
     
     if (node->vn_right->vn_bit > node->vn_bit) {
@@ -1000,7 +1000,7 @@ int vat_traversal_internal (vat_node_t *node, vatricia_callback *callback)
 	result = (*callback)(node->vn_right);
     }
     if (!result) {
-	return(FALSE);
+	return FALSE;
     }
 }
 
@@ -1015,9 +1015,9 @@ int
 vatricia_traversal (vat_root_t *root, vatricia_callback *callback)
 {
     if (!root->first) {
-	return(TRUE);
+	return TRUE;
     }
-    return(vat_traversal_internal(root->first, callback));
+    return vat_traversal_internal(root->first, callback);
 }
 
 static long test_count;
@@ -1026,7 +1026,7 @@ int
 test_callback (vat_node_t *node)
 {
     test_count++;
-    return(TRUE);
+    return TRUE;
 }
 
 #define SPECIAL 0xe6d364f1
