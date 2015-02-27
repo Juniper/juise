@@ -31,6 +31,8 @@
 
 #define ROUNDS 10000000
 
+int opt_verbose;
+
 static void
 print_help (const char *opt)
 {
@@ -55,7 +57,7 @@ print_version (void)
 
 typedef struct testnode_s {
     int t_dummy1;			/* Test worst case */
-    vatnode t_vatricia;			/* Our node */
+    vat_node_t t_vatricia;			/* Our node */
     unsigned long t_key;		/* Our key */
     int t_dummy2;			/* More worst case */
 } testnode_t;
@@ -65,7 +67,7 @@ VATNODE_TO_STRUCT(vat_to_test, testnode_t, t_vatricia);
 static int
 test_vatricia (void)
 {
-    vatroot *root = vatricia_root_init(NULL, 0, sizeof(unsigned long), 0);
+    vat_root_t *root = vatricia_root_init(NULL, 0, sizeof(unsigned long), 0);
     unsigned long key = 1;
     int i;
     int misses = 0;
@@ -91,19 +93,21 @@ test_vatricia (void)
 	    node->t_key = htonl(++key);
 	    if (!vatricia_add(root, &node->t_vatricia)) {
 		misses += 1;
-		printf("%d: %lx failed\n", i, key);
+		if (opt_verbose)
+		    printf("%d: %lx failed\n", i, key);
 		free(node);
 	    }
 	}
     }
 
-    vatnode_t *pp;
+    vat_node_t *pp;
 
     for (pp = vatricia_find_next(root, NULL), i = 0; pp;
 	 pp = vatricia_find_next(root, pp), i++) {
 
 	testnode_t *node = vat_to_test(pp);
-	printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key));
+	if (opt_verbose)
+	    printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key));
 	hits += 1;
     }
 
@@ -197,6 +201,10 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	if (streq(cp, "--help")) {
 	    print_help(NULL);
+
+	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
+	    opt_verbose = TRUE;
+
 	} else if (streq(cp, "--version") || streq(cp, "-V")) {
 	    print_version();
 	    exit(0);
