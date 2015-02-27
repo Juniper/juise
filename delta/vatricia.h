@@ -121,11 +121,11 @@ extern "C" {
  * Vatricia tree node.
  */
 typedef struct vat_node_s {
-    u_int16_t		vn_length;	/**< length of key, formated as bit */
-    u_int16_t		vn_bit;		/**< bit number to test for patricia */
-    struct vat_node_s	*vn_left;	/**< left branch for patricia search */
-    struct vat_node_s	*vn_right;	/**< right branch for same */
-    u_int8_t	        *vn_key_ptr[0];	/**< pointer to key */
+    u_int16_t vn_length;	/**< length of key, formated as bit */
+    u_int16_t vn_bit;		/**< bit number to test for patricia */
+    struct vat_node_s *vn_left;	/**< left branch for patricia search */
+    struct vat_node_s *vn_right; /**< right branch for same */
+    u_int8_t *vn_data[0];	/**< pointer to data/object */
 } vat_node_t;
 
 /**
@@ -185,8 +185,7 @@ typedef struct vat_root_s {
  *     A pointer to the vatricia tree root.
  */
 vat_root_t *
-vatricia_root_init (vat_root_t *root, u_int16_t key_bytes,
-		    u_int8_t key_offset); 
+vatricia_root_init (u_int16_t key_bytes, u_int8_t key_offset); 
 
 /**
  * @brief
@@ -579,7 +578,7 @@ vatricia_node_init (vat_node_t *node) {
 static inline const u_int8_t *
 vatricia_key (vat_root_t *root, vat_node_t *node)
 {
-    return node->vn_key_ptr[0] + root->vr_key_offset;
+    return node->vn_data[0] + root->vr_key_offset;
 }
 
 /**
@@ -705,7 +704,6 @@ vatricia_isempty (vat_root_t *root)
     return (root->vr_root == NULL);
 }
 
-
 /**
  * @brief
  * Returns the sizeof for an element in a structure.
@@ -771,9 +769,9 @@ procname (vat_node_t *ptr)                                              \
  * compile-time checking. 
  */
 
-#define VATRICIA_ROOT_INIT(_rootptr, _nodestruct, \
+#define VATRICIA_ROOT_INIT(_nodestruct, \
 			   _nodeelement, _keyelt) \
-           vatricia_root_init(_rootptr, \
+           vatricia_root_init( \
                       STRUCT_SIZEOF(_nodestruct, _keyelt),             \
                       STRUCT_OFFSET(_nodestruct, _nodeelement, _keyelt))
 
