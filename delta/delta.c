@@ -69,7 +69,7 @@ VATNODE_TO_STRUCT(vat_to_test, test_node_t, t_vatricia);
 static int
 test_vatricia (void)
 {
-    vat_root_t *root = vatricia_root_init(NULL, sizeof(unsigned long), 0);
+    vat_root_t *root = vatricia_root_init(sizeof(unsigned long), 0);
     unsigned long key = 1;
     int i;
     int misses = 0;
