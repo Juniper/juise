@@ -55,7 +55,7 @@ extern "C" {
  * @code
  *		struct foobar {
  *		    ...;
- *		    vatnode vatricia;
+ *		    vat_node_t vatricia;
  *		    u_char  key[KEYSIZE];
  *		    ...;
  *	        }
@@ -67,7 +67,7 @@ extern "C" {
  * @code
  *		struct blech {
  *		    ...;
- *		    vatnode vatricia;
+ *		    vat_node_t vatricia;
  *		    sockaddr_un *key_ptr;
  *		    ...;
  *	        }
@@ -121,10 +121,10 @@ extern "C" {
  * Vatricia tree node.
  */
 typedef struct vat_node_s {
-    u_int16_t		length;		/**< length of key, formated like bit */
-    u_int16_t		bit;		/**< bit number to test for patricia */
-    struct vat_node_s	*left;		/**< left branch for patricia search */
-    struct vat_node_s	*right;		/**< right branch for same */
+    u_int16_t		vn_length;	/**< length of key, formated as bit */
+    u_int16_t		vn_bit;		/**< bit number to test for patricia */
+    struct vat_node_s	*vn_left;	/**< left branch for patricia search */
+    struct vat_node_s	*vn_right;	/**< right branch for same */
     union {
 	u_int8_t	key[0];		/**< start of key */
 	u_int8_t	*key_ptr[0];	/**< pointer to key */
@@ -150,10 +150,9 @@ typedef struct vat_node_s {
  * Vatricia tree root.
  */
 typedef struct vat_root_s {
-    vat_node_t *root;			/**< root vatricia node */
-    u_int16_t key_bytes;		/**< (maximum) key length in bytes */
-    u_int8_t  key_offset;		/**< offset to key material */
-    u_int8_t  key_is_ptr;		/**< really boolean */
+    vat_node_t *vr_root;		/**< root vatricia node */
+    u_int16_t vr_key_bytes;		/**< (maximum) key length in bytes */
+    u_int8_t  vr_key_offset;		/**< offset to key material */
 } vat_root_t;
 
 /**
@@ -180,8 +179,6 @@ typedef struct vat_root_s {
  *
  * @param[in] root
  *     Pointer to vatricia tree root
- * @param[in] key_is_ptr
- *     Indicator that the key located at the offset is actually a pointer or not
  * @param[in] key_bytes
  *     Number of bytes in the key
  * @param[in] key_offset
@@ -191,7 +188,7 @@ typedef struct vat_root_s {
  *     A pointer to the vatricia tree root.
  */
 vat_root_t *
-vatricia_root_init (vat_root_t *root, boolean key_is_ptr, u_int16_t key_bytes,
+vatricia_root_init (vat_root_t *root, u_int16_t key_bytes,
 		    u_int8_t key_offset); 
 
 /**
@@ -585,10 +582,7 @@ vatricia_node_init (vat_node_t *node) {
 static inline const u_int8_t *
 vatricia_key (vat_root_t *root, vat_node_t *node)
 {
-    if (root->key_is_ptr) {
-	return (node->vatnode_keys.key_ptr[0] + root->key_offset);
-    }
-    return (node->vatnode_keys.key + root->key_offset);
+    return (node->vatnode_keys.key_ptr[0] + root->vr_key_offset);
 }
 
 /**
@@ -622,7 +616,7 @@ vat_key_test (const u_int8_t *key, u_int16_t bit)
 static inline u_int16_t
 vatricia_length (vat_node_t *node)
 {
-    return (((node->length) >> 8) + 1);
+    return (((node->vn_length) >> 8) + 1);
 }
 
 /**
@@ -669,7 +663,7 @@ vatricia_get_inline (vat_root_t *root, u_int16_t key_bytes, const void *v_key)
     if (!key_bytes) {
 	abort();
     }
-    current = root->root;
+    current = root->vr_root;
     if (!current) {
 	return(0);
     }
@@ -679,19 +673,19 @@ vatricia_get_inline (vat_root_t *root, u_int16_t key_bytes, const void *v_key)
      */
     bit = VAT_NOBIT;
     bit_len = vatricia_length_to_bit(key_bytes);
-    while (bit < current->bit) {
-	bit = current->bit;
+    while (bit < current->vn_bit) {
+	bit = current->vn_bit;
 	if (bit < bit_len && vat_key_test(key, bit)) {
-	    current = current->right;
+	    current = current->vn_right;
 	} else {
-	    current = current->left;
+	    current = current->vn_left;
 	}
     }
 
     /*
      * If the lengths don't match we're screwed.  Otherwise do a compare.
      */
-    if (current->length != bit_len
+    if (current->vn_length != bit_len
 	|| bcmp(vatricia_key(root, current), key, key_bytes)) {
 	return (0);
     }
@@ -711,7 +705,7 @@ vatricia_get_inline (vat_root_t *root, u_int16_t key_bytes, const void *v_key)
 static inline u_int8_t
 vatricia_isempty (vat_root_t *root)
 {
-    return (root->root == NULL);
+    return (root->vr_root == NULL);
 }
 
 
@@ -780,9 +774,9 @@ procname (vat_node_t *ptr)                                              \
  * compile-time checking. 
  */
 
-#define VATRICIA_ROOT_INIT(_rootptr, _bool_key_is_ptr, _nodestruct, \
+#define VATRICIA_ROOT_INIT(_rootptr, _nodestruct, \
 			   _nodeelement, _keyelt) \
-           vatricia_root_init(_rootptr, _bool_key_is_ptr,              \
+           vatricia_root_init(_rootptr, \
                       STRUCT_SIZEOF(_nodestruct, _keyelt),             \
                       STRUCT_OFFSET(_nodestruct, _nodeelement, _keyelt))
 
@@ -810,7 +804,7 @@ procname (vat_node_t *ptr)                                              \
 static inline vat_node_t *
 vatricia_lookup(vat_root_t *root, const void *key)
 {
-	return (vatricia_get(root, root->key_bytes, key));
+	return (vatricia_get(root, root->vr_key_bytes, key));
 }
 
 /**
@@ -835,7 +829,7 @@ vatricia_lookup(vat_root_t *root, const void *key)
 static inline vat_node_t *
 vatricia_lookup_get (vat_root_t *root, void *key)
 {
-    return (vatricia_getnext(root, root->key_bytes, key, TRUE));
+    return (vatricia_getnext(root, root->vr_key_bytes, key, TRUE));
 }
 
 /*
