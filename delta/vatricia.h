@@ -42,7 +42,7 @@ extern "C" {
  *
  * This package supports keys up to 256 bytes in length.  For random data,
  * all operations are O(log n).  There are two necessary data structures:
- * one is the root of a tree (type vatroot), and the contents of this are
+ * one is the root of a tree (type vat_root_t), and the contents of this are
  * hidden from you.  The other is a node (type vatnode).  The contents of
  * this data structure are (unfortunately) public to make the compiler
  * happy.
@@ -76,11 +76,11 @@ extern "C" {
  * In either case you can also specify an offset to the actual key material.
  * The choice of key location and offset, and the length of keys stored
  * in the tree if this is fixed, is specified in a call to
- * vatricia_root_init().  If no vatroot pointer is passed in one is
+ * vatricia_root_init().  If no vat_root_t pointer is passed in one is
  * allocated and returned, otherwise the specified root pointer is
  * filled in.
  *
- * If you want to use your own allocate & free routines for vatroots,
+ * If you want to use your own allocate & free routines for vat_root_ts,
  * set them using vatricia_set_allocator().
  *
  * For each node that you wish to add to the tree, you must first
@@ -120,16 +120,16 @@ extern "C" {
  * @brief
  * Vatricia tree node.
  */
-typedef struct vatnode_ {
+typedef struct vat_node_s {
     u_int16_t		length;		/**< length of key, formated like bit */
     u_int16_t		bit;		/**< bit number to test for patricia */
-    struct vatnode_	*left;		/**< left branch for patricia search */
-    struct vatnode_	*right;		/**< right branch for same */
+    struct vat_node_s	*left;		/**< left branch for patricia search */
+    struct vat_node_s	*right;		/**< right branch for same */
     union {
 	u_int8_t	key[0];		/**< start of key */
 	u_int8_t	*key_ptr[0];	/**< pointer to key */
     } vatnode_keys;
-} vatnode;
+} vat_node_t;
 
 /**
  * @brief
@@ -139,7 +139,7 @@ typedef struct vatnode_ {
 
 /**
  * @brief
- * A macro to initialize the `length' in a vatnode at compile time given
+ * A macro to initialize the `length' in a vat_node_t at compile time given
  * the length of a key.  Good for the keyword tree.  Note the length
  * must be greater than zero.
  */
@@ -149,29 +149,26 @@ typedef struct vatnode_ {
  * @brief
  * Vatricia tree root.
  */
-typedef struct vatroot_ {
-    vatnode *root;			/**< root vatricia node */
+typedef struct vat_root_s {
+    vat_node_t *root;			/**< root vatricia node */
     u_int16_t key_bytes;		/**< (maximum) key length in bytes */
     u_int8_t  key_offset;		/**< offset to key material */
     u_int8_t  key_is_ptr;		/**< really boolean */
-} vatroot;
-
-typedef struct vatnode_ vatnode_t; /* backward compatibility */
-typedef struct vatroot_ vatroot_t; /* backward compatibility */
+} vat_root_t;
 
 /**
  * @brief
- * Typedef for user-specified vatroot allocation function.
+ * Typedef for user-specified vat_root_t allocation function.
  * @sa vatricia_set_allocator
  */
- typedef vatroot *(*vatricia_root_alloc_fn)(void);
+ typedef vat_root_t *(*vatricia_root_alloc_fn)(void);
  
 /**
  * @brief
- * Typedef for user-specified vatroot free function.
+ * Typedef for user-specified vat_root_t free function.
  * @sa vatricia_set_allocator
  */
- typedef void (*vatricia_root_free_fn)(vatroot *);
+ typedef void (*vatricia_root_free_fn)(vat_root_t *);
 
 /*
  * Prototypes
@@ -193,8 +190,8 @@ typedef struct vatroot_ vatroot_t; /* backward compatibility */
  * @return 
  *     A pointer to the vatricia tree root.
  */
-vatroot *
-vatricia_root_init (vatroot *root, boolean key_is_ptr, u_int16_t key_bytes,
+vat_root_t *
+vatricia_root_init (vat_root_t *root, boolean key_is_ptr, u_int16_t key_bytes,
 		    u_int8_t key_offset); 
 
 /**
@@ -208,7 +205,7 @@ vatricia_root_init (vatroot *root, boolean key_is_ptr, u_int16_t key_bytes,
  *     Pointer to vatricia tree root
  */
 void
-vatricia_root_delete (vatroot *root);
+vatricia_root_delete (vat_root_t *root);
 
 /**
  * @brief
@@ -222,7 +219,7 @@ vatricia_root_delete (vatroot *root);
  *     Length of the key, in bytes
  */
 void
-vatricia_node_init_length (vatnode *node, u_int16_t key_bytes);   
+vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes);   
 
 /**
  * @brief
@@ -239,7 +236,7 @@ vatricia_node_init_length (vatnode *node, u_int16_t key_bytes);
  *      with (variable length keys), something already in the tree.
  */
 boolean
-vatricia_add (vatroot *root, vatnode *node);
+vatricia_add (vat_root_t *root, vat_node_t *node);
 
 /**
  * @brief
@@ -255,7 +252,7 @@ vatricia_add (vatroot *root, vatnode *node);
  *     @c FALSE if the specified node is not in the tree.
  */
 boolean
-vatricia_delete (vatroot *root, vatnode *node);
+vatricia_delete (vat_root_t *root, vat_node_t *node);
 
 /**
  * @brief
@@ -274,8 +271,8 @@ vatricia_delete (vatroot *root, vatnode *node);
  *     @c NULL if the specified node is already the largest; 
  *     otherwise a pointer to the node with the next numerically larger key.
  */
-vatnode *
-vatricia_find_next (vatroot *root, vatnode *node);
+vat_node_t *
+vatricia_find_next (vat_root_t *root, vat_node_t *node);
 
 /**
  * @brief
@@ -302,8 +299,8 @@ vatricia_find_next (vatroot *root, vatnode *node);
  *      otherwise a pointer to the vatricia tree node with next numerically 
  *      smaller key.
  */
-vatnode *
-vatricia_find_prev (vatroot *root, vatnode *node);
+vat_node_t *
+vatricia_find_prev (vat_root_t *root, vat_node_t *node);
 
 /**
  * @brief
@@ -322,8 +319,8 @@ vatricia_find_prev (vatroot *root, vatnode *node);
  *     otherwise a pointer to the vatricia tree node with the 
  *     numerically smallest key which includes the prefix.
  */
-vatnode *
-vatricia_subtree_match (vatroot *root, u_int16_t prefix_len,
+vat_node_t *
+vatricia_subtree_match (vat_root_t *root, u_int16_t prefix_len,
 			const void *prefix);
 
 /**
@@ -342,8 +339,8 @@ vatricia_subtree_match (vatroot *root, u_int16_t prefix_len,
  * @return 
  *     A pointer to next numerically larger vatricia tree node.
  */
-vatnode *
-vatricia_subtree_next (vatroot *root, vatnode *node, u_int16_t prefix_len);
+vat_node_t *
+vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t prefix_len);
 
 /**
  * @brief
@@ -360,8 +357,8 @@ vatricia_subtree_next (vatroot *root, vatnode *node, u_int16_t prefix_len);
  *     @c NULL if a match is not found; 
  *     otherwise a pointer to the matching vatricia tree node
  */
-vatnode *
-vatricia_get (vatroot *root, u_int16_t key_bytes, const void *key);
+vat_node_t *
+vatricia_get (vat_root_t *root, u_int16_t key_bytes, const void *key);
 
 /**
  * @brief
@@ -385,8 +382,8 @@ vatricia_get (vatroot *root, u_int16_t key_bytes, const void *key);
  * @return 
  *     A pointer to vatricia tree node.
  */
-vatnode *
-vatricia_getnext (vatroot *root, u_int16_t key_bytes, const void *key,
+vat_node_t *
+vatricia_getnext (vat_root_t *root, u_int16_t key_bytes, const void *key,
 		  boolean return_eq);
 
 /**
@@ -400,7 +397,7 @@ vatricia_getnext (vatroot *root, u_int16_t key_bytes, const void *key,
  *      @c TRUE if the node is in the tree; @c FALSE otherwise.
  */
 boolean
-vatricia_node_in_tree (const vatnode *node);
+vatricia_node_in_tree (const vat_node_t *node);
 
 /**
  * @brief
@@ -421,7 +418,7 @@ vatricia_node_in_tree (const vatnode *node);
  *     @li 1 if the left key is numerically greater than the right
  */
 int
-vatricia_compare_nodes (vatroot *root, vatnode *left, vatnode *right);
+vatricia_compare_nodes (vat_root_t *root, vat_node_t *left, vat_node_t *right);
 
 /**
  * @brief
@@ -465,8 +462,8 @@ vatricia_set_allocator (vatricia_root_alloc_fn my_alloc,
  *
  * @sa vatricia_get
  */
-const vatnode *
-vatricia_cons_get (const vatroot *root, const u_int16_t key_bytes, 
+const vat_node_t *
+vatricia_cons_get (const vat_root_t *root, const u_int16_t key_bytes, 
 		   const void *key);
 
 /**
@@ -484,8 +481,8 @@ vatricia_cons_get (const vatroot *root, const u_int16_t key_bytes,
  *
  * @sa vatricia_find_next
  */
-const vatnode *
-vatricia_cons_find_next (const vatroot *root, const vatnode *node);
+const vat_node_t *
+vatricia_cons_find_next (const vat_root_t *root, const vat_node_t *node);
 
 /**
  * @brief
@@ -502,8 +499,8 @@ vatricia_cons_find_next (const vatroot *root, const vatnode *node);
  *
  * @sa vatricia_find_prev
  */
-const vatnode *
-vatricia_cons_find_prev (const vatroot *root, const vatnode *node);
+const vat_node_t *
+vatricia_cons_find_prev (const vat_root_t *root, const vat_node_t *node);
 
 /**
  * @brief
@@ -523,8 +520,8 @@ vatricia_cons_find_prev (const vatroot *root, const vatnode *node);
  * 
  * @sa vatricia_subtree_match
  */
-const vatnode *
-vatricia_cons_subtree_match (const vatroot *root, const u_int16_t prefix_len,
+const vat_node_t *
+vatricia_cons_subtree_match (const vat_root_t *root, const u_int16_t prefix_len,
 			     const void *prefix);
 
 /**
@@ -543,8 +540,8 @@ vatricia_cons_subtree_match (const vatroot *root, const u_int16_t prefix_len,
  * 
  * @sa vatricia_subtree_next
  */
-const vatnode *
-vatricia_cons_subtree_next (const vatroot *root, const vatnode *node,
+const vat_node_t *
+vatricia_cons_subtree_next (const vat_root_t *root, const vat_node_t *node,
 			    const u_int16_t prefix_len);
 
 /*
@@ -563,7 +560,7 @@ vatricia_cons_subtree_next (const vatroot *root, const vatnode *node,
  *     Pointer to vatricia tree node
  */
 static inline void
-vatricia_node_init (vatnode *node) {
+vatricia_node_init (vat_node_t *node) {
     vatricia_node_init_length((node), 0);
 } 
 
@@ -586,7 +583,7 @@ vatricia_node_init (vatnode *node) {
  *     A pointer to the start of node key.
  */
 static inline const u_int8_t *
-vatricia_key (vatroot *root, vatnode *node)
+vatricia_key (vat_root_t *root, vat_node_t *node)
 {
     if (root->key_is_ptr) {
 	return (node->vatnode_keys.key_ptr[0] + root->key_offset);
@@ -623,7 +620,7 @@ vat_key_test (const u_int8_t *key, u_int16_t bit)
  *     The key length, in bytes.
  */
 static inline u_int16_t
-vatricia_length (vatnode *node)
+vatricia_length (vat_node_t *node)
 {
     return (((node->length) >> 8) + 1);
 }
@@ -659,13 +656,13 @@ vatricia_length_to_bit (u_int16_t length)
  *     Key to match
  *
  * @return 
- *     A pointer to the vatnode containing the matching key;
+ *     A pointer to the vat_node_t containing the matching key;
  *     @c NULL if not found
  */
-static inline vatnode *
-vatricia_get_inline (vatroot *root, u_int16_t key_bytes, const void *v_key)
+static inline vat_node_t *
+vatricia_get_inline (vat_root_t *root, u_int16_t key_bytes, const void *v_key)
 {
-    vatnode *current;
+    vat_node_t *current;
     u_int16_t bit, bit_len;
     const u_int8_t *key = (const u_int8_t *)v_key;
 
@@ -712,7 +709,7 @@ vatricia_get_inline (vatroot *root, u_int16_t key_bytes, const void *v_key)
  *     1 if the tree is empty, 0 otherwise.
  */
 static inline u_int8_t
-vatricia_isempty (vatroot *root)
+vatricia_isempty (vat_root_t *root)
 {
     return (root->root == NULL);
 }
@@ -737,11 +734,11 @@ vatricia_isempty (vatroot *root)
 
 /**
  * @brief
- * Macro to define an inline to map from a vatnode entry back to the
+ * Macro to define an inline to map from a vat_node_t entry back to the
  * containing data structure.
  *
  * This is just a handy way of defining the inline, which will return
- * @c NULL if the vatnode pointer is @c NULL, or the enclosing structure
+ * @c NULL if the vat_node_t pointer is @c NULL, or the enclosing structure
  * if not.
  *
  * The @c assert() will be removed by the compiler unless your code 
@@ -750,9 +747,9 @@ vatricia_isempty (vatroot *root)
  * the KEY field instead of the NODE field).  It's harmless.
  */
 #define VATNODE_TO_STRUCT(procname, structname, fieldname) \
-    static inline structname * procname (vatnode *ptr)\
+    static inline structname * procname (vat_node_t *ptr)\
     {\
-        assert(STRUCT_SIZEOF(structname, fieldname) == sizeof(vatnode));\
+        assert(STRUCT_SIZEOF(structname, fieldname) == sizeof(vat_node_t));\
 	if (ptr)\
 	    return(QUIET_CAST(structname *, ((u_char *) ptr) - \
 				    offsetof(structname, fieldname))); \
@@ -761,14 +758,14 @@ vatricia_isempty (vatroot *root)
 
 /**
  * @brief
- * Constant version of the macro to define an inline to map from a vatnode 
+ * Constant version of the macro to define an inline to map from a vat_node_t 
  * entry back to the containing data structure.
  */
 #define VATNODE_TO_CONS_STRUCT(procname, structname, fieldname)      \
 static inline const structname *                                     \
-procname (vatnode *ptr)                                              \
+procname (vat_node_t *ptr)                                              \
 {                                                                    \
-    assert(STRUCT_SIZEOF(structname, fieldname) == sizeof(vatnode)); \
+    assert(STRUCT_SIZEOF(structname, fieldname) == sizeof(vat_node_t)); \
     if (ptr) {                                                       \
         return ((const structname *) ((uchar *) ptr) -               \
             offsetof(structname, fieldname));                        \
@@ -810,8 +807,8 @@ procname (vatnode *ptr)                                              \
  *
  * @sa vatricia_get
  */
-static inline vatnode *
-vatricia_lookup(vatroot *root, const void *key)
+static inline vat_node_t *
+vatricia_lookup(vat_root_t *root, const void *key)
 {
 	return (vatricia_get(root, root->key_bytes, key));
 }
@@ -835,8 +832,8 @@ vatricia_lookup(vatroot *root, const void *key)
  * @return
  *     A pointer to vatricia tree node.
  */
-static inline vatnode *
-vatricia_lookup_geq(vatroot *root, void *key)
+static inline vat_node_t *
+vatricia_lookup_geq(vat_root_t *root, void *key)
 {
     return (vatricia_getnext(root, root->key_bytes, key, TRUE));
 }
