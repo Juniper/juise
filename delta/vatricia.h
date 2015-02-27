@@ -833,7 +833,7 @@ vatricia_lookup(vat_root_t *root, const void *key)
  *     A pointer to vatricia tree node.
  */
 static inline vat_node_t *
-vatricia_lookup_geq(vat_root_t *root, void *key)
+vatricia_lookup_get (vat_root_t *root, void *key)
 {
     return (vatricia_getnext(root, root->key_bytes, key, TRUE));
 }
