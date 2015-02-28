@@ -122,9 +122,18 @@ typedef struct vat_node_s {
     uint16_t vn_length;		/**< length of key, formated as bit */
     uint16_t vn_bit;		/**< bit number to test for patricia */
     uint8_t *vn_data;		/**< pointer to data/object */
+#if 0
     struct vat_node_s *vn_left;	/**< left branch for patricia search */
     struct vat_node_s *vn_right; /**< right branch for same */
+#endif
+    struct vat_node_s *vn_child[2];/**< branches for patricia search */
 } vat_node_t;
+
+/* Values for vn_child members */
+#define VN_CHILD_LEFT		0
+#define VN_CHILD_RIGHT		1
+#define vn_left vn_child[VN_CHILD_LEFT]
+#define vn_right vn_child[VN_CHILD_RIGHT]
 
 /**
  * @brief
@@ -652,7 +661,7 @@ vatricia_length_to_bit (u_int16_t length)
  *     @c NULL if not found
  */
 static inline vat_node_t *
-vatricia_get_inline (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+vatricia_get_inline (dbm_memory_t *dbmp, vat_root_t *root,
 		     u_int16_t key_bytes, const void *v_key)
 {
     vat_node_t *current;
