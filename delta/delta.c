@@ -57,9 +57,6 @@ print_version (void)
 
 typedef struct test_node_s {
     int t_dummy1;			/* Test worst case */
-    vat_node_t t_vatricia;		/* Our node */
-    void *t_pointer;			/* Point to key */
-    int t_dummy3;
     unsigned long t_key;		/* Our key */
     int t_dummy2;			/* More worst case */
 } test_node_t;
@@ -69,7 +66,10 @@ VATNODE_TO_STRUCT(vat_to_test, test_node_t, t_vatricia);
 static int
 test_vatricia (void)
 {
-    vat_root_t *root = vatricia_root_init(sizeof(unsigned long), 0);
+    dbm_memory_t *dbmp = NULL;
+
+    vat_root_t *root = vatricia_root_init(dbmp, sizeof(unsigned long),
+					  offsetof(test_node_t, t_key));
     unsigned long key = 1;
     int i;
     int misses = 0;
@@ -83,18 +83,15 @@ test_vatricia (void)
 	key += i * 3241 + 12;
 	key %= ROUNDS * 2;
 
-	vatricia_node_init_length(&node->t_vatricia, sizeof(node->t_key));
-
 	node->t_key = htonl(key);
-	node->t_pointer = &node->t_key;
 
 #if 0
 	printf("%d: %lx\n", i, key);
 #endif
 
-	if (!vatricia_add(root, &node->t_vatricia)) {
+	if (!vatricia_add(dbmp, root, node)) {
 	    node->t_key = htonl(++key);
-	    if (!vatricia_add(root, &node->t_vatricia)) {
+	    if (!vatricia_add(dbmp, root, node)) {
 		misses += 1;
 		if (opt_verbose)
 		    printf("%d: %lx failed\n", i, key);
@@ -105,10 +102,10 @@ test_vatricia (void)
 
     vat_node_t *pp;
 
-    for (pp = vatricia_find_next(root, NULL), i = 0; pp;
-	 pp = vatricia_find_next(root, pp), i++) {
+    for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
+	 pp = vatricia_find_next(dbmp, root, pp), i++) {
 
-	test_node_t *node = vat_to_test(pp);
+	test_node_t *node = vat_to_test(dbmp, pp);
 	if (opt_verbose)
 	    printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key));
 	hits += 1;
