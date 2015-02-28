@@ -233,7 +233,7 @@ extern caddr_t dbm_schema_address(void);
 extern caddr_t dbm_compat_address(void);
 
 static inline dbm_offset_t
-dbm_offset_of (dbm_memory_t *dbmp, void *ptr)
+dbm_offset (dbm_memory_t *dbmp, void *ptr)
 {
     if (ptr == NULL)
 	return DBM_OFFSET_NULL;
@@ -246,7 +246,7 @@ dbm_offset_of (dbm_memory_t *dbmp, void *ptr)
 }
 
 static inline void *
-dbm_pointer_of (dbm_memory_t *dbmp, dbm_offset_t off)
+dbm_pointer (dbm_memory_t *dbmp, dbm_offset_t off)
 {
     if (off == DBM_OFFSET_NULL || off >= dbmp->dm_size)
 	return NULL;
