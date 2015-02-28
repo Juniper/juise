@@ -32,6 +32,7 @@
 #define ROUNDS 10000000
 
 int opt_verbose;
+const char *opt_database;
 
 static void
 print_help (const char *opt)
@@ -71,47 +72,62 @@ test_vatricia (void)
     vat_root_t *root = vatricia_root_init(dbmp, sizeof(unsigned long),
 					  offsetof(test_node_t, t_key));
     unsigned long key = 1;
-    int i;
-    int misses = 0;
-    int hits = 0;
+    int i, j;
+    int misses, hits;
 
-    for (i = 0; i < ROUNDS; i++) {
-	test_node_t *node = calloc(1, sizeof(test_node_t));
-	if (node == NULL)
-	    break;
+    for (j = 0; j < 5; j++) {
+	printf("pass: %d\n", j + 1);
+	hits = misses = 0;
+	key = 1;
 
-	key += i * 3241 + 12;
-	key %= ROUNDS * 2;
+	for (i = 0; i < ROUNDS; i++) {
+	    test_node_t *node = calloc(1, sizeof(test_node_t));
+	    if (node == NULL)
+		break;
 
-	node->t_key = htonl(key);
+	    key += i * 3241 + 12;
+	    key %= ROUNDS * 2;
+
+	    node->t_key = htonl(key);
 
 #if 0
-	printf("%d: %lx\n", i, key);
+	    printf("%d: %lx\n", i, key);
 #endif
 
-	if (!vatricia_add(dbmp, root, node)) {
-	    node->t_key = htonl(++key);
 	    if (!vatricia_add(dbmp, root, node)) {
-		misses += 1;
-		if (opt_verbose)
-		    printf("%d: %lx failed\n", i, key);
-		free(node);
+		node->t_key = htonl(++key);
+		if (!vatricia_add(dbmp, root, node)) {
+		    misses += 1;
+		    if (opt_verbose)
+			printf("%d: %lx failed\n", i, key);
+		    free(node);
+		}
 	    }
 	}
+
+	vat_node_t *pp;
+
+	for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
+	     pp = vatricia_find_next(dbmp, root, pp), i++) {
+
+	    test_node_t *node = vat_to_test(dbmp, pp);
+	    if (opt_verbose)
+		printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key));
+	    hits += 1;
+	}
+
+	printf("hits:  %d\nmisses: %d\n", hits, misses);
+
+	for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
+	     pp = vatricia_find_next(dbmp, root, NULL)) {
+	    test_node_t *node = vat_to_test(dbmp, pp);
+	    vatricia_delete(dbmp, root, pp);
+	    free(node);
+	}
+
+	printf("empty: %s\n", vatricia_isempty(root) ? "true" : "false");
+
     }
-
-    vat_node_t *pp;
-
-    for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
-	 pp = vatricia_find_next(dbmp, root, pp), i++) {
-
-	test_node_t *node = vat_to_test(dbmp, pp);
-	if (opt_verbose)
-	    printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key));
-	hits += 1;
-    }
-
-    printf("hits:  %d\nmisses: %d\n", hits, misses);
 
     return 0;
 }
@@ -149,11 +165,14 @@ test_dbm (void)
 
     init_size = 32<<20;
 
+    char *waste = malloc(480*1024);
+    waste += 1;
+
 #if 0
     dbmp->dm_size = init_size;
     dbmp->dm_top = (sizeof(*dbmp) + DBM_PAGE_SIZE - 1) & ~DBM_PAGE_MASK;
 #else
-    dbmp = dbm_open("test.db", (caddr_t) DBM_COMPAT_ADDR,
+    dbmp = dbm_open(opt_database, (caddr_t) DBM_COMPAT_ADDR,
 		    10, 10 * DBM_PAGE_SIZE, &flags);
     if (dbmp == 0)
 	err(1, "bad dbmp");
@@ -175,8 +194,8 @@ test_dbm (void)
 	    cp = pointers[idx] = dbm_malloc(dbmp, idx);
 	    if (cp)
 		memset(cp, 0x55, idx);
-	    dbm_offset_t off = dbm_offset_of(dbmp, cp);
-	    char *cp2 = dbm_pointer_of(dbmp, off);
+	    dbm_offset_t off = dbm_offset(dbmp, cp);
+	    char *cp2 = dbm_pointer(dbmp, off);
 	    if (cp != cp2)
 		printf("%d: wrong: %p -> %lu ->  %p\n",
 		       round, cp, (unsigned long) off, cp2);
@@ -199,7 +218,10 @@ main (int argc UNUSED, char **argv UNUSED)
 	if (*cp != '-')
 	    break;
 
-	if (streq(cp, "--help")) {
+	if (streq(cp, "--database")) {
+	    opt_database = *++argv;
+
+	} else if (streq(cp, "--help")) {
 	    print_help(NULL);
 
 	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
@@ -212,7 +234,20 @@ main (int argc UNUSED, char **argv UNUSED)
 	} else {
 	    print_help(cp);
 	}
+
+	if (*argv == NULL) {
+	    /*
+	     * The only way we could have a null argv is if we said
+	     * "xxx = *++argv" off the end of argv.  Bail.
+	     */
+	    fprintf(stderr, "missing option value: %s\n", cp);
+	    print_help(NULL);
+	    return 1;
+	}
     }
+
+    if (opt_database == NULL)
+	opt_database = "test.db";
 
     test_dbm();
     test_vatricia();
