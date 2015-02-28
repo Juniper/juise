@@ -16,15 +16,9 @@
 #include <stddef.h>
 #include <assert.h>
 
+#include "juiseconfig.h"
 #include <libjuise/common/bits.h>
-
-/*
- * Use C linkage when using a C++ compiler
- */
-#ifdef __cplusplus
-extern "C" { 
-    namespace junos {
-#endif /* __cplusplus */
+#include <libjuise/memory/memory.h>
 
 /**
  * @file vatricia.h
@@ -116,16 +110,20 @@ extern "C" {
  * recommended.
  */
 
+typedef uint32_t vat_offset_t;	/* Offsets within the database */
+
 /**
  * @brief
  * Vatricia tree node.
  */
 typedef struct vat_node_s {
-    u_int16_t vn_length;	/**< length of key, formated as bit */
-    u_int16_t vn_bit;		/**< bit number to test for patricia */
+    uint16_t vn_refcount;	/**< number of pointers to this node */
+    uint16_t vn_creator;	/**< Which root tree created this node */
+    uint16_t vn_length;		/**< length of key, formated as bit */
+    uint16_t vn_bit;		/**< bit number to test for patricia */
+    uint8_t *vn_data;		/**< pointer to data/object */
     struct vat_node_s *vn_left;	/**< left branch for patricia search */
     struct vat_node_s *vn_right; /**< right branch for same */
-    u_int8_t *vn_data[0];	/**< pointer to data/object */
 } vat_node_t;
 
 /**
@@ -154,17 +152,17 @@ typedef struct vat_root_s {
 
 /**
  * @brief
- * Typedef for user-specified vat_root_t allocation function.
+ * Typedef for user-specified vatricia allocation function.
  * @sa vatricia_set_allocator
  */
- typedef vat_root_t *(*vatricia_root_alloc_fn)(void);
+typedef void *(*vatricia_alloc_fn)(dbm_memory_t *);
  
 /**
  * @brief
- * Typedef for user-specified vat_root_t free function.
+ * Typedef for user-specified vatricia free function.
  * @sa vatricia_set_allocator
  */
- typedef void (*vatricia_root_free_fn)(vat_root_t *);
+typedef void (*vatricia_free_fn)(dbm_memory_t *, void *);
 
 /*
  * Prototypes
@@ -185,7 +183,8 @@ typedef struct vat_root_s {
  *     A pointer to the vatricia tree root.
  */
 vat_root_t *
-vatricia_root_init (u_int16_t key_bytes, u_int8_t key_offset); 
+vatricia_root_init (dbm_memory_t *dbmp,
+		    u_int16_t key_bytes, u_int8_t key_offset); 
 
 /**
  * @brief
@@ -198,7 +197,7 @@ vatricia_root_init (u_int16_t key_bytes, u_int8_t key_offset);
  *     Pointer to vatricia tree root
  */
 void
-vatricia_root_delete (vat_root_t *root);
+vatricia_root_delete (dbm_memory_t *dbmp, vat_root_t *root);
 
 /**
  * @brief
@@ -212,7 +211,7 @@ vatricia_root_delete (vat_root_t *root);
  *     Length of the key, in bytes
  */
 void
-vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes);   
+vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes);
 
 /**
  * @brief
@@ -220,8 +219,8 @@ vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes);
  *
  * @param[in] root
  *     Pointer to vatricia tree root
- * @param[in] node
- *     Pointer to vatricia tree node
+ * @param[in] data
+ *     Pointer to data node
  *
  * @return 
  *     @c TRUE if the node is successfully added; 
@@ -229,7 +228,7 @@ vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes);
  *      with (variable length keys), something already in the tree.
  */
 boolean
-vatricia_add (vat_root_t *root, vat_node_t *node);
+vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data);
 
 /**
  * @brief
@@ -245,7 +244,7 @@ vatricia_add (vat_root_t *root, vat_node_t *node);
  *     @c FALSE if the specified node is not in the tree.
  */
 boolean
-vatricia_delete (vat_root_t *root, vat_node_t *node);
+vatricia_delete (dbm_memory_t *dbmp, vat_root_t *root, vat_node_t *node);
 
 /**
  * @brief
@@ -265,7 +264,7 @@ vatricia_delete (vat_root_t *root, vat_node_t *node);
  *     otherwise a pointer to the node with the next numerically larger key.
  */
 vat_node_t *
-vatricia_find_next (vat_root_t *root, vat_node_t *node);
+vatricia_find_next (dbm_memory_t *dbmp, vat_root_t *root, vat_node_t *node);
 
 /**
  * @brief
@@ -293,7 +292,7 @@ vatricia_find_next (vat_root_t *root, vat_node_t *node);
  *      smaller key.
  */
 vat_node_t *
-vatricia_find_prev (vat_root_t *root, vat_node_t *node);
+vatricia_find_prev (dbm_memory_t *dbmp, vat_root_t *root, vat_node_t *node);
 
 /**
  * @brief
@@ -313,8 +312,8 @@ vatricia_find_prev (vat_root_t *root, vat_node_t *node);
  *     numerically smallest key which includes the prefix.
  */
 vat_node_t *
-vatricia_subtree_match (vat_root_t *root, u_int16_t prefix_len,
-			const void *prefix);
+vatricia_subtree_match (dbm_memory_t *dbmp, vat_root_t *root,
+			u_int16_t prefix_len, const void *prefix);
 
 /**
  * @brief
@@ -333,7 +332,8 @@ vatricia_subtree_match (vat_root_t *root, u_int16_t prefix_len,
  *     A pointer to next numerically larger vatricia tree node.
  */
 vat_node_t *
-vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t prefix_len);
+vatricia_subtree_next (dbm_memory_t *dbmp, vat_root_t *root,
+		       vat_node_t *node, u_int16_t prefix_len);
 
 /**
  * @brief
@@ -351,7 +351,8 @@ vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t prefix_len)
  *     otherwise a pointer to the matching vatricia tree node
  */
 vat_node_t *
-vatricia_get (vat_root_t *root, u_int16_t key_bytes, const void *key);
+vatricia_get (dbm_memory_t *dbmp, vat_root_t *root,
+	      u_int16_t key_bytes, const void *key);
 
 /**
  * @brief
@@ -376,7 +377,8 @@ vatricia_get (vat_root_t *root, u_int16_t key_bytes, const void *key);
  *     A pointer to vatricia tree node.
  */
 vat_node_t *
-vatricia_getnext (vat_root_t *root, u_int16_t key_bytes, const void *key,
+vatricia_getnext (dbm_memory_t *dbmp, vat_root_t *root,
+		  u_int16_t key_bytes, const void *key,
 		  boolean return_eq);
 
 /**
@@ -411,17 +413,12 @@ vatricia_node_in_tree (const vat_node_t *node);
  *     @li 1 if the left key is numerically greater than the right
  */
 int
-vatricia_compare_nodes (vat_root_t *root, vat_node_t *left, vat_node_t *right);
+vatricia_compare_nodes (dbm_memory_t *dbmp, vat_root_t *root,
+			vat_node_t *left, vat_node_t *right);
 
 /**
  * @brief
- * Sets allocation and free routines for vatricia tree root structures.
- *
- * @note The initialization APIs contained in libjunos-sdk or libmp-sdk may
- *       use Vatricia tree functionality.  Therefore, if you intend to 
- *       change the allocator, this function should be called before any 
- *       libjunos-sdk or libmp-sdk APIs are used in the JUNOS SDK 
- *       application.
+ * Sets allocation and free routines for vatricia tree structures.
  *
  * @param[in] my_alloc
  *     Function to call when vatricia tree root is allocated
@@ -429,8 +426,8 @@ vatricia_compare_nodes (vat_root_t *root, vat_node_t *left, vat_node_t *right);
  *     Function to call when vatricia tree root is freed
  */
 void
-vatricia_set_allocator (vatricia_root_alloc_fn my_alloc,
-			vatricia_root_free_fn my_free);
+vatricia_set_allocator (vatricia_alloc_fn my_alloc,
+			     vatricia_free_fn my_free);
 
 /*
  * utility functions for dealing with const trees -- useful for 
@@ -456,8 +453,8 @@ vatricia_set_allocator (vatricia_root_alloc_fn my_alloc,
  * @sa vatricia_get
  */
 const vat_node_t *
-vatricia_cons_get (const vat_root_t *root, const u_int16_t key_bytes, 
-		   const void *key);
+vatricia_cons_get (dbm_memory_t *dbmp, const vat_root_t *root,
+		   const u_int16_t key_bytes, const void *key);
 
 /**
  * @brief
@@ -475,7 +472,8 @@ vatricia_cons_get (const vat_root_t *root, const u_int16_t key_bytes,
  * @sa vatricia_find_next
  */
 const vat_node_t *
-vatricia_cons_find_next (const vat_root_t *root, const vat_node_t *node);
+vatricia_cons_find_next (dbm_memory_t *dbmp, const vat_root_t *root,
+			 const vat_node_t *node);
 
 /**
  * @brief
@@ -493,7 +491,8 @@ vatricia_cons_find_next (const vat_root_t *root, const vat_node_t *node);
  * @sa vatricia_find_prev
  */
 const vat_node_t *
-vatricia_cons_find_prev (const vat_root_t *root, const vat_node_t *node);
+vatricia_cons_find_prev (dbm_memory_t *dbmp, const vat_root_t *root,
+			 const vat_node_t *node);
 
 /**
  * @brief
@@ -514,7 +513,8 @@ vatricia_cons_find_prev (const vat_root_t *root, const vat_node_t *node);
  * @sa vatricia_subtree_match
  */
 const vat_node_t *
-vatricia_cons_subtree_match (const vat_root_t *root, const u_int16_t prefix_len,
+vatricia_cons_subtree_match (dbm_memory_t *dbmp, const vat_root_t *root,
+			     const u_int16_t prefix_len,
 			     const void *prefix);
 
 /**
@@ -534,7 +534,8 @@ vatricia_cons_subtree_match (const vat_root_t *root, const u_int16_t prefix_len,
  * @sa vatricia_subtree_next
  */
 const vat_node_t *
-vatricia_cons_subtree_next (const vat_root_t *root, const vat_node_t *node,
+vatricia_cons_subtree_next (dbm_memory_t *dbmp, const vat_root_t *root,
+			    const vat_node_t *node,
 			    const u_int16_t prefix_len);
 
 /*
@@ -553,7 +554,8 @@ vatricia_cons_subtree_next (const vat_root_t *root, const vat_node_t *node,
  *     Pointer to vatricia tree node
  */
 static inline void
-vatricia_node_init (vat_node_t *node) {
+vatricia_node_init (vat_node_t *node)
+{
     vatricia_node_init_length((node), 0);
 } 
 
@@ -576,9 +578,9 @@ vatricia_node_init (vat_node_t *node) {
  *     A pointer to the start of node key.
  */
 static inline const u_int8_t *
-vatricia_key (vat_root_t *root, vat_node_t *node)
+vatricia_key (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
 {
-    return node->vn_data[0] + root->vr_key_offset;
+    return node->vn_data + root->vr_key_offset;
 }
 
 /**
@@ -650,11 +652,12 @@ vatricia_length_to_bit (u_int16_t length)
  *     @c NULL if not found
  */
 static inline vat_node_t *
-vatricia_get_inline (vat_root_t *root, u_int16_t key_bytes, const void *v_key)
+vatricia_get_inline (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+		     u_int16_t key_bytes, const void *v_key)
 {
     vat_node_t *current;
     u_int16_t bit, bit_len;
-    const u_int8_t *key = (const u_int8_t *)v_key;
+    const u_int8_t *key = (const u_int8_t *) v_key;
 
     if (!key_bytes) {
 	abort();
@@ -682,7 +685,7 @@ vatricia_get_inline (vat_root_t *root, u_int16_t key_bytes, const void *v_key)
      * If the lengths don't match we're screwed.  Otherwise do a compare.
      */
     if (current->vn_length != bit_len
-	|| bcmp(vatricia_key(root, current), key, key_bytes)) {
+	|| bcmp(vatricia_key(dbmp, root, current), key, key_bytes)) {
 	return 0;
     }
     return current;
@@ -703,6 +706,9 @@ vatricia_isempty (vat_root_t *root)
 {
     return (root->vr_root == NULL);
 }
+
+void *
+vatricia_data (dbm_memory_t *dbmp, vat_node_t *node);
 
 /**
  * @brief
@@ -736,12 +742,10 @@ vatricia_isempty (vat_root_t *root)
  * the KEY field instead of the NODE field).  It's harmless.
  */
 #define VATNODE_TO_STRUCT(procname, structname, fieldname) \
-    static inline structname * procname (vat_node_t *ptr)\
-    {\
-        assert(STRUCT_SIZEOF(structname, fieldname) == sizeof(vat_node_t));\
-	if (ptr)\
-	    return QUIET_CAST(structname *, ((u_char *) ptr) - \
-				    offsetof(structname, fieldname)); \
+    static inline structname * procname (dbm_memory_t *dbmp, vat_node_t *ptr) \
+    { \
+	if (ptr) \
+	    return QUIET_CAST(structname *, vatricia_data(dbmp, ptr)); \
 	return NULL; \
      }
 
@@ -752,7 +756,7 @@ vatricia_isempty (vat_root_t *root)
  */
 #define VATNODE_TO_CONS_STRUCT(procname, structname, fieldname)      \
 static inline const structname *                                     \
-procname (vat_node_t *ptr)                                              \
+ procname (dbm_memory_t *dbmp UNUSED, vat_node_t *ptr)		     \
 {                                                                    \
     assert(STRUCT_SIZEOF(structname, fieldname) == sizeof(vat_node_t)); \
     if (ptr) {                                                       \
@@ -769,9 +773,9 @@ procname (vat_node_t *ptr)                                              \
  * compile-time checking. 
  */
 
-#define VATRICIA_ROOT_INIT(_nodestruct, \
+#define VATRICIA_ROOT_INIT(dbmp, _nodestruct,	  \
 			   _nodeelement, _keyelt) \
-           vatricia_root_init( \
+    vatricia_root_init(dbmp,					       \
                       STRUCT_SIZEOF(_nodestruct, _keyelt),             \
                       STRUCT_OFFSET(_nodestruct, _nodeelement, _keyelt))
 
@@ -797,9 +801,9 @@ procname (vat_node_t *ptr)                                              \
  * @sa vatricia_get
  */
 static inline vat_node_t *
-vatricia_lookup (vat_root_t *root, const void *key)
+vatricia_lookup (dbm_memory_t *dbmp, vat_root_t *root, const void *key)
 {
-	return vatricia_get(root, root->vr_key_bytes, key);
+    return vatricia_get(dbmp, root, root->vr_key_bytes, key);
 }
 
 /**
@@ -822,9 +826,9 @@ vatricia_lookup (vat_root_t *root, const void *key)
  *     A pointer to vatricia tree node.
  */
 static inline vat_node_t *
-vatricia_lookup_get (vat_root_t *root, void *key)
+vatricia_lookup_get (dbm_memory_t *dbmp, vat_root_t *root, void *key)
 {
-    return vatricia_getnext(root, root->vr_key_bytes, key, TRUE);
+    return vatricia_getnext(dbmp, root, root->vr_key_bytes, key, TRUE);
 }
 
 /*
@@ -850,11 +854,6 @@ vat_makebit (u_int16_t offset, u_int8_t bit_in_byte)
 {
     return (((offset) & 0xff) << 8) | ((~vatricia_hi_bit_table[bit_in_byte]) & 0xff);
 }
-
-#ifdef __cplusplus
-    }
-}
-#endif /* __cplusplus */
 
 #endif	/* __JNX_VATRICIA_H__ */
 
