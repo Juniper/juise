@@ -80,8 +80,8 @@ const u_int8_t vatricia_bit_masks[8] = {
  *
  * Built-in root allocator.
  */
-static vat_root_t *
-vatricia_root_alloc (void)
+static void *
+vatricia_stdlib_alloc (dbm_memory_t *dbmp UNUSED)
 {
     return malloc(sizeof(vat_root_t));
 }
@@ -92,11 +92,11 @@ vatricia_root_alloc (void)
  * Built-in root deallocator.
  */
 static void
-vatricia_root_free (vat_root_t *root)
+vatricia_stdlib_free (dbm_memory_t *dbmp UNUSED, void *ptr)
 {
-    assert(root);
+    assert(ptr);
 
-    free(root);
+    free(ptr);
 }
 
 /*
@@ -107,23 +107,23 @@ vatricia_root_free (vat_root_t *root)
  * user doesn't specify his own functions then the built-in
  * functions using malloc/free are used.
  */
-static struct vatricia_root_alloc_s {
-    vatricia_root_alloc_fn vat_root_alloc;
-    vatricia_root_free_fn vat_root_free;
+static struct vatricia_alloc_s {
+    vatricia_alloc_fn vat_alloc;
+    vatricia_free_fn vat_free;
 } alloc_info = {
-    vatricia_root_alloc,
-    vatricia_root_free
+    vatricia_stdlib_alloc,
+    vatricia_stdlib_free
 };
 
 void
-vatricia_set_allocator (vatricia_root_alloc_fn my_alloc,
-                        vatricia_root_free_fn my_free)
+vatricia_set_allocator (vatricia_alloc_fn my_alloc,
+                        vatricia_free_fn my_free)
 {
     assert(my_alloc);
     assert(my_free);
     
-    alloc_info.vat_root_alloc = my_alloc;
-    alloc_info.vat_root_free = my_free;
+    alloc_info.vat_alloc = my_alloc;
+    alloc_info.vat_free = my_free;
 }
     
 /*
@@ -156,7 +156,8 @@ vat_plen_to_bit (u_int16_t plen)
  * possibility.
  */
 static inline vat_node_t *
-vatricia_search (vat_node_t *node, u_int16_t keylen, const u_int8_t *key)
+vatricia_search (dbm_memory_t *dbmp UNUSED, vat_node_t *node,
+		 u_int16_t keylen, const u_int8_t *key)
 {
     u_int16_t bit = VAT_NOBIT;
 
@@ -206,7 +207,8 @@ vatricia_mismatch (const u_int8_t *k1, const u_int8_t *k2, u_int16_t bitlen)
  * in the (sub)tree.
  */
 static inline vat_node_t *
-vatricia_find_leftmost (u_int16_t bit, vat_node_t *node)
+vatricia_find_leftmost (dbm_memory_t *dbmp UNUSED, u_int16_t bit,
+			vat_node_t *node)
 {
     while (bit < node->vn_bit) {
 	bit = node->vn_bit;
@@ -221,7 +223,8 @@ vatricia_find_leftmost (u_int16_t bit, vat_node_t *node)
  * in the (sub)tree.
  */
 static inline vat_node_t *
-vatricia_find_rightmost (u_int16_t bit, vat_node_t *node)
+vatricia_find_rightmost (dbm_memory_t *dbmp UNUSED, u_int16_t bit,
+			 vat_node_t *node)
 {
     while (bit < node->vn_bit) {
 	bit = node->vn_bit;
@@ -236,13 +239,13 @@ vatricia_find_rightmost (u_int16_t bit, vat_node_t *node)
  * Initialize a vatricia root node.  Allocate one if not provided.
  */
 vat_root_t *
-vatricia_root_init (u_int16_t klen, u_int8_t off)
+vatricia_root_init (dbm_memory_t *dbmp UNUSED, u_int16_t klen, u_int8_t off)
 {
     assert(klen && klen <= VAT_MAXKEY);
 
     vat_root_t *root;
 
-    root = alloc_info.vat_root_alloc();
+    root = alloc_info.vat_alloc(dbmp);
     if (root) {
 	root->vr_root = NULL;
 	root->vr_key_bytes = klen;
@@ -258,11 +261,11 @@ vatricia_root_init (u_int16_t klen, u_int8_t off)
  * succeed.
  */
 void
-vatricia_root_delete (vat_root_t *root)
+vatricia_root_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root)
 {
     if (root) {
 	assert(root->vr_root == NULL);
-	alloc_info.vat_root_free(root);
+	alloc_info.vat_free(dbmp, root);
     }
 }
 
@@ -298,12 +301,21 @@ vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes)
     node->vn_right = NULL;
 }
 
+void *
+vatricia_data (dbm_memory_t *dbmp UNUSED, vat_node_t *node)
+{
+    if (node == NULL)
+	return NULL;
+
+    return node->vn_data;
+}
+
 /*
  * vatricia_add
  * Add a node to a Vatricia tree.  Returns TRUE on success.
  */
 boolean
-vatricia_add (vat_root_t *root, vat_node_t *node)
+vatricia_add (dbm_memory_t *dbmp UNUSED, vat_root_t *root, void *data)
 {
     vat_node_t *current;
     vat_node_t **ptr;
@@ -311,16 +323,12 @@ vatricia_add (vat_root_t *root, vat_node_t *node)
     u_int16_t diff_bit;
     const u_int8_t *key;
 
-    /*
-     * Make sure this node is not in a tree already.
-     */
-    assert((node->vn_bit == VAT_NOBIT) &&
-	   (node->vn_right == NULL) &&
-	   (node->vn_left == NULL));
-  
-    if (node->vn_length == VAT_NOBIT) {
-	node->vn_length = vatricia_length_to_bit(root->vr_key_bytes);
-    }
+    vat_node_t *node = calloc(sizeof(*node), 1);
+    if (node == NULL)
+	return FALSE;
+
+    vatricia_node_init_length(node, root->vr_key_bytes);
+    node->vn_data = data;
 
     /*
      * If this is the first node in the tree, then it gets links to itself.
@@ -339,8 +347,8 @@ vatricia_add (vat_root_t *root, vat_node_t *node)
      * Start by waltzing down the tree to see if a duplicate (or a prefix
      * match) of the key is in the tree already.  If so, return FALSE.
      */
-    key = vatricia_key(root, node);
-    current = vatricia_search(root->vr_root, node->vn_length, key);
+    key = vatricia_key(dbmp, root, node);
+    current = vatricia_search(dbmp, root->vr_root, node->vn_length, key);
 
     /*
      * Find the first bit that differs from the node that we did find, to
@@ -348,9 +356,12 @@ vatricia_add (vat_root_t *root, vat_node_t *node)
      * (i.e. one is a prefix of the other) we'll get a bit greater than or
      * equal to the minimum back, and we bail.
      */
-    bit = (node->vn_length < current->vn_length) ? node->vn_length : current->vn_length;
-    diff_bit = vatricia_mismatch(key, vatricia_key(root, current), bit);
+    bit = (node->vn_length < current->vn_length)
+	? node->vn_length : current->vn_length;
+
+    diff_bit = vatricia_mismatch(key, vatricia_key(dbmp, root, current), bit);
     if (diff_bit >= bit) {
+	free(node);
 	return FALSE;
     }
 
@@ -393,7 +404,7 @@ vatricia_add (vat_root_t *root, vat_node_t *node)
  * Delete a node from a vatricia tree.
  */
 boolean
-vatricia_delete (vat_root_t *root, vat_node_t *node)
+vatricia_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
@@ -421,7 +432,7 @@ vatricia_delete (vat_root_t *root, vat_node_t *node)
     downptr = upptr = NULL;
     parent = &root->vr_root;
     bit = VAT_NOBIT;
-    key = vatricia_key(root, node);
+    key = vatricia_key(dbmp, root, node);
 
     while (bit < current->vn_bit) {
 	bit = current->vn_bit;
@@ -507,7 +518,8 @@ vatricia_delete (vat_root_t *root, vat_node_t *node)
  */
  
 vat_node_t *
-vatricia_find_next (vat_root_t *root, vat_node_t *node)
+vatricia_find_next (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+		    vat_node_t *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
@@ -526,7 +538,7 @@ vatricia_find_next (vat_root_t *root, vat_node_t *node)
      * If he didn't specify a node, return the leftmost guy.
      */
     if (node == NULL) {
-	return vatricia_find_leftmost(VAT_NOBIT, current);
+	return vatricia_find_leftmost(dbmp, VAT_NOBIT, current);
     }
 
     /*
@@ -534,7 +546,7 @@ vatricia_find_next (vat_root_t *root, vat_node_t *node)
      * left, so we can go right from there.
      */
     lastleft = NULL;
-    key = vatricia_key(root, node);
+    key = vatricia_key(dbmp, root, node);
     bit = VAT_NOBIT;
     while (bit < current->vn_bit) {
 	bit = current->vn_bit;
@@ -551,7 +563,7 @@ vatricia_find_next (vat_root_t *root, vat_node_t *node)
      * If we found a left turn go right from there.  Otherwise barf.
      */
     if (lastleft) {
-	return vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right);
+	return vatricia_find_leftmost(dbmp, lastleft->vn_bit, lastleft->vn_right);
     }
     return NULL;
 }
@@ -566,54 +578,56 @@ vatricia_find_next (vat_root_t *root, vat_node_t *node)
  */
  
 const vat_node_t *
-vatricia_cons_find_next (const vat_root_t *root, const vat_node_t *node)
+vatricia_cons_find_next (dbm_memory_t *dbmp UNUSED, const vat_root_t *root,
+			 const vat_node_t *node)
 {
     vat_root_t *r = const_drop(root);
     vat_node_t *n = const_drop(node);
 
     /* does not change or modify tree or node */
-    return vatricia_find_next(r, n); 
+    return vatricia_find_next(dbmp, r, n); 
 }
 
 const vat_node_t *
-vatricia_cons_find_prev (const vat_root_t *root, const vat_node_t *node)
+vatricia_cons_find_prev (dbm_memory_t *dbmp UNUSED, const vat_root_t *root,
+			 const vat_node_t *node)
 {
     vat_root_t *r = const_drop(root);
     vat_node_t *n = const_drop(node);
 
     /* does not change or modify tree or node */    
-    return vatricia_find_prev(r, n); 
+    return vatricia_find_prev(dbmp, r, n); 
 }
 
 const vat_node_t *
-vatricia_cons_get (const vat_root_t *root, const u_int16_t key_bytes,
-		   const void *key)
+vatricia_cons_get (dbm_memory_t *dbmp UNUSED, const vat_root_t *root,
+		   const u_int16_t key_bytes, const void *key)
 {
     vat_root_t *r = const_drop(root);
 
     /* does not change or modify tree or node */
-    return vatricia_get(r, key_bytes, key); 
+    return vatricia_get(dbmp, r, key_bytes, key); 
 }
 
 const vat_node_t *
-vatricia_cons_subtree_match (const vat_root_t *root, const u_int16_t prefix_len,
-			     const void *prefix)
+vatricia_cons_subtree_match (dbm_memory_t *dbmp UNUSED, const vat_root_t *root,
+			     const u_int16_t prefix_len, const void *prefix)
 {
     vat_root_t *r = const_drop(root);
 
     /* does not change or modify tree or node */    
-    return vatricia_subtree_match(r, prefix_len, prefix); 
+    return vatricia_subtree_match(dbmp, r, prefix_len, prefix); 
 }
 
 const vat_node_t *
-vatricia_cons_subtree_next (const vat_root_t *root, const vat_node_t *node,
-			    const u_int16_t prefix_len)
+vatricia_cons_subtree_next (dbm_memory_t *dbmp UNUSED, const vat_root_t *root,
+			    const vat_node_t *node, const u_int16_t prefix_len)
 {
     vat_root_t *r = const_drop(root);
     vat_node_t *n = const_drop(node);
 
     /* does not change or modify tree or node */    
-    return vatricia_subtree_next(r, n, prefix_len); 
+    return vatricia_subtree_next(dbmp, r, n, prefix_len); 
 }
 
 
@@ -625,7 +639,8 @@ vatricia_cons_subtree_next (const vat_root_t *root, const vat_node_t *node,
  * if the node isn't in the tree.
  */
 vat_node_t *
-vatricia_find_prev (vat_root_t *root, vat_node_t *node)
+vatricia_find_prev (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+		    vat_node_t *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
@@ -644,7 +659,7 @@ vatricia_find_prev (vat_root_t *root, vat_node_t *node)
      * If he didn't specify a node, return the rightmost guy.
      */
     if (node == NULL) {
-	return vatricia_find_rightmost(VAT_NOBIT, current);
+	return vatricia_find_rightmost(dbmp, VAT_NOBIT, current);
     }
 
     /*
@@ -652,7 +667,7 @@ vatricia_find_prev (vat_root_t *root, vat_node_t *node)
      * right, so we can go right from there.
      */
     lastright = NULL;
-    key = vatricia_key(root, node);
+    key = vatricia_key(dbmp, root, node);
     bit = VAT_NOBIT;
     while (bit < current->vn_bit) {
 	bit = current->vn_bit;
@@ -669,7 +684,7 @@ vatricia_find_prev (vat_root_t *root, vat_node_t *node)
      * If we found a right turn go right from there.  Otherwise barf.
      */
     if (lastright) {
-	return vatricia_find_rightmost(lastright->vn_bit, lastright->vn_left);
+	return vatricia_find_rightmost(dbmp, lastright->vn_bit, lastright->vn_left);
     }
     return NULL;
 }
@@ -682,7 +697,8 @@ vatricia_find_prev (vat_root_t *root, vat_node_t *node)
  * is a prefix of the node's key.
  */
 vat_node_t *
-vatricia_subtree_match (vat_root_t *root, u_int16_t plen, const void *v_prefix)
+vatricia_subtree_match (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+			u_int16_t plen, const void *v_prefix)
 {
     u_int16_t diff_bit, p_bit;
     vat_node_t *current;
@@ -702,7 +718,7 @@ vatricia_subtree_match (vat_root_t *root, u_int16_t plen, const void *v_prefix)
      * and search for someone.
      */
     p_bit = vat_plen_to_bit(plen);
-    current = vatricia_search(root->vr_root, p_bit, prefix);
+    current = vatricia_search(dbmp, root->vr_root, p_bit, prefix);
 
     /*
      * If the guy we found is shorter than the prefix length, we're
@@ -718,7 +734,8 @@ vatricia_subtree_match (vat_root_t *root, u_int16_t plen, const void *v_prefix)
      * Compare the key of the guy we found to our prefix.  If they
      * match to the prefix length return him, otherwise there is no match.
      */
-    diff_bit = vatricia_mismatch(prefix, vatricia_key(root, current), p_bit);
+    diff_bit = vatricia_mismatch(prefix,
+				 vatricia_key(dbmp, root, current), p_bit);
     if (diff_bit < p_bit) {
 	return NULL;
     }
@@ -733,7 +750,8 @@ vatricia_subtree_match (vat_root_t *root, u_int16_t plen, const void *v_prefix)
  * subtree.  assert()'s if the node isn't in the tree.
  */
 vat_node_t *
-vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t plen)
+vatricia_subtree_next (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+		       vat_node_t *node, u_int16_t plen)
 {
     const u_int8_t *prefix;
     u_int16_t bit, p_bit;
@@ -747,7 +765,7 @@ vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t plen)
     p_bit = vat_plen_to_bit(plen);
     assert(node->vn_length >= p_bit);
 
-    prefix = vatricia_key(root, node);
+    prefix = vatricia_key(dbmp, root, node);
     bit = VAT_NOBIT;
     lastleft = NULL;
     while (bit < current->vn_bit) {
@@ -769,7 +787,7 @@ vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t plen)
     if (lastleft == NULL || lastleft->vn_bit < p_bit) {
 	return NULL;
     }
-    return vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right);
+    return vatricia_find_leftmost(dbmp, lastleft->vn_bit, lastleft->vn_right);
 }
 
 
@@ -778,9 +796,10 @@ vatricia_subtree_next (vat_root_t *root, vat_node_t *node, u_int16_t plen)
  * Given a key and its length, find a node which matches.
  */
 vat_node_t *
-vatricia_get (vat_root_t *root, u_int16_t key_bytes, const void *key)
+vatricia_get (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+	      u_int16_t key_bytes, const void *key)
 {
-    return vatricia_get_inline(root, key_bytes, key);
+    return vatricia_get_inline(dbmp, root, key_bytes, key);
 }
 
 /*
@@ -794,7 +813,8 @@ vatricia_get (vat_root_t *root, u_int16_t key_bytes, const void *key)
  *  Let's see what Doxygen does with it.
  */
 vat_node_t *
-vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean eq)
+vatricia_getnext (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+		  u_int16_t klen, const void *v_key, boolean eq)
 {
     u_int16_t bit, bit_len, diff_bit;
     vat_node_t *current, *lastleft, *lastright;
@@ -833,7 +853,8 @@ vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean e
      * the guy we found and the key occurs.
      */
     bit = (current->vn_length > bit_len) ? bit_len : current->vn_length;
-    diff_bit = vatricia_mismatch(key, vatricia_key(root, current), bit);
+    diff_bit = vatricia_mismatch(key,
+				 vatricia_key(dbmp, root, current), bit);
 
     /*
      * Three cases here.  Do them one by one.
@@ -844,7 +865,8 @@ vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean e
 	 * key is shorter, or if the key is equal and we've been asked
 	 * to return that, we're golden.
 	 */
-	if (bit_len < current->vn_length || (eq && bit_len == current->vn_length)) {
+	if (bit_len < current->vn_length
+	    || (eq && bit_len == current->vn_length)) {
 	    return current;
 	}
 
@@ -883,7 +905,7 @@ vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean e
 	 * top.
 	 */
 	if (lastright && lastright->vn_bit >= diff_bit) {
-	    return vatricia_search(root->vr_root, diff_bit, key);
+	    return vatricia_search(dbmp, root->vr_root, diff_bit, key);
 	}
 	return current;
     }
@@ -893,21 +915,23 @@ vatricia_getnext (vat_root_t *root, u_int16_t klen, const void *v_key, boolean e
      * a `lastleft' take a right turn there, otherwise return nothing.
      */
     if (lastleft) {
-	return vatricia_find_leftmost(lastleft->vn_bit, lastleft->vn_right);
+	return vatricia_find_leftmost(dbmp, lastleft->vn_bit,
+				      lastleft->vn_right);
     }
     return NULL;
 }
 
 int
-vatricia_compare_nodes (vat_root_t *root, vat_node_t* node1, vat_node_t* node2)
+vatricia_compare_nodes (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+			vat_node_t *node1, vat_node_t *node2)
 {
     u_int16_t bit;
     u_int16_t diff_bit;
     const u_int8_t *key_1, *key_2;
     
     bit = (node1->vn_length < node2->vn_length) ? node1->vn_length : node2->vn_length;
-    key_1 = vatricia_key(root, node1);
-    key_2 = vatricia_key(root, node2);
+    key_1 = vatricia_key(dbmp, root, node1);
+    key_2 = vatricia_key(dbmp, root, node2);
     
     diff_bit = vatricia_mismatch(key_1, key_2, bit);
     
@@ -920,330 +944,3 @@ vatricia_compare_nodes (vat_root_t *root, vat_node_t* node1, vat_node_t* node2)
     
     return -1;
 }
-
-#ifdef TESTING
-
-#define MAXNODECOUNT 100000
-#define OPREPORT     100000
-#define BHA	     1000000000		/* One Sagan */
-
-typedef struct testnode_ {
-    int dummy1;				/* Test worst case */
-    vat_node_t vatricia;			/* Our node */
-    int key;				/* Our key */
-    int dummy2;				/* More worst case */
-} testnode;
-
-static inline testnode *
-vat_to_test (vat_node_t *node)
-{
-    static testnode foo;
-    testnode *result;
-
-    result = (testnode *) ((int) node -
-			 ((int)&foo.vatricia - (int)&foo));
-    return result;
-}
-
-/*
- * vatricia_lookup_random
- * Lookup a random leaf in the tree.
- */
-
-vat_node_t *
-vatricia_lookup_random (vat_root_t *root)
-{
-    vat_node_t *current = root->first;
-    u_short lasttest = VAT_NOBIT;
-  
-    if (!current) {
-	return NULL;
-    }
-
-    /*
-     * Waltz down the tree.  Stop when the bits appear to go backwards.
-     */
-    do {
-	lasttest = current->vn_bit;
-	if (grand(2)) {
-	    current = current->vn_right;
-	} else {
-	    current = current->vn_left;
-	}
-    } while (current->vn_bit > lasttest);
-
-    return current;
-}
-
-typedef int vatricia_callback (vat_node_t *node);
-
-/*
- * vat_traversal_internal
- * Internal recursive (debugging only!) function to do a traversal.
- */
-
-int vat_traversal_internal (vat_node_t *node, vatricia_callback *callback)
-{
-    int result;
-
-    if (node->vn_left->vn_bit > node->vn_bit) {
-	result = vat_traversal_internal(node->vn_left, callback);
-    } else {
-	result = (*callback)(node->vn_left);
-    }
-    if (!result) {
-	return FALSE;
-    }
-    
-    if (node->vn_right->vn_bit > node->vn_bit) {
-	result = vat_traversal_internal(node->vn_right, callback);
-    } else {
-	result = (*callback)(node->vn_right);
-    }
-    if (!result) {
-	return FALSE;
-    }
-}
-
-/*
- * vatricia_traversal
- * Traverse the tree in key order, calling the callback function once per
- * key.  Abort the traversal function if the callback function returns
- * FALSE.  Returns FALSE if terminated.  The root gets called back _twice_.
- */
-
-int
-vatricia_traversal (vat_root_t *root, vatricia_callback *callback)
-{
-    if (!root->first) {
-	return TRUE;
-    }
-    return vat_traversal_internal(root->first, callback);
-}
-
-static long test_count;
-
-int
-test_callback (vat_node_t *node)
-{
-    test_count++;
-    return TRUE;
-}
-
-#define SPECIAL 0xe6d364f1
-
-main (int argc, char *argv[])
-{
-    vat_root_t *root;
-    testnode *test;
-    vat_node_t *node, *next, *prev;
-    int i;
-    long adds, dels, total, badds, bdels;
-    int special_on, special_key;
-
-    root = vatricia_init_root(sizeof(int));
-    if (!root) {
-	printf("root malloc failed\n");
-	exit(1);
-    }
-
-    adds = 0;
-    dels = 0;
-    total = 0;
-    badds = 0;
-    bdels = 0;
-    special_on = FALSE;
-    special_key = SPECIAL;
-    while (TRUE) {
-	switch(grand(4)) {
-	case 0:				/* Add a node */
-	default:
-	    if (total >= MAXNODECOUNT) {
-		break;
-	    }
-	    test = malloc(sizeof(testnode));
-	    if (!test) {
-		printf("node malloc failed\n");
-		exit(1);
-	    }
-	    vatricia_node_init(&test->vatricia);
-
-	    /*
-	     * Generate a key not in the tree.
-	     */
-	    do {
-		test->key = grand_log2(32);
-	    } while (vatricia_lookup_inline(root, (u_char *)&test->key));
-
-	    if (test->key == special_key) {
-		special_on = TRUE;
-	    }
-
-	    if (!vatricia_add(root, &test->vatricia)) {
-
-		printf("node add failed\n");
-		exit(1);
-	    }
-
-	    if (vatricia_lookup_inline(root, (u_char *)&test->key) !=
-		&test->vatricia) {
-		printf("lookup after add failed, key %x\n",
-		       test->key);
-		exit(1);
-	    }
-	    total++;
-	    adds++;
-	    if (adds == BHA) {
-		badds++;
-		adds = 0;
-	    }
-
-	    if ((adds % OPREPORT) == 0) {
-		printf("%ub %u adds, %u total\n", badds, adds, total);
-	    }
-
-	    if (special_on) {
-		if (vatricia_lookup_inline(root,
-					   (u_char *)&special_key) == NULL)
-		{
-		    printf("special failure after add, key %x\n",
-			   test->key);
-		    exit(1);
-		}
-	    }
-	    break;
-	case 1:				/* Do a lookup */
-	    node = vatricia_lookup_random(root);
-	    if (!node) {
-		assert(total == 0);
-		break;
-	    }
-	    if (vatricia_lookup_inline(root, (u_char *)&node->key) !=
-		node) {
-		printf("lookup failed, key %x\n", vat_to_test(node)->key);
-		exit(1);
-	    }
-
-	    i = grand_log2(32);		/* Test lookup_geq */
-	    node = vatricia_lookup_geq(root, (u_char *)&i);
-	    if (node) {
-		if (i == vat_to_test(node)->key) {
-		    break;
-		} else if (ntohl(vat_to_test(node)->key) < ntohl(i)) {
-		    printf("geq failure 1\n");
-		    exit(1);
-		}
-		prev = vatricia_get_previous(root, node);
-		if (!prev) {
-		    break;
-		}
-		if (ntohl(vat_to_test(prev)->key) < ntohl(i)) {
-		    break;
-		}
-		printf("geq failure 2\n");
-		exit(1);
-	    } else {
-		node = vatricia_lookup_greatest(root);
-		if (!node) {
-		    break;
-		}
-		if (ntohl(vat_to_test(node)->key) >= ntohl(i)) {
-		    printf("geq failure 3\n");
-		    exit(1);
-		}
-	    }
-	    break;
-	    
-	case 2:				/* Do a delete */
-	    node = vatricia_lookup_random(root);
-	    if (!node) {
-		assert(total == 0);
-		break;
-	    }
-	    if (!vatricia_delete(root, node)) {
-		printf("delete failed, key %x\n", node->key);
-		exit(1);
-	    }
-
-	    if (special_on) {
-		if (vat_to_test(node)->key == special_key) {
-		    special_on = FALSE;
-		} else {
-		    if (vatricia_lookup_inline(root,
-					       (u_char *)&special_key) == NULL)
-		    {
-			printf("special failure after delete, key %x\n",
-			       vat_to_test(node)->key);
-			exit(1);
-		    }
-		}
-	    }
-	    free(vat_to_test(node));
-	    dels++;
-	    total--;
-	    if (dels == BHA) {
-		bdels++;
-		dels = 0;
-	    }
-	    if ((dels % OPREPORT) == 0) {
-		printf("%ub %u dels, %u total\n", bdels, dels, total);
-	    }
-
-	    break;
-	case 3:				/* Tree traversal */
-	    test_count = 0;
-	    vatricia_traversal(root, test_callback);
-	    if (test_count) {
-		test_count--;		/* Don't count the root twice */
-	    }
-	    if (test_count != total) {
-		printf("%u total, %u found\n", total, test_count);
-		exit(1);
-	    }
-
-	    /*
-	     * Test get next.
-	     */
-	    test_count = 0;
-	    node = vatricia_lookup_least(root);
-	    if (node) {
-		test_count++;
-		prev = vatricia_get_previous(root, node);
-		if (prev) {
-		    printf("node previous to first");
-		    exit(1);
-		}
-		    
-/*		printf("least %x, total %d\n", vat_to_test(node)->key,
-		total); */
-		for (next = vatricia_get_next(root, node);
-		     next;
-		     node = next, next = vatricia_get_next(root, next)) {
-		    test_count++;
-		    if (ntohl(vat_to_test(node)->key) >=
-			ntohl(vat_to_test(next)->key)) {
-			printf("out of order %x %x\n",
-			       vat_to_test(node)->key,
-			       vat_to_test(next)->key);
-			exit(1);
-		    }
-		    prev = vatricia_get_previous(root, next);
-		    if (prev != node) {
-			printf("previous not same as get previous");
-			exit(1);
-		    }
-/*		    printf("next %x\n", vat_to_test(next)->key); */
-		}
-	    }
-	    if (test_count != total) {
-		printf("%u total, %u found via get next\n", total, test_count);
-		exit(1);
-	    }
-	    break;
-	}
-
-    }
-    exit(0);
-}
-#endif
-					
