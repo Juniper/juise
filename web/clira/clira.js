@@ -537,7 +537,7 @@ jQuery(function ($) {
          * load succeded and false when failure. Second argument contains any
          * messages from loading configuration. Default action is merge
          */
-        loadConfig: function (target, config, onComplete, format, action) {
+        loadConfig: function (target, config, onComplete, format, action, view) {
             if (muxer == undefined)
                 openMuxer();
 
@@ -561,14 +561,19 @@ jQuery(function ($) {
                 payload += "><configuration>" + config
                         +   "</configuration>";
             } else {
-                payload += "><configuration-text>" + config
-                        +   "</configuration-text>";
+                if (action == "set") {
+                    payload += "><configuration-set>" + config
+                        + "</configuration-set>";
+                } else {
+                    payload += "><configuration-text>" + config
+                        + "</configuration-text>";
+                }
             }
             payload += "</load-configuration>";
 
             muxer.rpc({
                 div: null,
-                view: null,
+                view: view,
                 target: target,
                 payload: payload,
                 onreply: function (data) {
@@ -605,23 +610,23 @@ jQuery(function ($) {
         /*
          * Issues a commit to the device
          */
-        commitConfig: function(target, check, onComplete) {
+        commitConfig: function(target, check, onComplete, view) {
             if (muxer == undefined)
                 openMuxer();
 
             var full = [],
                 success = true,
-                payload = "<commit>";
+                payload = "<commit-configuration>";
 
             if (check) {
                 payload += "<check/>";
             }
 
-            payload += "</commit>";
+            payload += "</commit-configuration>";
 
             muxer.rpc({
                 div: null,
-                view: null,
+                view: view,
                 target: target,
                 payload: payload,
                 onreply: function (data) {
@@ -654,6 +659,58 @@ jQuery(function ($) {
                 }
             });
         },
+
+        /*
+         * Rolls back a configuration & commits it
+         */
+        rollbackConfig: function(target, rollbackNumber, onComplete, view) {
+            var full = [];
+            var success = true;
+
+            if (muxer == undefined) {
+                openMuxer();
+            }
+
+            if (rollbackNumber == undefined) {
+                rollbackNumber = 0;
+            }
+
+            muxer.rpc({
+                div: null,
+                view: view,
+                target: target,
+                payload: '<load-configuration rollback="' + rollbackNumber + '"/>',
+                onreply: function (data) {
+                    $.dbgpr("commit: reply: full.length " + full.length
+                            + ", data.length " + data.length);
+                    if (data.indexOf("<rpc-error>") != -1)
+                        success = false;
+                    full.push(data);
+                },
+                oncomplete: function () {
+                    $.dbgpr("rollback: complete");
+
+                    if ($.isFunction(onComplete)) {
+                        onComplete(success, full.join(""));
+                    }
+                },
+                onclose: function (event, message) {
+                    $.dbgpr("muxer: commit onclose");
+                    if (full.length == 0) {
+                        if ($.isFunction(onComplete)) {
+                            onComplete(false, output);
+                        }
+                    }
+                },
+                onerror: function (message) {
+                    $.dbgpr("muxer: commit onerror");
+                    if ($.isFunction(onComplete)) {
+                        onComplete(false, full.join(""));
+                    }
+                }
+            });
+        },
+
 
         runSlax: function (options) {
             if (!muxer) {

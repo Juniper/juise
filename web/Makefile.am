@@ -32,6 +32,8 @@ BASE_FILES = \
     clira/parser.output.js \
     clira/parser.test.js \
     clira/parser.types.js \
+    clira/system/configuration.js \
+    clira/system/configuration.slax \
     clira/system/db.slax \
     clira/system/debug.js \
     clira/system/fancy.js \
@@ -45,6 +47,7 @@ BASE_FILES = \
     clira/system/version.js \
     clira/system/version.slax \
     clira/system/welcome.js \
+    clira/templates/configuration.hbs \
     clira/templates/history.hbs \
     clira/templates/location.hbs \
     clira/templates/show-commands.hbs \
@@ -97,7 +100,21 @@ EXTERNAL_FILES = \
     external/jquery-ui/jquery-ui.js \
     external/jquery-ui/jquery-ui.min.js \
     external/qunit/qunit-1.12.0.css \
-    external/qunit/qunit-1.12.0.js
+    external/qunit/qunit-1.12.0.js \
+    external/bootstrap/css/bootstrap-theme.css \
+    external/bootstrap/css/bootstrap-theme.css.map \
+    external/bootstrap/css/bootstrap-theme.min.css \
+    external/bootstrap/css/bootstrap.css \
+    external/bootstrap/css/bootstrap.css.map \
+    external/bootstrap/css/bootstrap.min.css \
+    external/bootstrap/fonts/glyphicons-halflings-regular.eot \
+    external/bootstrap/fonts/glyphicons-halflings-regular.svg \
+    external/bootstrap/fonts/glyphicons-halflings-regular.ttf \
+    external/bootstrap/fonts/glyphicons-halflings-regular.woff \
+    external/bootstrap/fonts/glyphicons-halflings-regular.woff2 \
+    external/bootstrap/js/bootstrap.js \
+    external/bootstrap/js/bootstrap.min.js \
+    external/bootstrap/js/npm.js
 
 THEME_BLACK_TIE = \
     themes/black-tie/jquery-ui-black-tie.css \

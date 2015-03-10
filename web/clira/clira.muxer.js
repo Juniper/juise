@@ -360,7 +360,7 @@ jQuery(function ($) {
             beforeSend: function (xhr) {
                 xhr.setRequestHeader('X-Mixer-Auth-Muxer-ID', muxer.authmuxid);
                 xhr.setRequestHeader('X-Mixer-Auth-WebSocket-ID', muxer.authwebsocketid);
-                if (options.view.$()) {
+                if (options.view && options.view.$()) {
                     xhr.setRequestHeader('X-Mixer-Auth-Div-ID', options.view.$().attr("id"));
                 }
             },

@@ -1,0 +1,35 @@
+<script type="text/x-handlebars" data-template-name="configuration-load">
+  <style type="text/css">
+    #buttonbar {
+        padding-top: 15px;
+    }
+    #pastebox {
+        height: 150px;
+        width: 100%;
+    }
+  </style>
+  <p>Paste the configuration snippet you would like to load onto <b>{{output.target}}</b> in the box below.  Valid formats can be Junos-style "set" or "curly braces" configuration.</p>
+  {{view Configuration.TextArea id="pastebox"}}
+  <div id="buttonbar" class="row">
+    <div class="col-md-3">
+      <b>Load Style:</b> &nbsp;&nbsp;
+      <select id="loadStyle" data-current="TEXT">
+        <option id="loadmerge" value="load merge">load merge</option>
+        <option id="loadoverride" value="load override">load override</option>
+        <option id="loadreplace" value="load replace">load replace</option>
+        <option id="loadupdate" value="load update">load update</option>
+        <option id="loadset" value="load set" disabled="disabled">load set</option>
+        <option id="loadpatch" value="load patch" disabled="disabled">load patch</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <b>Check Only?</b>
+      {{input type="checkbox" id="checkOnly"}}
+    </div>
+    <div class="col-md-6"></div>
+    <div class="col-md-1">
+      {{view Configuration.CommitButton}}
+    </div>
+  </div>
+  <div class="commit-output"></div>
+</script>

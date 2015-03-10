@@ -1,0 +1,39 @@
+version 1.1;
+/*
+ * $Id$
+ *  -*-  indent-tabs-mode:nil -*-
+ * Copyright 2015, Juniper Network Inc, All rights reserved
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
+ */
+
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns os extension = "http://xml.libslax.org/os";
+ns xutil extension = "http://xml.libslax.org/xutil";
+ns set extension = "http://exslt.org/sets";
+ns math extension = "http://exslt.org/math";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+
+import "../import/junos.xsl";
+
+param $config;
+param $type;
+param $target;
+
+output-method xml;
+
+match / {
+    var $connection = jcs:open($target);
+
+    var $rpc = <load-configuration> {
+            copy-of $config;
+        }
+    }
+
+    var $output = jcs:execute($connection, $rpc);
+
+    copy-of $output;
+}

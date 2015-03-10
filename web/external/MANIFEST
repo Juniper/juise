@@ -80,3 +80,10 @@ site: http://qtip2.com/
 version: v2.1.1
 date: 2013-08-06
 license: MIT
+
+name: bootstrap
+site: http://getbootstrap.com/
+version: 3.3.2
+date: 2015-03-10
+license: MIT
+notes:
