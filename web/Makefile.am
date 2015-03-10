@@ -112,7 +112,7 @@ EXTERNAL_FILES = \
     external/bootstrap/fonts/glyphicons-halflings-regular.woff2 \
     external/bootstrap/js/bootstrap.js \
     external/bootstrap/js/bootstrap.min.js \
-    external/bootstrap/js/npm.js
+    external/bootstrap/js/npm.js \
     external/qunit/qunit.css \
     external/qunit/qunit.js
 
