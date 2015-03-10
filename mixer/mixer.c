@@ -76,12 +76,13 @@ unsigned opt_destport = 22;
 static char *opt_home;
 static char *opt_logfile;
 static int opt_console;
-static int opt_fork;
+static int opt_fork = TRUE;
 static int opt_getpass;
 static int opt_login;
 static int opt_no_console;
 static int opt_no_auto_server;
 static int opt_server;
+static int opt_client;
 static unsigned opt_port = 8000;
 
 static char *path_websocket, *path_console, *path_lock;
@@ -497,6 +498,12 @@ do_server (char **argv UNUSED)
 static void
 fork_server (void)
 {
+    if (!opt_fork) {
+	chdir("/");
+	do_server(NULL);
+	return;
+    }
+
     if (fork() == 0) {
 	if (fork() != 0)
 	    _exit(0);
@@ -629,7 +636,10 @@ main (int argc UNUSED, char **argv UNUSED)
 	if (*cp != '-')
 	    break;
 
-	if (streq(cp, "--console") || streq(cp, "-c")) {
+	if (streq(cp, "--client")) {
+	    opt_client = TRUE;
+
+	} else if (streq(cp, "--console") || streq(cp, "-c")) {
 	    opt_console = TRUE;
 
 	} else if (streq(cp, "--create-db")) {
@@ -675,6 +685,9 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--no-db")) {
 	    opt_no_db = TRUE;
+
+	} else if (streq(cp, "--no-fork")) {
+	    opt_fork = FALSE;
 
 	} else if (streq(cp, "--password")) {
 	    opt_password = *++argv;
@@ -758,8 +771,11 @@ main (int argc UNUSED, char **argv UNUSED)
 	rc = do_console(argv);
     } else if (opt_server) {
 	rc = do_server(argv);
-    } else {
+    } else if (opt_client) {
 	rc = do_forward(argv);
+    } else {
+	print_help(NULL);
+	exit(1);
     }
 
     if (opt_logfile) {

@@ -202,7 +202,9 @@ jQuery(function ($) {
                                 // commandFile
                                 var commandLoaded = function() {
                                     if ($.clira.commandLoading == false) {
-                                        def.resolve();
+                                        Ember.run(function() {
+                                            def.resolve();
+                                        });
                                         clearInterval(timer);
                                     }
                                 };

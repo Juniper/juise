@@ -87,3 +87,9 @@ version: 3.3.2
 date: 2015-03-10
 license: MIT
 notes:
+
+name: qunit
+site: http://qunitjs.com/
+version: 1.16.0
+date: 2014-12-03
+license: MIT

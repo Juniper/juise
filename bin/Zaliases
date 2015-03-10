@@ -1,6 +1,6 @@
 set top_src=`pwd`
 setenv LIBJUISE $top_src
-alias Zautoreconf "(cd $top_src ; autoreconf --install)"
+alias Zautoreconf "(cd $top_src ; autoreconf)"
 
 set opts=' \
 --enable-clira \
@@ -29,3 +29,5 @@ alias mi "(cd $top_src/build; make && make install); ."
 
 mkdir -p build
 cd build
+
+alias mixer-local ./mixer/mixer --no-fork -K --verbose --local-console --server

@@ -99,8 +99,6 @@ EXTERNAL_FILES = \
     external/jquery-qtip/jquery.qtip.min.js \
     external/jquery-ui/jquery-ui.js \
     external/jquery-ui/jquery-ui.min.js \
-    external/qunit/qunit-1.12.0.css \
-    external/qunit/qunit-1.12.0.js \
     external/bootstrap/css/bootstrap-theme.css \
     external/bootstrap/css/bootstrap-theme.css.map \
     external/bootstrap/css/bootstrap-theme.min.css \
@@ -115,6 +113,8 @@ EXTERNAL_FILES = \
     external/bootstrap/js/bootstrap.js \
     external/bootstrap/js/bootstrap.min.js \
     external/bootstrap/js/npm.js
+    external/qunit/qunit.css \
+    external/qunit/qunit.js
 
 THEME_BLACK_TIE = \
     themes/black-tie/jquery-ui-black-tie.css \
@@ -195,13 +195,16 @@ WEB_FILES = \
     ${THEME_EXCITE_BIKE}
 
 nobase_dist_webdata_DATA = ${WEB_FILES}
-nobase_dist_doc_DATA = \
+dist_doc_DATA = \
     clira.conf
 
-nobase_dist_sbin_SCRIPTS = \
+dist_bin_SCRIPTS = \
     run-clira.sh
 
 EXTRA_DIST += ${WEB_FILES}
 
 svnignore:
 	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
+
+install-exec-hook:
+	${MV} ${DESTDIR}/${bindir}/run-clira.sh ${DESTDIR}/${bindir}/run-clira
