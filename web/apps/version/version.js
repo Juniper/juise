@@ -39,7 +39,7 @@ jQuery(function ($) {
         $.clira.muxer();
 
         $.clira.runSlax({
-            script: '/clira/system/version.slax',
+            script: '/apps/version/version.slax',
             args: {
                 target: poss.data.target
             },

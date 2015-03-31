@@ -16,7 +16,7 @@ ns xutil extension = "http://xml.libslax.org/xutil";
 ns set extension = "http://exslt.org/sets";
 ns math extension = "http://exslt.org/math";
 
-param $input = "/Users/phil/work/slax/juise/web/clira/system/ospf.xml";
+param $input = "ospf.xml";
 param $target;
 
 output-method text;

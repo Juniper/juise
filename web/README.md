@@ -11,15 +11,14 @@ Writing CLIRA apps
 ---
 A typical __CLIRA__ app consists of a _command file_ which provides possible 
 commands for the app that the user can run and a _handlebars template(s)_ 
-file to format and display output to the user. Command files are located in 
-`juise/web/clira/system` directory and templates are located in 
-`juise/web/clira/templates/`. Learn more about handlebars templates at 
+file to format and display output to the user. Apps are stored in  
+`juise/web/apps` directory. Learn more about handlebars templates at 
 [http://handlebarsjs.com/](http://handlebarsjs.com/) and 
 [http://emberjs.com/guides/templates/handlebars-basics/]
 (http://emberjs.com/guides/templates/handlebars-basics/). Most of the basic 
 views that are required for applications are available in Ember and some 
 extended views specific to __CLIRA__ are available in 
-`juise/web/clira/views.js`. __CLIRA__ is built using ember framework. Should 
+`juise/web/core/views.js`. __CLIRA__ is built using ember framework. Should 
 you need any more views than already available, please read about  emberjs 
 and extending views at [http://emberjs.com/guides/getting-started/]
 (http://emberjs.com/guides/getting-started/). A screencast showing how to
@@ -100,11 +99,12 @@ associated with this view. If there is no template available for this command,
 output will need to be a string that will be rendered in the output container 
 block.
 
-###Loading command files
-To load new command files, user will have to place his command file in 
-`juise/web/clira/system`, template(s) file in `juise/web/clira/templates` and 
-run `reload commands` in __CLIRA__ which loads all the commands from all the 
-files available under `system/`.
+###Loading apps
+To load in new apps, the user will have to place his app directory in the 
+`juise/web/apps` directory.  The command file that will automatically be
+loaded is the base name of the directory.  So, for example, for an app that is
+located in `juise/web/apps/foobar`, the command file
+`juise/web/apps/foobar/foobar.js` will be automatically loaded.
 
 ###Communicating with device
 Most of the commands will need to connect to a device, execute RPCs and use 
@@ -123,7 +123,7 @@ JSON object with following properties as argument
  For example, you can use this function as below    
 
             $.clira.runSlax({
-                script: '/clira/system/topology.slax',
+                script: '/apps/topology/topology.slax',
                 args: {
                     target: poss.data.target
                 },

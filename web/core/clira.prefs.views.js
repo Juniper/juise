@@ -112,8 +112,8 @@ Clira.GroupsPrefView = Ember.View.extend({
  
         $('#' + view.elementId + ' #prefs-groups-form #prefs-groups-grid')
             .jqGrid({
-            url: '/clira/system/db.slax?p=group_list',
-            editurl: '/clira/system/db.slax?p=group_edit',
+            url: '/core/db.slax?p=group_list',
+            editurl: '/core/db.slax?p=group_edit',
             datatype: 'json',
             colNames: ['Name', 'Members', ''],
             colModel: [
@@ -138,7 +138,7 @@ Clira.GroupsPrefView = Ember.View.extend({
                     },
                     editoptions: {
                         multiple: true,
-                        dataUrl: '/clira/system/db.slax?p=devices',
+                        dataUrl: '/core/db.slax?p=devices',
                         buildSelect: function (data) {
                             var j = $.parseJSON(data);
                             var s = '<select>';
@@ -296,8 +296,8 @@ Clira.DevicesPrefView = Ember.View.extend({
 
         $('#' + view.elementId + ' #prefs-devices-form #prefs-devices-grid')
             .jqGrid({
-            url: '/clira/system/db.slax?p=device_list',
-            editurl: '/clira/system/db.slax?p=device_edit',
+            url: '/core/db.slax?p=device_list',
+            editurl: '/core/db.slax?p=device_edit',
             datatype: 'json',
             colNames: ['Name', 'Hostname', 'Port',
                        'Username', 'Password', 'Save Password', 'Connect', ''],

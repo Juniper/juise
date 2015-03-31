@@ -1273,7 +1273,7 @@ jQuery(function ($) {
         $.dbgpr("runrpc:", rpc);
         
         $output.slideUp(0).slideDown($.clira.prefs.slide_speed);
-        $output.load("/clira/clira.slax", 
+        $output.load("/core/clira.slax", 
             {
                 target: target, // target is optional
                 rpc: rpc,       // rpc is in string form

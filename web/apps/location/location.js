@@ -12,11 +12,10 @@
 jQuery(function ($) {
     jQuery.clira.commandFile({
         name: "location",
-        handlebarsFile: "location.html",
         commands: [
             {
                 command: "show location",
-                templateFile: '/clira/templates/location.hbs',
+                templateFile: '/apps/location/location.hbs',
                 arguments: [
                     {
                         name: "location",

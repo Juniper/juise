@@ -269,7 +269,7 @@ do_write_cgi_results (lx_document_t *res, xsltStylesheetPtr script)
 {
     lx_node_t *root = lx_document_root(res);
 
-    if (streq(xmlNodeName(root), ELT_CGI)) {
+    if (root && streq(xmlNodeName(root), ELT_CGI)) {
 	xmlSaveCtxt *handle;
 	lx_node_t *nodep;
 	xmlAttrPtr attr;

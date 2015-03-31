@@ -10,7 +10,7 @@
 jQuery(function($) {
     jQuery.clira.commandFile({
         name: "welcome",
-        templatesFile: '/clira/templates/welcome.hbs',
+        templatesFile: '/apps/welcome/welcome.hbs',
         commands: [
             {
                 command: "show welcome screen",

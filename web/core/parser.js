@@ -168,7 +168,7 @@ jQuery(function ($) {
                 promises = [];
             // Load (or reload) the set of command files, which we
             // get from our web server.
-            $.ajax("/bin/list-command-files.slax")
+            $.ajax("/core/list-command-files.slax")
                 .success(function loadCommandFilesDone (data, status, jqxhr) {
 
                     if (data.files == undefined || data.files.length == 0) {

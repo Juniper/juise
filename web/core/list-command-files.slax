@@ -1,0 +1,39 @@
+version 1.1;
+/*
+ * $Id$
+ *  -*-  indent-tabs-mode:nil -*-
+ * Copyright 2013-2015, Juniper Network Inc, All rights reserved
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
+ */
+
+ns os extension = "http://xml.libslax.org/os";
+ns xutil extension = "http://xml.libslax.org/xutil";
+
+var $statOpts = {
+    <brief>;
+}
+
+output-method text;
+
+match / {
+    <cgi Content-type="application/json"> {
+        var $xml = <json> {
+            <files type="array"> {
+                var $appList = os:stat("apps", $statOpts);
+                for-each ($appList[name == "apps"]/entry[type == "directory"]) {
+                    var $dirName = substring-after(name, "/");
+                    var $appFile = os:stat("apps/" _ $dirName _ "/" _ $dirName _ ".js", $statOpts);
+                    if ($appFile[type == "file"]) {
+                        <member type="member"> "/" _ $appFile/name;
+                    }
+                }
+            }
+        }
+        var $json = xutil:xml-to-json($xml);
+        copy-of $json;
+    }
+}

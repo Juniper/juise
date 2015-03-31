@@ -16,7 +16,7 @@ jQuery(function ($) {
                 command: "show commands",
                 help: "Display a list of all available commands currently "
                     + "loaded in CLIRA",
-                templateFile: '/clira/templates/show-commands.hbs',
+                templateFile: '/core/templates/show-commands.hbs',
                 execute: function (view, cmd, parse, poss) {
                     view.get('controller').set('output', 
                                             { commands: $.clira.commands });

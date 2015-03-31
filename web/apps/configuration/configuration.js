@@ -209,7 +209,7 @@ jQuery(function ($) {
 
     jQuery.clira.commandFile({
         name: 'configuration',
-        templatesFile: '/clira/templates/configuration.hbs',
+        templatesFile: '/apps/configuration/configuration.hbs',
         prereqs: [
         ],
         commands: [{

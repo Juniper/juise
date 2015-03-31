@@ -12,7 +12,7 @@
 jQuery(function($) {
     jQuery.clira.commandFile({
         name: "history",
-        templatesFile: '/clira/templates/history.hbs',
+        templatesFile: '/apps/history/history.hbs',
         commands: [
             {
                 command: "show command history",

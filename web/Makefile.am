@@ -15,65 +15,8 @@ EXTRA_DIST = \
     Makefile.in
 
 BASE_FILES = \
-    bin/form2.js \
-    bin/list-command-files.slax \
-    clira/app.js \
-    clira/builtins.js \
-    clira/clira.js \
-    clira/clira.muxer.js \
-    clira/clira.prefs.js \
-    clira/clira.prefs.views.js \
-    clira/clira.slax \
-    clira/controllers.js \
-    clira/index.html \
-    clira/models.js \
-    clira/parser-test.html \
-    clira/parser.js \
-    clira/parser.output.js \
-    clira/parser.test.js \
-    clira/parser.types.js \
-    clira/system/configuration.js \
-    clira/system/configuration.slax \
-    clira/system/db.slax \
-    clira/system/debug.js \
-    clira/system/fancy.js \
-    clira/system/history.js \
-    clira/system/location.js \
-    clira/system/on-device.js \
-    clira/system/preference.js \
-    clira/system/topology.js \
-    clira/system/topology.slax \
-    clira/system/unit-test-commands.js \
-    clira/system/version.js \
-    clira/system/version.slax \
-    clira/system/welcome.js \
-    clira/templates/configuration.hbs \
-    clira/templates/history.hbs \
-    clira/templates/location.hbs \
-    clira/templates/show-commands.hbs \
-    clira/templates/welcome.hbs \
-    clira/views.js \
-    css/clira.css \
     favicon.ico \
-    images/checkbox.png \
-    images/clira_icon.png \
-    images/empty.png \
-    images/gear.png \
-    images/icons/doubleSize.png \
-    images/icons/dropdown.png \
-    images/icons/juniper-favicon.ico \
-    images/icons/loading.png \
-    images/icons/loading.gif \
-    images/icons/size1p5.png \
-    images/juise.png \
-    images/logo.png \
-    images/network.png \
-    images/prefs-devices.png \
-    images/prefs-general.png \
-    images/prefs-groups.png \
-    images/puck.png \
-    jquery/jquery.dbgpr.js \
-    jquery/jquery.mruPulldown.js
+    index.html
 
 EXTERNAL_FILES = \
     external/d3/d3.v3.js \
@@ -116,83 +59,9 @@ EXTERNAL_FILES = \
     external/qunit/qunit.css \
     external/qunit/qunit.js
 
-THEME_BLACK_TIE = \
-    themes/black-tie/jquery-ui-black-tie.css \
-    themes/black-tie/addons-black-tie.css \
-    themes/black-tie/addons/html_bg.png \
-    themes/black-tie/images/ui-bg_diagonals-thick_8_333333_40x40.png \
-    themes/black-tie/images/ui-bg_flat_65_ffffff_40x100.png \
-    themes/black-tie/images/ui-bg_glass_40_111111_1x400.png \
-    themes/black-tie/images/ui-bg_glass_55_1c1c1c_1x400.png \
-    themes/black-tie/images/ui-bg_highlight-hard_100_f9f9f9_1x100.png \
-    themes/black-tie/images/ui-bg_highlight-hard_40_aaaaaa_1x100.png \
-    themes/black-tie/images/ui-bg_highlight-soft_50_aaaaaa_1x100.png \
-    themes/black-tie/images/ui-bg_inset-hard_45_cd0a0a_1x100.png \
-    themes/black-tie/images/ui-bg_inset-hard_55_ffeb80_1x100.png \
-    themes/black-tie/images/ui-icons_222222_256x240.png \
-    themes/black-tie/images/ui-icons_4ca300_256x240.png \
-    themes/black-tie/images/ui-icons_bbbbbb_256x240.png \
-    themes/black-tie/images/ui-icons_ededed_256x240.png \
-    themes/black-tie/images/ui-icons_ffcf29_256x240.png \
-    themes/black-tie/images/ui-icons_ffffff_256x240.png
-
-THEME_CLIRA = \
-    themes/clira/addons-clira.css \
-    themes/clira/images/ui-bg_diagonals-thick_8_333333_40x40.png \
-    themes/clira/images/ui-bg_highlight-hard_100_f9f9f9_1x100.png \
-    themes/clira/images/ui-bg_highlight-hard_40_aaaaaa_1x100.png \
-    themes/clira/images/ui-icons_222222_256x240.png \
-    themes/clira/images/ui-icons_4ca300_256x240.png \
-    themes/clira/images/ui-icons_bbbbbb_256x240.png \
-    themes/clira/images/ui-icons_ededed_256x240.png \
-    themes/clira/images/ui-icons_ededed_hover_256x240.png \
-    themes/clira/images/ui-icons_ffcf29_256x240.png \
-    themes/clira/images/ui-icons_ffffff_256x240.png \
-    themes/clira/jquery-ui-clira.css
-
-THEME_DOT_LUV = \
-    themes/dot-luv/jquery-ui-dot-luv.css \
-    themes/dot-luv/addons-dot-luv.css \
-    themes/dot-luv/addons/html_bg.png \
-    themes/dot-luv/html_bg.png \
-    themes/dot-luv/images/ui-bg_diagonals-thick_15_0b3e6f_40x40.png \
-    themes/dot-luv/images/ui-bg_dots-medium_30_0b58a2_4x4.png \
-    themes/dot-luv/images/ui-bg_dots-small_20_333333_2x2.png \
-    themes/dot-luv/images/ui-bg_dots-small_30_a32d00_2x2.png \
-    themes/dot-luv/images/ui-bg_dots-small_40_00498f_2x2.png \
-    themes/dot-luv/images/ui-bg_flat_0_aaaaaa_40x100.png \
-    themes/dot-luv/images/ui-bg_flat_40_292929_40x100.png \
-    themes/dot-luv/images/ui-bg_gloss-wave_20_111111_500x100.png \
-    themes/dot-luv/images/ui-icons_00498f_256x240.png \
-    themes/dot-luv/images/ui-icons_98d2fb_256x240.png \
-    themes/dot-luv/images/ui-icons_9ccdfc_256x240.png \
-    themes/dot-luv/images/ui-icons_ffffff_256x240.png
-
-THEME_EXCITE_BIKE = \
-    themes/excite-bike/jquery-ui-excite-bike.css \
-    themes/excite-bike/addons-excite-bike.css \
-    themes/excite-bike/addons/ui-bg_diagonals-small_25_c5ddfc_40x40.png \
-    themes/excite-bike/images/ui-bg_diagonals-small_25_c5ddfc_40x40.png \
-    themes/excite-bike/images/ui-bg_diagonals-thick_20_e69700_40x40.png \
-    themes/excite-bike/images/ui-bg_diagonals-thick_22_1484e6_40x40.png \
-    themes/excite-bike/images/ui-bg_diagonals-thick_26_2293f7_40x40.png \
-    themes/excite-bike/images/ui-bg_flat_0_e69700_40x100.png \
-    themes/excite-bike/images/ui-bg_flat_0_e6b900_40x100.png \
-    themes/excite-bike/images/ui-bg_highlight-soft_100_f9f9f9_1x100.png \
-    themes/excite-bike/images/ui-bg_inset-hard_100_eeeeee_1x100.png \
-    themes/excite-bike/images/ui-icons_0a82eb_256x240.png \
-    themes/excite-bike/images/ui-icons_0b54d5_256x240.png \
-    themes/excite-bike/images/ui-icons_5fa5e3_256x240.png \
-    themes/excite-bike/images/ui-icons_fcdd4a_256x240.png \
-    themes/excite-bike/images/ui-icons_ffffff_256x240.png
-
 WEB_FILES = \
     ${BASE_FILES} \
-    ${EXTERNAL_FILES} \
-    ${THEME_BLACK_TIE} \
-    ${THEME_CLIRA} \
-    ${THEME_DOT_LUV} \
-    ${THEME_EXCITE_BIKE}
+    ${EXTERNAL_FILES}
 
 nobase_dist_webdata_DATA = ${WEB_FILES}
 dist_doc_DATA = \
@@ -208,3 +77,9 @@ svnignore:
 
 install-exec-hook:
 	${MV} ${DESTDIR}/${bindir}/run-clira.sh ${DESTDIR}/${bindir}/run-clira
+
+install-data-hook:
+	${CP} -r apps core css images themes ${webdatadir}
+
+dist-hook:
+	${CP} -r apps core css images themes ${webdatadir}

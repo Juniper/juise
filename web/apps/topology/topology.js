@@ -175,7 +175,7 @@ jQuery(function ($) {
         $.clira.muxer();
 
         $.clira.runSlax({
-            script: '/clira/system/topology.slax',
+            script: '/apps/topology/topology.slax',
             args: {
                 target: poss.data.target
             },

@@ -31,7 +31,7 @@ jQuery(function ($) {
 
         $.clira.runSlax({
             create: "yes",
-            script: '/clira/system/vcf.slax',
+            script: '/apps/vcf/vcf.slax',
             args: {
                 target: poss.data.target
             },
@@ -169,7 +169,7 @@ jQuery(function ($) {
         function displayStatistics() {
             $.clira.runSlax({
                 create: "yes",
-                script: '/clira/system/vcf-stats.slax',
+                script: '/apps/vcf/vcf-stats.slax',
                 args: {
                     target: target
                 },
@@ -197,7 +197,7 @@ jQuery(function ($) {
         function updateStatistics() {
             $.clira.runSlax({
                 create: "yes",
-                script: '/clira/system/vcf-stats.slax',
+                script: '/apps/vcf/vcf-stats.slax',
                 args: {
                     target: target
                 },
