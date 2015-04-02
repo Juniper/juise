@@ -79,7 +79,7 @@ install-exec-hook:
 	${MV} ${DESTDIR}/${bindir}/run-clira.sh ${DESTDIR}/${bindir}/run-clira
 
 install-data-hook:
-	${CP} -r apps core css images themes ${webdatadir}
+	${CP} -r ${srcdir}/apps ${srcdir}/core ${srcdir}/css ${srcdir}/images ${srcdir}/themes ${webdatadir}
 
 dist-hook:
-	${CP} -r apps core css images themes ${webdatadir}
+	${CP} -r ${srcdir}/apps ${srcdir}/core ${srcdir}/css ${srcdir}/images ${srcdir}/themes ${distdir}

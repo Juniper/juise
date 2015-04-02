@@ -592,6 +592,7 @@ print_help (const char *opt)
 
     fprintf(stderr,
 	    "Usage: mixer [options]\n\n"
+	    "\t--client: connect to an existing mixer server\n"
 	    "\t--console or -C: connect to server console\n"
 	    "\t--create-db: create mixer database and exit\n"
 	    "\t--db <dbname>: Specify mixer database file\n"

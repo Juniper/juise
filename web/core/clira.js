@@ -558,12 +558,20 @@ jQuery(function ($) {
             }
 
             if (format === "xml") {
-                payload += "><configuration>" + config
-                        +   "</configuration>";
+                // See if they already have a <configuation> tag.  If not, add
+                // it
+                if (config.indexOf("<configuration>") == -1) {
+                    payload += "><configuration>" + config + "</configuration>";
+                } else {
+                    payload += ">" + config;
+                }
             } else {
                 if (action == "set") {
                     payload += "><configuration-set>" + config
                         + "</configuration-set>";
+                } else if (action == "patch") {
+                    payload += "><configuration-patch>" + config
+                        + "</configuration-patch>";
                 } else {
                     payload += "><configuration-text>" + config
                         + "</configuration-text>";

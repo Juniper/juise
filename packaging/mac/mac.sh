@@ -138,8 +138,8 @@ cp Info.plist "${CLIRA_APP_ROOT}/Stop Clira Service.app/Contents"
 cp clira-stop.sh "${CLIRA_APP_ROOT}/Stop Clira Service.app/Contents/MacOS/clira.sh"
 
 rm -rf ${OUTPUTDIR}
-mkdir -p ${OUTPUTDIR}/Clira
-mv /Applications/Clira ${OUTPUTDIR}/Clira
+mkdir -p ${OUTPUTDIR}
+mv /Applications/Clira ${OUTPUTDIR}
 
 echo ""
 echo "Clira version $VERSION has been installed into ${OUTPUTDIR}/Clira.  You may now package it up into a .dmg."

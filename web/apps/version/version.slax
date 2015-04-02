@@ -19,7 +19,11 @@ match / {
             <b> $target;
             expr " is: ";
             <b> {
-                expr $swout/package-information[name == "junos-version"]/comment;
+                if ($swout/junos-version) {
+                    expr $swout/junos-version;
+                } else {
+                    expr $swout/package-information[name == "junos-version"]/comment;
+                }
             }
         }
     }

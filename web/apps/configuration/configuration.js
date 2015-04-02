@@ -53,7 +53,6 @@ jQuery(function ($) {
             // If the config starts with a <, its XML.  Otherwise text.
             if (config.charAt(0) != '<') {
                 format = 'text';
-                console.log('format TEXT!');
             }
 
             switch (loadStyle) {

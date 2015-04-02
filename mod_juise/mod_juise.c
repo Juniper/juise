@@ -900,7 +900,7 @@ mod_juise_create_env (server *srv, connection *con,
 
 	bzero(userbuf, sizeof(userbuf));
 	if (pwd && pwd->pw_name) {
-	    snprintf(userbuf, sizeof(userbuf), " --user %s", pwd->pw_name);
+	    snprintf(userbuf, sizeof(userbuf), " --user %s --client", pwd->pw_name);
 	}
 
 	argv[i++] = strdup("--mixer");
