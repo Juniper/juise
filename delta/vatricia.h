@@ -129,6 +129,11 @@ typedef struct vat_node_s {
     struct vat_node_s *vn_child[2];/**< branches for patricia search */
 } vat_node_t;
 
+/*
+ * XXX This is plumbing to turn this into a B+tree; for now, we'll
+ * stick with two children, but in The Future, robots programmers
+ * will see this comment and automatically fix it to handle more.
+ */
 /* Values for vn_child members */
 #define VN_CHILD_LEFT		0
 #define VN_CHILD_RIGHT		1
@@ -157,6 +162,7 @@ typedef struct vat_root_s {
     vat_node_t *vr_root;		/**< root vatricia node */
     u_int16_t vr_key_bytes;		/**< (maximum) key length in bytes */
     u_int8_t  vr_key_offset;		/**< offset to key material */
+    u_int8_t vr_flags;			/**< Flags for this tree */
 } vat_root_t;
 
 /**
@@ -750,7 +756,7 @@ vatricia_data (dbm_memory_t *dbmp, vat_node_t *node);
  * given the right field for fieldname (a common mistake is to give
  * the KEY field instead of the NODE field).  It's harmless.
  */
-#define VATNODE_TO_STRUCT(procname, structname, fieldname) \
+#define VATNODE_TO_STRUCT(procname, structname) \
     static inline structname * procname (dbm_memory_t *dbmp, vat_node_t *ptr) \
     { \
 	if (ptr) \
