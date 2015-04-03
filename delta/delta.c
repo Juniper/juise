@@ -31,8 +31,15 @@
 
 #define ROUNDS 10000000
 
-int opt_verbose;
-const char *opt_database;
+static int opt_verbose;
+static int opt_create;
+static int opt_exit_on_miss;
+static const char *opt_database;
+static unsigned long opt_rounds = ROUNDS;
+static unsigned long opt_count = 8 << 10;
+static unsigned long opt_size = 10 * DBM_PAGE_SIZE;
+static unsigned long opt_passes = 5;
+static unsigned long opt_key_length = sizeof(unsigned long);
 
 static void
 print_help (const char *opt)
@@ -54,144 +61,64 @@ print_version (void)
     printf("libjuice version %s\n", LIBJUISE_VERSION);
 }
 
-/* ---------------------------------------------------------------------- */
-
-typedef struct test_node_s {
-    int t_dummy1;			/* Test worst case */
-    unsigned long t_key;		/* Our key */
-    int t_dummy2;			/* More worst case */
-} test_node_t;
-
-VATNODE_TO_STRUCT(vat_to_test, test_node_t, t_vatricia);
-
-static int
-test_vatricia (void)
+static dbm_memory_t *
+open_db (void)
 {
-    dbm_memory_t *dbmp = NULL;
+    unsigned flags = DBMF_CREATE | DBMF_WRITE;
 
-    vat_root_t *root = vatricia_root_init(dbmp, sizeof(unsigned long),
-					  offsetof(test_node_t, t_key));
-    unsigned long key = 1;
-    int i, j;
-    int misses, hits;
+    dbm_memory_t *dbmp = dbm_open(opt_database, (caddr_t) DBM_COMPAT_ADDR,
+				  10, opt_size, &flags);
+    if (dbmp == 0)
+	err(1, "bad dbmp");
 
-    for (j = 0; j < 5; j++) {
-	printf("pass: %d\n", j + 1);
-	hits = misses = 0;
-	key = 1;
+    dbm_malloc_init(dbmp);
 
-	for (i = 0; i < ROUNDS; i++) {
-	    test_node_t *node = calloc(1, sizeof(test_node_t));
-	    if (node == NULL)
-		break;
-
-	    key += i * 3241 + 12;
-	    key %= ROUNDS * 2;
-
-	    node->t_key = htonl(key);
-
-#if 0
-	    printf("%d: %lx\n", i, key);
-#endif
-
-	    if (!vatricia_add(dbmp, root, node)) {
-		node->t_key = htonl(++key);
-		if (!vatricia_add(dbmp, root, node)) {
-		    misses += 1;
-		    if (opt_verbose)
-			printf("%d: %lx failed\n", i, key);
-		    free(node);
-		}
-	    }
-	}
-
-	vat_node_t *pp;
-
-	for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
-	     pp = vatricia_find_next(dbmp, root, pp), i++) {
-
-	    test_node_t *node = vat_to_test(dbmp, pp);
-	    if (opt_verbose)
-		printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key));
-	    hits += 1;
-	}
-
-	printf("hits:  %d\nmisses: %d\n", hits, misses);
-
-	for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
-	     pp = vatricia_find_next(dbmp, root, NULL)) {
-	    test_node_t *node = vat_to_test(dbmp, pp);
-	    vatricia_delete(dbmp, root, pp);
-	    free(node);
-	}
-
-	printf("empty: %s\n", vatricia_isempty(root) ? "true" : "false");
-
-    }
-
-    return 0;
+    return dbmp;
 }
-/* ---------------------------------------------------------------------- */
 
-
-#if 0
-void *
-dbm_mmap (dbm_memory_t *dbmp, size_t nbytes)
+static void
+close_db (dbm_memory_t *dbmp)
 {
-    caddr_t old_top;
-    size_t new_top;
-
-    old_top = (caddr_t)dbmp + dbmp->dm_top;
-    new_top = dbmp->dm_top + nbytes;
-
-    if (new_top > dbmp->dm_size)
-	return NULL;
-
-    dbmp->dm_top = new_top;
-
-    return old_top;
+    dbm_close(dbmp);
 }
-#endif
+
+/* ---------------------------------------------------------------------- */
 
 static int
 test_dbm (void)
 {
     char *cp;
     dbm_memory_t *dbmp;
-    size_t init_size;
-    void *pointers[8<<10];
+    void **pointers;
     unsigned round, idx;
-    unsigned flags = DBMF_CREATE | DBMF_WRITE;
 
-    init_size = 32<<20;
+    /* opt_size = 32<<20; */
 
-    char *waste = malloc(480*1024);
-    waste += 1;
+    pointers = calloc(sizeof(pointers[0]), opt_count);
+    if (pointers == NULL)
+	return -1;
 
-#if 0
-    dbmp->dm_size = init_size;
-    dbmp->dm_top = (sizeof(*dbmp) + DBM_PAGE_SIZE - 1) & ~DBM_PAGE_MASK;
-#else
-    dbmp = dbm_open(opt_database, (caddr_t) DBM_COMPAT_ADDR,
-		    10, 10 * DBM_PAGE_SIZE, &flags);
-    if (dbmp == 0)
-	err(1, "bad dbmp");
-#endif
+    dbmp = open_db();
+    if (dbmp == NULL)
+	errx(1, "open db failed");
 
-    dbm_malloc_init(dbmp);
+    printf("memory: %p; rounds %lu, count %lu, size %lu\n",
+	   dbmp, opt_rounds, opt_count, opt_size);
 
-    memset(pointers, 0, sizeof(pointers));
-
-    printf("memory: %p\n", dbmp);
-
-    for (round = 0; round < ROUNDS; round++) {
-	idx = random() % (sizeof(pointers) / sizeof(*pointers));
+    for (round = 0; round < opt_rounds; round++) {
+	idx = random() % opt_count;
 
 	if (pointers[idx]) {
+	    if (opt_verbose)
+		printf("free %d: %d -> %p\n", round, idx, pointers[idx]);
+
 	    dbm_free(dbmp, pointers[idx]);
 	    pointers[idx] = NULL;
 	} else {
 	    cp = pointers[idx] = dbm_malloc(dbmp, idx);
+	    if (opt_verbose)
+		printf("allo %d: %d -> %p\n", round, idx, cp);
+
 	    if (cp)
 		memset(cp, 0x55, idx);
 	    dbm_offset_t off = dbm_offset(dbmp, cp);
@@ -202,7 +129,191 @@ test_dbm (void)
 	}
     }
 
+    free(pointers);
+    close_db(dbmp);
+
     return 0;
+}
+
+/* ---------------------------------------------------------------------- */
+
+typedef struct test_node_s {
+    int t_dummy1;			/* Test worst case */
+    unsigned long t_key[3];		/* Our key */
+    int t_dummy2;			/* More worst case */
+} test_node_t;
+
+VATNODE_TO_STRUCT(vat_to_test, test_node_t);
+
+static int
+test_vatricia (void)
+{
+    dbm_memory_t *dbmp = NULL;
+
+    dbmp = open_db();
+    if (dbmp == NULL)
+	errx(1, "open db failed");
+
+    vat_root_t *root;
+    test_node_t *node;
+
+    unsigned long key = 1;
+    unsigned i, j;
+    unsigned long misses, hits, made = 0;
+
+    root = vatricia_root_init(dbmp, opt_key_length,
+			      offsetof(test_node_t, t_key));
+
+    for (j = 0; j < opt_passes; j++) {
+	printf("pass: %d\n", j + 1);
+	hits = misses = 0;
+	key = 1;
+
+	for (i = 0; i < opt_rounds; i++) {
+	    node = dbm_malloc(dbmp, sizeof(test_node_t));
+	    if (node == NULL)
+		break;
+
+	    bzero(node, sizeof(*node));
+
+	    key += i * 3241 + 12;
+	    /* key %= opt_rounds * 2; */
+
+	    node->t_key[0] = htonl(key);
+	    node->t_key[1] = i * 4;
+	    node->t_key[2] = i * 16;
+
+	    if (opt_verbose)
+		printf("%d: %lx\n", i, key);
+
+	    if (!vatricia_add(dbmp, root, node)) {
+		node->t_key[0] = htonl(++key);
+		if (!vatricia_add(dbmp, root, node)) {
+		    misses += 1;
+		    if (opt_verbose)
+			printf("%d: %lx failed\n", i, key);
+		    dbm_free(dbmp, node);
+		}
+	    } else
+		made += 1;
+	}
+
+	if (opt_exit_on_miss) {
+	    printf("misses: %lu, made: %lu\n", misses, made);
+	    exit(1);
+	}
+
+	vat_node_t *pp;
+
+	for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
+	     pp = vatricia_find_next(dbmp, root, pp), i++) {
+
+	    node = vat_to_test(dbmp, pp);
+	    if (opt_verbose)
+		printf("%d: %lx\n", i, (unsigned long) ntohl(node->t_key[0]));
+	    hits += 1;
+	}
+
+	printf("hits:  %lu\nmisses: %lu\n", hits, misses);
+
+	for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
+	     pp = vatricia_find_next(dbmp, root, NULL)) {
+	    node = vat_to_test(dbmp, pp);
+	    vatricia_delete(dbmp, root, pp);
+	    dbm_free(dbmp, node);
+	}
+
+	printf("empty: %s\n", vatricia_isempty(root) ? "true" : "false");
+    }
+
+    close_db(dbmp);
+
+    return 0;
+}
+
+static int
+readline (char *buf, int size, FILE *input)
+{
+    if (fgets(buf, size, input) == NULL)
+	return -1;
+
+    int len = strlen(buf);
+    buf[len] = '\0';
+
+    return 0;
+}
+
+typedef struct test_node2_s {
+    int t_dummy1;			/* Test worst case */
+    int t_dummy2;			/* More worst case */
+    char *t_data;
+    char t_key[0];
+} test_node2_t;
+
+#if 0
+VATNODE_TO_STRUCT(vat_to_test2, test_node2_t);
+#endif
+
+static int
+test_vatricia2 (const char *name)
+{
+    return 0;
+
+    int bufsiz = BUFSIZ;
+    char *key = malloc(bufsiz);
+    char *data = malloc(bufsiz);
+    FILE *fp;
+
+    dbm_memory_t *dbmp = open_db();
+    if (dbmp == NULL)
+	errx(1, "open db failed");
+
+    if (name) {
+	fp = fopen(name, "r");
+	if (fp == NULL)
+	    err(1, "cannot open file: %s", name);
+    } else
+	fp = stdin;
+
+    for (;;) {
+	if (readline(key, BUFSIZ, fp) < 0)
+	    break;
+
+	if (readline(data, BUFSIZ, fp) < 0)
+	    break;
+
+	/* build node */
+    }
+
+    close_db(dbmp);
+
+    return 0;
+}
+
+static unsigned long
+parse_arg_number (const char *cp)
+{
+    if (cp == NULL)
+	return 0;
+
+    char *ep = NULL;
+    unsigned long rc = strtoul(cp, &ep, 10);
+
+    if (ep && *ep) {
+	switch (*ep) {
+	case 'g':
+	    rc *= 1024 * 1024 * 1024;
+	    break;
+	case 'k':
+	    rc *= 1024;
+	    break;
+	case 'm':
+	    rc *= 1024 * 1024;
+	    break;
+	}
+    }
+
+    return rc;
 }
 
 int
@@ -210,6 +321,7 @@ main (int argc UNUSED, char **argv UNUSED)
 {
     char *cp;
     int rc = 0;
+    int opt_test = 0;
 
     malloc_error_func_set(NULL);
 
@@ -223,6 +335,30 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--help")) {
 	    print_help(NULL);
+
+	} else if (streq(cp, "--count") || streq(cp, "-c")) {
+	    opt_count = parse_arg_number(*++argv);
+
+	} else if (streq(cp, "--create") || streq(cp, "-C")) {
+	    opt_create = TRUE;
+
+	} else if (streq(cp, "--exit-on-miss") || streq(cp, "-E")) {
+	    opt_exit_on_miss = TRUE;
+
+	} else if (streq(cp, "--key-length") || streq(cp, "-k")) {
+	    opt_key_length = TRUE;
+
+	} else if (streq(cp, "--passes") || streq(cp, "-p")) {
+	    opt_passes = parse_arg_number(*++argv);
+
+	} else if (streq(cp, "--rounds") || streq(cp, "-r")) {
+	    opt_rounds = parse_arg_number(*++argv);
+
+	} else if (streq(cp, "--size") || streq(cp, "-s")) {
+	    opt_size = parse_arg_number(*++argv);
+
+	} else if (streq(cp, "--test") || streq(cp, "-t")) {
+	    opt_test = parse_arg_number(*++argv);
 
 	} else if (streq(cp, "--verbose") || streq(cp, "-v")) {
 	    opt_verbose = TRUE;
@@ -249,8 +385,22 @@ main (int argc UNUSED, char **argv UNUSED)
     if (opt_database == NULL)
 	opt_database = "test.db";
 
-    test_dbm();
-    test_vatricia();
+    if (opt_create)
+	unlink(opt_database);
+
+    switch (opt_test) {
+    case 0:
+	test_dbm();
+	break;
+
+    case 1:
+	test_vatricia();
+	break;
+
+    case 2:
+	test_vatricia2(NULL);
+	break;
+    }
 
     return rc;
 }
