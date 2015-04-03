@@ -829,32 +829,6 @@ dbm_is_readonly (dbm_memory_t *dbmp)
     return 0;
 }
 
-#ifdef __powerpc__
-static int
-dbm_product_is_mx80 (void)
-{
-    static int retval = -1;
-
-    if (retval == -1) {
-	char prod_name[64] = "\0";
-	int rc;
-	int len = sizeof(prod_name);
-        rc = sysctlbyname("hw.product.model", &prod_name, &len, NULL, 0);
-        if (rc == 0) {
-          char *s;
-          size_t l = strlen(prod_name);
-          s = strstr("mx80 mx40-t mx10-t mx5-t mx80-t mx80-p mx80-48t ", prod_name);
-          if ((s != NULL) && (*(s + l) == ' ')) {
-             retval = TRUE;
-          } else {
-             retval = FALSE;
-          }
-        }
-    }
-    return retval;
-}
-#endif
-
 /*
  * Returns DBM_MAX_ADDRESS which may need
  * adjustment if running under a 64-bit
@@ -869,10 +843,6 @@ caddr_t dbm_max_address(void)
     rc = sysctlbyname("kern.iscompat32", &iscompat32, &len, NULL, 0);
     if (rc == 0 && iscompat32)
         return (caddr_t) (DBM_MAX_ADDRESS_32);
-#elif __powerpc__
-    if (dbm_product_is_mx80() == TRUE) {
-        return (caddr_t) (DBM_MAX_ADDRESS_MX80);
-    }
 #endif
 
     return (caddr_t) (DBM_MAX_ADDRESS);
@@ -892,10 +862,6 @@ caddr_t dbm_schema_address(void)
     rc = sysctlbyname("kern.iscompat32", &iscompat32, &len, NULL, 0);
     if (rc == 0 && iscompat32)
         return (caddr_t) (DBM_SCHEMA_ADDR_32);
-#elif __powerpc__
-    if (dbm_product_is_mx80() == TRUE) {
-        return (caddr_t) (DBM_SCHEMA_ADDR_MX80);
-    }
 #endif
 
     return (caddr_t) (DBM_SCHEMA_ADDR);
@@ -915,10 +881,6 @@ caddr_t dbm_compat_address(void)
     rc = sysctlbyname("kern.iscompat32", &iscompat32, &len, NULL, 0);
     if (rc == 0 && iscompat32)
         return (caddr_t) (DBM_COMPAT_ADDR_32);
-#elif __powerpc__
-    if (dbm_product_is_mx80() == TRUE) {
-        return (caddr_t) (DBM_COMPAT_ADDR_MX80);
-    }
 #endif
 
     return (caddr_t) (DBM_COMPAT_ADDR);
