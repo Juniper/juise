@@ -19,6 +19,10 @@ ns xutil extension = "http://xml.libslax.org/xutil";
  * Anticipated parameters to this script
  */
 param $p;
+param $oper;
+param $name;
+param $id;
+param $members;
 param $page;
 param $rows;
 param $sidx;
@@ -81,7 +85,7 @@ match / {
             }
         }
 
-        if ($data) {
+        if ($data != "") {
             copy-of xutil:xml-to-json($data, $json-opts);
         } else {
             copy-of xutil:xml-to-json(<json type="array">, $json-opts);
