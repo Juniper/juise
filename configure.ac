@@ -87,6 +87,13 @@ AC_CHECK_HEADERS([string.h sys/param.h unistd.h])
 AC_CHECK_HEADERS([sys/sysctl.h])
 AC_CHECK_HEADERS([stdint.h sys/statfs.h])
 
+host_is_osx=no
+case $host_os in
+     darwin*)
+        host_is_osx=yes
+        ;;
+esac
+AM_CONDITIONAL([HOST_IS_OSX], [test "$host_is_osx" = "yes"])
 
 AC_CHECK_LIB([crypto], [MD5_Init])
 AM_CONDITIONAL([HAVE_LIBCRYPTO], [test "$HAVE_LIBCRYPTO" != "no"])
@@ -625,7 +632,7 @@ AC_CONFIG_FILES([
   mixer/Makefile
   web/Makefile
   web/clira.conf
-  web/run-clira.sh
+  web/run-clira
   import/Makefile
   tests/Makefile
   packaging/juise.pc

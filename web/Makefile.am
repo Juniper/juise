@@ -68,18 +68,15 @@ dist_doc_DATA = \
     clira.conf
 
 dist_bin_SCRIPTS = \
-    run-clira.sh
+    run-clira
 
 EXTRA_DIST += ${WEB_FILES}
 
 svnignore:
 	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
 
-install-exec-hook:
-	${MV} ${DESTDIR}/${bindir}/run-clira.sh ${DESTDIR}/${bindir}/run-clira
-
 install-data-hook:
-	${CP} -r ${srcdir}/apps ${srcdir}/core ${srcdir}/css ${srcdir}/images ${srcdir}/themes ${webdatadir}
+	${CP} -r ${srcdir}/apps ${srcdir}/core ${srcdir}/css ${srcdir}/images ${srcdir}/themes ${DESTDIR}/${webdatadir}
 
 dist-hook:
 	${CP} -r ${srcdir}/apps ${srcdir}/core ${srcdir}/css ${srcdir}/images ${srcdir}/themes ${distdir}

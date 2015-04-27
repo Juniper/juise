@@ -1,6 +1,7 @@
 usr/bin/juise
 usr/bin/juise-config
 usr/bin/mixer
+usr/bin/run-clira
 usr/lib/juise/juise/juise-askpass
 usr/lib/libjuise.so.0.0.0
 usr/lib/libjuise.so
@@ -9,4 +10,3 @@ usr/lib/lighttpd-for-juise/mod_juise.so
 usr/lib/slax/extensions/http%3A%2F%2Fxml.juniper.net%2Fjunos%2Fcommit-scripts%2F1.0.ext
 usr/lib/slax/extensions/jcs.prefix
 usr/share/*
-usr/sbin/run-clira.sh

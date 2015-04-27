@@ -1,0 +1,221 @@
+#!/bin/bash
+#
+# Copyright 2014-2015, Juniper Networks, Inc.
+# All rights reserved.
+# This SOFTWARE is licensed under the LICENSE provided in the
+# ../Copyright file. By downloading, installing, copying, or otherwise
+# using the SOFTWARE, you agree to be bound by the terms of that
+# LICENSE.
+#
+# This script starts/stops CLIRA (CLI Remote Access)
+#
+
+PREFIX=@prefix@
+JUISE_HOME=$HOME/.juise
+BASE_CLIRA_CONF=$PREFIX/share/doc/juise/clira.conf
+CLIRA_CONF=$JUISE_HOME/clira.conf
+LIGHTTPD_PIDFILE=$JUISE_HOME/lighttpd.pid
+MODULES_DIR=$PREFIX/lib
+URL=http://localhost:3000
+NAME=run-clira
+
+usage ()
+{
+    echo "$NAME usage: $NAME [ setup | start | stop | status ]"
+    echo ""
+    exit 1
+}
+
+die ()
+{
+    echo "${NAME}: $*"
+    exit 1
+}
+
+failed_install ()
+{
+    echo "${NAME}: $*"
+    echo "${NAME}: check for installation failure"
+    exit 1
+}
+
+do_setup ()
+{
+    if [ ! -e $JUISE_HOME ]; then
+	mkdir -p $JUISE_HOME
+    fi
+
+    if [ ! -x $PREFIX/bin/mixer ]; then
+	failed_install "$PREFIX/bin/mixer not found"
+    fi
+
+    if [ ! -x $PREFIX/sbin/lighttpd-for-juise ]; then
+	failed_install "$PREFIX/sbin/lighttpd-for-juise not found"
+    fi
+
+    if [ "$LIGHTTPD_RUNNING" = "yes" ]; then
+	die "PID $LIGHTTPD_PID already running; Use '$NAME stop' to stop it."
+    fi
+
+    # Replace JUISE_HOME (for lighttpd.pid) with our home
+    if [ "$1" = "force" -o ! -e $CLIRA_CONF ]; then
+	if [ ! -e $BASE_CLIRA_CONF ]; then
+	    die "file not found: $BASE_CLIRA_CONF"
+	fi
+	sed "s,JUISE_HOME,$JUISE_HOME,g" $BASE_CLIRA_CONF > $CLIRA_CONF
+    fi
+
+    if [ ! -x $PREFIX/bin/mixer ]; then
+	failed_install "$PREFIX/bin/mixer not found"
+    fi
+
+    $PREFIX/bin/mixer --create-db
+}
+
+do_start ()
+{
+    do_setup
+
+    # Fire 'er up
+    $PREFIX/sbin/lighttpd-for-juise -m $MODULES_DIR \
+		-f $CLIRA_CONF >& $JUISE_HOME/lighttpd.log
+
+    for i in 1 2 3 4 5; do
+	get_pid
+	if [ $LIGHTTPD_RUNNING = "yes" ]; then
+	    break
+	fi
+	sleep $i
+    done
+
+    if [ $LIGHTTPD_RUNNING = "no" ]; then
+	echo "clira was not started"
+	exit 1
+    fi
+
+    echo "clira started (pid $LIGHTTPD_PID)"
+    echo "  "
+    echo "To open, use URL: $URL"
+}
+
+do_stop ()
+{
+    if [ "$LIGHTTPD_RUNNING" = "no" ]; then
+	die "clira is not running"
+	exit
+    fi
+
+    echo "stopping clira (pid $LIGHTTPD_PID) and all related processes ..."
+
+    kill $LIGHTTPD_PID
+    killall mixer -u $USER 2>&1 \
+	| grep -v 'No matching processes belonging to you were found'
+
+    rm -f $LIGHTTPD_PIDFILE
+
+    echo "stop is complete"
+}
+
+show_process ()
+{
+    # This will likely be OS-specific
+    case `uname -s` in
+        Darwin|darwin|*BSD*)
+            ps -o pid,ppid,rss,pcpu,pmem,time,etime,comm -p $1
+	    ;;
+	*)
+	ps -p $1
+	;;
+    esac
+}
+
+do_log() {
+    cat $JUISE_HOME/lighttpd.log
+}
+
+status_filter () {
+    first=1
+    while read line; do
+	if [ $first = 1 ]; then
+            first=0;
+        else
+            echo "$line"
+	fi
+    done
+}
+
+get_pid ()
+{
+    LIGHTTPD_PID=xxx
+    LIGHTTPD_RUNNING=no
+    if [ -e $LIGHTTPD_PIDFILE ]; then
+	LIGHTTPD_PID=`cat $LIGHTTPD_PIDFILE`
+
+	if [ -n "$LIGHTTPD_PID" ]; then
+		if ps -p $LIGHTTPD_PID > /dev/null
+		then
+			LIGHTTPD_RUNNING=yes
+		fi
+	fi
+    fi
+}
+
+do_status ()
+{
+    if [ "$LIGHTTPD_RUNNING" = "no" ]; then
+	echo "clira (lighttpd) is not running"
+	rc=1
+    else
+	echo "clira (lighttpd) process:"
+	show_process $LIGHTTPD_PID
+	echo "  "
+    fi
+
+    list=`killall -s mixer -u $USER 2>/dev/null | awk '{print $3}'`
+    if [ "$list" = "" ]; then
+        echo "no mixer processes running"
+    else
+	echo "mixer processes:"
+	filter=cat
+        for pid in $list; do
+	    show_process $pid | $filter
+	    filter="status_filter"
+        done
+    fi
+}
+
+rc=0
+
+get_pid
+
+# Figure out our lighttpd-for-juise modules directory
+if [ -d $PREFIX/lib64/lighttpd-for-juise ]; then
+	MODULES_DIR=$PREFIX/lib64/lighttpd-for-juise
+elif [ -d $PREFIX/lib/lighttpd-for-juise ]; then
+	MODULES_DIR=$PREFIX/lib/lighttpd-for-juise
+fi
+
+action=$1
+shift
+
+case "$action" in
+    start|up)
+	do_start
+	;;
+    stop|down)
+    	do_stop
+	;;
+    setup|init)
+	do_setup "$@"
+	;;
+    stat|status)
+	do_status "$@"
+	;;
+    log)
+	do_log "$@"
+	;;
+    *)
+	usage
+esac
+
+exit $rc
