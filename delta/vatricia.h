@@ -170,7 +170,7 @@ typedef struct vat_root_s {
  * Typedef for user-specified vatricia allocation function.
  * @sa vatricia_set_allocator
  */
-typedef void *(*vatricia_alloc_fn)(dbm_memory_t *);
+typedef void *(*vatricia_alloc_fn)(dbm_memory_t *, size_t);
  
 /**
  * @brief
