@@ -19,6 +19,8 @@
 
 #include <libjuise/common/aux_types.h>
 #include <libjuise/common/bits.h>
+#include <libjuise/memory/memory.h>
+#include <libjuise/memory/dmalloc.h>
 #include "vatricia.h"
 
 /*
@@ -81,9 +83,9 @@ const u_int8_t vatricia_bit_masks[8] = {
  * Built-in root allocator.
  */
 static void *
-vatricia_stdlib_alloc (dbm_memory_t *dbmp UNUSED)
+vat_db_alloc (dbm_memory_t *dbmp, size_t size)
 {
-    return malloc(sizeof(vat_root_t));
+    return dbm_malloc(dbmp, size);
 }
 
 /*
@@ -92,11 +94,11 @@ vatricia_stdlib_alloc (dbm_memory_t *dbmp UNUSED)
  * Built-in root deallocator.
  */
 static void
-vatricia_stdlib_free (dbm_memory_t *dbmp UNUSED, void *ptr)
+vat_db_free (dbm_memory_t *dbmp UNUSED, void *ptr)
 {
     assert(ptr);
 
-    free(ptr);
+    dbm_free(dbmp, ptr);
 }
 
 /*
@@ -110,9 +112,9 @@ vatricia_stdlib_free (dbm_memory_t *dbmp UNUSED, void *ptr)
 static struct vatricia_alloc_s {
     vatricia_alloc_fn vat_alloc;
     vatricia_free_fn vat_free;
-} alloc_info = {
-    vatricia_stdlib_alloc,
-    vatricia_stdlib_free
+} vat_alloc_info = {
+    vat_db_alloc,
+    vat_db_free
 };
 
 void
@@ -122,10 +124,31 @@ vatricia_set_allocator (vatricia_alloc_fn my_alloc,
     assert(my_alloc);
     assert(my_free);
     
-    alloc_info.vat_alloc = my_alloc;
-    alloc_info.vat_free = my_free;
+    vat_alloc_info.vat_alloc = my_alloc;
+    vat_alloc_info.vat_free = my_free;
 }
-    
+
+static inline void *
+vat_alloc (dbm_memory_t *dbmp, size_t size)
+{
+    return vat_alloc_info.vat_alloc(dbmp, size);
+}
+
+static inline void *
+vat_calloc (dbm_memory_t *dbmp, size_t size)
+{
+    void *ptr = vat_alloc_info.vat_alloc(dbmp, size);
+    if (ptr)
+	bzero(ptr, size);
+    return ptr;
+}
+
+static inline void
+vat_free (dbm_memory_t *dbmp, void *ptr)
+{
+    return vat_alloc_info.vat_free(dbmp, ptr);
+}
+
 /*
  * Given the length of a key in bytes (not to exceed 256), return the
  * length in vatricia bit format.
@@ -245,7 +268,7 @@ vatricia_root_init (dbm_memory_t *dbmp UNUSED, u_int16_t klen, u_int8_t off)
 
     vat_root_t *root;
 
-    root = alloc_info.vat_alloc(dbmp);
+    root = vat_alloc(dbmp, sizeof(*root));
     if (root) {
 	root->vr_root = NULL;
 	root->vr_key_bytes = klen;
@@ -265,7 +288,7 @@ vatricia_root_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root)
 {
     if (root) {
 	assert(root->vr_root == NULL);
-	alloc_info.vat_free(dbmp, root);
+	vat_free(dbmp, root);
     }
 }
 
@@ -315,7 +338,7 @@ vatricia_data (dbm_memory_t *dbmp UNUSED, vat_node_t *node)
  * Add a node to a Vatricia tree.  Returns TRUE on success.
  */
 boolean
-vatricia_add (dbm_memory_t *dbmp UNUSED, vat_root_t *root, void *data)
+vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data)
 {
     vat_node_t *current;
     vat_node_t **ptr;
@@ -323,7 +346,7 @@ vatricia_add (dbm_memory_t *dbmp UNUSED, vat_root_t *root, void *data)
     u_int16_t diff_bit;
     const u_int8_t *key;
 
-    vat_node_t *node = calloc(sizeof(*node), 1);
+    vat_node_t *node = vat_calloc(dbmp, sizeof(*node));
     if (node == NULL)
 	return FALSE;
 
