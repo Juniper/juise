@@ -90,6 +90,8 @@ mod_juise_la_LDFLAGS = -module -export-dynamic -avoid-version -no-undefined
 
 if HOST_IS_OSX
 mod_juise_la_LDFLAGS += -L${LIGHTTPD_MOD} -llightcomp
+else if HOST_IS_CYGWIN
+mod_juise_la_LDFLAGS += -L${LIGHTTPD_OBJ}/src/.libs -llightcomp
 endif
 
 LIBS = \

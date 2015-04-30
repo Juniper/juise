@@ -108,8 +108,7 @@ do_stop ()
     echo "stopping clira (pid $LIGHTTPD_PID) and all related processes ..."
 
     kill $LIGHTTPD_PID
-    killall mixer -u $USER 2>&1 \
-	| grep -v 'No matching processes belonging to you were found'
+    kill -9 $(ps | grep mixer | grep -v grep | awk `{print $1}') 2> /dev/null
 
     rm -f $LIGHTTPD_PIDFILE
 
@@ -171,7 +170,7 @@ do_status ()
 	echo "  "
     fi
 
-    list=`killall -s mixer -u $USER 2>/dev/null | awk '{print $3}'`
+    list=`ps | grep mixer | grep -v grep | awk '{print $1}'`
     if [ "$list" = "" ]; then
         echo "no mixer processes running"
     else

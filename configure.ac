@@ -88,12 +88,17 @@ AC_CHECK_HEADERS([sys/sysctl.h])
 AC_CHECK_HEADERS([stdint.h sys/statfs.h])
 
 host_is_osx=no
+host_is_cygwin=no
 case $host_os in
      darwin*)
         host_is_osx=yes
         ;;
+     cygwin*|CYGWIN*)
+	host_is_cygwin=yes
+	;;
 esac
 AM_CONDITIONAL([HOST_IS_OSX], [test "$host_is_osx" = "yes"])
+AM_CONDITIONAL([HOST_IS_CYGWIN], [test "$host_is_cygwin" = "yes"])
 
 AC_CHECK_LIB([crypto], [MD5_Init])
 AM_CONDITIONAL([HAVE_LIBCRYPTO], [test "$HAVE_LIBCRYPTO" != "no"])

@@ -76,7 +76,7 @@ svnignore:
 	svn propset svn:ignore -F ${srcdir}/.svnignore ${srcdir}
 
 install-data-hook:
-	${CP} -r ${srcdir}/apps ${srcdir}/core ${srcdir}/css ${srcdir}/images ${srcdir}/themes ${DESTDIR}/${webdatadir}
+	${CP} -r ${srcdir}/apps ${srcdir}/core ${srcdir}/css ${srcdir}/images ${srcdir}/themes ${DESTDIR}${webdatadir}
 
 dist-hook:
 	${CP} -r ${srcdir}/apps ${srcdir}/core ${srcdir}/css ${srcdir}/images ${srcdir}/themes ${distdir}
