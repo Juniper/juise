@@ -110,7 +110,16 @@
  * recommended.
  */
 
+#if 1
 typedef uint32_t vat_offset_t;	/* Offsets within the database */
+#else
+typedef uint8_t *vat_offset_t;
+#endif
+
+typedef void *vat_pointer_t;	/* Pointer into the database */
+typedef char *vat_data_t;	/* Pointer into the database */
+
+#define VAT_PTR_NULL	0	/* NULL test value */
 
 /**
  * @brief
@@ -118,15 +127,11 @@ typedef uint32_t vat_offset_t;	/* Offsets within the database */
  */
 typedef struct vat_node_s {
     uint16_t vn_refcount;	/**< number of pointers to this node */
-    uint16_t vn_creator;	/**< Which root tree created this node */
+    uint16_t vn_generation;	/**< Which root tree created this node */
     uint16_t vn_length;		/**< length of key, formated as bit */
     uint16_t vn_bit;		/**< bit number to test for patricia */
-    uint8_t *vn_data;		/**< pointer to data/object */
-#if 0
-    struct vat_node_s *vn_left;	/**< left branch for patricia search */
-    struct vat_node_s *vn_right; /**< right branch for same */
-#endif
-    struct vat_node_s *vn_child[2];/**< branches for patricia search */
+    vat_offset_t vn_data;	/**< pointer to data/object */
+    struct vat_node_s *vn_child[2]; /**< branches for patricia search */
 } vat_node_t;
 
 /*
@@ -159,11 +164,17 @@ typedef struct vat_node_s {
  * Vatricia tree root.
  */
 typedef struct vat_root_s {
-    vat_node_t *vr_root;		/**< root vatricia node */
-    u_int16_t vr_key_bytes;		/**< (maximum) key length in bytes */
-    u_int8_t  vr_key_offset;		/**< offset to key material */
-    u_int8_t vr_flags;			/**< Flags for this tree */
+    TAILQ_ENTRY(vat_root_s) vr_link; /**< Linked list of roots */
+    vat_offset_t vr_root;	/**< root vatricia node */
+    u_int16_t vr_key_bytes;	/**< (maximum) key length in bytes */
+    u_int8_t  vr_key_offset;	/**< offset to key material */
+    u_int8_t vr_flags;		/**< Flags for this tree */
 } vat_root_t;
+
+/** Flag values for vr_flags */
+#define VRF_INDIRECT	(1<<0)	/**< Key is indirected off data */
+
+typedef TAILQ_HEAD(vat_root_list_s, vat_root_s) vat_root_list_t;
 
 /**
  * @brief
@@ -185,6 +196,60 @@ typedef void (*vatricia_free_fn)(dbm_memory_t *, void *);
 
 /**
  * @brief
+ * Convert a pointer into the database into an offset
+ *
+ * @param[in] dbmp
+ *     Database
+ * @param[in] ptr
+ *     Pointer to be converted
+ *
+ * @return 
+ *     The offset of the ptr in the database
+ */
+static inline vat_offset_t
+vat_off (dbm_memory_t *dbmp UNUSED, vat_pointer_t ptr)
+{
+#if 1
+    if (ptr == NULL)
+	return VAT_PTR_NULL;
+
+    vat_data_t p1 = (vat_pointer_t) dbmp;
+    vat_data_t p2 = ptr;
+
+    return p2 - p1;
+#else
+    return ptr;
+#endif
+}
+
+/**
+ * @brief
+ * Convert an offset into the database into a pointer
+ *
+ * @param[in] dbmp
+ *     Database
+ * @param[in] offset
+ *     Offset to be converted
+ *
+ * @return 
+ *     A pointer into the database
+ */
+static inline vat_pointer_t
+vat_ptr (dbm_memory_t *dbmp UNUSED, vat_offset_t offset)
+{
+#if 1
+    if (offset == VAT_PTR_NULL)
+	return NULL;
+
+    vat_data_t p1 = (vat_pointer_t) dbmp;
+    return p1 + offset;
+#else
+    return offset;
+#endif
+}
+
+/**
+ * @brief
  * Initializes a vatricia tree root.
  *
  * @param[in] root
@@ -198,7 +263,7 @@ typedef void (*vatricia_free_fn)(dbm_memory_t *, void *);
  *     A pointer to the vatricia tree root.
  */
 vat_root_t *
-vatricia_root_init (dbm_memory_t *dbmp,
+vatricia_root_init (dbm_memory_t *dbmp, vat_root_t *root,
 		    u_int16_t key_bytes, u_int8_t key_offset); 
 
 /**
@@ -243,7 +308,8 @@ vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes);
  *      with (variable length keys), something already in the tree.
  */
 boolean
-vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data);
+vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data,
+	      uint16_t key_bytes);
 
 /**
  * @brief
@@ -593,9 +659,10 @@ vatricia_node_init (vat_node_t *node)
  *     A pointer to the start of node key.
  */
 static inline const u_int8_t *
-vatricia_key (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
+vatricia_key (dbm_memory_t *dbmp, vat_root_t *root, vat_node_t *node)
 {
-    return node->vn_data + root->vr_key_offset;
+    u_int8_t *value = vat_ptr(dbmp, node->vn_data);
+    return value + root->vr_key_offset;
 }
 
 /**
@@ -677,7 +744,7 @@ vatricia_get_inline (dbm_memory_t *dbmp, vat_root_t *root,
     if (!key_bytes) {
 	abort();
     }
-    current = root->vr_root;
+    current = vat_ptr(dbmp, root->vr_root);
     if (!current) {
 	return 0;
     }
@@ -719,7 +786,7 @@ vatricia_get_inline (dbm_memory_t *dbmp, vat_root_t *root,
 static inline u_int8_t
 vatricia_isempty (vat_root_t *root)
 {
-    return (root->vr_root == NULL);
+    return (root->vr_root == VAT_PTR_NULL);
 }
 
 void *
@@ -788,10 +855,10 @@ static inline const structname *                                     \
  * compile-time checking. 
  */
 
-#define VATRICIA_ROOT_INIT(dbmp, _nodestruct,	  \
-			   _nodeelement, _keyelt) \
-    vatricia_root_init(dbmp,					       \
-                      STRUCT_SIZEOF(_nodestruct, _keyelt),             \
+#define VATRICIA_ROOT_INIT(dbmp, root, _nodestruct,			\
+			   _nodeelement, _keyelt)			\
+    vatricia_root_init(dbmp, root,					\
+                      STRUCT_SIZEOF(_nodestruct, _keyelt),		\
                       STRUCT_OFFSET(_nodestruct, _nodeelement, _keyelt))
 
 /**
