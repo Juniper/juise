@@ -67,11 +67,13 @@ open_db (void)
     unsigned flags = DBMF_CREATE | DBMF_WRITE;
 
     dbm_memory_t *dbmp = dbm_open(opt_database, (caddr_t) DBM_COMPAT_ADDR,
-				  10, opt_size, &flags);
+				  sizeof(delta_header_t), opt_size, &flags);
     if (dbmp == 0)
 	err(1, "bad dbmp");
 
     dbm_malloc_init(dbmp);
+
+    delta_check_header(dbmp);
 
     return dbmp;
 }
@@ -161,8 +163,13 @@ test_vatricia (void)
     unsigned i, j;
     unsigned long misses, hits, made = 0;
 
-    root = vatricia_root_init(dbmp, opt_key_length,
-			      offsetof(test_node_t, t_key));
+    delta_header_t *dhp = delta_header(dbmp);
+    root = &dhp->dh_root;
+
+    if (opt_create) {
+	vatricia_root_init(dbmp, root, opt_key_length,
+			   offsetof(test_node_t, t_key));
+    }
 
     for (j = 0; j < opt_passes; j++) {
 	printf("pass: %d\n", j + 1);
@@ -186,9 +193,9 @@ test_vatricia (void)
 	    if (opt_verbose)
 		printf("%d: %lx\n", i, key);
 
-	    if (!vatricia_add(dbmp, root, node)) {
+	    if (!vatricia_add(dbmp, root, node, 0)) {
 		node->t_key[0] = htonl(++key);
-		if (!vatricia_add(dbmp, root, node)) {
+		if (!vatricia_add(dbmp, root, node, 0)) {
 		    misses += 1;
 		    if (opt_verbose)
 			printf("%d: %lx failed\n", i, key);
@@ -238,9 +245,16 @@ readline (char *buf, int size, FILE *input)
 	return -1;
 
     int len = strlen(buf);
-    buf[len] = '\0';
+    if (len == 0)
+	return -1;
 
-    return 0;
+    if (buf[len - 1] == '\n')
+	buf[--len] = '\0';
+
+    if (buf[len - 1] == '\r')
+	buf[--len] = '\0';
+
+    return len;
 }
 
 typedef struct test_node2_s {
@@ -250,18 +264,16 @@ typedef struct test_node2_s {
     char t_key[0];
 } test_node2_t;
 
-#if 0
 VATNODE_TO_STRUCT(vat_to_test2, test_node2_t);
-#endif
 
 static int
 test_vatricia2 (const char *name)
 {
-    return 0;
-
     int bufsiz = BUFSIZ;
-    char *key = malloc(bufsiz);
-    char *data = malloc(bufsiz);
+    char *keybuf = malloc(bufsiz);
+    char *databuf = malloc(bufsiz);
+    int keysize, datasize;
+    unsigned i, j;
     FILE *fp;
 
     dbm_memory_t *dbmp = open_db();
@@ -272,15 +284,111 @@ test_vatricia2 (const char *name)
 	fp = fopen(name, "r");
 	if (fp == NULL)
 	    err(1, "cannot open file: %s", name);
-    } else
+    } else {
 	fp = stdin;
+	opt_passes = 1;
+    }
+
+    vat_root_t *root;
+    test_node2_t *node;
+
+    unsigned long key = 1;
+    unsigned long misses, hits, made = 0;
+
+
+    delta_header_t *dhp = delta_header(dbmp);
+    root = &dhp->dh_root;
+
+    if (opt_create) {
+	vatricia_root_init(dbmp, root, 0, offsetof(test_node2_t, t_key));
+    }
+
+    for (j = 0; j < opt_passes; j++) {
+	printf("pass: %d\n", j + 1);
+	hits = misses = 0;
+	key = 1;
+
+	rewind(fp);
+
+	for (i = 0;; i++) {
+	    keysize = readline(keybuf, BUFSIZ, fp);
+	    if (keysize <= 0)
+		break;
+
+	    datasize = readline(databuf, BUFSIZ, fp);
+	    if (datasize <= 0)
+		break;
+
+	    node = dbm_malloc(dbmp, sizeof(*node) + keysize + datasize + 2);
+	    if (node == NULL)
+		break;
+
+	    bzero(node, sizeof(*node));
+	    memcpy(node->t_key, keybuf, keysize + 1);
+	    node->t_data = node->t_key + keysize + 1;
+	    memcpy(node->t_data, databuf, datasize + 1);
+
+	    node->t_dummy1 = i;
+	    node->t_dummy2 = i;
+
+	    if (opt_verbose)
+		printf("%u: add (%p/%s) -> (%p/%s)\n", i,
+		       node->t_key, node->t_key,
+		       node->t_data, node->t_data);
+
+	    if (!vatricia_add(dbmp, root, node, keysize + 1)) {
+		misses += 1;
+		if (opt_verbose)
+		    printf("%d: %lx failed\n", i, key);
+		dbm_free(dbmp, node);
+	    } else
+		made += 1;
+	}
+
+	if (opt_exit_on_miss) {
+	    printf("misses: %lu, made: %lu\n", misses, made);
+	    exit(1);
+	}
+
+	vat_node_t *pp;
+
+	for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
+	     pp = vatricia_find_next(dbmp, root, pp), i++) {
+
+	    node = vat_to_test2(dbmp, pp);
+	    if (opt_verbose)
+		printf("%u: get (%p/%s) -> (%p/%s)\n", i,
+		       node->t_key, node->t_key,
+		       node->t_data, node->t_data);
+	    hits += 1;
+	}
+
+	printf("hits:  %lu\nmisses: %lu\n", hits, misses);
+
+	for (pp = vatricia_find_next(dbmp, root, NULL), i = 0; pp;
+	     pp = vatricia_find_next(dbmp, root, NULL)) {
+	    node = vat_to_test2(dbmp, pp);
+	    if (opt_verbose)
+		printf("%u: get (%p/%s) -> (%p/%s)\n", i,
+		       node->t_key, node->t_key,
+		       node->t_data, node->t_data);
+
+	    vatricia_delete(dbmp, root, pp);
+	    dbm_free(dbmp, node);
+	}
+
+	printf("empty: %s\n", vatricia_isempty(root) ? "true" : "false");
+    }
+
+    close_db(dbmp);
+
+    return 0;
+
+
+
+
 
     for (;;) {
-	if (readline(key, BUFSIZ, fp) < 0)
-	    break;
-
-	if (readline(data, BUFSIZ, fp) < 0)
-	    break;
 
 	/* build node */
     }
