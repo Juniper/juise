@@ -262,15 +262,18 @@ vatricia_find_rightmost (dbm_memory_t *dbmp UNUSED, u_int16_t bit,
  * Initialize a vatricia root node.  Allocate one if not provided.
  */
 vat_root_t *
-vatricia_root_init (dbm_memory_t *dbmp UNUSED, u_int16_t klen, u_int8_t off)
+vatricia_root_init (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+		    u_int16_t klen, u_int8_t off)
 {
-    assert(klen && klen <= VAT_MAXKEY);
+    assert(klen <= VAT_MAXKEY);
+    if (klen == 0)
+	klen = VAT_MAXKEY;
 
-    vat_root_t *root;
+    if (root == NULL)
+	root = vat_alloc(dbmp, sizeof(*root));
 
-    root = vat_alloc(dbmp, sizeof(*root));
     if (root) {
-	root->vr_root = NULL;
+	root->vr_root = VAT_PTR_NULL;
 	root->vr_key_bytes = klen;
 	root->vr_key_offset = off;
     }
@@ -287,7 +290,7 @@ void
 vatricia_root_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root)
 {
     if (root) {
-	assert(root->vr_root == NULL);
+	assert(root->vr_root == VAT_PTR_NULL);
 	vat_free(dbmp, root);
     }
 }
@@ -325,12 +328,12 @@ vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes)
 }
 
 void *
-vatricia_data (dbm_memory_t *dbmp UNUSED, vat_node_t *node)
+vatricia_data (dbm_memory_t *dbmp, vat_node_t *node)
 {
     if (node == NULL)
 	return NULL;
 
-    return node->vn_data;
+    return vat_ptr(dbmp, node->vn_data);
 }
 
 /*
@@ -338,7 +341,8 @@ vatricia_data (dbm_memory_t *dbmp UNUSED, vat_node_t *node)
  * Add a node to a Vatricia tree.  Returns TRUE on success.
  */
 boolean
-vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data)
+vatricia_add (dbm_memory_t *dbmp, vat_root_t *root,
+	      void *data, uint16_t key_bytes)
 {
     vat_node_t *current;
     vat_node_t **ptr;
@@ -346,12 +350,15 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data)
     u_int16_t diff_bit;
     const u_int8_t *key;
 
+    if (key_bytes == 0)
+	key_bytes = root->vr_key_bytes;
+
     vat_node_t *node = vat_calloc(dbmp, sizeof(*node));
     if (node == NULL)
 	return FALSE;
 
-    vatricia_node_init_length(node, root->vr_key_bytes);
-    node->vn_data = data;
+    vatricia_node_init_length(node, key_bytes);
+    node->vn_data = vat_off(dbmp, data);
 
     /*
      * If this is the first node in the tree, then it gets links to itself.
@@ -360,8 +367,9 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data)
      * a bit with VAT_NOBIT, which leaves greater freedom in the choice of
      * bit formats.
      */
-    if (root->vr_root == NULL) {
-	root->vr_root = node->vn_left = node->vn_right = node;
+    if (root->vr_root == VAT_PTR_NULL) {
+	node->vn_left = node->vn_right = node;
+	root->vr_root = vat_off(dbmp, node);
 	node->vn_bit = VAT_NOBIT;
 	return TRUE;
     }
@@ -371,7 +379,8 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data)
      * match) of the key is in the tree already.  If so, return FALSE.
      */
     key = vatricia_key(dbmp, root, node);
-    current = vatricia_search(dbmp, root->vr_root, node->vn_length, key);
+    current = vatricia_search(dbmp, vat_ptr(dbmp, root->vr_root),
+			      node->vn_length, key);
 
     /*
      * Find the first bit that differs from the node that we did find, to
@@ -384,7 +393,7 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data)
 
     diff_bit = vatricia_mismatch(key, vatricia_key(dbmp, root, current), bit);
     if (diff_bit >= bit) {
-	free(node);
+	vat_free(dbmp, node);
 	return FALSE;
     }
 
@@ -394,8 +403,8 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data)
      * convenient stack, we could back up.  Alas, we apply sweat...
      */
     bit = VAT_NOBIT;
-    current = root->vr_root;
-    ptr = &root->vr_root;
+    current = vat_ptr(dbmp, root->vr_root);
+    ptr = NULL;
     while (bit < current->vn_bit && current->vn_bit < diff_bit) {
 	bit = current->vn_bit;
 	if (vat_key_test(key, bit)) {
@@ -418,7 +427,11 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data)
 	node->vn_right = current;
 	node->vn_left = node;
     }
-    *ptr = node;
+
+    if (ptr == NULL)		/* XXX hack for setting root */
+	root->vr_root = vat_off(dbmp, node);
+    else
+	*ptr = node;
     return TRUE;
 }
 
@@ -431,13 +444,13 @@ vatricia_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
 {
     u_int16_t bit;
     const u_int8_t *key;
-    vat_node_t **downptr, **upptr, **parent, *current;
+    vat_node_t **downptr, **upptr, **parent, *current, *tmp_root;
     
     /*
      * Is there even a tree?  Is the node in a tree?
      */
     assert(node->vn_left && node->vn_right);
-    current = root->vr_root;
+    tmp_root = current = vat_ptr(dbmp, root->vr_root);
     if (!current) {
 	return FALSE;
     }
@@ -453,7 +466,7 @@ vatricia_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
      * to upnode [yes, that's right].
      */
     downptr = upptr = NULL;
-    parent = &root->vr_root;
+    parent = &tmp_root;
     bit = VAT_NOBIT;
     key = vatricia_key(dbmp, root, node);
 
@@ -485,7 +498,7 @@ vatricia_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
      */
     if (upptr == NULL) {
 	assert(node->vn_bit == VAT_NOBIT);
-	root->vr_root = NULL;
+	tmp_root = NULL;
     } else {
 	/*
 	 * One pointer in the node upptr points at points at us,
@@ -528,6 +541,10 @@ vatricia_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
      */
     node->vn_left = node->vn_right = NULL;
     node->vn_bit = VAT_NOBIT;
+
+    /* XXX hack to record the root */
+    root->vr_root = vat_off(dbmp, tmp_root);
+
     return TRUE;
 }
 
@@ -541,7 +558,7 @@ vatricia_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
  */
  
 vat_node_t *
-vatricia_find_next (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+vatricia_find_next (dbm_memory_t *dbmp, vat_root_t *root,
 		    vat_node_t *node)
 {
     u_int16_t bit;
@@ -551,7 +568,7 @@ vatricia_find_next (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
     /*
      * If there's nothing in the tree we're done.
      */
-    current = root->vr_root;
+    current = vat_ptr(dbmp, root->vr_root);
     if (current == NULL) {
 	assert(node == NULL);
 	return NULL;
@@ -662,7 +679,7 @@ vatricia_cons_subtree_next (dbm_memory_t *dbmp UNUSED, const vat_root_t *root,
  * if the node isn't in the tree.
  */
 vat_node_t *
-vatricia_find_prev (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+vatricia_find_prev (dbm_memory_t *dbmp, vat_root_t *root,
 		    vat_node_t *node)
 {
     u_int16_t bit;
@@ -672,7 +689,7 @@ vatricia_find_prev (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
     /*
      * If there's nothing in the tree we're done.
      */
-    current = root->vr_root;
+    current = vat_ptr(dbmp, root->vr_root);
     if (current == NULL) {
 	assert(node == NULL);
 	return NULL;
@@ -720,7 +737,7 @@ vatricia_find_prev (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
  * is a prefix of the node's key.
  */
 vat_node_t *
-vatricia_subtree_match (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+vatricia_subtree_match (dbm_memory_t *dbmp, vat_root_t *root,
 			u_int16_t plen, const void *v_prefix)
 {
     u_int16_t diff_bit, p_bit;
@@ -732,7 +749,7 @@ vatricia_subtree_match (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
      */
     assert(plen && plen <= (VAT_MAXKEY * 8));
 
-    if (root->vr_root == NULL) {
+    if (root->vr_root == VAT_PTR_NULL) {
 	return NULL;
     }
 
@@ -741,7 +758,8 @@ vatricia_subtree_match (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
      * and search for someone.
      */
     p_bit = vat_plen_to_bit(plen);
-    current = vatricia_search(dbmp, root->vr_root, p_bit, prefix);
+    current = vatricia_search(dbmp, vat_ptr(dbmp, root->vr_root),
+			      p_bit, prefix);
 
     /*
      * If the guy we found is shorter than the prefix length, we're
@@ -773,7 +791,7 @@ vatricia_subtree_match (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
  * subtree.  assert()'s if the node isn't in the tree.
  */
 vat_node_t *
-vatricia_subtree_next (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
+vatricia_subtree_next (dbm_memory_t *dbmp, vat_root_t *root,
 		       vat_node_t *node, u_int16_t plen)
 {
     const u_int8_t *prefix;
@@ -783,7 +801,7 @@ vatricia_subtree_next (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
     /*
      * Make sure this is reasonable.
      */
-    current = root->vr_root;
+    current = vat_ptr(dbmp, root->vr_root);
     assert(plen && current);
     p_bit = vat_plen_to_bit(plen);
     assert(node->vn_length >= p_bit);
@@ -848,7 +866,7 @@ vatricia_getnext (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
     /*
      * If nothing in tree, nothing to find.
      */
-    current = root->vr_root;
+    current = vat_ptr(dbmp, root->vr_root);
     if (current == NULL) {
 	return NULL;
     }
@@ -906,7 +924,7 @@ vatricia_getnext (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
 	 */
 	if (lastleft && lastleft->vn_bit > diff_bit) {
 	    bit = VAT_NOBIT;
-	    current = root->vr_root;
+	    current = vat_ptr(dbmp, root->vr_root);
 	    lastleft = NULL;
 	    while (bit < current->vn_bit && current->vn_bit < diff_bit) {
 		bit = current->vn_bit;
@@ -928,7 +946,8 @@ vatricia_getnext (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
 	 * top.
 	 */
 	if (lastright && lastright->vn_bit >= diff_bit) {
-	    return vatricia_search(dbmp, root->vr_root, diff_bit, key);
+	    return vatricia_search(dbmp, vat_ptr(dbmp, root->vr_root),
+				   diff_bit, key);
 	}
 	return current;
     }
