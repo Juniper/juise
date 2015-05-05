@@ -108,7 +108,7 @@ do_stop ()
     echo "stopping clira (pid $LIGHTTPD_PID) and all related processes ..."
 
     kill $LIGHTTPD_PID
-    kill -9 $(ps | grep mixer | grep -v grep | awk `{print $1}') 2> /dev/null
+    kill -9 $(ps | grep mixer | grep -v grep | awk '{print $1}') 2> /dev/null
 
     rm -f $LIGHTTPD_PIDFILE
 
