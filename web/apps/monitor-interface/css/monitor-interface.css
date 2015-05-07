@@ -1,0 +1,328 @@
+
+/*CSS for the monitor-interface app*/
+
+#main {
+    border:1px solid #888888;
+    border-radius:5px;
+    box-shadow: 2px 3px 5px #888888;
+    overflow: auto;
+}
+#banner {
+    border-bottom : 1px solid #9CA1A6;
+    padding : 5px;
+    margin :0px;
+    background: rgb(255,197,120); /* Old browsers */
+    background: -moz-linear-gradient(top,  rgba(255,197,120,1) 0%, 
+        rgba(251,157,35,1) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, 
+        color-stop(0%,rgba(255,197,120,1)), color-stop(100%,
+        rgba(251,157,35,1))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  rgba(255,197,120,1) 0%,
+        rgba(251,157,35,1) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(255,197,120,1) 0%,
+        rgba(251,157,35,1) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(255,197,120,1) 0%,
+        rgba(251,157,35,1) 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(255,197,120,1) 0%,
+        rgba(251,157,35,1) 100%); /* W3C */
+}
+#banner label {
+    font-size:15px;
+    font-family:"georgia";
+    font-weight : bold;
+}
+#appContent {
+    padding : 10px;
+    margin-bottom : 10px;
+}
+#selectInfoContainer {
+    padding : 10px;
+    display : inline-block;
+    width : 160px;
+    float:left;
+}
+.selectboxLabels {
+    display:inline-block;
+    font-size:14px;
+    font-style:bold;
+    font-family:'verdana';
+    width: 130px;
+    margin-top:5px;
+}
+#infoContainer, #statsContainer {
+    padding : 10px;
+    float : left;
+    border-top :  1px solid #DEE1E3;
+    margin-bottom : 5px;
+    width : 65%;
+}
+#infoContainer {
+    clear : both;
+    border-right : 1px solid #DEE1E3;
+    width : 30%;
+}
+#info,#stats {
+    border : 1px solid #DEE1E3;
+    border-radius : 5px 5px 0 0;
+    box-shadow: 1px 2px 5px #DEE1E3;
+    height : 300px;
+    overflow-y : auto;
+}
+#stats {
+    width : 100%;
+}
+.appTables table {
+    border : 1px solid  #DEE1E3;
+    xborder-collapse: collapse;
+    border-radius : 5px;
+    margin : 10px;
+    box-shadow: 1px 2px 5px #888888;
+}
+.appTables th, .appTables td {
+    padding : 5px;
+}
+.appTables th {
+    text-align:left;
+    font-size : 12px;
+    font-family : "Georgia";
+}
+.appTables td {
+    font-family : "Helvetica";
+    font-size : 12px;
+    margin-top : 10px;
+}
+.trafficTables, .errorTables {
+    float : left;
+}
+.trafficTables {
+    width : 40%;
+}
+.errorTables {
+    width : 25%;
+}
+.tableDelim {
+    border-bottom : solid 1px #DEE1E3;
+}
+.tabBannerLabels {
+    font-family : "georgia";
+    font-size : 12px;
+    font-weight : bold;
+}
+.statTableBanners {
+    background: rgb(233,246,253); /* Old browsers */
+    background: -moz-linear-gradient(top,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, 
+        color-stop(40%,rgba(233,246,253,1)), color-stop(67%,
+        rgba(211,238,251,1))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* W3C */
+}
+.infoFields2 {
+    font-family : "georgia";
+    font-weight : bold;
+    margin-bottom : 5px;
+}
+.infoBanner {
+    display : block;
+    padding : 5px;
+    border-bottom : 1px solid #DEE1E3;
+    border-radius : 5px 5px 0 0;
+    background: rgb(226,226,226); /* Old browsers */
+    background: -moz-linear-gradient(top,  rgba(226,226,226,1) 0%, 
+        rgba(219,219,219,1) 50%, rgba(209,209,209,1) 51%, 
+        rgba(254,254,254,1) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, 
+        color-stop(0%,rgba(226,226,226,1)), color-stop(50%,
+        rgba(219,219,219,1)), color-stop(51%,rgba(209,209,209,1)), 
+        color-stop(100%,rgba(254,254,254,1))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  rgba(226,226,226,1) 0%,
+        rgba(219,219,219,1) 50%,rgba(209,209,209,1) 51%,
+        rgba(254,254,254,1) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(226,226,226,1) 0%,
+        rgba(219,219,219,1) 50%,rgba(209,209,209,1) 51%,
+        rgba(254,254,254,1) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(226,226,226,1) 0%,
+        rgba(219,219,219,1) 50%,rgba(209,209,209,1) 51%,
+        rgba(254,254,254,1) 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(226,226,226,1) 0%,
+        rgba(219,219,219,1) 50%,rgba(209,209,209,1) 51%,
+        rgba(254,254,254,1) 100%); /* W3C */
+}
+.infoBanner label {
+   font-size : 12px;
+   font-family : 'georgia';
+   font-weight : bold;
+   line-height : 15px;
+}
+.statSubBanner {
+    padding : 5px;
+    border-bottom : 1px solid #DEE1E3;
+    background: rgb(233,246,253); /* Old browsers */
+    background: -moz-linear-gradient(top,  rgba(233,246,253,1) 40%, 
+        rgba(211,238,251,1) 67%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, 
+        color-stop(40%,rgba(233,246,253,1)), color-stop(67%,
+        rgba(211,238,251,1))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(233,246,253,1) 40%,
+        rgba(211,238,251,1) 67%); /* W3C */
+}
+.statSubBanner label {
+   font-family : 'georgia';
+   font-weight : bold;
+   line-height : 20px;
+   text-transform : capitalize;
+}
+#chart {
+    float:left;
+    padding-left : 10px;
+    border-left : 1px solid #DEE1E3;
+}
+.appSettingsPanel {
+    position:absolute;
+    padding-bottom : 20px;
+    display:none;
+    height : auto;
+    width : 400px;
+    z-index : 1;
+    border-radius : 5px;
+    box-shadow: 0 2px 5px #888888;
+    background: rgb(255,255,255); /* Old browsers */
+    background: -moz-linear-gradient(top,  rgba(255,255,255,1) 0%, 
+        rgba(243,243,243,1) 50%, rgba(237,237,237,1) 51%, 
+        rgba(255,255,255,1) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, 
+        color-stop(0%,rgba(255,255,255,1)), color-stop(50%,
+        rgba(243,243,243,1)), color-stop(51%,rgba(237,237,237,1)), 
+        color-stop(100%,rgba(255,255,255,1))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  rgba(255,255,255,1) 0%,
+        rgba(243,243,243,1) 50%,rgba(237,237,237,1) 51%,
+        rgba(255,255,255,1) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(255,255,255,1) 0%,
+        rgba(243,243,243,1) 50%,rgba(237,237,237,1) 51%,
+        rgba(255,255,255,1) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(255,255,255,1) 0%,
+        rgba(243,243,243,1) 50%,rgba(237,237,237,1) 51%,
+        rgba(255,255,255,1) 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(255,255,255,1) 0%,
+        rgba(243,243,243,1) 50%,rgba(237,237,237,1) 51%,
+        rgba(255,255,255,1) 100%); /* W3C */
+}
+.settingsContainer {
+    height : 150px;
+    display : inline-block;
+    margin-top : 20px;
+    margin-left : 10px;
+}
+.settingsBtnContainer {
+    margin : 0 auto;
+    width : 40%;
+    margin-top : 10px;
+}
+.settings {
+    margin : 10px;
+}
+.settings input[type='text'] {
+    width : 35px;
+}
+.settingsField {
+    display : inline-block;
+    width : 100px;
+    font-weight : bold;
+    font-family : 'georgia';
+}
+.settingsField .fieldHints {
+    font-weight : 0px;
+}
+#rateUnits {
+    display : inline-block;
+}
+.usageGraph {
+    border-radius:5px;
+    box-shadow: 0 2px 5px #888888;
+}
+#legend {
+    display:inline-block;
+    padding:10px;
+}
+.legendItem {
+    display:inline-block;
+    height:10px;
+    width:10px;
+    border:1px solid;
+    margin:5px;
+}
+.ingressLegendItem {
+    background-color:rgba(211,66,1,0.30);
+}
+.egressLegendItem {
+    background-color:rgba(32,47,174,0.30);
+}
+.legendItemText {
+    font-size:15px;
+    font-family:"georgia";
+    vertical-align:top;
+    text-align:center;
+}
+.appLoading, .appError {
+    border-radius : 5px;
+    padding : 10px;
+    margin : 5px;
+}
+.appError {
+    height : 50px;
+}
+.appErrorMessage {
+    font-size : 15px;
+    font-family : 'Helvetica';
+    font-weight : bold;
+    color : red;
+}
+.appLoadingSpinner {
+    display : inline-block;
+    margin : 0 auto;
+    height : 300px;
+    width : 100%;
+    background:url('/apps/monitor-interface/images/infoLoading.gif') 
+        no-repeat center center;
+}
+.infoLoadingSpinner {
+    display : inline-block;
+    margin : 0 auto;
+    height : 200px;
+    width : 100%;
+    background:url('/apps/monitor-interface/images/infoLoading.gif') 
+        no-repeat center center;
+}
+.infoText {
+    font-size:15px;
+    font-family:"georgia";
+}
+input[type='radio'] {
+    margin-right : 4px;
+}
+/*Custom css for selectric plugin*/
+
+.selectricWrapper {
+    width : auto;
+}
+.selectricIfl {
+    margin-left : 10px;
+}
+.selectricIfd {
+    font-size : 15px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-weight : bold;
+}

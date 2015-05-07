@@ -57,7 +57,10 @@ EXTERNAL_FILES = \
     external/bootstrap/js/bootstrap.min.js \
     external/bootstrap/js/npm.js \
     external/qunit/qunit.css \
-    external/qunit/qunit.js
+    external/qunit/qunit.js \
+    external/smoothie/smoothie.js \
+    external/selectric/selectric.css \
+    external/selectric/selectric.js
 
 WEB_FILES = \
     ${BASE_FILES} \
