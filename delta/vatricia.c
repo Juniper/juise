@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 
 #include <libjuise/common/aux_types.h>
@@ -78,23 +79,19 @@ const u_int8_t vatricia_bit_masks[8] = {
 #define	VAT_PLEN_BYTE_MASK		(0xff << 3)
 
 /*
- * vatricia_root_alloc
- *
- * Built-in root allocator.
+ * Built-in memory allocator
  */
 static void *
-vat_db_alloc (dbm_memory_t *dbmp, size_t size)
+vat_dbm_memory_alloc (dbm_memory_t *dbmp, size_t size)
 {
     return dbm_malloc(dbmp, size);
 }
 
 /*
- * vatricia_root_free
- *
- * Built-in root deallocator.
+ * Built-in deallocator
  */
 static void
-vat_db_free (dbm_memory_t *dbmp UNUSED, void *ptr)
+vat_dbm_memory_free (dbm_memory_t *dbmp, void *ptr)
 {
     assert(ptr);
 
@@ -102,51 +99,122 @@ vat_db_free (dbm_memory_t *dbmp UNUSED, void *ptr)
 }
 
 /*
+ * Built-in libc-based memory allocator
+ */
+static void *
+vat_libc_alloc (size_t size)
+{
+    return malloc(size);
+}
+
+/*
+ * Built-in libc-based deallocator
+ */
+static void
+vat_libc_free (void *ptr)
+{
+    assert(ptr);
+
+    free(ptr);
+}
+
+/*
  * Vatricia tree users can specify their own root alloc & free
  * functions if they desire. These are used ONLY to allocate
- * and free vat_root_t structures. They are NOT used for var_node_t
+ * and free vat_root_t structures. They are NOT used for vat_node_t
  * structures (the caller is responsible for vat_node_ts). If the
  * user doesn't specify his own functions then the built-in
  * functions using malloc/free are used.
  */
 static struct vatricia_alloc_s {
-    vatricia_alloc_fn vat_alloc;
-    vatricia_free_fn vat_free;
+    vatricia_db_alloc_fn vat_db_alloc;
+    vatricia_db_free_fn vat_db_free;
+    vatricia_user_alloc_fn vat_user_alloc;
+    vatricia_user_free_fn vat_user_free;
 } vat_alloc_info = {
-    vat_db_alloc,
-    vat_db_free
+    vat_dbm_memory_alloc,
+    vat_dbm_memory_free,
+    vat_libc_alloc,
+    vat_libc_free
 };
 
 void
-vatricia_set_allocator (vatricia_alloc_fn my_alloc,
-                        vatricia_free_fn my_free)
+vatricia_set_allocator (vatricia_db_alloc_fn my_db_alloc,
+			vatricia_db_free_fn my_db_free,
+			vatricia_user_alloc_fn my_user_alloc,
+			vatricia_user_free_fn my_user_free)
 {
-    assert(my_alloc);
-    assert(my_free);
-    
-    vat_alloc_info.vat_alloc = my_alloc;
-    vat_alloc_info.vat_free = my_free;
+    if (my_db_alloc)
+	vat_alloc_info.vat_db_alloc = my_db_alloc;
+    if (my_db_free)
+	vat_alloc_info.vat_db_free = my_db_free;
+    if (my_user_alloc)
+	vat_alloc_info.vat_user_alloc = my_user_alloc;
+    if (my_user_free)
+	vat_alloc_info.vat_user_free = my_user_free;
 }
 
 static inline void *
-vat_alloc (dbm_memory_t *dbmp, size_t size)
+vat_db_alloc (dbm_memory_t *dbmp, size_t size)
 {
-    return vat_alloc_info.vat_alloc(dbmp, size);
+    return vat_alloc_info.vat_db_alloc(dbmp, size);
 }
 
 static inline void *
-vat_calloc (dbm_memory_t *dbmp, size_t size)
+vat_db_calloc (dbm_memory_t *dbmp, size_t size)
 {
-    void *ptr = vat_alloc_info.vat_alloc(dbmp, size);
+    void *ptr = vat_alloc_info.vat_db_alloc(dbmp, size);
     if (ptr)
 	bzero(ptr, size);
     return ptr;
 }
 
 static inline void
-vat_free (dbm_memory_t *dbmp, void *ptr)
+vat_db_free (dbm_memory_t *dbmp, void *ptr)
 {
-    return vat_alloc_info.vat_free(dbmp, ptr);
+    return vat_alloc_info.vat_db_free(dbmp, ptr);
+}
+
+void *
+vat_alloc (vat_handle_t *handle, size_t size)
+{
+    return vat_alloc_info.vat_db_alloc(handle->vhn_dbmp, size);
+}
+
+void *
+vat_calloc (vat_handle_t *handle, size_t size)
+{
+    void *ptr = vat_alloc_info.vat_db_alloc(handle->vhn_dbmp, size);
+    if (ptr)
+	bzero(ptr, size);
+    return ptr;
+}
+
+void
+vat_free (vat_handle_t *handle, void *ptr)
+{
+    return vat_alloc_info.vat_db_free(handle->vhn_dbmp, ptr);
+}
+
+static inline void *
+vat_user_alloc (size_t size)
+{
+    return vat_alloc_info.vat_user_alloc(size);
+}
+
+static inline void *
+vat_user_calloc (size_t size)
+{
+    void *ptr = vat_alloc_info.vat_user_alloc(size);
+    if (ptr)
+	bzero(ptr, size);
+    return ptr;
+}
+
+static inline void
+vat_user_free (void *ptr)
+{
+    return vat_alloc_info.vat_user_free(ptr);
 }
 
 /*
@@ -270,7 +338,7 @@ vatricia_root_init (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
 	klen = VAT_MAXKEY;
 
     if (root == NULL)
-	root = vat_alloc(dbmp, sizeof(*root));
+	root = vat_db_alloc(dbmp, sizeof(*root));
 
     if (root) {
 	root->vr_root = VAT_PTR_NULL;
@@ -291,7 +359,7 @@ vatricia_root_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root)
 {
     if (root) {
 	assert(root->vr_root == VAT_PTR_NULL);
-	vat_free(dbmp, root);
+	vat_db_free(dbmp, root);
     }
 }
 
@@ -353,7 +421,7 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root,
     if (key_bytes == 0)
 	key_bytes = root->vr_key_bytes;
 
-    vat_node_t *node = vat_calloc(dbmp, sizeof(*node));
+    vat_node_t *node = vat_db_calloc(dbmp, sizeof(*node));
     if (node == NULL)
 	return FALSE;
 
@@ -393,7 +461,7 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root,
 
     diff_bit = vatricia_mismatch(key, vatricia_key(dbmp, root, current), bit);
     if (diff_bit >= bit) {
-	vat_free(dbmp, node);
+	vat_db_free(dbmp, node);
 	return FALSE;
     }
 
@@ -724,7 +792,8 @@ vatricia_find_prev (dbm_memory_t *dbmp, vat_root_t *root,
      * If we found a right turn go right from there.  Otherwise barf.
      */
     if (lastright) {
-	return vatricia_find_rightmost(dbmp, lastright->vn_bit, lastright->vn_left);
+	return vatricia_find_rightmost(dbmp, lastright->vn_bit,
+				       lastright->vn_left);
     }
     return NULL;
 }
@@ -986,3 +1055,104 @@ vatricia_compare_nodes (dbm_memory_t *dbmp UNUSED, vat_root_t *root,
     
     return -1;
 }
+
+vat_header_t *
+vat_check_header (dbm_memory_t *dbmp)
+{
+    vat_header_t *vhp = dbm_header(dbmp);
+
+    if (vhp->vh_version == 0) {
+	vhp->vh_version = htonl(VAT_HEADER_VERSION);
+	vhp->vh_magic = htonl(VAT_HEADER_MAGIC);
+
+    } else {
+	if (vhp->vh_version != htonl(VAT_HEADER_VERSION))
+	    assert(!"bad version number");
+	if (vhp->vh_magic != htonl(VAT_HEADER_MAGIC))
+	    assert(!"bad magic number");
+    }
+
+    return vhp;
+}
+
+/**
+ * Open a vatricia tree database
+ */
+vat_handle_t *
+vat_open (const char *filename, size_t size, unsigned flags)
+{
+    if (flags & VATF_CREATE)
+	unlink(filename);
+
+    unsigned dbm_flags = DBMF_CREATE | DBMF_WRITE;
+    dbm_memory_t *dbmp = dbm_open(filename, (caddr_t) DBM_COMPAT_ADDR,
+				  sizeof(vat_header_t), size, &dbm_flags);
+    if (dbmp == 0)
+	return NULL;
+
+    dbm_malloc_init(dbmp);
+    vat_check_header(dbmp);
+
+    vat_header_t *vhp = vat_check_header(dbmp);
+    vat_handle_t *handle = vat_user_calloc(sizeof(*handle));
+    if (handle == NULL) {
+	dbm_close(dbmp);
+	return NULL;
+    }
+
+    handle->vhn_dbmp = dbmp;
+    handle->vhn_header = vhp;
+
+    int len = strlen(filename) + 1;
+    char *cp = vat_user_alloc(len); /* Needs to be in user space */
+    if (cp) {
+	memcpy(cp, filename, len);
+	handle->vhn_filename = cp;
+    }
+
+    return handle;
+}
+
+/**
+ * Close a vatricia tree database
+ */
+void
+vat_close (vat_handle_t *handle)
+{
+    if (handle) {
+	if (handle->vhn_filename)
+	    vat_user_free(handle->vhn_filename); /* User space */
+	vat_user_free(handle);
+    }
+}
+
+vat_tree_t *
+vat_tree_new (vat_handle_t *handle, vat_generation_t base UNUSED,
+	      size_t key_offset)
+{
+    dbm_memory_t *dbmp = handle->vhn_dbmp;
+    vat_root_t *root = vat_ptr(dbmp, handle->vhn_header->vh_root);
+
+    if (root == NULL) {
+	/*
+	 * There's no root, so we malloc and init it ourselves.
+	 */
+	root = vat_db_calloc(dbmp, sizeof(*root));
+	if (root) {
+	    handle->vhn_header->vh_root = vat_off(dbmp, root);
+	    vatricia_root_init(dbmp, root, VAT_MAXKEY, key_offset);
+	    root->vr_generation = VAT_GENERATION_NULL;
+	}
+    }
+
+    vat_tree_t *vtp = vat_user_calloc(sizeof(*vtp));
+    if (vtp == NULL)
+	return NULL;
+
+    vtp->vt_handle = handle;
+    vtp->vt_generation = VAT_GENERATION_NULL;
+    vtp->vt_root = root;
+
+    return vtp;
+}
+
