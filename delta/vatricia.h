@@ -14,6 +14,7 @@
 
 #include <stdlib.h>
 #include <stddef.h>
+#include <sys/queue.h>
 #include <assert.h>
 
 #include "juiseconfig.h"
@@ -110,6 +111,20 @@
  * recommended.
  */
 
+/*
+ * On top of the vatricia tree base functions, we build an in-memory
+ * database. The database is a set of interconnected trees with
+ * multiple roots.  Each root has a generation number and each node
+ * has the number of the generation that made it, as well as a
+ * reference count.  When a new tree is made, the tree can be built
+ * from a base generation, in which base the contents of the tree is
+ * that base tree.  As nodes are added, the links of the tree are
+ * slowly recreated in the new tree, as needed.
+ */
+typedef uint16_t vat_generation_t; /* Generation number */
+
+#define VAT_GENERATION_NULL	0 /* No base generation */
+
 #if 1
 typedef uint32_t vat_offset_t;	/* Offsets within the database */
 #else
@@ -165,6 +180,7 @@ typedef struct vat_node_s {
  */
 typedef struct vat_root_s {
     TAILQ_ENTRY(vat_root_s) vr_link; /**< Linked list of roots */
+    vat_generation_t vr_generation; /**< Generation number  */
     vat_offset_t vr_root;	/**< root vatricia node */
     u_int16_t vr_key_bytes;	/**< (maximum) key length in bytes */
     u_int8_t  vr_key_offset;	/**< offset to key material */
@@ -176,19 +192,66 @@ typedef struct vat_root_s {
 
 typedef TAILQ_HEAD(vat_root_list_s, vat_root_s) vat_root_list_t;
 
+/*
+ * The database header lies inside the shared memory database and
+ * controls the contents of the database, independent of any particular
+ * client.
+ */
+typedef struct vat_header_s {
+    uint32_t vh_version;	/* DB version number */
+    uint32_t vh_magic;		/* DB magic number */
+    vat_generation_t vh_generation; /* Most recent generation number */
+    vat_generation_t vh_committed;  /* Committed generation number */
+    uint32_t vh_flags;		/* Flags for the database */
+#if 0
+    vat_root_list_t vh_trees;	/* Linked list of vatricia trees */
+#else
+    vat_offset_t vh_root;	/* Offset of tree root */
+#endif
+} vat_header_t;
+
+#define VAT_HEADER_VERSION	0xff000001
+#define VAT_HEADER_MAGIC	0x00ca4ada
+
+/*
+ * This is the user-space handle for a database, used to track data that
+ * cannot be placed in the shared memory segment.  It's also used as an
+ * encapsulation layer to hide as many database implementation details as
+ * possible.  In reality, many functions here will be inlined, requiring
+ * that many header files and structures be exposed.  But callers should
+ * take care to limit themselves to the official API.
+ */
+typedef struct vat_handle_s {
+    char *vhn_filename;		/* Current filename */
+    dbm_memory_t *vhn_dbmp;	/* Shared memory database */
+    vat_header_t *vhn_header;	/* Header data structure */
+    unsigned vhn_flags;		/* Flags */
+} vat_handle_t;
+
+/*
+ * The user-space handle for a tree, just to simplify our APIs
+ */
+typedef struct vat_tree_s {
+    vat_handle_t *vt_handle;	/* Underlaying handle */
+    vat_generation_t vt_generation; /* Generation number */
+    vat_root_t *vt_root;	   /* Our tree's root */
+} vat_tree_t;
+
 /**
  * @brief
  * Typedef for user-specified vatricia allocation function.
  * @sa vatricia_set_allocator
  */
-typedef void *(*vatricia_alloc_fn)(dbm_memory_t *, size_t);
+typedef void *(*vatricia_db_alloc_fn)(dbm_memory_t *, size_t);
+typedef void *(*vatricia_user_alloc_fn)(size_t);
  
 /**
  * @brief
  * Typedef for user-specified vatricia free function.
  * @sa vatricia_set_allocator
  */
-typedef void (*vatricia_free_fn)(dbm_memory_t *, void *);
+typedef void (*vatricia_db_free_fn)(dbm_memory_t *, void *);
+typedef void (*vatricia_user_free_fn)(void *);
 
 /*
  * Prototypes
@@ -311,6 +374,13 @@ boolean
 vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data,
 	      uint16_t key_bytes);
 
+static inline boolean
+vat_tree_add (vat_tree_t *vtp, void *data, void *key UNUSED, int key_bytes)
+{
+    return vatricia_add(vtp->vt_handle->vhn_dbmp, vtp->vt_root,
+			data, key_bytes);
+}
+
 /**
  * @brief
  * Deletes a node from the tree.
@@ -326,6 +396,12 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data,
  */
 boolean
 vatricia_delete (dbm_memory_t *dbmp, vat_root_t *root, vat_node_t *node);
+
+static inline boolean
+vat_delete (vat_tree_t *root, vat_node_t *node)
+{
+    return vatricia_delete(root->vt_handle->vhn_dbmp, root->vt_root, node);
+}
 
 /**
  * @brief
@@ -346,6 +422,12 @@ vatricia_delete (dbm_memory_t *dbmp, vat_root_t *root, vat_node_t *node);
  */
 vat_node_t *
 vatricia_find_next (dbm_memory_t *dbmp, vat_root_t *root, vat_node_t *node);
+
+static inline vat_node_t *
+vat_find_next (vat_tree_t *root, vat_node_t *node)
+{
+    return vatricia_find_next(root->vt_handle->vhn_dbmp, root->vt_root, node);
+}
 
 /**
  * @brief
@@ -507,8 +589,28 @@ vatricia_compare_nodes (dbm_memory_t *dbmp, vat_root_t *root,
  *     Function to call when vatricia tree root is freed
  */
 void
-vatricia_set_allocator (vatricia_alloc_fn my_alloc,
-			     vatricia_free_fn my_free);
+vatricia_set_allocator (vatricia_db_alloc_fn my_db_alloc,
+			vatricia_db_free_fn my_db_free,
+			vatricia_user_alloc_fn my_user_alloc,
+			vatricia_user_free_fn my_user_free);
+
+/*
+ * Allocate memory from an open database and return it
+ */
+void *
+vat_alloc (vat_handle_t *handle, size_t size);
+
+/*
+ * Allocate memory from an open database, zero it, and return it
+ */
+void *
+vat_calloc (vat_handle_t *handle, size_t size);
+
+/*
+ * Free memory allocated from an open database
+ */
+void
+vat_free (vat_handle_t *handle, void *ptr);
 
 /*
  * utility functions for dealing with const trees -- useful for 
@@ -789,8 +891,20 @@ vatricia_isempty (vat_root_t *root)
     return (root->vr_root == VAT_PTR_NULL);
 }
 
+static inline u_int8_t
+vat_isempty (vat_tree_t *root)
+{
+    return vatricia_isempty(root->vt_root);
+}
+
 void *
 vatricia_data (dbm_memory_t *dbmp, vat_node_t *node);
+
+static inline void *
+vat_data (vat_handle_t *handle, vat_node_t *node)
+{
+    return vatricia_data(handle->vhn_dbmp, node);
+}
 
 /**
  * @brief
@@ -824,10 +938,10 @@ vatricia_data (dbm_memory_t *dbmp, vat_node_t *node);
  * the KEY field instead of the NODE field).  It's harmless.
  */
 #define VATNODE_TO_STRUCT(procname, structname) \
-    static inline structname * procname (dbm_memory_t *dbmp, vat_node_t *ptr) \
+    static inline structname * procname (vat_handle_t *vhnp, vat_node_t *ptr) \
     { \
 	if (ptr) \
-	    return QUIET_CAST(structname *, vatricia_data(dbmp, ptr)); \
+	    return QUIET_CAST(structname *, vat_data(vhnp, ptr)); \
 	return NULL; \
      }
 
@@ -936,6 +1050,44 @@ vat_makebit (u_int16_t offset, u_int8_t bit_in_byte)
 {
     return (((offset) & 0xff) << 8) | ((~vatricia_hi_bit_table[bit_in_byte]) & 0xff);
 }
+
+static inline vat_header_t *
+vat_header (dbm_memory_t *dbmp)
+{
+    return (vat_header_t *) dbm_header(dbmp);
+}
+
+vat_header_t *vat_check_header (dbm_memory_t *dbmp);
+
+/**
+ * Open a database, returning a handle that can be used for future calls.
+ * @param[in] filename Name of database file
+ * @param[in] size Size of the new database (in bytes)
+ * @param[in] flags Flags to control operation
+ */
+vat_handle_t *vat_open (const char *filename, size_t size, unsigned flags);
+
+#define VATF_CREATE (1<<0)	/* Create a new database */
+
+/**
+ * Close a database and release all associated resources.
+ */
+void vat_close (vat_handle_t *);
+
+/**
+ * Return a new tree, based on the given generation
+ * @param[in] handle Database handle
+ * @param[in] base Base generation number
+ * @param[in] key_offset Offset of key within data (XXX)
+ * @returns a new tree, or NULL for error
+ */
+vat_tree_t *vat_tree_new(vat_handle_t *handle, vat_generation_t base,
+			 size_t key_offset);
+
+/**
+ * Close a vatricia tree database
+ */
+void vat_close (vat_handle_t *handle);
 
 #endif	/* __JNX_VATRICIA_H__ */
 
