@@ -185,9 +185,9 @@ test_vatricia (void)
 	    if (opt_verbose)
 		printf("%d: %lx\n", i, key);
 
-	    if (!vat_tree_add(root, node, node->t_key, 0)) {
+	    if (!vat_tree_add(root, node, 0, node->t_key, 0)) {
 		node->t_key[0] = htonl(++key);
-		if (!vat_tree_add(root, node, node->t_key, 0)) {
+		if (!vat_tree_add(root, node, 0, node->t_key, 0)) {
 		    misses += 1;
 		    if (opt_verbose)
 			printf("%d: %lx failed\n", i, key);
@@ -325,7 +325,7 @@ test_vatricia2 (const char *name)
 		       node->t_key, node->t_key,
 		       node->t_data, node->t_data);
 
-	    if (!vat_tree_add(root, node, node->t_key, keysize + 1)) {
+	    if (!vat_tree_add(root, node, 0, node->t_key, keysize + 1)) {
 		misses += 1;
 		if (opt_verbose)
 		    printf("%d: %lx failed\n", i, key);
@@ -408,6 +408,7 @@ main (int argc UNUSED, char **argv UNUSED)
     char *cp;
     int rc = 0;
     int opt_test = 0;
+    const char *opt_filename = NULL;
 
     malloc_error_func_set(NULL);
 
@@ -430,6 +431,9 @@ main (int argc UNUSED, char **argv UNUSED)
 
 	} else if (streq(cp, "--exit-on-miss") || streq(cp, "-E")) {
 	    opt_exit_on_miss = TRUE;
+
+	} else if (streq(cp, "--file") || streq(cp, "-f")) {
+	    opt_filename = *++argv;
 
 	} else if (streq(cp, "--key-length") || streq(cp, "-k")) {
 	    opt_key_length = TRUE;
@@ -484,7 +488,7 @@ main (int argc UNUSED, char **argv UNUSED)
 	break;
 
     case 2:
-	test_vatricia2(NULL);
+	test_vatricia2(opt_filename);
 	break;
     }
 
