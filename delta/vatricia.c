@@ -394,15 +394,6 @@ vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes)
     node->vn_left = NULL;
     node->vn_right = NULL;
 }
-
-void *
-vatricia_data (dbm_memory_t *dbmp, vat_node_t *node)
-{
-    if (node == NULL)
-	return NULL;
-
-    return vat_ptr(dbmp, node->vn_data);
-}
 
 /*
  * vatricia_add
@@ -410,7 +401,8 @@ vatricia_data (dbm_memory_t *dbmp, vat_node_t *node)
  */
 boolean
 vatricia_add (dbm_memory_t *dbmp, vat_root_t *root,
-	      void *data, uint16_t key_bytes)
+	      void *contents, vat_type_t type,
+	      void *key_ptr, uint16_t key_bytes)
 {
     vat_node_t *current;
     vat_node_t **ptr;
@@ -426,7 +418,22 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root,
 	return FALSE;
 
     vatricia_node_init_length(node, key_bytes);
-    node->vn_data = vat_off(dbmp, data);
+
+    vat_leaf_t *vlp = vat_db_calloc(dbmp, sizeof(*vlp));
+    if (vlp == NULL) {
+	vat_db_free(dbmp, node);
+	return FALSE;
+    }
+
+    vat_ref_inc(&vlp->vl_refcount);
+    vat_ref_inc(&node->vn_refcount);
+
+    vlp->vl_contents = vat_off(dbmp, contents);
+    vlp->vl_key = vat_off(dbmp, key_ptr ?: contents);
+    vlp->vl_length = key_bytes;
+    vlp->vl_type = type;
+
+    node->vn_leaf = vat_off(dbmp, vlp);
 
     /*
      * If this is the first node in the tree, then it gets links to itself.
@@ -446,7 +453,9 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root,
      * Start by waltzing down the tree to see if a duplicate (or a prefix
      * match) of the key is in the tree already.  If so, return FALSE.
      */
-    key = vatricia_key(dbmp, root, node);
+    key = vatricia_key(dbmp, root, node); /* Refer to key in database memory */
+    assert(key == key_ptr);
+
     current = vatricia_search(dbmp, vat_ptr(dbmp, root->vr_root),
 			      node->vn_length, key);
 
@@ -461,6 +470,7 @@ vatricia_add (dbm_memory_t *dbmp, vat_root_t *root,
 
     diff_bit = vatricia_mismatch(key, vatricia_key(dbmp, root, current), bit);
     if (diff_bit >= bit) {
+	vat_db_free(dbmp, vlp);
 	vat_db_free(dbmp, node);
 	return FALSE;
     }
@@ -609,6 +619,13 @@ vatricia_delete (dbm_memory_t *dbmp UNUSED, vat_root_t *root, vat_node_t *node)
      */
     node->vn_left = node->vn_right = NULL;
     node->vn_bit = VAT_NOBIT;
+
+    vat_leaf_t *vlp = vatricia_leaf(dbmp, node);
+    if (vat_ref_dec(&vlp->vl_refcount) == 0)
+	vat_db_free(dbmp, vlp);
+
+    if (vat_ref_dec(&node->vn_refcount) == 0)
+	vat_db_free(dbmp, node);
 
     /* XXX hack to record the root */
     root->vr_root = vat_off(dbmp, tmp_root);
@@ -1083,9 +1100,10 @@ vat_open (const char *filename, size_t size, unsigned flags)
 {
     if (flags & VATF_CREATE)
 	unlink(filename);
+    unsigned long addr = 0x200000000000;
 
-    unsigned dbm_flags = DBMF_CREATE | DBMF_WRITE;
-    dbm_memory_t *dbmp = dbm_open(filename, (caddr_t) DBM_COMPAT_ADDR,
+    unsigned dbm_flags = DBMF_CREATE | DBMF_WRITE| DBMF_FIXED;
+    dbm_memory_t *dbmp = dbm_open(filename, (caddr_t) addr,
 				  sizeof(vat_header_t), size, &dbm_flags);
     if (dbmp == 0)
 	return NULL;
