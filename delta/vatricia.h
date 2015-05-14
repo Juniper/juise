@@ -122,32 +122,37 @@
  * slowly recreated in the new tree, as needed.
  */
 typedef uint16_t vat_generation_t; /* Generation number */
+typedef uint16_t vat_refcount_t; /* Reference count; zero means free */
+typedef uint32_t vat_offset_t;	/* Offsets within the database */
+typedef void *vat_ptr_t;	/* Void pointer into the database */
+typedef uint8_t *vat_byteptr_t;	/* Byte pointer into the database */
+typedef uint8_t vat_type_t;	/* Type of content data */
 
 #define VAT_GENERATION_NULL	0 /* No base generation */
-
-#if 1
-typedef uint32_t vat_offset_t;	/* Offsets within the database */
-#else
-typedef uint8_t *vat_offset_t;
-#endif
-
-typedef void *vat_pointer_t;	/* Pointer into the database */
-typedef char *vat_data_t;	/* Pointer into the database */
-
-#define VAT_PTR_NULL	0	/* NULL test value */
+#define VAT_PTR_NULL		0 /* NULL test value */
 
 /**
  * @brief
  * Vatricia tree node.
  */
 typedef struct vat_node_s {
-    uint16_t vn_refcount;	/**< number of pointers to this node */
-    uint16_t vn_generation;	/**< Which root tree created this node */
+    vat_refcount_t vn_refcount;	/**< number of pointers to this node */
+    vat_generation_t vn_generation; /**< Which root tree created this node */
     uint16_t vn_length;		/**< length of key, formated as bit */
     uint16_t vn_bit;		/**< bit number to test for patricia */
-    vat_offset_t vn_data;	/**< pointer to data/object */
+    vat_offset_t vn_leaf;	/**< pointer to leaf data descriptor */
     struct vat_node_s *vn_child[2]; /**< branches for patricia search */
 } vat_node_t;
+
+typedef struct vat_leaf_s {
+    vat_refcount_t vl_refcount;	/**< number of pointers to this node */
+    vat_generation_t vl_generation; /**< Which root tree created this node */
+    vat_offset_t vl_contents;	/**< Pointer to user content */
+    vat_offset_t vl_key;	/**< Pointer to key within the content */
+    uint16_t vl_length;		/**< Length of key, formated as bit */
+    vat_type_t vl_type;	 	/** Type of this data (VDT_XXX) */
+    uint8_t vl_padding; 	/* Padding */
+} vat_leaf_t;
 
 /*
  * XXX This is plumbing to turn this into a B+tree; for now, we'll
@@ -270,14 +275,14 @@ typedef void (*vatricia_user_free_fn)(void *);
  *     The offset of the ptr in the database
  */
 static inline vat_offset_t
-vat_off (dbm_memory_t *dbmp UNUSED, vat_pointer_t ptr)
+vat_off (dbm_memory_t *dbmp UNUSED, vat_ptr_t ptr)
 {
 #if 1
     if (ptr == NULL)
 	return VAT_PTR_NULL;
 
-    vat_data_t p1 = (vat_pointer_t) dbmp;
-    vat_data_t p2 = ptr;
+    vat_byteptr_t p1 = (vat_ptr_t) dbmp;
+    vat_byteptr_t p2 = ptr;
 
     return p2 - p1;
 #else
@@ -297,14 +302,14 @@ vat_off (dbm_memory_t *dbmp UNUSED, vat_pointer_t ptr)
  * @return 
  *     A pointer into the database
  */
-static inline vat_pointer_t
+static inline vat_ptr_t
 vat_ptr (dbm_memory_t *dbmp UNUSED, vat_offset_t offset)
 {
 #if 1
     if (offset == VAT_PTR_NULL)
 	return NULL;
 
-    vat_data_t p1 = (vat_pointer_t) dbmp;
+    vat_byteptr_t p1 = (vat_ptr_t) dbmp;
     return p1 + offset;
 #else
     return offset;
@@ -362,8 +367,10 @@ vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes);
  *
  * @param[in] root
  *     Pointer to vatricia tree root
- * @param[in] data
- *     Pointer to data node
+ * @param[in] contents
+ *     Pointer to contents of the node
+ * @param[in] key
+ *     Pointer to key data
  *
  * @return 
  *     @c TRUE if the node is successfully added; 
@@ -371,14 +378,16 @@ vatricia_node_init_length (vat_node_t *node, u_int16_t key_bytes);
  *      with (variable length keys), something already in the tree.
  */
 boolean
-vatricia_add (dbm_memory_t *dbmp, vat_root_t *root, void *data,
-	      uint16_t key_bytes);
+vatricia_add (dbm_memory_t *dbmp, vat_root_t *root,
+	      void *contents, vat_type_t type,
+	      void *key, uint16_t key_bytes);
 
 static inline boolean
-vat_tree_add (vat_tree_t *vtp, void *data, void *key UNUSED, int key_bytes)
+vat_tree_add (vat_tree_t *vtp, void *contents, vat_type_t type,
+	      void *key, int key_bytes)
 {
     return vatricia_add(vtp->vt_handle->vhn_dbmp, vtp->vt_root,
-			data, key_bytes);
+			contents, type, key, key_bytes);
 }
 
 /**
@@ -761,10 +770,17 @@ vatricia_node_init (vat_node_t *node)
  *     A pointer to the start of node key.
  */
 static inline const u_int8_t *
-vatricia_key (dbm_memory_t *dbmp, vat_root_t *root, vat_node_t *node)
+vatricia_key (dbm_memory_t *dbmp, vat_root_t *root UNUSED, vat_node_t *node)
 {
-    u_int8_t *value = vat_ptr(dbmp, node->vn_data);
-    return value + root->vr_key_offset;
+    vat_leaf_t *vlp = vat_ptr(dbmp, node->vn_leaf);
+    u_int8_t *value = vat_ptr(dbmp, vlp->vl_key);
+    return value;
+}
+
+static inline const u_int8_t *
+vat_node_key (vat_tree_t *treep, vat_node_t *node)
+{
+    return vatricia_key(treep->vt_handle->vhn_dbmp, treep->vt_root, node);
 }
 
 /**
@@ -897,8 +913,25 @@ vat_isempty (vat_tree_t *root)
     return vatricia_isempty(root->vt_root);
 }
 
-void *
-vatricia_data (dbm_memory_t *dbmp, vat_node_t *node);
+static inline vat_leaf_t *
+vatricia_leaf (dbm_memory_t *dbmp, vat_node_t *node)
+{
+    if (node == NULL)
+	return NULL;
+
+    return vat_ptr(dbmp, node->vn_leaf);
+}
+
+
+static inline void *
+vatricia_data (dbm_memory_t *dbmp, vat_node_t *node)
+{
+    vat_leaf_t *vlp = vatricia_leaf(dbmp, node);
+    if (vlp == NULL)
+	return NULL;
+
+    return vat_ptr(dbmp, vlp->vl_contents);
+}
 
 static inline void *
 vat_data (vat_handle_t *handle, vat_node_t *node)
@@ -937,12 +970,12 @@ vat_data (vat_handle_t *handle, vat_node_t *node)
  * given the right field for fieldname (a common mistake is to give
  * the KEY field instead of the NODE field).  It's harmless.
  */
-#define VATNODE_TO_STRUCT(procname, structname) \
+#define VATNODE_TO_STRUCT(procname, structname)				\
     static inline structname * procname (vat_handle_t *vhnp, vat_node_t *ptr) \
-    { \
-	if (ptr) \
-	    return QUIET_CAST(structname *, vat_data(vhnp, ptr)); \
-	return NULL; \
+    {									\
+	if (ptr)							\
+	    return QUIET_CAST(structname *, vat_data(vhnp, ptr));	\
+	return NULL;							\
      }
 
 /**
@@ -1088,6 +1121,23 @@ vat_tree_t *vat_tree_new(vat_handle_t *handle, vat_generation_t base,
  * Close a vatricia tree database
  */
 void vat_close (vat_handle_t *handle);
+
+/*
+ * XXX Ultra-cheesy prototype versions; lots of (atomic) smarts needed
+ * here eventually.
+ */
+static inline void
+vat_ref_inc (vat_refcount_t *ref)
+{
+    *ref += 1;
+}
+
+static inline int
+vat_ref_dec (vat_refcount_t *ref)
+{
+    *ref -= 1;
+    return *ref;
+}
 
 #endif	/* __JNX_VATRICIA_H__ */
 
