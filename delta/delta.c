@@ -355,10 +355,10 @@ test_vatricia2 (const char *name)
 	printf("hits:  %lu\nmisses: %lu\n", hits, misses);
 
 	for (pp = vat_find_next(root, NULL), i = 0; pp;
-	     pp = vat_find_next(root, NULL)) {
+	     pp = vat_find_next(root, NULL), i++) {
 	    node = vat_to_test2(handle, pp);
 	    if (opt_verbose)
-		printf("%u: get (%p/%s) -> (%p/%s)\n", i,
+		printf("%u: delete (%p/%s) -> (%p/%s)\n", i,
 		       node->t_key, node->t_key,
 		       node->t_data, node->t_data);
 
