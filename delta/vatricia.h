@@ -141,7 +141,7 @@ typedef struct vat_node_s {
     uint16_t vn_length;		/**< length of key, formated as bit */
     uint16_t vn_bit;		/**< bit number to test for patricia */
     vat_offset_t vn_leaf;	/**< pointer to leaf data descriptor */
-    struct vat_node_s *vn_child[2]; /**< branches for patricia search */
+    vat_offset_t vn_child[2];	/**< branches for patricia search */
 } vat_node_t;
 
 typedef struct vat_leaf_s {
@@ -875,9 +875,9 @@ vatricia_get_inline (dbm_memory_t *dbmp, vat_root_t *root,
     while (bit < current->vn_bit) {
 	bit = current->vn_bit;
 	if (bit < bit_len && vat_key_test(key, bit)) {
-	    current = current->vn_right;
+	    current = vat_ptr(dbmp, current->vn_right);
 	} else {
-	    current = current->vn_left;
+	    current = vat_ptr(dbmp, current->vn_left);
 	}
     }
 
