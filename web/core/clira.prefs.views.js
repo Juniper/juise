@@ -76,7 +76,7 @@ Clira.PreferencesDialog = Ember.View.extend({
                 of: '#' + elementId 
             },
             resizable: false,
-            width: 220,
+            width: 350,
         });
     }
 });
@@ -304,7 +304,7 @@ Clira.DevicesPrefView = Ember.View.extend({
             colModel: [
                 {
                     name: 'name',
-                    index: 'index',
+                    index: 'name',
                     width: 90,
                     editable: true,
                     qTip: "The name of this device to be identified by in CLIRA.",
