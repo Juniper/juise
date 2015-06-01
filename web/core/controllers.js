@@ -179,6 +179,8 @@ Clira.RecentDevicesController = Em.ArrayController.extend({
      * Add recently used list of devices to top of the list
      */
     addDevice: function(device) {
+        // Add some height to our header to make room for this.
+        $('div#input-top').height(90);
         if (this.content.contains(device)) {
             this.content.removeObject(device);
         }
