@@ -576,6 +576,7 @@ ul.setupgrid li {
     padding: 10px;
     border: 1px solid #cbcad0;
     margin: 0 5px 10px 5px;
+    height: 85px;
 }
 
 div.setupgrid {
@@ -588,6 +589,12 @@ div.setupgrid {
     width: 64px;
     display: block;
     padding-top: 32px;
+    text-decoration: none;
+}
+
+
+.setupgrid a:active, .setupgrid a:focus, .setupgrid a:hover {
+    outline: none;
     text-decoration: none;
 }
 
