@@ -168,9 +168,9 @@ jQuery(function($) {
                         return;
 
                     addCompletions(controller, poss, poss.data.target, 
-                                   poss.data.command, results);
+                                   poss.data.command, results, value.term);
 
-                    return 200; // Need a delay/timeout
+                    return 500; // Need a delay/timeout
                 }
             }
         ]
@@ -218,8 +218,13 @@ jQuery(function($) {
         }
     }
 
-    function addCompletions(controller, poss, target, command, results) {
+    function addCompletions(controller, poss, target, command, results, raw) {
         var completion = "";
+        var space = false;
+        if (raw.slice(-1) == ' ') {
+            space = true;
+        }
+
         // Command completion on box on ?
         if (command.slice(-2) == " ?" 
             && (command.split('"').length - 1) % 2 == 0) {
@@ -231,7 +236,7 @@ jQuery(function($) {
             //Remove command with ? from autocomplete list
             results.pop();
         }
-        var payload = "<command expand='expand'>" + command + "?</command>";
+        var payload = "<command expand='expand'>" + command + (space ? ' ' : '') + "?</command>";
         $.dbgpr("on-device: rpc [" + payload + "]");
 
         $.clira.muxer().rpc({
