@@ -52,7 +52,9 @@ $(function($) {
             }                
         })
     };
-
+    /*
+     * Fetch a list of interfaces from a device and render them onto the view
+     */
     function fetchInterfaceList (view, device) {
         var cmd = "show interfaces";
         view.set('controller.loading', true);
@@ -93,6 +95,10 @@ $(function($) {
             }
         });
     }
+    /*
+     * Convenience function to extract certain properties from an rpc reply 
+     * object
+     */
     function field(obj, prop) {
         if (obj.hasOwnProperty(prop) 
                 && $.isArray(obj[prop])
