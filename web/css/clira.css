@@ -959,6 +959,10 @@ div.xpath {
     background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
 }
 
+.ui-state-focus {
+    outline: none;
+}
+
 .stop_button {
     background-color: #f24537;
     background: -moz-linear-gradient( center top, #f24537 5%, #c62d1f 100% );
