@@ -93,6 +93,7 @@ jQuery(function ($) {
                     if ($.clira.commandCount) {
                         content.commandNumber = ++$.clira.commandCount;
                     } else {
+                        $.clira.commandCount = 1;
                         content.commandNumber = 1;
                     }
                 }
