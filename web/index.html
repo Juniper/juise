@@ -68,6 +68,7 @@
   <script type="text/x-handlebars" data-template-name="output_header">
     <div class="output-header ui-state-default ui-widget-header ui-corner-all">
       {{view Clira.IconView iconClass="ui-icon-closethick" onClick="close"}}
+      {{view Clira.IconView iconClass="ui-icon-unlocked,ui-icon-locked" onClick="stick"}}
       {{view Clira.IconView iconClass="ui-icon-minusthick,ui-icon-plusthick" onClick="collapse"}}
       <b {{action "commandClick"}}>{{controller.command}}</b>
       {{#if stopButton}}{{#if muxid}}{{#unless completed}}

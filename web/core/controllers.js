@@ -238,6 +238,18 @@ Clira.OutputContainerController = Em.Controller.extend({
         },
         commandClick: function() {
             this.set('context.command', this.get('command'));
+        },
+	stick: function(controller) {
+            controller.get('view').$().slideDown($.clira.prefs.slide_speed, 
+                                                    function() {
+                var ele = $('#output-container-' + controller.commandNumber);
+
+                if (ele.hasClass('sticky')) {
+                    ele.removeClass('sticky');
+                } else {
+                    ele.addClass('sticky');
+                }
+            });
         }
     },
 

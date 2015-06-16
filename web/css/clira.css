@@ -962,6 +962,17 @@ div.xpath {
     outline: none;
 }
 
+.sticky {
+    bottom: 0px;
+    position: fixed;
+    width: 100%;
+}
+
+.sticky .ember-view .output-content {
+    max-height: 500px;
+    overflow: auto;
+}
+
 .stop_button {
     background-color: #f24537;
     background: -moz-linear-gradient( center top, #f24537 5%, #c62d1f 100% );
