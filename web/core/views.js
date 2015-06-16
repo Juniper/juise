@@ -810,6 +810,13 @@ Clira.OutputContainerView = Ember.ContainerView.extend({
         });
         this.set('childViews', [outputHeader]);
         this._super();
+
+	// Set this element id to command number
+	if ($.clira.commandCount) {
+	    this.elementId = 'output-container-' + $.clira.commandCount;
+	} else {
+	    this.elementId = 'output-container-0';
+	}
     },
 
     /*
