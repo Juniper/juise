@@ -854,6 +854,7 @@ div.dyn-radiogroup {
 }
 
 .dyn-dropdown-item {
+    box-sizing: content-box;
     max-height: 200px;
     overflow-y: auto;
 }
