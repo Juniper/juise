@@ -1,6 +1,6 @@
 set top_src=`pwd`
 setenv LIBJUISE $top_src
-alias Zautoreconf "(cd $top_src ; autoreconf --install)"
+alias Zautoreconf "(cd $top_src ; autoreconf)"
 
 set opts=' \
 --enable-clira \
@@ -17,7 +17,6 @@ set opts=' \
 --with-ssh2=/Users/phil/work/root \
 --with-sqlite3=/opt/local \
 --with-lighttpd-lib=/Users/phil/work/root/lib \
---with-php-cgi=/opt/local/bin/php-cgi \
 '
 set opts=`echo $opts`
 
@@ -30,3 +29,5 @@ alias mi "(cd $top_src/build; make && make install); ."
 
 mkdir -p build
 cd build
+
+alias mixer-local ./mixer/mixer --no-fork -K --verbose --local-console --server

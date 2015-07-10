@@ -87,7 +87,13 @@ lib_LTLIBRARIES = mod_juise.la
 mod_juise_la_SOURCES = mod_juise.c
 mod_juise_la_LDFLAGS = -module -export-dynamic -avoid-version -no-undefined
 #mod_juise_la_LIBADD = liblightcomp.la
+
+if HOST_IS_OSX
 mod_juise_la_LDFLAGS += -L${LIGHTTPD_MOD} -llightcomp
+endif
+if HOST_IS_CYGWIN
+mod_juise_la_LDFLAGS += -L${LIGHTTPD_OBJ}/src/.libs -llightcomp
+endif
 
 LIBS = \
     ${LIBSLAX_LIBS} \

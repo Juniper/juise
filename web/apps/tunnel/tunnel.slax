@@ -1,0 +1,217 @@
+version 1.1;
+
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns os extension = "http://xml.libslax.org/os";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns junos = "http://www.juniper.net/junos/";
+ns xutil extension = "http://xml.libslax.org/xutil";
+
+import "junos.xsl";
+
+output-method html;
+
+param $device1;
+param $device2;
+param $device1_ifname;
+param $device1_ifunit;
+param $device1_ifnameunit;
+param $device1_ifip;
+param $device1_nhop;
+param $device1_inif;
+param $device1_inifunit;
+param $device1_inifip;
+param $device2_ifname;
+param $device2_ifunit;
+param $device2_ifnameunit;
+param $device2_ifip;
+param $device2_nhop;
+param $device2_inif;
+param $device2_inifunit;
+param $device2_inifip;
+param $ike_ascii_key;
+param $ike_auth_algo;
+param $ike_dh_group;
+param $ike_enc_algo;
+param $ike_gateway_address1;
+param $ike_gateway_address2;
+param $ike_lifetime;
+param $ike_nat_keepalive;
+param $ipsec_auth_algo;
+param $ipsec_enc_algo;
+param $ipsec_lifetime;
+param $ipsec_pfs_keys;
+param $ipsec_protocol;
+
+match / {
+    <span> {
+        <div> {
+            var $config1 := { call create-config( $if = $device1_ifname, 
+                              $ifunit = $device1_ifunit, $ifip = $device1_ifip, 
+                              $nhop = $device1_nhop, $gip = $device2_ifip,
+                              $inif = $device1_inif, 
+                              $inifunit = $device1_inifunit, 
+                              $inifip = $device1_inifip ); }
+
+            var $config2 := { call create-config( $if = $device2_ifname, 
+                              $ifunit = $device2_ifunit, $ifip = $device2_ifip, 
+                              $nhop = $device2_nhop, $gip = $device1_ifip,
+                              $inif = $device2_inif, 
+                              $inifunit = $device2_inifunit,
+                              $inifip = $device2_inifip ); }
+
+            <p> "Connecting to " _ $device1;
+            var $conn1 = jcs:open($device1);
+
+	    <p> "Connecting to " _ $device2;
+            var $conn2 = jcs:open($device2);
+
+	    if ($conn1 == "" || $conn2 == "") {
+		<p class="error"> "Failed to open connection to devices";
+	    } else {
+		<p> "Loading configuration to " _ $device1;
+
+		var $results1 := {
+		    call jcs:load-configuration($configuration=$config1, 
+                                            $connection=$conn1); 
+		}
+    
+		if ($results1//xnm:error) {
+		    for-each ($results1//xnm:error) {
+			<p class="error"> message;
+		    }
+		} else {
+		    <p> "Successfully configured " _ $device1;
+
+            
+		    <p> "Loading configuration to " _ $device2;
+
+		    var $results2 := { call jcs:load-configuration($connection = $conn2,
+					$configuration = $config2); }
+
+		    if ( $results2//xnm:error ) {
+			<p> "Errors loading config to " _ $device2;
+			for-each( $results2//xnm:error) {
+			    <p class="error"> message;
+			}
+		    } else {
+			<p> "Successfully configured " _ $device2;
+		    }
+		}
+
+                <p> "Closing connection to " _ $device2;
+                var $close-results1 = jcs:close($conn2);
+
+		<p> "Closing connection to " _ $device1;
+		var $close-results2 = jcs:close($conn1);
+	    }
+        }
+    }
+}
+
+template create-config ( $if, $ifunit, $ifip, $nhop, $gip, $inif, $inifunit,
+                         $inifip ) {
+    var $config = <configuration> {
+        <services> {
+            <service-set> {
+                <name> "clira";
+                <next-hop-service> {
+                    <outside-service-interface> $if _ "." _ $ifunit;
+                    <inside-service-interface> $inif;
+                }
+                <ipsec-vpn-options> {
+                    <local-gateway> {
+                        <address> $ifip;
+                    }
+                }
+                <ipsec-vpn-rules> {
+                    <name> "clira";
+                }
+            }
+            <ipsec-vpn> {
+                <rule> {
+                    <name> "clira";
+                    <term> {
+                        <name> "1";
+                        <then> {
+                            <remote-gateway> $gip;
+                            <dynamic> {
+                                <ike-policy> "clira_policy";
+                                <ipsec-policy> "clira_ipsec";
+                            }
+                            <tunnel-mtu> 9192;
+                        }
+                    }
+                    <match-direction> "input";
+                }
+                <ipsec> {
+                    <proposal> {
+                        <name> "clira_ipsec";
+                        <protocol> $ipsec_protocol;
+                        <authentication-algorithm> $ipsec_auth_algo;
+                        <encryption-algorithm> $ipsec_enc_algo;
+                        <lifetime-seconds> $ipsec_lifetime;
+                    }
+                    <policy> {
+                        <name> "clira_ipsec";
+                        <proposals> "clira_ipsec";
+                    }
+                }
+                <ike> {
+                    <proposal> {
+                        <name> "clira_ike";
+                        <authentication-method> "pre-shared-keys";
+                        <dh-group> $ike_dh_group;
+                        <authentication-algorithm> $ike_auth_algo;
+                        <encryption-algorithm> $ike_enc_algo;
+                        <lifetime-seconds> $ike_lifetime;
+                    }
+                    <policy> {
+                        <name> "clira_policy";
+                        <proposals> "clira_ike";
+                        <pre-shared-key> {
+                            <ascii-text> $ike_ascii_key;
+                        }
+                    }
+                }
+                <establish-tunnels> "immediately";
+            }
+        }
+        <routing-options> {
+            <static> {
+                <route> {
+                    <name> $ifip _ "/32";
+                    <next-hop> $nhop;
+                }
+            }
+        }
+        <interfaces> {
+            <interface> {
+                <name> $if;
+                <unit> {
+                    <name> $ifunit;
+                    <description> "Added with CLIRA tunnel script";
+                    <family> {
+                        <inet> {
+                            <address> $ifip;
+                        }
+                    }
+                    <service-domain> "outside";
+                }
+            }
+            <interface> {
+                <name> $inif;
+                <unit> {
+                    <name> $inifunit;
+                    <description> "Added with CLIRA tunnel script";
+                    <family> {
+                        <inet> {
+                            <address> $inifip;
+                        }
+                    }
+                    <service-domain> "inside";
+                }
+            }
+        }
+    }
+    copy-of $config;
+}

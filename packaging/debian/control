@@ -8,7 +8,7 @@ Homepage: https://github.com/Juniper/juise
 
 Package: juise
 Architecture: amd64
-Depends: libslax, libsqlite3-0, libssh2-1, php5-cgi, php5-sqlite
+Depends: libslax0, libsqlite3-0, libssh2-1
 Suggests: lighttpd-for-juise
 Section: utils
 Priority: optional

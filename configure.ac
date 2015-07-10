@@ -87,6 +87,18 @@ AC_CHECK_HEADERS([string.h sys/param.h unistd.h])
 AC_CHECK_HEADERS([sys/sysctl.h])
 AC_CHECK_HEADERS([stdint.h sys/statfs.h])
 
+host_is_osx=no
+host_is_cygwin=no
+case $host_os in
+     darwin*)
+        host_is_osx=yes
+        ;;
+     cygwin*|CYGWIN*)
+	host_is_cygwin=yes
+	;;
+esac
+AM_CONDITIONAL([HOST_IS_OSX], [test "$host_is_osx" = "yes"])
+AM_CONDITIONAL([HOST_IS_CYGWIN], [test "$host_is_cygwin" = "yes"])
 
 AC_CHECK_LIB([crypto], [MD5_Init])
 AM_CONDITIONAL([HAVE_LIBCRYPTO], [test "$HAVE_LIBCRYPTO" != "no"])
@@ -567,13 +579,6 @@ AC_ARG_WITH(cgi-dir,
 )
 AC_SUBST(JUISE_CGI_DIR)
 
-AC_ARG_WITH(php-cgi,
-        [  --with-php-cgi=[DIR]           Specify location of php-cgi binary],
-        [PHP_CGI=$withval],
-        [PHP_CGI=$prefix/bin/php-cgi]
-)
-AC_SUBST(PHP_CGI)
-
 JUISE_LIBS=-ljuise
 AC_SUBST(JUISE_LIBS)
 JUISE_SRCDIR='${srcdir}'
@@ -631,13 +636,15 @@ AC_CONFIG_FILES([
   extensions/Makefile
   mixer/Makefile
   web/Makefile
-  web/lighttpd.conf
+  web/clira.conf
+  web/run-clira
   import/Makefile
   tests/Makefile
   packaging/juise.pc
   packaging/juise.spec
   packaging/juise.space.spec
   packaging/juise.rb.base
+  packaging/juise.clira.spec
   packaging/freebsd/port-Makefile
 ])
 AC_OUTPUT
@@ -676,7 +683,6 @@ AC_MSG_NOTICE([summary of build options:
   lighttpd obj:     ${LIGHTTPD_OBJ}
   lighttpd libdir:  ${LIGHTTPD_LIBDIR}
   lighttpd modules: ${LIGHTTPD_MOD}
-  php cgi binary:   ${PHP_CGI}
 
   warnings:         ${JUISE_WARNINGS:-no}
   debug:            ${JUISE_DEBUG:-no}

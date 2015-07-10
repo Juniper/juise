@@ -1,0 +1,609 @@
+version 1.1;
+/*
+ * $Id$
+ *  -*-  indent-tabs-mode:nil -*-
+ * Copyright 2013, Juniper Network Inc, All rights reserved
+ * All rights reserved.
+ * This SOFTWARE is licensed under the LICENSE provided in the
+ * ../Copyright file. By downloading, installing, copying, or otherwise
+ * using the SOFTWARE, you agree to be bound by the terms of that
+ * LICENSE.
+ */
+
+ns db extension = "http://xml.libslax.org/db";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns os extension = "http://xml.libslax.org/os";
+ns xutil extension = "http://xml.libslax.org/xutil";
+
+/*
+ * Anticipated parameters to this script
+ */
+param $p;
+param $oper;
+param $name;
+param $id;
+param $members;
+param $page;
+param $rows;
+param $sidx;
+param $sord;
+param $hostname;
+param $password;
+param $port;
+param $save_password;
+param $username;
+param $target;
+
+var $json-opts = {
+    <pretty>;
+}
+
+/*
+ * Database information
+ */
+var $db-options = {
+    <engine> "sqlite";
+    <database> os:user-info()//dir _ "/.juise/mixer.db";
+}
+
+/*
+ * Open connection
+ */
+var $db-handle = db:open($db-options);
+
+match / {
+    <cgi Content-Type="application/json"> {
+        mvar $data;
+        
+        if ($p == "device") {
+            set $data = {
+                call do-device();
+            }
+        } else if ($p == "devices") {
+            set $data = {
+                call do-devices();
+            }
+        } else if ($p == "device_list") {
+            set $data = {
+                call do-device-list();
+            }
+        } else if ($p == "device_edit") {
+            set $data = {
+                call do-device-edit();
+            }
+        } else if ($p == "group_list") {
+            set $data = {
+                call do-group-list();
+            }
+        } else if ($p == "group_edit") {
+            set $data = {
+                call do-group-edit();
+            }
+        } else if ($p == "group_members") {
+            set $data = {
+                call do-group-members();
+            }
+        }
+
+        if ($data != "") {
+            copy-of xutil:xml-to-json($data, $json-opts);
+        } else {
+            copy-of xutil:xml-to-json(<json type="array">, $json-opts);
+        }
+    }
+
+    /*
+     * Close the connection
+     */
+    var $db-close = db:close($db-handle);
+}
+
+/*
+ * Displays list of all the available devices
+ */
+template do-devices () {
+    var $query = {
+        <collection> "devices";
+        <retrieve> {
+            <id>;
+            <name>;
+        }
+        <sort> {
+            <by> "name";
+        }
+    }
+    var $data = db:find-and-fetch($db-handle, $query);
+    <json> {
+        <devices type="array"> {
+            for-each ($data//instance) {
+                <devices type="member"> {
+                    <id> id;
+                    <name> name;
+                }
+            }
+        }
+    }
+}
+
+/*
+ * Given a name, display details about the device
+ */
+template do-device () {
+    var $query = {
+        <collection> "devices";
+        <conditions> {
+            <condition> {
+                <selector> "name";
+                <operator> "like";
+                <value> $name;
+            }
+        }
+    }
+    var $data = db:find-and-fetch($db-handle, $query);
+    copy-of $data//instance;
+}
+
+/*
+ * Displays list of devices along with all the related information. Takes 
+ * care of paging details as well
+ */
+template do-device-list () {
+    mvar $pg;
+    mvar $limit;
+    mvar $idx;
+    mvar $resultrows;
+    mvar $query;
+    mvar $result;
+    mvar $total-pages;
+
+    if ($sidx) {
+        set $idx = $sidx;
+    } else {
+        set $idx = 1;
+    }
+
+    if ($rows) {
+        set $limit = $rows;
+    } else {
+        set $limit = 10;
+    }
+
+    if ($page) {
+        set $pg = $page;
+    } else {
+        set $pg = 1;
+    }
+
+    set $query = {
+        <collection> "devices";
+    }
+    set $result = db:find-and-fetch($db-handle, $query);
+    var $count = count($result//instance);
+
+    if ($count > 0) {
+        set $total-pages = ceiling($count div $limit);
+    } else {
+        set $total-pages = 0;
+    }
+
+    if ($pg > $total-pages) {
+        set $pg = $total-pages;
+    }
+
+    var $start = $limit * $pg - $limit;
+
+    set $query = {
+        <collection> "devices";
+        <sort> {
+            <by> $idx;
+            <order> $sord;
+        }
+        <limit> $limit;
+        <skip> $start;
+    }
+    set $result = db:find-and-fetch($db-handle, $query);
+    for-each ($result//instance) {
+        append $resultrows += <row type="member"> {
+            <id> id;
+            <cell type="array"> {
+                <cell type="member"> name;
+                <cell type="member"> hostname;
+                <cell type="member"> port;
+                <cell type="member"> username;
+                <cell type="member"> password ? 'CLIR4SET' : '';
+                <cell type="member"> save_password;
+            }
+        }
+    }
+    
+    <json> {
+        <page> $pg;
+        <total> $total-pages;
+        <records> $count;
+        <rows type="array"> {
+            copy-of $resultrows;
+        }
+    }
+}
+
+/*
+ * Add/delete/edit a device
+ */
+template do-device-edit () {
+    if ($oper == "add") {
+        call do-device-edit-add();
+    } else if ($oper == "edit") {
+        call do-device-edit-edit();
+    } else if ($oper == "del") {
+        call do-device-edit-del();
+    }
+}
+
+/*
+ * Edit a given device
+ */
+template do-device-edit-edit () {
+    mvar $pwchanged;
+    mvar $query;
+
+    if ($id && $name && $hostname && $username) {
+        if ($password != "CLIR4SET") {
+            set $pwchanged = 1;
+        } else {
+            set $pwchanged = 0;
+        }
+
+        if ($pwchanged) {
+            set $query = {
+                <collection> "devices";
+                <conditions> {
+                    <condition> {
+                        <selector> "id";
+                        <operator> "=";
+                        <value> $id;
+                    }
+                }
+                <update> {
+                    <name> $name;
+                    <hostname> $hostname;
+                    <port> $port;
+                    <username> $username;
+                    <save_password> $save_password;
+                    <password> $password;
+                }
+            }
+        } else {
+            set $query = {
+                <collection> "devices";
+                <conditions> {
+                    <condition> {
+                        <selector> "id";
+                        <operator> "=";
+                        <value> $id;
+                    }
+                }
+                <update> {
+                    <name> $name;
+                    <hostname> $hostname;
+                    <port> $port;
+                    <username> $username;
+                    <save_password> $save_password;
+                }
+            }
+        }
+
+        var $result = db:update($db-handle, $query);
+    }
+}
+
+/*
+ * Delete a given device
+ */
+template do-device-edit-del () {
+    if ($id) {
+        var $query = {
+            <collection> "devices";
+            <conditions> {
+                <condition> {
+                    <selector> "id";
+                    <operator> "=";
+                    <value> $id;
+                }
+            }
+        }
+
+        var $result = db:delete($db-handle, $query);
+    }
+}
+
+/*
+ * Add a device
+ */
+template do-device-edit-add () {
+    if ($name && $hostname && $username) {
+        var $query = {
+            <collection> "devices";
+            <instances> {
+                <instance> {
+                    <name> $name;
+                    <hostname> $hostname;
+                    <port> $port;
+                    <username> $username;
+                    <password> $password;
+                    <save_password> $save_password;
+                }
+            }
+        }
+
+        var $result = db:insert($db-handle, $query);
+    }
+}
+
+/*
+ * List all available groups with paging information
+ */
+template do-group-list () {
+    mvar $pg;
+    mvar $limit;
+    mvar $idx;
+    mvar $resultrows;
+    mvar $query;
+    mvar $result;
+    mvar $total-pages;
+
+    if ($sidx) {
+        set $idx = $sidx;
+    } else {
+        set $idx = 1;
+    }
+
+    if ($rows) {
+        set $limit = $rows;
+    } else {
+        set $limit = 10;
+    }
+
+    if ($page) {
+        set $pg = $page;
+    } else {
+        set $pg = 1;
+    }
+
+    set $query = {
+        <collection> "groups";
+    }
+    set $result = db:find-and-fetch($db-handle, $query);
+    var $count = count($result//instance);
+
+    if ($count > 0) {
+        set $total-pages = ceiling($count div $limit);
+    } else {
+        set $total-pages = 0;
+    }
+
+    if ($pg > $total-pages) {
+        set $pg = $total-pages;
+    }
+
+    var $start = $limit * $pg - $limit;
+
+    set $query = {
+        <collection> "groups";
+        <sort> {
+            <by> $idx;
+            <order> $sord;
+        }
+        <retrieve> {
+            <id>;
+            <name>;
+        }
+        <limit> $limit;
+        <skip> $start;
+    }
+
+    mvar $cursor;
+    mvar $result1;
+    mvar $names;
+
+    set $result = db:find-and-fetch($db-handle, $query);
+    for-each ($result//instance) {
+        set $query = "SELECT devices.name FROM groups_members LEFT "
+                    _ "JOIN devices ON devices.id = groups_members.device_id "
+                    _ "WHERE groups_members.group_id = " _ id;
+        set $cursor = db:query($db-handle, $query);
+        set $result1 = db:fetch($cursor);
+        set $names = NULL;
+        while ($result1//instance) {
+            append $names += <cell type="member"> $result1//instance/name;
+            set $result1 = db:fetch($cursor);
+        }
+
+        append $resultrows += <rows type="member"> {
+            <id> id;
+            <cell type="array"> {
+                <cell type="member"> name;
+                <cell type="array"> {
+                    copy-of $names;
+                }
+            }
+        }
+    }
+
+    <json> {
+        <page> $pg;
+        <total> $total-pages;
+        <records> $count;
+        <rows type="array"> {
+            copy-of $resultrows;
+        }
+    }
+}
+
+/*
+ * Add/edit/delete groups
+ */
+template do-group-edit () {
+    if ($oper == "add") {
+        call do-group-edit-add();
+    } else if ($oper == "edit") {
+        call do-group-edit-edit();
+    } else if ($oper == "del") {
+        call do-group-edit-del();
+    }
+}
+
+/*
+ * Edit a given group
+ */
+template do-group-edit-edit () {
+    if ($id && $name && $members) {
+        var $query1 = {
+            <collection> "groups";
+            <conditions> {
+                <condition> {
+                    <selector> "id";
+                    <operator> "=";
+                    <value> $id;
+                }
+            }
+            <update> {
+                <name> $name;
+            }
+        }
+
+        var $result1 = db:update($db-handle, $query1);
+
+        var $query2 = {
+            <collection> "groups_members";
+            <conditions> {
+                <condition> {
+                    <selector> "group_id";
+                    <operator> "=";
+                    <value> $id;
+                }
+            }
+        }
+
+        var $result2 = db:delete($db-handle, $query2);
+
+        var $member-list = jcs:split(",", $members);
+        mvar $query3;
+        mvar $result3;
+        for-each ($member-list) {
+            set $query3 = {
+                <collection> "groups_members";
+                <instance> {
+                    <group_id> $id;
+                    <device_id> .;
+                }
+            }
+            set $result3 = db:insert($db-handle, $query3);
+        }
+    }
+}
+
+/*
+ * Delete a given group
+ */
+template do-group-edit-del () {
+    if ($id) {
+        var $query = {
+            <collection> "groups";
+            <conditions> {
+                <condition> {
+                    <selector> "id";
+                    <operator> "=";
+                    <value> $id;
+                }
+            }
+        }
+
+        var $result = db:delete($db-handle, $query);
+    }
+}
+
+/*
+ * Add a group
+ */
+template do-group-edit-add () {
+    if ($name && $members) {
+        var $member-list = jcs:split(",", $members);
+
+        mvar $query;
+        mvar $result;
+
+        set $query = {
+            <collection> "groups";
+            <instance> {
+                <name> $name;
+            }
+        }
+        set $result = db:insert($db-handle, $query);
+
+        /*
+         * Get last inserted id
+         */
+        set $query = {
+            <collection> "groups";
+            <retrieve> {
+                <id>;
+            }
+            <sort> {
+                <by> "id";
+                <order> "desc";
+            }
+            <limit> 1;
+        }
+        set $result = db:find-and-fetch($db-handle, $query);
+        var $id = $result//instance/id;
+
+        for-each ($member-list) {
+            set $query = {
+                <collection> "groups_members";
+                <instance> {
+                    <group_id> $id;
+                    <device_id> .;
+                }
+            }
+            set $result = db:insert($db-handle, $query);
+        }
+    }
+}
+
+/*
+ * List the members of given group
+ */
+template do-group-members () {
+    if ($target) {
+        mvar $query;
+        set $query = "SELECT devices.name FROM groups LEFT JOIN "
+                    _ "groups_members ON groups_members ON "
+                    _ "groups_members.group_id = groups.id LEFT JOIN "
+                    _ "devices ON devices.id = groups_members.device_id "
+                    _ "WHERE groups.name = " _ $target;
+
+        var $cursor = db:query($db-handle, $query);
+
+        mvar $result;
+        mvar $count;
+        mvar $devices;
+    
+        set $result = db:fetch($cursor);
+        set $count = 0;
+        while ($result//instance) {
+            append $devices += <devices type='member'> $result//name;
+            set $result = db:fetch($cursor);
+            set $count = $count + 1;
+        }
+
+        if ($count == 0) {
+            append $devices += <devices type='member'> $target;
+        }
+
+        <json> {
+            <devices type='array'> {
+                copy-of $devices;
+            }
+        }
+    }
+}

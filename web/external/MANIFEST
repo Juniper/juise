@@ -80,3 +80,29 @@ site: http://qtip2.com/
 version: v2.1.1
 date: 2013-08-06
 license: MIT
+
+name: bootstrap
+site: http://getbootstrap.com/
+version: 3.3.2
+date: 2015-03-10
+license: MIT
+notes:
+
+name: qunit
+site: http://qunitjs.com/
+version: 1.16.0
+date: 2014-12-03
+license: MIT
+
+name: smoothie
+site: http://smoothiecharts.org/
+version: 1.27.0
+date: 2015-05-06
+license: MIT
+
+name: selectric
+site: http://lcdsantos.github.io/jQuery-Selectric/
+version: 1.9.3
+date: 2015-05-06
+license: Dual licensed under the MIT or GPL Version 2 licenses
+

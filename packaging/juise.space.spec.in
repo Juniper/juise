@@ -24,6 +24,12 @@ BuildRequires:  libssh2
 BuildRequires:  bison-devel
 BuildRequires:  bison
 
+Requires: libslax
+Requires: libxml2
+Requires: libxslt
+Requires: sqlite
+Requires: libssh2
+
 %description
 Welcome to juise, the JUNOS User Interface Scripting Environment.
 This library adds the JUNOS-specific bits to the base SLAX language.
@@ -49,11 +55,14 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %{_bindir}/*
+%{_sbindir}/*
 %{_libdir}/*
 %{_libdir}/pkgconfig/juise.pc
 %{_libdir}/lib*
+%{_datarootdir}/juise/*
 %{_datadir}/doc/juise/*
 %{_libexecdir}/juise/*
 %{_datadir}/juise/import/*
 %{_mandir}/*/*
 %docdir %{_mandir}/*/*
+

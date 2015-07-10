@@ -1,0 +1,387 @@
+<script type="text/x-handlebars" data-template-name="monitor-interface">
+<div id='main'>
+    <div id='banner'>
+        <label class='bannerText'>Interface monitoring</label>
+    </div> 
+    {{#if op.appContent}}
+        {{partial 'app-content'}}
+    {{/if}}
+    {{#if op.appLoading}}
+        {{partial 'loading-app'}} 
+    {{/if}}
+    {{#if op.appError}}
+        {{partial 'app-error'}}
+     {{/if}}
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="app-content">
+{{#view Clira.monitorInterfaceApp.fadeInView contentBinding='this'}}
+<div id='appContent'>
+    <div id='selectInfoContainer'>
+        {{partial 'select-interface'}} 
+    </div>
+    <div id='chart'>
+        {{partial 'chart'}}  
+    </div>
+    <div id='infoContainer'>
+        <div id='info'>
+            <div class='infoBanner'>
+            <label>Interface information</label>
+            </div>
+        {{#if op.appContent.loadingInfo}} 
+            {{partial 'loading-info'}}
+        {{/if}}
+        {{#if op.appContent.interface}}
+            {{view Clira.monitorInterfaceApp.interfaceInfoView}} 
+        {{/if}}
+        </div>
+    </div>
+    <div id='statsContainer'>
+        <div id='stats'>
+        <div class='infoBanner'>
+          <label>Statistics</label>
+        </div>
+        {{#if op.appContent.loadingInfo}}
+            {{partial 'loading-info'}}
+        {{else}}
+            {{#if op.appContent.stats}}
+                {{view Clira.monitorInterfaceApp.statisticsView 
+                    contentBinding='op.appContent.stats'}} 
+            {{else}}
+                {{partial 'no-statistics'}}
+            {{/if}}    
+                
+        {{/if}}
+        </div>
+    </div>
+</div>
+{{/view}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="select-interface">
+<div id='selectInfo'>
+    <label class='infoFields2'>Interface</label> :
+    <select id='selectInterface'>
+    {{view Clira.monitorInterfaceApp.selectInterfaceView contentBinding="this"}}
+    </select>
+    {{#view Clira.monitorInterfaceApp.appSettingsView contentBinding='this'}}
+        <button id='appSettingsBtn'>Settings</button>
+        {{partial 'app-settings'}}
+    {{/view}}
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="chart">
+<label class='infoFields2'>Real time interface utilization :</label>
+{{#view Clira.monitorInterfaceApp.chartView contentBinding="this"}}
+<canvas id='usageGraph' class='usageGraph'></canvas>
+<div id='legend'>
+    <label class='legendItem ingressLegendItem'/>
+    <label class='legendItemText'>Ingress</label></br>
+    <label class='legendItem egressLegendItem'/>
+    <label class='legendItemText'>Egress</label>
+</div>
+{{/view}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="info-ifd">
+{{#with op.appContent.interface}}
+<div class="appTables">
+    <table class="infoTables">
+        <tr>
+            <th>Name</td>
+            <td>{{name}}</td>
+        </tr>
+        <tr>
+            <th>Speed</td>
+            <td>{{view.speed}}</td>
+        </tr>
+        <tr>
+            <th>MTU</td>
+            <td>{{mtu}}</td>
+        </tr>
+        <tr>
+            <th>If-Type</td>
+            <td>{{ifType}}</td>
+        </tr>
+        <tr>
+            <th>Link type</td>
+            <td>{{linkType}}</td>
+        </tr>
+         <tr>
+            <th>Flap-info</td>
+            <td>{{flapInfo}}</td>
+        </tr>   
+        <tr>
+            <th>MAC Address</td>
+            <td>{{macAddr}}</td>
+        </tr>   
+</table>
+</div>
+{{/with}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="info-ifl">
+    {{#with op.appContent.interface}}
+    <div class="appTables">
+    <table class="infoTables">
+        <tr>
+            <th>Name</td>
+            <td>{{name}}</td>
+        </tr>
+        <tr>
+            <th>Encapsulation</td>
+            <td>{{encapsulation}}</td>
+        </tr>
+    </table>
+    <table>
+        <tr>
+            <td colspan="100%" class="statTableBanners">
+                <label class="tabBannerLabels">Address Families</label>
+            </td>
+        </tr>
+        {{#each addressFamily}}
+        <tr>
+            <th>Name</th>
+            <td>{{this.name}}</td>
+        </tr>
+        <tr>
+            <th>MTU</th>
+            <td>{{this.mtu}}</td>
+        </tr>
+        <tr>
+            <th>Address</th>
+            <td>{{this.addresses}}</td>
+        </tr>
+        <tr><td colspan="100%" class="tableDelim"></td></tr>
+        {{/each}}
+    </table>
+</div>
+{{/with}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="statistics">
+{{#with view.stats}}
+<div class="appTables">
+    <table class="trafficTables">
+        <tr>
+            <td colspan="100%" class='statTableBanners'>
+                <label class="tabBannerLabels">Traffic</label>
+            </td>
+        </tr>
+        <tr></tr>
+        <tr>
+            <th></th>
+            <th>Ingress</th>
+            <th>Egress</th>
+        </tr>
+        <tr>
+            <th>Bytes</th>
+            <td>{{ingress.bytes}}</td>
+            <td>{{egress.bytes}}</td>
+        </tr>
+        <tr>
+            <th>Packets</th>
+            <td>{{ingress.packets}}</td>
+            <td>{{egress.packets}}</td>
+        </tr>
+        <tr>
+            <th>Current rate</th>
+            <td>
+                {{ingress.rate.current.value}}
+                {{ingress.rate.current.unit}}
+            </td>
+            <td>
+                {{egress.rate.current.value}}
+                {{egress.rate.current.unit}}
+            </td>
+        </tr>
+        <tr>
+            <th>Peak rate</td>
+            <td>
+                {{ingress.rate.peak.value}}
+                {{ingress.rate.peak.unit}}
+            </td>
+            <td>
+                {{egress.rate.peak.value}}
+                {{egress.rate.peak.unit}}
+            </td>
+        </tr>
+        <tr>
+            <th>Average rate</th>
+            <td>
+                {{ingress.rate.average.value}}
+                {{ingress.rate.average.unit}}
+            </td>
+            <td>
+                {{egress.rate.average.value}}
+                {{egress.rate.average.unit}}
+            </td>
+        </tr>
+    </table>
+    {{#unless ingress.error}} 
+    <table class="errorTables">
+        <tr>
+            <td colspan="100%" class="statTableBanners">
+                <label class="tabBannerLabels">Errors</label>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label>
+                    Error statistics not available for logical interfaces
+                </label>
+            </td>
+        </tr>    
+    </table>
+    {{/unless}}
+    {{#with ingress.error}}
+    <table class="errorTables">
+        <tr>
+            <td colspan="100%" class="statTableBanners">
+                <label class="tabBannerLabels">Ingress errors</label>
+            </td>
+        </tr>
+        <tr></tr>
+        <tr>
+            <th>Framing</th>
+            <td>{{framing-errors}}</td>
+        </tr>
+        <tr>
+            <th>Discards</th>
+            <td>{{input-discards}}</td>
+        </tr>
+        <tr>
+            <th>Drops</th>
+            <td>{{input-drops}}</td>
+        </tr>
+        <tr>
+            <th>Errors</th>
+            <td>{{input-errors}}</td>
+        </tr>
+        <tr>
+            <th>Giants</th>
+            <td>{{input-giants}}</td>
+        </tr>
+        <tr>
+            <th>Resource-errors</th>
+            <td>{{input-resource-errors}}</td>
+        </tr>
+        <tr>
+            <th>Runts</th>
+            <td>{{input-runts}}</td>
+        </tr>
+    </table>
+    {{/with}}
+    {{#with egress.error}}
+    <table class="errorTables">
+        <tr>
+            <td colspan="100%" class ="statTableBanners">
+                <label class="tabBannerLabels">Egress errors<label>
+            </td>
+        </tr>
+        <tr></tr>
+        <tr>
+            <th>Carrier-transistions</th>
+            <td>{{carrier-transitions}}</td>
+        </tr>
+        <tr>
+            <th>MTU errors</th>
+            <td>{{mtu-errors}}</td>
+        </tr>
+        <tr>
+            <th>Drops</th>
+            <td>{{output-drops}}</td>
+        </tr>
+        <tr>
+            <th>Errors</th>
+            <td>{{output-errors}}</td>
+        </tr>
+        <tr>
+            <th>Resource-errors</th>
+            <td>{{output-resource-errors}}</td>
+        </tr>
+    </table>
+    {{/with}}
+</div>
+{{/with}}
+</script>
+
+<script type='text/x-handlebars' data-template-name="app-settings">
+<div class='appSettingsPanel'>
+    <div class='infoBanner'>
+        <label>Settings</label>
+    </div>
+    <div class='settingsContainer'>
+        <div class='settings'>
+            <label class='settingsField'>Traffic Units</label>:
+            <div id="rateUnits">
+                <input type="radio" value='Auto' name="rateUnit">Auto
+                <input type="radio" value='bps' name="rateUnit">bps
+                <input type="radio" value='Kbps' name="rateUnit">Kbps
+                <input type="radio" value='Mbps' name="rateUnit">Mpbs
+                <input type="radio" value='Gbps' name="rateUnit">Gbps
+            </div>
+        </div>
+        <div class='settings'>
+            <label class='settingsField'>Fetch interval </label>:
+            <input type='text' id='fetchInterval' maxLength=3/>
+            <label class='fieldHints'>secs (1 to 900)</label>
+        </div>
+        <div class='settings'>
+            <label class='settingsField'>Chart period</label>:
+            <input type='text' id='chartPeriod' maxLength=4/>
+            <label class='fieldHints'>secs (10 to 3600)</label>
+        </div>
+        <div class='settings'>
+            <label class='settingsField'>Chart width</label>:
+            <input type='text' id='chartWidth' maxLength=4/>
+            <label class='fieldHints'>px (100 to 1024)</label>
+        </div>
+        <div class='settings'>
+            <label class='settingsField'>Chart height</label>:
+            <input type='text' id='chartHeight' maxLength=3/>
+            <label class='fieldHints'>px (50 to 200)</label>
+        </div>
+        <div class='settings'>
+            <label class='settingsField'>Graph Y-axis autoscale</label>:
+            <input type="radio" value='yes' name="autoScale">Yes
+            <input type="radio" value='no' name="autoScale">No
+        </div>
+    </div>
+    <div class='settingsBtnContainer'>
+        <button id='applySettingsBtn' name='apply'>Apply</button>
+        <button id='resetSettingsBtn' name='reset'>Reset</button>
+        <button id='closeSettingsBtn' name='close'>Close</button>
+
+    </div>
+</div>
+</script>
+
+<script type='text/x-handlebars' data-template-name="no-statistics">
+<div class='noStatsAvaialable'>
+    <label>No Traffic statistics available for this interface</label>
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="loading-app">
+{{#view Clira.monitorInterfaceApp.fadeInView contentBinding="this"}}
+<div class='appLoading'>
+    <label class='appLoadingSpinner'></label>
+</div>
+{{/view}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="loading-info">
+<div class='infoLoading'>
+    <label class='infoLoadingSpinner'></label>
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="app-error">
+<div class='appError'>
+    <label class='appErrorMessage'>{{op.appError.error}}</label>
+</div>
+</script>
+
