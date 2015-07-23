@@ -1,0 +1,10 @@
+{  
+  "name":"monitor-interface",
+  "author":{  
+     "name":"Marvin",
+     "email":"mdsouza@juniper.net"
+  },
+  "version":"1.0.0",
+  "dir-name":"monitor-interface",
+  "files":["css/monitor-interface.css","images/infoLoading.gif","monitor-interface.hbs","monitor-interface.js"]
+}
