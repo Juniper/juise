@@ -1,0 +1,11 @@
+{  
+  "name":"shpw-interfaces-demo",
+  "author":{  
+     "name":"Marvin",
+     "email":"mdsouza@juniper.net"
+  },
+  "version":"1.0.0",
+  "dir-name":"show-interfaces-demo",
+  "dir-location":"https://github.com/mdlogic/juise/tree/develop/web/apps/show-interfaces-demo",
+  "files":["show-interfaces-demo.hbs","show-interfaces-demo.js","show-interfaces-demo.meta"]
+}
