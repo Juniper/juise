@@ -6,6 +6,6 @@
   },
   "version":"1.0.0",
   "dir-name":"monitor-interface",
-  "dir-location" : "https://github.com/mdlogic/juise/tree/develop/web/apps/monitor-interface",
+  "dir-location":"https://github.com/mdlogic/juise/tree/develop/web/apps/monitor-interface",
   "files":["css/monitor-interface.css","images/infoLoading.gif","monitor-interface.hbs","monitor-interface.js"]
 }
