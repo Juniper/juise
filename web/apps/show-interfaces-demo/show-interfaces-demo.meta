@@ -5,7 +5,6 @@
      "email":"mdsouza@juniper.net"
   },
   "version":"1.0.0",
-  "dir-name":"show-interfaces-demo",
-  "dir-location":"https://github.com/mdlogic/juise/tree/develop/web/apps/show-interfaces-demo",
+  "app-meta-url":"https://github.com/mdlogic/juise/tree/develop/web/apps/show-interfaces-demo/show-interfaces-demo.meta",
   "files":["show-interfaces-demo.hbs","show-interfaces-demo.js","show-interfaces-demo.meta"]
 }
