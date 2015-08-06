@@ -131,28 +131,62 @@ typedef uint8_t vat_type_t;	/* Type of content data */
 #define VAT_GENERATION_NULL	0 /* No base generation */
 #define VAT_PTR_NULL		0 /* NULL test value */
 
-/**
- * @brief
- * Vatricia tree node.
+/*
+ * A lockable offset is needed to ensure the referenced memory
+ * is still valid while we bump the reference count.
  */
-typedef struct vat_node_s {
-    vat_refcount_t vn_refcount;	/**< number of pointers to this node */
-    vat_generation_t vn_generation; /**< Which root tree created this node */
-    uint16_t vn_length;		/**< length of key, formated as bit */
-    uint16_t vn_bit;		/**< bit number to test for patricia */
-    vat_offset_t vn_leaf;	/**< pointer to leaf data descriptor */
-    vat_offset_t vn_child[2];	/**< branches for patricia search */
-} vat_node_t;
+typedef union vat_offset_lockable_s {
+    struct {
+	vat_offset_t vol_offset;	/* Base offset value */
+	uint16_t vol_aba;		/* Iteration number q(ABA avoidance) */
+	uint16_t vol_lock;		/* Lock (0 = unlocked) */
+    } vol_data;
+    uint64_t vol_int64;
+} vat_offset_lockable_t;
 
+/*
+ * The base structure that appears at the front of all database
+ * structures.  Needed to be able to aquire a reference while locking.
+ */
+typedef struct vat_base_s {
+    vat_refcount_t vb_refcount;	/**< number of pointers to this node */
+    vat_generation_t vb_generation; /**< Which root tree created this node */
+} vat_base_t;
+
+/*
+ * The leaf structure describes the leafs of our trees.  We need this
+ * since we're not implanting content into the user data structures,
+ * and we need a reference count.  Since we're doing this, it also makes
+ * a nice place to refer to the key, allowing flexible keys.
+ */
 typedef struct vat_leaf_s {
-    vat_refcount_t vl_refcount;	/**< number of pointers to this node */
-    vat_generation_t vl_generation; /**< Which root tree created this node */
+    vat_base_t vl_base;		/**< Base header */
     vat_offset_t vl_contents;	/**< Pointer to user content */
     vat_offset_t vl_key;	/**< Pointer to key within the content */
     uint16_t vl_length;		/**< Length of key, formated as bit */
     vat_type_t vl_type;	 	/** Type of this data (VDT_XXX) */
     uint8_t vl_padding; 	/* Padding */
 } vat_leaf_t;
+
+/* Short names */
+#define vl_refcount vl_base.vb_refcount
+#define vl_generation vl_base.vb_generation
+
+/**
+ * @brief
+ * Vatricia tree node.
+ */
+typedef struct vat_node_s {
+    vat_base_t vn_base;		/**< Base header */
+    uint16_t vn_length;		/**< length of key, formated as bit */
+    uint16_t vn_bit;		/**< bit number to test for patricia */
+    vat_offset_t vn_leaf; /**< pointer to leaf data descriptor */
+    vat_offset_t vn_child[2]; /**< branches for patricia search */
+} vat_node_t;
+
+/* Short names */
+#define vn_refcount vn_base.vb_refcount
+#define vn_generation vn_base.vb_generation
 
 /*
  * XXX This is plumbing to turn this into a B+tree; for now, we'll
@@ -1138,6 +1172,9 @@ vat_ref_dec (vat_refcount_t *ref)
     *ref -= 1;
     return *ref;
 }
+
+int
+vat_lock_test (vat_handle_t *handle);
 
 #endif	/* __JNX_VATRICIA_H__ */
 
