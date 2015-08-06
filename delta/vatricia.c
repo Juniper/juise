@@ -1171,3 +1171,101 @@ vat_tree_new (vat_handle_t *handle, vat_generation_t base UNUSED,
     return vtp;
 }
 
+typedef struct vat_thread_arg_s {
+    int vta_thread;
+    pthread_t vta_tid;
+    vat_handle_t *vta_handle;
+    vat_offset_lockable_t vta_lock;
+} vat_thread_arg_t;
+
+static int
+vat_offset_lock (dbm_memory_t *dbmp, vat_offset_lockable_t *volp,
+		 vat_offset_lockable_t *curp, int delta)
+{
+    int rc;
+
+    for (;;) {
+	vat_offset_lockable_t cur = atomic_fetch(*volp);
+	vat_offset_lockable_t next = cur;
+
+	if (cur.vol_data.vol_lock)
+	    continue;
+
+	next.vol_data.vol_lock = 1;
+	next.vol_data.vol_aba += 1;
+	if (atomic_compare_and_swap(&volp->vol_int64, cur.vol_int64,
+				    next.vol_int64))
+	    continue;
+
+	vat_base_t *vbp = vat_ptr(dbmp, next.vol_data.vol_offset);
+	if (vbp)
+	    rc = atomic_fetch_add(vbp->vb_refcount);
+
+	*curp = next;
+	return rc;
+    }
+}
+
+static void *
+vat_offset_make_ref (dbm_memory_t *dbmp, vat_offset_lockable_t *volp)
+{
+    vat_offset_lockable_t next;
+
+    vat_offset_lock(dbmp, volp, &next, 0);
+
+    next.vol_data.vol_lock = 0;
+    next.vol_data.vol_aba += 1;
+
+    if (atomic_compare_and_swap(&volp->vol_int64, cur.vol_int64, next.vol_int64))
+	abort("compare-and-restore failed");
+
+    return vbp;
+}
+
+static int
+vat_offset_clear_ref (dbm_memory_t *dbmp, vat_offset_lockable_t *volp,
+		      void *data)
+{
+    vat_offset_lockable_t next;
+
+    int rc = vat_offset_lock(dbmp, volp, &next, -1);
+
+    next.vol_data.vol_lock = 0;
+    next.vol_data.vol_paba += 1;
+
+    if (atomic_compare_and_swap(&volp->vol_int64, cur.vol_int64, next.vol_int64))
+	abort("compare-and-restore failed");
+
+    return rc;
+}
+
+
+static void
+vat_thread (void *arg)
+{
+    vat_thread_arg_t;
+    vat_offset_lockable_t *volp = arg;
+
+    for (int i = 0; i < 100; i++) {
+	vat_offset_make_ref(volp);
+
+	vat_offset_clear_ref(volp);
+    }
+}
+
+int
+vat_lock_test (vat_handle_t *handle)
+{
+    pthread_t tid;
+    vat_offset_lockable_t vol;
+
+    bzero(&vol, sizeof(vol));
+
+    for (i = 0; i < 10; i++) {
+	if (pthread_create(&tid, NULL, vat_thread, &vol))
+	    err(1, "pthread_create failed (%d)", i);
+	
+    }
+
+    return 0;
+}
