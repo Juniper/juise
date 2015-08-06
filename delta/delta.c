@@ -376,6 +376,22 @@ test_vatricia2 (const char *name)
     return 0;
 }
 
+static int
+test_vatricia3 (const char *name UNUSED)
+{
+    vat_handle_t *handle;
+
+    handle = vat_open(opt_database, opt_size, VATF_CREATE);
+    if (handle == NULL)
+	errx(1, "open db failed");
+
+    vat_lock_test(handle);
+
+    vat_close(handle);
+
+    return 0;
+}
+
 static unsigned long
 parse_arg_number (const char *cp)
 {
@@ -489,6 +505,10 @@ main (int argc UNUSED, char **argv UNUSED)
 
     case 2:
 	test_vatricia2(opt_filename);
+	break;
+
+    case 3:
+	test_vatricia3(opt_filename);
 	break;
     }
 
