@@ -1,7 +1,7 @@
 Name:        @PACKAGE_NAME@
 Version:     @PACKAGE_VERSION@
 Release:     1%{?dist}
-Summary:     JUNOS User Interface Scripting Environment with Clira support
+Summary:     JUNOS User Interface Scripting Environment
 
 Prefix:      /usr
 
@@ -12,6 +12,8 @@ License:     BSD
 Group:       Development/Libraries
 URL:         https://github.com/Juniper/libslax
 Source0:     https://github.com/Juniper/@PACKAGE_NAME@/releases/@PACKAGE_VERSION@/@PACKAGE_NAME@-@PACKAGE_VERSION@.tar.gz
+
+BuildRoot:   %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires:  libxml2-devel
 BuildRequires:  libxslt-devel
@@ -26,29 +28,25 @@ Requires: libslax
 Requires: libxml2
 Requires: libxslt
 Requires: sqlite
-Requires: psmisc
-requires: libssh2
+Requires: libssh2
 
 %description
 Welcome to juise, the JUNOS User Interface Scripting Environment.
 This library adds the JUNOS-specific bits to the base SLAX language.
 
-NOTE: This spec file is used to build juise with Clira files included.
-
-%define _unpackaged_files_terminate_build 0
+NOTE: This is the spec file used for JUNOS Space, and should not
+be used for other builds;  use libslax.spec instead.
 
 %prep
 %setup -q
 
 %build
-%configure --enable-clira --enable-mixer --with-lighttpd-src=@LIGHTTPD_SRC@
+%configure
 make %{?_smp_mflags}
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%make_install
-mkdir -p ${RPM_BUILD_ROOT}/usr/lib64/lighttpd-for-juise
-mv ${RPM_BUILD_ROOT}/usr/lib64/mod_juise.so*  ${RPM_BUILD_ROOT}/usr/lib64/lighttpd-for-juise
+make DESTDIR="$RPM_BUILD_ROOT" install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -57,11 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %{_bindir}/*
-%{_sbindir}/*
-%{_libdir}/libjuise.so*
-%{_libdir}/slax/*
-%{_libdir}/lighttpd-for-juise/*
+%{_libdir}/*
 %{_libdir}/pkgconfig/juise.pc
+%{_libdir}/lib*
 %{_datarootdir}/juise/*
 %{_datadir}/doc/juise/*
 %{_libexecdir}/juise/*
