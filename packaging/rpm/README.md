@@ -17,7 +17,7 @@ yum install gcc bison automake make autoconf libtool libxml2-devel libxslt-devel
 * Simply run `./rpm.sh`
 
 This script should take care of all the necessary steps to build and package
-the .rpm files.  After it is done, the files should be in the `output`
+the .rpm files.  After it is done, the files should be in the `~/rpmbuild/RPMS`
 directory.
 
 Note that rpmbuild will create directories ~/rpmbuild/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
