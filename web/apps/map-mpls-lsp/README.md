@@ -5,7 +5,7 @@ The Map MPLS LSP CLIRA app uses the Google Maps API and CLIRA API to visualize a
 ### Fetaures
   - The app displays the LSP info and a graph showing the devices forming the LSP.
   - The user can click on the node in the graph to view the real time traffic statistics.
-  - The user can click on the 'Show LSP on Map' button to view the LSP on the graph.
+  - The user can click on the 'Show LSP on Map' button to view the LSP on the map.
 
 ### Assumptions and Prerequisites
   - The location info should be configured on each device using, “set system location” command.
