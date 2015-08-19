@@ -3,6 +3,6 @@
   "author":"Mihir",
   "author-email":"masthana@juniper.net",
   "version":"1.0.0",
-  "app-meta-url":"https://github.com/mihirasthana/juise/tree/master/web/apps/map-mpls-lsp/map-mpls-lsp.meta",
+  "app-meta-url":"https://github.com/mihirasthana/juise/blob/master/web/apps/map-mpls-lsp/map-mpls-lsp.meta",
   "files":["images/router.png","images/myrouter.png","map-mpls-lsp.hbs","map-mpls-lsp.js","map-mpls-lsp.meta","map-mpls-lsp.slax","README.md"]
 }
