@@ -106,3 +106,8 @@ version: 1.9.3
 date: 2015-05-06
 license: Dual licensed under the MIT or GPL Version 2 licenses
 
+name: vis
+site: http://visjs.org/
+version: 4.7.0
+date: 2015-08-17
+license: Dual licensed under the Apache 2.0 and MIT

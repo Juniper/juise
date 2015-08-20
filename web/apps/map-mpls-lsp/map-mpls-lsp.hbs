@@ -1,0 +1,800 @@
+<style type="text/css">
+
+.LSPInfoTableCSS {
+	margin:auto;
+	width:75%;
+	border:1px solid #000000;
+	-moz-border-radius-bottomleft:0px;
+	-webkit-border-bottom-left-radius:0px;
+	border-bottom-left-radius:0px;
+
+	-moz-border-radius-bottomright:0px;
+	-webkit-border-bottom-right-radius:0px;
+	border-bottom-right-radius:0px;
+
+	-moz-border-radius-topright:0px;
+	-webkit-border-top-right-radius:0px;
+	border-top-right-radius:0px;
+
+	-moz-border-radius-topleft:0px;
+	-webkit-border-top-left-radius:0px;
+	border-top-left-radius:0px;
+
+}
+
+.LSPInfoTableCSS table{
+	width:100%;
+	height:100%;
+	margin:0px;padding:0px;
+}
+
+.LSPInfoTableCSS tr:last-child td:last-child {
+	-moz-border-radius-bottomright:0px;
+	-webkit-border-bottom-right-radius:0px;
+	border-bottom-right-radius:0px;
+}
+
+.LSPInfoTableCSS table tr:first-child td:first-child {
+	-moz-border-radius-topleft:0px;
+	-webkit-border-top-left-radius:0px;
+	border-top-left-radius:0px;
+}
+
+.LSPInfoTableCSS table tr:first-child td:last-child {
+	-moz-border-radius-topright:0px;
+	-webkit-border-top-right-radius:0px;
+	border-top-right-radius:0px;
+}
+
+.LSPInfoTableCSS tr:last-child td:first-child{
+	-moz-border-radius-bottomleft:0px;
+	-webkit-border-bottom-left-radius:0px;
+	border-bottom-left-radius:0px;
+}
+
+.LSPInfoTableCSS tr:hover td{
+
+}
+
+.LSPInfoTableCSS tr:nth-child(odd){ 
+	background-color:#dbedff; 
+}
+
+.LSPInfoTableCSS tr:nth-child(even)    
+{ 
+	background-color:#ffffff; 
+}
+
+.LSPInfoTableCSS td
+{
+	vertical-align:middle;
+	border:1px solid #000000;
+	border-width:0px 1px 1px 0px;
+	padding:7px;
+	font-size:13px;
+	font-family:Arial;
+	font-weight:bold;
+	color:#000000;
+	text-align:center;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.LSPInfoTableCSS tr:last-child td{
+	border-width:0px 1px 0px 0px;
+}
+
+.LSPInfoTableCSS tr td:last-child{
+	border-width:0px 0px 1px 0px;
+}
+
+.LSPInfoTableCSS tr:last-child td:last-child{
+	border-width:0px 0px 0px 0px;
+}
+
+.LSPInfoTableCSS tr:first-child td{
+	background:-o-linear-gradient(bottom, #005fbf 5%, #005fbf 100%);	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #005fbf), color-stop(1, #005fbf) );	background:-moz-linear-gradient( center top, #005fbf 5%, #005fbf 100% );	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr="#005fbf", endColorstr="#005fbf");	background: -o-linear-gradient(top,#005fbf,005fbf);
+	background-color:#005fbf;
+	border:0px solid #000000;
+	text-align:center;
+	border-width:0px 0px 1px 1px;
+	font-size:14px;
+	font-family:Arial;
+	font-weight:bold;
+	color:#ffffff;
+}
+.LSPInfoTableCSS tr:first-child:hover td{
+	background:-o-linear-gradient(bottom, #005fbf 5%, #005fbf 100%);	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #005fbf), color-stop(1, #005fbf) );	background:-moz-linear-gradient( center top, #005fbf 5%, #005fbf 100% );	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr="#005fbf", endColorstr="#005fbf");	background: -o-linear-gradient(top,#005fbf,005fbf);
+	background-color:#005fbf;
+}
+
+.LSPInfoTableCSS tr:first-child td:first-child{
+	border-width:0px 0px 1px 0px;
+}
+.LSPInfoTableCSS tr:first-child td:last-child{
+	border-width:0px 0px 1px 1px;
+}
+
+.loading svg {
+  position:inherit  ;
+  display:block;
+  top: 0; left: 0; right: 0; bottom: 0;
+  margin: auto;
+  rect { fill: #76daff; }
+}
+
+.ui-widget.ui-dialog {
+    font-family: Verdana,Arial,sans-serif;
+    font-size: .8em;
+}
+
+.ui-widget-content.ui-dialog {
+    background: #F9F9F9;
+    border: 1px solid #90d93f;
+    color: #222222;
+}
+
+.ui-popup.ui-dialog {
+    left: 0;
+    outline: 0 none;
+    padding: 0 !important;
+    position: absolute;
+    top: 0;
+}
+
+.ui-popup.ui-dialog .ui-dialog-content {
+    background: none repeat scroll 0 0 transparent;
+    border: 0 none;
+    overflow: auto;
+    position: relative;
+    padding: 0 !important;
+    margin: 0;
+}
+
+.ui-popup.ui-dialog .ui-widget-header {
+    background: #004444;
+    border: 0;
+    color: #fff;
+    font-weight: bold;
+    font-size: 25px;
+}
+
+#inputPackets {
+    width: 50%;
+    background: #a2798f;
+    float: left;
+    font-size: 40px;
+    font-weight: bold;
+    color:white;
+    text-align: center;
+}
+
+#routerInfo {
+    width: 100%;
+    background: #bfb5b2;
+    font-size: 20px;
+    font-weight: bold;
+    color:#2e4045;
+    text-align: center;
+}
+
+#outputPackets {
+    background: #8caba8;
+    font-size: 40px;
+    font-weight: bold;
+    color:white;
+    text-align: center;
+}
+
+#inputBytes {
+    width: 50%;
+    background: #2e4045;
+    float: left;
+    font-size: 30px;
+    font-weight: bold;
+    color:white;
+    text-align: center;
+}
+
+#outputBytes {
+    background: #5e3c58;
+    font-size: 30px;
+    font-weight: bold;
+    color:white;
+    text-align: center;
+}
+
+.container {
+    display: table;
+    width: auto;
+    }
+
+  .row  {
+    display: table-row;
+    }
+
+  .left {
+    display: table-cell;
+    width : 40%;
+    border-style: solid;
+    border-width: 1px;
+    font-size: 15px;
+    font-weight: bold;
+    background-color:#5e3c58;
+    color:white;
+
+    }
+    .right {
+    width : 60%;
+    display: table-cell;
+    border-style: solid;
+    border-width: 1px;
+    font-size: 13px;
+    font-weight: bold;
+    color:black;
+    background-color:#d0f7ff;
+    }
+
+    .btn {
+    background: #3498db;
+    background-image: -webkit-linear-gradient(top, #3498db, #2980b9);
+    background-image: -moz-linear-gradient(top, #3498db, #2980b9);
+    background-image: -ms-linear-gradient(top, #3498db, #2980b9);
+    background-image: -o-linear-gradient(top, #3498db, #2980b9);
+    background-image: linear-gradient(to bottom, #3498db, #2980b9);
+    -webkit-border-radius: 28;
+    -moz-border-radius: 28;
+    border-radius: 24px;
+    font-family: Arial;
+    color: #ffffff;
+    font-size: 16px;
+    padding: 8px 18px 8px 18px;
+    text-decoration: none;
+  }
+
+  .btn:hover {
+    background: #3cb0fd;
+    background-image: -webkit-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -moz-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -ms-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -o-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+    text-decoration: none;
+  }
+
+  #colorCoding
+  {
+    position:absolute;
+    float:right;
+    top:10px;  /* adjust value accordingly */
+    left: 10px;  /* adjust value accordingly */
+  }
+</style>
+
+{{#if loading}}
+	<div class="loading" style="height:300px;">
+	<svg width="70" height="20">
+  <rect width="20" height="20" x="0" y="0" rx="3" ry="3">
+    <animate attributeName="width" values="0;20;20;20;0" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="height" values="0;20;20;20;0" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="x" values="10;0;0;0;10" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="y" values="10;0;0;0;10" dur="1000ms" repeatCount="indefinite"/>
+  </rect>
+  <rect width="20" height="20" x="25" y="0" rx="3" ry="3">
+    <animate attributeName="width" values="0;20;20;20;0" begin="200ms" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="height" values="0;20;20;20;0" begin="200ms" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="x" values="35;25;25;25;35" begin="200ms" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="y" values="10;0;0;0;10" begin="200ms" dur="1000ms" repeatCount="indefinite"/>
+  </rect>
+  <rect width="20" height="20" x="50" y="0" rx="3" ry="3">
+    <animate attributeName="width" values="0;20;20;20;0" begin="400ms" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="height" values="0;20;20;20;0" begin="400ms" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="x" values="60;50;50;50;60" begin="400ms" dur="1000ms" repeatCount="indefinite"/>
+    <animate attributeName="y" values="10;0;0;0;10" begin="400ms" dur="1000ms" repeatCount="indefinite"/>
+  </rect>
+</svg>
+</div>
+{{else}}
+<div class="LSPInfoTableCSS" >
+                <table id="lspInfoTable">
+                    <tr>
+                        <td width="8%">
+                            LSP Type
+                        </td>
+                        <td width="10%">
+                            LSP Name
+                        </td>
+                        
+                        <td width="35%">
+                            LSP Info
+                        </td>
+                        
+                        <td width="35%">
+                            Graph
+                        </td>
+                        <td width="12%">
+                            Map {{#if lspDict.lspExists}}
+                              <!-- <button class="btn" {{action 'generateMapAllLSP' lspDict}}>
+                                   Show All LSP's on map
+                               </button> -->
+                            {{/if}}
+                        </td>
+                    </tr>
+                    
+                    {{#if lspDict.ingress.length}}
+                    {{#each lspDict.ingress}}
+                    <tr>
+                        <td>
+                            INGRESS
+                        </td>
+                        <td>
+                        	{{this.name}}
+                        </td>
+                        <td>
+                            <div class="container">
+                            <div class="row">
+                              <div class="left">
+                                LSP State
+                              </div>
+                              {{#if this.lspState}}
+                              <div class="right" style="background-color:green;color:white;">
+                                Up
+                              </div>
+                              {{else}}
+                              <div class="right" style="background-color:red;color:white;">
+                                Down
+                              </div>
+                              {{/if}}
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Active Path
+                              </div>
+                              <div class="right">
+                                {{this.activePath}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Egress Label Operation
+                              </div>
+                              <div class="right">
+                                {{this.egressLabelOperation}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Load Balance
+                              </div>
+                              <div class="right">
+                                {{this.loadBalance}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Bandwidth
+                              </div>
+                              <div class="right">
+                                {{this.bandwidth}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Hop limit
+                              </div>
+                              <div class="right">
+                                {{this.hoplimit}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Smart Optimize Timer
+                              </div>
+                              <div class="right">
+                                {{this.smartOptimizeTimer}}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                            {{view Clira.ShowMPLSlspTopology contextBinding="this"}}
+                        </td>
+                        <td>
+                       		{{#if this.lspState}}
+                                <button class="btn" {{action 'generateMap' this.output}}>
+                                   Show {{this.name}} on map
+                                </button>
+                            {{/if}}
+                        </td>
+                    </tr>
+                     {{/each}}
+                    {{/if}}
+
+                  {{#if lspDict.egress.length}}
+                  
+                    {{#each lspDict.egress}}
+                    <tr>
+                        <td>
+                            EGRESS
+                        </td>
+                        <td>
+                        	{{this.name}}
+                        </td>
+                        <td>
+                            <div class="container">
+                            <div class="row">
+                              <div class="left">
+                                LSP State
+                              </div>
+                             {{#if this.lspState}}
+                              <div class="right" style="background-color:green;color:white;">
+                                Up
+                              </div>
+                              {{else}}
+                              <div class="right" style="background-color:red;color:white;">
+                                Down
+                              </div>
+                              {{/if}}
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               LSP Path Type
+                              </div>
+                              <div class="right">
+                                {{this.lspPathType}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Label In
+                              </div>
+                              <div class="right">
+                                {{this.labelIn}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Label Out
+                              </div>
+                              <div class="right">
+                                {{this.labelOut}}
+                              </div>
+                            </div>
+                              <div class="row">
+                              <div class="left">
+                               Resv Style
+                              </div>
+                              <div class="right">
+                                {{this.resvStyle}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               RSB Count
+                              </div>
+                              <div class="right">
+                                {{this.rsbCount}}
+                              </div>
+                            </div>
+                            
+                            <div class="row">
+                              <div class="left">
+                               PSB Lifetime
+                              </div>
+                              <div class="right">
+                                {{this.psbLifetime}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               PSB Creation Time
+                              </div>
+                              <div class="right">
+                                {{this.psbCreationTime}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               lsp-id
+                              </div>
+                              <div class="right">
+                                {{this.lspId}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Tunnel ID
+                              </div>
+                              <div class="right">
+                                {{this.tunnelId}}
+                              </div>
+                            </div>
+                              <div class="row">
+                              <div class="left">
+                               Adspec
+                              </div>
+                              <div class="right">
+                                {{this.adspec}}
+                              </div>
+                            </div>
+                              
+                          </div>
+                        </td>
+                        <td>
+                            {{view Clira.ShowMPLSlspTopology contextBinding="this"}}
+                        </td>
+                        <td>
+                       		{{#if this.lspState}}
+                                <button class="btn" {{action 'generateMap' this.output}}>
+                                   Show {{this.name}} on map
+                                </button>
+                            {{/if}}
+                        </td>
+                    </tr>
+                     {{/each}}
+                    {{/if}}
+
+                  {{#if lspDict.transit.length}}  
+                    {{#each lspDict.transit}}
+                    {{#unless _view.contentIndex}}
+	                    <tr>
+		                        <td rowspan="4">
+		                            TRANSIT
+		                        </td>
+		                        <td>
+		                        	{{this.name}}
+		                        </td>
+                            <td>
+                            <div class="container">
+                            <div class="row">
+                              <div class="left">
+                                LSP State
+                              </div>
+                              {{#if this.lspState}}
+                              <div class="right" style="background-color:green;color:white;">
+                                Up
+                              </div>
+                              {{else}}
+                              <div class="right" style="background-color:red;color:white;">
+                                Down
+                              </div>
+                              {{/if}}
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               LSP Path Type
+                              </div>
+                              <div class="right">
+                                {{this.lspPathType}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Label In
+                              </div>
+                              <div class="right">
+                                {{this.labelIn}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Label Out
+                              </div>
+                              <div class="right">
+                                {{this.labelOut}}
+                              </div>
+                            </div>
+                              <div class="row">
+                              <div class="left">
+                               Resv Style
+                              </div>
+                              <div class="right">
+                                {{this.resvStyle}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               RSB Count
+                              </div>
+                              <div class="right">
+                                {{this.rsbCount}}
+                              </div>
+                            </div>
+                            
+                            <div class="row">
+                              <div class="left">
+                               PSB Lifetime
+                              </div>
+                              <div class="right">
+                                {{this.psbLifetime}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               PSB Creation Time
+                              </div>
+                              <div class="right">
+                                {{this.psbCreationTime}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               lsp-id
+                              </div>
+                              <div class="right">
+                                {{this.lspId}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Tunnel ID
+                              </div>
+                              <div class="right">
+                                {{this.tunnelId}}
+                              </div>
+                            </div>
+                              <div class="row">
+                              <div class="left">
+                               Adspec
+                              </div>
+                              <div class="right">
+                                {{this.adspec}}
+                              </div>
+                            </div>
+                              
+                          </div>
+                            </td>
+		                        <td>
+		                          {{view Clira.ShowMPLSlspTopology contextBinding="this"}}
+		                        </td>
+		                        <td>
+		                        	{{#if this.lspState}}
+		                                <button class="btn" {{action 'generateMap' this.output}}>
+		                                   Show {{this.name}} on map
+		                                </button>
+	                            	{{/if}}
+		                        </td>
+	                    </tr>
+	                    {{else}}
+	                     <tr>
+		                        <td>
+		                        	{{this.name}}
+		                        </td>
+                            <td>
+                            <div class="container">
+                            <div class="row">
+                              <div class="left">
+                                LSP State
+                              </div>
+                              {{#if this.lspState}}
+                              <div class="right" style="background-color:green;color:white;">
+                                Up
+                              </div>
+                              {{else}}
+                              <div class="right" style="background-color:red;color:white;">
+                                Down
+                              </div>
+                              {{/if}}
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               LSP Path Type
+                              </div>
+                              <div class="right">
+                                {{this.lspPathType}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Label In
+                              </div>
+                              <div class="right">
+                                {{this.labelIn}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Label Out
+                              </div>
+                              <div class="right">
+                                {{this.labelOut}}
+                              </div>
+                            </div>
+                              <div class="row">
+                              <div class="left">
+                               Resv Style
+                              </div>
+                              <div class="right">
+                                {{this.resvStyle}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               RSB Count
+                              </div>
+                              <div class="right">
+                                {{this.rsbCount}}
+                              </div>
+                            </div>
+                            
+                            <div class="row">
+                              <div class="left">
+                               PSB Lifetime
+                              </div>
+                              <div class="right">
+                                {{this.psbLifetime}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               PSB Creation Time
+                              </div>
+                              <div class="right">
+                                {{this.psbCreationTime}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               lsp-id
+                              </div>
+                              <div class="right">
+                                {{this.lspId}}
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="left">
+                               Tunnel ID
+                              </div>
+                              <div class="right">
+                                {{this.tunnelId}}
+                              </div>
+                            </div>
+                              <div class="row">
+                              <div class="left">
+                               Adspec
+                              </div>
+                              <div class="right">
+                                {{this.adspec}}
+                              </div>
+                            </div>
+                          </div>
+                            </td>
+		                        <td>
+		                          {{view Clira.ShowMPLSlspTopology contextBinding="this"}}
+		                        </td>
+		                        <td>
+		                        	{{#if this.lspState}}
+		                                <button class="btn" {{action 'generateMap' this.output}}>
+		                                   Show {{this.name}} on map
+		                                </button>
+	                            	{{/if}}
+		                        </td>
+	                    </tr>
+
+	                {{/unless}}
+                    {{/each}}
+                  {{/if}}
+                </table>
+
+                <div id="colorCoding"></div>
+                <div id="mapView">
+                 
+                 </div>
+			    
+  </div>
+   <div id="dialog" title="Interface Statistics">
+  
+  <div id="routerInfo"></div>
+  <div id="inputPackets"></div>
+  <div id="outputPackets"> </div>
+  <div id="inputBytes"></div>
+  <div id="outputBytes"></div>
+
+  </div>
+
+{{/if}}
+<br/>
+
+
+{{#if output.error}}
+  {{view Clira.MessageView contentBinding="output.error" contextBinding="output.error"}}
+{{/if}}

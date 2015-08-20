@@ -1,0 +1,218 @@
+version 1.1;
+
+ns db extension = "http://xml.libslax.org/db";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns os extension = "http://xml.libslax.org/os";
+ns xutil extension = "http://xml.libslax.org/xutil";
+
+param $oper;
+param $iplist;
+param $port;
+param $save_password;
+param $username;
+param $prefix;
+param $device;
+param $transitFlag;
+
+var $json-opts = {
+    <pretty>;
+}
+
+
+var $db-options = {
+    <engine> "sqlite";
+    <database> os:user-info()//dir _ "/.juise/mixer.db";
+}
+
+
+var $db-handle = db:open($db-options);
+
+match / {
+    <cgi Content-Type="application/json"> {
+        mvar $data;
+        
+        if($oper == "getlocation")
+        {
+            set $data = {
+                call add-device-fetch-location();
+            }
+        }
+
+        else
+        {
+            set $data = {
+                call fetch-interface-names();
+            }
+        }
+
+        if ($data != "") {
+            copy-of xutil:xml-to-json($data, $json-opts);
+        } else {
+            copy-of xutil:xml-to-json(<json type="array">, $json-opts);
+        }
+    }
+
+    var $db-close = db:close($db-handle);
+}
+
+template add-device-fetch-location () {
+
+        var $hostlist = jcs:split(",", $iplist);
+        mvar $insertquery;
+        mvar $deletequery;
+        mvar $insertresult;
+        mvar $deleteresult;
+        mvar $count;
+        mvar $selectquery;
+        mvar $locationdata;
+        mvar $conn; 
+        mvar $selectresults;
+        mvar $temp;
+        mvar $temp1;
+        mvar $devname;
+        mvar $deviceIP;
+        mvar $devicePassword;
+
+        var $locationrpc = <get-configuration> {
+            <configuration> {
+                <system>{
+                    <location>;
+                }
+            }
+        }
+       
+       set $selectquery = {
+                    <collection> "devices";
+                    <conditions> {
+                        <condition> {
+                            <selector> "name";
+                            <operator> "like";
+                            <value> $device;
+                        }
+                    }
+        }
+
+        set $selectresults = db:find-and-fetch($db-handle, $selectquery);
+        
+        set $devicePassword = $selectresults//instance/password;
+
+        for-each ($hostlist) {
+
+            if((. == ""))
+            {
+                set $selectquery = {
+                    <collection> "devices";
+                    <conditions> {
+                        <condition> {
+                            <selector> "name";
+                            <operator> "like";
+                            <value> $device;
+                        }
+                    }
+                }
+
+            }
+
+            else
+            {
+                set $selectquery = {
+                    <collection> "devices";
+                    <conditions> {
+                        <condition> {
+                            <selector> "hostname";
+                            <operator> "like";
+                            <value> .;
+                        }
+                    }
+                }
+            }
+
+            set $selectresults = db:find-and-fetch($db-handle, $selectquery);
+            
+            set $count = count($selectresults//instance);
+           
+            if ($count == 0) {
+                set $insertquery = {
+                    <collection> "devices";
+                        <instances>
+                        {
+                            <instance> {
+                                <name> ._$prefix;
+                                <hostname> .;
+                                <port> $port;
+                                <username> $username;
+                                <password> $devicePassword;
+                                <save_password> "temp";
+                            }
+                        }
+                }
+
+                set $insertresult = db:insert($db-handle, $insertquery);
+                set $devname = ._$prefix;
+            }
+            
+            else
+            {
+                set $devname =  $selectresults//instance/name;
+                set $deviceIP = $selectresults//instance/hostname;
+            }
+
+            set $conn = jcs:open($devname);
+            set $locationdata = jcs:execute($conn, $locationrpc);
+            
+
+            append $temp += <row type="member">{
+                <ip> $deviceIP;
+                <latitude> $locationdata//location//latitude;
+                <longitude> $locationdata//location//longitude; 
+                <count> $count;
+                <cliradevicename> $devname;
+            } 
+
+            set $locationdata = "";
+        }  
+
+
+        <json> {
+            <location_info type="array"> {
+            copy-of $temp;
+            }
+        }
+
+}
+
+
+template fetch-host-names()
+{
+    var $hostlist = jcs:split(",", $iplist);
+    mvar $conn1;
+    mvar $temp1;
+    mvar $hostnamedata;
+    
+    var $hostnamerpc = <get-configuration> {
+        <configuration> {
+            <groups>
+                {
+                <system>;
+                }
+            }
+    };
+    
+    for-each ($hostlist) {  
+        set $conn1 = jcs:open(.);
+        set $hostnamedata = jcs:execute($conn1, $hostnamerpc);
+        append $temp1 += <row type="member">{
+            <cliradevicename> .;
+            <hostname> $hostnamedata//system/host-name;
+        } 
+
+        set $hostnamedata = "";
+    }
+
+    <json> {
+        <hostnames type="array"> {
+            copy-of $temp1;
+        }
+    }
+}
+
