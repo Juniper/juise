@@ -641,10 +641,10 @@ AC_CONFIG_FILES([
   import/Makefile
   tests/Makefile
   packaging/juise.pc
-  packaging/juise.spec
-  packaging/juise.space.spec
+  packaging/rpm/juise.spec
+  packaging/rpm/juise.space.spec
   packaging/juise.rb.base
-  packaging/juise.clira.spec
+  packaging/rpm/juise.clira.spec
   packaging/freebsd/port-Makefile
 ])
 AC_OUTPUT
