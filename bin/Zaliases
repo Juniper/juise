@@ -1,6 +1,6 @@
 set top_src=`pwd`
 setenv LIBJUISE $top_src
-alias Zautoreconf "(cd $top_src ; autoreconf --install)"
+alias Zautoreconf "(cd $top_src ; autoreconf)"
 
 set opts=' \
 --enable-clira \
