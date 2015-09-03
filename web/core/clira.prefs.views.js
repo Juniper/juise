@@ -492,6 +492,8 @@ Clira.DevicesPrefView = Ember.View.extend({
                 });
             },
             afterSubmit: function(response, formdata) {
+                var def = $.Deferred();
+                var error = "";
                 if (formdata["connect"] == "yes") {
                     view.set('isVisible', false);
                     var cv = Ember.View.extend({
@@ -542,22 +544,29 @@ Clira.DevicesPrefView = Ember.View.extend({
                                     var $out = $('div#' 
                                                     + that.elementId 
                                                     + ' div.output-replace');
-                                    $.clira.runCommand(that, formdata["name"], 
+                                    $.clira.runCommand(null, formdata["name"], 
                                                         ".noop-command", 
                                                         'html',
-                                                        function (success, $output) {
+                                                        function (view, status, output) {
                                             var msg = "<div style="
                                                     + "\"font-weight: bold\">";
-                                            if (success) {
+                                            if (status) {
                                                 msg += "Connection successful"
                                                     + ".  You can now use this"
                                                     + "device in CLIRA.";
+                                                def.resolve();
                                             } else {
-                                                msg += "Connection NOT "
-                                                    + "successful.  Please "
-                                                    + "check your device "
-                                                    + "connection settings " 
-                                                    + "and try again.";
+                                                if (output) {
+                                                    msg += "Connection error : " +
+                                                                output;
+                                                } else {
+                                                    msg += "Connection NOT "
+                                                        + "successful.  Please "
+                                                        + "check your device "
+                                                        + "connection settings " 
+                                                        + "and try again.";
+                                                }
+                                                def.reject();
                                             }
                                             msg += "</div>";
                                             $out.append(msg);
@@ -569,7 +578,13 @@ Clira.DevicesPrefView = Ember.View.extend({
                     });
                     view.get('parentView').pushObject(cv.create());
                 }
-                return [ true, "" ];
+                var result = true;
+                def.promise().always(function () {
+                    if (def.state() == "rejected") {
+                        result = false;
+                    }
+                });
+                return [ result, error ];
             }
         });
     }
