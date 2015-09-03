@@ -474,6 +474,10 @@ Clira.DevicesPrefView = Ember.View.extend({
             },
             beforeShowForm: function(form) {
                 var colNames = this.p.colNames;
+                /* 
+                 * Unhide a previously hidden 'connect' field
+                 */
+                $("#tr_connect").show();
                 $.each(this.p.colModel, function (i, item) {
                     if (item["qTip"]) {
                         $("#tr_" + item["name"] + " td.CaptionTD").qtip({
