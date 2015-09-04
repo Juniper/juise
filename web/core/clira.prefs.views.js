@@ -524,7 +524,7 @@ Clira.DevicesPrefView = Ember.View.extend({
                                 buttons: {
                                     'Close': function() {
                                         view.set('isVisible', true);
-                                        $(this).dialog("close");
+                                        that.destroy();
                                     }
                                 },
                                 close: function() {
@@ -603,7 +603,7 @@ Clira.GeneralPrefView = Clira.DynFormView.extend({
     buttons: [{
         caption: "Cancel",
         onclick: function() {
-            this.get('parentView').destroy();
+            this.get('parentView').get('parentView').destroy();
         }
     },{
         caption: "Save",
@@ -620,7 +620,7 @@ Clira.GeneralPrefView = Clira.DynFormView.extend({
                     clira_prefs[k] = v;
                 }
             });
-            this.get('parentView').destroy();
+            this.get('parentView').get('parentView').destroy();
         }
     }]
 });
