@@ -60,7 +60,9 @@ EXTERNAL_FILES = \
     external/qunit/qunit.js \
     external/smoothie/smoothie.js \
     external/selectric/selectric.css \
-    external/selectric/selectric.js
+    external/selectric/selectric.js \
+    external/vis/vis.css \
+    external/vis/vis.min.js 
 
 WEB_FILES = \
     ${BASE_FILES} \
