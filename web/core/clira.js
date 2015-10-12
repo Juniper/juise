@@ -509,6 +509,12 @@ jQuery(function ($) {
                         if (view) {
                             $.clira.makeAlert(view, message,
                                         "internal failure (websocket)");
+                        } else {
+                            /*
+                             * There is no view but user still needs to know
+                             * what went wrong
+                             */
+                            output = message;
                         }
                         if ($.isFunction(onComplete)) {
                             onComplete(view, false, output);

@@ -220,12 +220,24 @@ Clira.OutputContainerController = Em.Controller.extend({
     // Action functions to handle close and toggle button clicks
     actions: {
         close: function(controller) {
-            controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 
+            var view = controller.get('view');
+            if (!view) {
+                /* 
+                 * This is the output from the failed command, nothing to 
+                 * destroy, simply slide toggle the output container associated
+                 * with the failed commandNumber
+                 */
+                var cmdNum = controller.get('commandNumber');
+                $("#output-container-" + cmdNum).slideToggle(
+                    $.clira.prefs.slide_speed);
+            } else {
+                view.$().slideToggle($.clira.prefs.slide_speed, 
                                                     function() {
-                Ember.run(function() {
-                    controller.get('view').get('parentView').destroy();
+                    Ember.run(function() {
+                        view.get('parentView').destroy();
+                    });
                 });
-            });
+            }
         },
         collapse: function(controller) {
             controller.get('view').$().slideToggle($.clira.prefs.slide_speed, 

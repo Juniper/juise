@@ -29,7 +29,7 @@ EXTRA_DIST = \
     README.md \
     INSTALL \
     bin/setup.sh \
-    packaging/juise.spec
+    packaging/rpm/juise.spec
 
 .PHONY: test tests
 
