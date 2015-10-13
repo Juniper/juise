@@ -70,3 +70,6 @@ expire.url = ( "/static/images/" => "access 1 hours" )
 websocket.server = (
     "/mixer" =>    ( "command" => "@prefix@/bin/mixer --client --user ${remoteuser}" )
 )
+$HTTP["url"] =~ "^.+\.py$" {
+    cgi.assign = ( ".py" => "/usr/bin/python" )
+}

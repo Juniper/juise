@@ -1,0 +1,17 @@
+{
+    "files": [
+        "app-manager.clira", 
+        "app-manager.hbs", 
+        "app-manager.js", 
+        "images/ajaxLoader.gif", 
+        "py/app-manager.py", 
+        "py/list-dirs.py"
+    ], 
+    "app-meta-url": "https://github.com/mdlogic/juise/blob/develop/web/apps/app-manager/app-manager.clira", 
+    "description": "An app to install and update CLIRA apps from various sources like Github, Web server, etc.", 
+    "author": "Marvin Dsouza", 
+    "version": "1.0.0", 
+    "author-email": "mdsouza@juniper.net", 
+    "name": "app-manager"
+}
+
