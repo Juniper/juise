@@ -5,8 +5,11 @@ ns os extension = "http://xml.libslax.org/os";
 ns xutil extension = "http://xml.libslax.org/xutil";
 ns set extension = "http://exslt.org/sets";
 ns math extension = "http://exslt.org/math";
+ns date extension = "http://exslt.org/dates-and-times";
 
-param $target;
+mvar $vcfstatsfile = "vcf-stats.xml";
+param $target = "canned";
+param $date = date:seconds();
 
 var $json-opts = {
     <pretty>;
@@ -14,7 +17,16 @@ var $json-opts = {
 
 match / {
     <cgi Content-Type="application/json"> {
-        if ($target) {
+    if ($date mod 2) {
+	set $vcfstatsfile = "vcf-stats.1.xml";
+    }
+    if ($target == "canned") {
+	    var $vcfp = document($vcfstatsfile);
+	    var $data := {
+		call first-pass($vcfp);
+	    }
+	    copy-of xutil:xml-to-json($data, $json-opts);
+	} else {
             var $conn = jcs:open($target);
             var $rpc = <get-virtual-chassis-port-statistics>;
             var $vcfp = jcs:execute($conn, $rpc);
