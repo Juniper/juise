@@ -483,7 +483,7 @@ $(function($) {
                         name : res.appName,
                         result : 'installed'
                     });
-                    that.$("#installApp").html("Install " + 
+                    ctx.view.$("#installApp").html("Install " + 
                         "another app");
                     ctx.showAppList().done(function() {
                         ctx.checkForUpdates();
