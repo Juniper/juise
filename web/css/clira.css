@@ -115,7 +115,7 @@ div.header-line {
     border-top-right-radius: 4px;
 }
 
-div.header-line-empty {
+div.header-line-empty:not(:first-child) {
     color: #ffffff;
     background: none repeat scroll 0 0 #0D5995;
     padding-top: 4px;
