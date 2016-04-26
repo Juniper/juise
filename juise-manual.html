@@ -199,6 +199,24 @@ pre {
 	color: black;
     }
 }
+
+p.section-contents, p.section-contents + ul {
+    background-color: #f8f8ff;
+    padding: 1em 0px 1em 3em;
+    border: 1px dotted #0000c0;
+}
+
+p.section-contents + ul {
+    margin: 0px 1em 0px 3em;
+    border-top: 0px;
+}
+
+p.section-contents {
+    margin: 3em 1em 0px 3em;
+    font-weight: bold;
+    border-bottom: 0px;
+    padding-bottom: 0px;
+}
 </style>
 <style type="text/css" title="Xml2Rfc (sans serif)">
 a {
@@ -497,7 +515,7 @@ li.indline1 {
  
   } 
   @top-right {
-       content: "December 2014";
+       content: "April 2016";
  
   } 
   @top-center {
@@ -21937,6 +21955,14 @@ jQuery(function ($) {
         setActive(active.next());
     });
 
+    $("p", $right).each(function (idx, elt) {
+        var $elt = $(elt);
+        var val = $elt.get(0);
+        if (val && val.textContent && val.textContent.startsWith("Section Contents")) {
+            $elt.addClass("section-contents");
+        }
+    });
+
 
     function getMedia () {
         var mediaInspector = document.getElementById('media-inspector');
@@ -21985,7 +22011,7 @@ jQuery(function ($) {
 </tr>
 <tr>
 <td class="header left"></td>
-<td class="header right">December 12, 2014</td>
+<td class="header right">April 26, 2016</td>
 </tr>
 </table></div>
 <p id="title" class="title">The JUISE Project: JUNOS User Interface Scripting Environment<br><span class="filename">juise-manual</span></p>
@@ -22149,6 +22175,8 @@ jQuery(function ($) {
 <p id="doc_section_1_p_3">The JUISE software can be used to execute scripts independent of a JUNOS box, allowing the use of SLAX scripts in the off-box world. Scripts can communicate with zero or more devices, allowing a centralized manipulation of multiple devices.</p>
 <p id="doc_section_1_p_4">JUISE includes a rudimentary NETCONF server, allowing JUNOS devices to invoke RPCs to unix devices. JUNOS devices can perform NETCONF or JUNOScript RPCs to a JUISE box, and invoke scripts or programs on that device.</p>
 <p id="doc_section_1_p_5">JUISE includes "mod_juise", a plug-in module for lighttpd, allowing the execution of scripts via HTTP. At this point, the portion of JUISE is completely experimental.</p>
+<p id="doc_section_1_p_6">Section Contents: </p>
+<ul><li><a href="#getting-juise" title="Getting JUISE">Section 1.1</a></li></ul>
 <div class="content">
 <h2 id="doc_section_1_1">
 <div class="self-section-number">
@@ -22177,6 +22205,8 @@ jQuery(function ($) {
 <li>server mode</li>
 <li>cgi mode</li>
 </ul>
+<p id="doc_section_2_p_4">Section Contents: </p>
+<ul><li><a href="#syntax" title="Syntax">Section 2.1</a></li></ul>
 <div class="content">
 <h2 id="doc_section_2_1">
 <div class="self-section-number">
@@ -22187,6 +22217,8 @@ jQuery(function ($) {
 <div id="doc_figure_u.1"></div> <pre>
   Usage: juise [[user]@target] [options] [script] [param value]*
 	    </pre> <p id="doc_section_2_1_p_3">The juise command is normally invoked with the name of the script to be run, a set of options are used to tailor the execution of the script, and a set of name/value parameter pairs that are passed as parameters to the script, as they are for the JUNOS "op" command.</p>
+<p id="doc_section_2_1_p_4">Section Contents: </p>
+<ul><li><a href="#the-target-argument" title="The Target Argument">Section 2.1.1</a></li></ul>
 <div class="content">
 <h3 id="doc_section_2_1_1">
 <div class="self-section-number">
@@ -22208,6 +22240,12 @@ jQuery(function ($) {
 <a id="commit-scripts" href="#commit-scripts">Commit Scripts</a>
 </h1>
 <p id="doc_section_3_p_1">This section describes how commit scripts can be used inside juise.</p>
+<p id="doc_section_3_p_2">Section Contents: </p>
+<ul>
+<li><a href="#history" title="Overview (Function and History)">Section 3.1</a></li>
+<li><a href="#testing-commit-scripts" title="Testing Commit Scripts">Section 3.2</a></li>
+<li><a href="#debugging-commit-scripts" title="Debugging Commit Scripts">Section 3.3</a></li>
+</ul>
 <div class="content">
 <h2 id="doc_section_3_1">
 <div class="self-section-number">
@@ -22386,6 +22424,12 @@ jQuery(function ($) {
 <a id="op-scripts" href="#op-scripts">Op Scripts</a>
 </h1>
 <p id="doc_section_4_p_1">The second mode for juise is executing, testing, and debugging op scripts. This section discusses how to use juise for op scripts.</p>
+<p id="doc_section_4_p_2">Section Contents: </p>
+<ul>
+<li><a href="#overview-function-and-history" title="Overview (Function and History)">Section 4.1</a></li>
+<li><a href="#running-op-scripts" title="Running Op Scripts">Section 4.2</a></li>
+<li><a href="#running-native-scripts" title="Running Native Scripts">Section 4.3</a></li>
+</ul>
 <div class="content">
 <h2 id="doc_section_4_1">
 <div class="self-section-number">
@@ -22424,6 +22468,8 @@ jQuery(function ($) {
 <a id="running-native-scripts" href="#running-native-scripts">Running Native Scripts</a>
 </h2>
 <p id="doc_section_4_3_p_1">juise can also be used to develop scripts that are not intended to run under JUNOS. The off-box environment gives a number of distinct advantages for scripts that operate like "op" scripts. These scripts join the simplicity and flexibility of SLAX to the unix environment.</p>
+<p id="doc_section_4_3_p_2">Section Contents: </p>
+<ul><li><a href="#usrlocalbinslax" title='"#!/usr/local/bin/slax"'>Section 4.3.1</a></li></ul>
 <div class="content">
 <h3 id="doc_section_4_3_1">
 <div class="self-section-number">
@@ -22477,6 +22523,11 @@ jQuery(function ($) {
         /usr/sbin/sshd sshd -i -f /var/etc/sshd_config \
         -o SubsystemOnly=netconf -o Protocol=2
 	    </pre> <p id="doc_section_6_p_8">The lines are split here for readability but should be combined in your inetd.conf file.</p>
+<p id="doc_section_6_p_9">Section Contents: </p>
+<ul>
+<li><a href="#xml-mode" title="xml-mode">Section 6.1</a></li>
+<li><a href="#rpcs" title="RPCs">Section 6.2</a></li>
+</ul>
 <div class="content">
 <h2 id="doc_section_6_1">
 <div class="self-section-number">
@@ -22546,6 +22597,12 @@ jQuery(function ($) {
 <a id="the-juise-command-reference" href="#the-juise-command-reference">The "juise" Command Reference</a>
 </h1>
 <p id="doc_section_7_p_1">This section contains reference material for the juise command, including command line options, environment variables, build options, and other information.</p>
+<p id="doc_section_7_p_2">Section Contents: </p>
+<ul>
+<li><a href="#juise-command-line-options" title='"juise" Command Line Options'>Section 7.1</a></li>
+<li><a href="#environment-variables-and-configureac-settings" title="Environment Variables and configure.ac Settings">Section 7.2</a></li>
+<li><a href="#finding-scripts" title="Finding Scripts">Section 7.3</a></li>
+</ul>
 <div class="content">
 <h2 id="doc_section_7_1">
 <div class="self-section-number">
@@ -22610,6 +22667,8 @@ jQuery(function ($) {
 <a id="environment-variables-and-configureac-settings" href="#environment-variables-and-configureac-settings">Environment Variables and configure.ac Settings</a>
 </h2>
 <p id="doc_section_7_2_p_1">The values of certain environment variables and the command line arguments to the "configure" script will affect the operation of JUISE. This section details these settings.</p>
+<p id="doc_section_7_2_p_2">Section Contents: </p>
+<ul><li><a href="#setting-the-import-path" title="Setting The Import Path">Section 7.2.1</a></li></ul>
 <div class="content">
 <h3 id="doc_section_7_2_1">
 <div class="self-section-number">
@@ -22648,7 +22707,13 @@ jQuery(function ($) {
 	    </pre> <p id="doc_section_8_p_4">To add mod_juise to an existing lighttpd server, add the following line to your lighttpd.conf file:</p>
 <div id="doc_figure_u.24"></div> <pre>
     juise.assign = ( ".slax" =&gt; "juise.cgi" )
-	    </pre> <div class="content">
+	    </pre> <p id="doc_section_8_p_6">Section Contents: </p>
+<ul>
+<li><a href="#juise-cgi" title="juise.cgi">Section 8.1</a></li>
+<li><a href="#the-cgi-element" title="The &lt;cgi&gt; Element">Section 8.2</a></li>
+<li><a href="#attributes" title="Attributes">Section 8.3</a></li>
+</ul>
+<div class="content">
 <h2 id="doc_section_8_1">
 <div class="self-section-number">
 <a href="#doc_section_8_1">8.1</a> </div>
@@ -22820,11 +22885,13 @@ jQuery(function ($) {
 <a id="extensions" href="#extensions">Extension Libraries for juise</a>
 </h1>
 <p id="doc_section_11_p_1">The JUISE project includes the jcs extension library which allows invocation of NETCONF RPCs. This library is identical to the jcs library available under JUNOS. This section details the extension functions and element of those libraries.</p>
-<div class="digress tooltip note:" id="idp17482096"><table class="tooltip" cellpadding="0" cellspacing="0" id="table-idp17482096">
+<div class="digress tooltip note:" id="idp140562327543376"><table class="tooltip" cellpadding="0" cellspacing="0" id="table-idp140562327543376">
 <tr><td><div class="fancy-tooltip-header">note:: </div></td></tr>
 <tr><td><div class="fancy-tooltip-body"> <p>The jcs extension library is not a dynamic extension library and is only available when using the juise command. This needs to change, but is low priority.</p> </div></td></tr>
 </table></div>
-<a href="?" tabindex="9999" class="digress-anchor" onClick="return popClick(event, 'idp17482096'); " onmouseover="popUp(event, 'idp17482096')" onmouseout="popDown(event, 'idp17482096')"><span class="digress digress-anchor">[note:]</span></a><div class="content">
+<a href="?" tabindex="9999" class="digress-anchor" onClick="return popClick(event, 'idp140562327543376'); " onmouseover="popUp(event, 'idp140562327543376')" onmouseout="popDown(event, 'idp140562327543376')"><span class="digress digress-anchor">[note:]</span></a><p id="doc_section_11_p_2">Section Contents: </p>
+<ul><li><a href="#jcs-extensions" title="jcs">Section 11.1</a></li></ul>
+<div class="content">
 <h2 id="doc_section_11_1">
 <div class="self-section-number">
 <a href="#doc_section_11_1">11.1</a> </div>
@@ -22848,6 +22915,13 @@ jQuery(function ($) {
 <tr><td>trace</td></tr>
 </tbody>
 </table></div>
+<p id="doc_section_11_1_p_3">Section Contents: </p>
+<ul>
+<li><a href="#jcs-open" title="jcs:open">Section 11.1.1</a></li>
+<li><a href="#jcs-execute" title="jcs:execute">Section 11.1.2</a></li>
+<li><a href="#jcs-invoke" title="jcs:invoke">Section 11.1.3</a></li>
+<li><a href="#jcs-close" title="jcs:close">Section 11.1.4</a></li>
+</ul>
 <div class="content">
 <h3 id="doc_section_11_1_1">
 <div class="self-section-number">
