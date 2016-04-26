@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ(2.2)
-AC_INIT([juise], [0.7.0], [phil@juniper.net])
+AC_INIT([juise], [0.7.1], [phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 
 case $prefix in
@@ -641,10 +641,10 @@ AC_CONFIG_FILES([
   import/Makefile
   tests/Makefile
   packaging/juise.pc
-  packaging/rpm/juise.spec
-  packaging/rpm/juise.space.spec
+  packaging/juise.spec
+  packaging/juise.space.spec
   packaging/juise.rb.base
-  packaging/rpm/juise.clira.spec
+  packaging/juise.clira.spec
   packaging/freebsd/port-Makefile
 ])
 AC_OUTPUT
