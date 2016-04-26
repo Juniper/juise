@@ -1,0 +1,13 @@
+{
+    "files": [
+        "configuration.hbs", 
+        "configuration.js", 
+        "configuration.slax", 
+        "configuration.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/configuration/configuration.clira", 
+    "name": "configuration", 
+    "author": "Robert Johnston", 
+    "version": "1.0.0", 
+    "author-email": "rjhonst@juniper.net"
+}

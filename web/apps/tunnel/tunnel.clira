@@ -1,0 +1,12 @@
+{
+    "files": [
+        "tunnel.js", 
+        "tunnel.clira", 
+        "tunnel.slax"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/tunnel/tunnel.clira", 
+    "name": "tunnel", 
+    "author": "Ajay Kumar Chintala", 
+    "version": "1.0.0", 
+    "author-email": "ajaykc@juniper.net"
+}

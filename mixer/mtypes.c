@@ -59,7 +59,7 @@ mx_sock_name (mx_sock_t *msp)
     } else if (msp->ms_sin6.sin6_port) {
 	unsigned int sport = ntohs(msp->ms_sin6.sin6_port);
 	snprintf(bufs[buf_num], BUFSIZ, "inet6: %d", sport);
-    } else if (msp->ms_sun.sun_path) {
+    } else if (msp->ms_sun.sun_path[0]) {
 	snprintf(bufs[buf_num], BUFSIZ, "unix: %s", msp->ms_sun.sun_path);
 
     } else {

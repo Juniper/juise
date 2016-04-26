@@ -1,0 +1,12 @@
+{
+    "files": [
+        "welcome.hbs", 
+        "welcome.js", 
+        "welcome.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/welcome/welcome.clira", 
+    "name": "welcome", 
+    "author": "Ajay Kumar Chintala", 
+    "version": "1.0.0", 
+    "author-email": "ajaykc@juniper.net"
+}

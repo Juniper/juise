@@ -1,0 +1,11 @@
+{
+    "files": [
+        "debug.js", 
+        "debug.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/debug/debug.clira", 
+    "name": "debug", 
+    "author": "Phil Shafer", 
+    "version": "1.0.0", 
+    "author-email": "phil@juniper.net"
+}

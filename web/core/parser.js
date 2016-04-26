@@ -163,6 +163,48 @@ jQuery(function ($) {
                 $.clira.bundles[bundle.name] = bundle;
             }
         },
+        reloadApp : function reloadApp (appName) {
+            if (!appName) return false;
+            var filename = "/apps/" + appName + "/" + appName + ".js";
+
+            /*
+             * Clear the command arrays if the app is already loaded
+             */
+            commandFiles.some(function (o, i, arr) {
+                if (o.name == appName) {
+                    if (o.deinit) {
+                        $.dbgpr("commandFileCleanup: calling " + o.name);
+                        o.deinit();
+                    }
+                    $("script.commandFile[src = '" + filename + "']").remove();
+                    /* TODO : remove prereqs as well */
+                    arr.splice(i, 1);
+                    commandFilenames.some(function(f, i, arr) {
+                        if (f == filename) {
+                            arr.splice(i, 1);
+                            return true;
+                        }
+                    });
+                    return true;
+                }
+            });
+            var def = new $.Deferred();
+            $.clira.loadFile(filename, "commandFile").then(
+                function() {
+                    /* Resolve on loading the commandFile */
+                    var commandLoaded = function() {
+                        if ($.clira.commandLoading == false) {
+                            Ember.run(function() {
+                                def.resolve();
+                            });
+                            clearInterval(timer);
+                       }
+                    };
+                    var timer = setInterval(commandLoaded, 100);
+                }
+            );
+            return def.promise();
+        },
         loadCommandFiles: function loadCommandFiles () {
             var deferred = $.Deferred(),
                 promises = [];

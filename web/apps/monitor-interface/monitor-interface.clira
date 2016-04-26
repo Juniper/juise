@@ -1,0 +1,14 @@
+{
+    "files": [
+        "css/monitor-interface.css", 
+        "images/infoLoading.gif", 
+        "monitor-interface.hbs", 
+        "monitor-interface.js", 
+        "monitor-interface.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/tree/develop/web/apps/monitor-interface/monitor-interface.clira", 
+    "name": "monitor-interface", 
+    "author": "Marvin", 
+    "version": "1.0.0", 
+    "author-email": "mdsouza@juniper.net"
+}

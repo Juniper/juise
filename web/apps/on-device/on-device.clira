@@ -1,0 +1,11 @@
+{
+    "files": [
+        "on-device.js", 
+        "on-device.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/on-device/on-device.clira", 
+    "name": "on-device", 
+    "author": "Phil Shafer, Rob Johnston, Ajay Kumar Chintala", 
+    "version": "1.0.0", 
+    "author-email": "phil@juniper.net, rjohnst@juniper.net, ajaykc@juniper.net"
+}

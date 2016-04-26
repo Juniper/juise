@@ -819,7 +819,7 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
 		seen_change += 1;
 
 	    } else if (streq((const char *) childp->name,
-			     ELT_CHANGE_TRANSIENT)) {
+			     ELT_TRANSIENT_CHANGE)) {
 		/* Wait for second pass */
 		seen_transient += 1;
 
@@ -849,7 +849,7 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
 		    rc = load_change(jsp, pctxt, childp, FALSE);
 
 		else if (streq((const char *) childp->name,
-			       ELT_CHANGE_TRANSIENT))
+			       ELT_TRANSIENT_CHANGE))
 		    rc = load_change(jsp, pctxt, childp, TRUE);
 
 		if (rc)

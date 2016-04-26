@@ -1,0 +1,13 @@
+{
+    "files": [
+        "vcf-stats.slax", 
+        "vcf.js", 
+        "vcf.clira", 
+        "vcf.slax"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/vcf/vcf.clira", 
+    "name": "vcf", 
+    "author": "Ajay Kumar Chintala", 
+    "version": "1.0.0", 
+    "author-email": "ajaykc@juniper.net"
+}
