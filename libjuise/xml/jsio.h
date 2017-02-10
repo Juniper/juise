@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (c) 2006-2008, 2011, Juniper Networks, Inc.
+ * Copyright (c) 2006-2008, 2011, 2017, Juniper Networks, Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -75,7 +75,7 @@ typedef struct js_session_s {
     char *js_target;		/* Target name */
     js_mx_buffer_t *js_mx_buffer; /* Mixer receive buffer */
 
-    /* NOTICE: js_key _MUST_ _BE_ _LAST_ */
+    /* NOTICE: js_key _MUST_ _BE_ the _LAST_ member of this struct */
     js_skey_t js_key;		/* js_session key (MUST BE LAST) */
 } js_session_t;
 
