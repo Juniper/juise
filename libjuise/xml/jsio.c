@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (c) 2006-2008, 2011, Juniper Networks, Inc.
+ * Copyright (c) 2006-2008, 2011, 2017, Juniper Networks, Inc.
  * All rights reserved.
  * This SOFTWARE is licensed under the LICENSE provided in the
  * ../Copyright file. By downloading, installing, copying, or otherwise
@@ -971,6 +971,7 @@ js_document_read (xmlParserCtxtPtr ctxt, js_session_t *jsp,
 
     if (jsp->js_mx_buffer) {
 	free(jsp->js_mx_buffer);
+	jsp->js_mx_buffer = NULL;
     }
 
     return docp;
@@ -1146,8 +1147,8 @@ js_dup (int target, int existing)
  * Creates and fills in js session object with appropriate data
  */
 static js_session_t *
-js_session_create_internal (const char *host_name, int pid, int in, int out, 
-			    int err, int stype, int flags)
+js_session_create_internal (const char *session_name, int pid, int in,
+			    int out, int err, int stype, int flags)
 {
     js_session_t *jsp;
 
@@ -1157,8 +1158,9 @@ js_session_create_internal (const char *host_name, int pid, int in, int out,
 	goto fail2;
     }
 
-    const char *name = host_name ?: "";
-    size_t namelen = host_name ? strlen(host_name) + 1 : 1;
+    /* A NULL session name means the localhost session */
+    const char *name = session_name ?: "";
+    size_t namelen = strlen(name) + 1;
     jsp = malloc(sizeof(*jsp) + namelen);
     if (jsp == NULL)
 	goto fail3;
@@ -1201,13 +1203,14 @@ fail2:
  * Create a session object and connect it as appropriate
  */
 static js_session_t *
-js_session_create (const char *host_name, char **argv,
+js_session_create (const char *session_name, char **argv,
 		   int flags, session_type_t stype)
 {
     int sv[2], ev[2];
     int pid = 0, i;
     sigset_t sigblocked, sigblocked_old;
     js_session_t *jsp;
+    char buf[128];
 
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0)
         return NULL;
@@ -1257,6 +1260,15 @@ js_session_create (const char *host_name, char **argv,
 	if (fork() != 0)
 	    exit(0);
 
+	/*
+	 * We've double forked, but our parent needs our pid to
+	 * be able to kill us when the time's right (e.g. SIGINT).
+	 * So our first line of output is our pid.
+	 */
+	snprintf(buf, sizeof(buf), "%d\n", getpid());
+	if (write(1, buf, strlen(buf)) < 0)
+	    _exit(1);
+
         execv(argv[0], argv);
         _exit(1);
 
@@ -1271,10 +1283,26 @@ js_session_create (const char *host_name, char **argv,
     close(sv[0]);
     close(ev[0]);
 
+    /* See comment above re: returning child pid */
+    for (i = 0; i < (int) sizeof(buf); i++) {
+	if (read(sv[1], &buf[i], 1) < 0)
+	    goto fail2;
+	if (buf[i] == '\n')
+	    break;
+    }
+    if (i == sizeof(buf))
+	goto fail2;
+
+    /* buf now has the pid, so we just turn it back into an integer */
+    buf[i] = '\0';
+    pid = atoi(buf);
+    if (pid <= 1)
+	goto fail2;
+
     if (stype == ST_DEFAULT)
 	stype = js_default_stype;
 
-    jsp = js_session_create_internal(host_name, pid, sv[1], sv[1], ev[1], 
+    jsp = js_session_create_internal(session_name, pid, sv[1], sv[1], ev[1], 
 				     stype, flags);
 
     return jsp;
@@ -1397,19 +1425,34 @@ js_session_add (js_session_t *jsp)
 }
 
 /*
- * Find the session for the given host_name.
+ * Delete the session details from patricia tree
+ */
+static js_boolean_t
+js_session_delete (js_session_t *jsp)
+{
+    if (!patricia_delete(&js_session_root, &jsp->js_node)) {
+	jsio_trace("could not delete session node from root tree");
+	return FALSE;
+    }
+
+    return TRUE;
+}
+
+/*
+ * Find the session for the given session_name.
  *
  * Returns NULL if the session is not found.
  */
 static js_session_t *
-js_session_find (const char *host_name, session_type_t stype)
+js_session_find (const char *session_name, session_type_t stype)
 {
     js_session_t *jsp;
     js_skey_t *key;
     int keylen;
 
-    u_int16_t len = host_name ? strlen(host_name) + 1 : 1;
-    const char *name = host_name ?: "";
+    /* A NULL session name means the localhost session */
+    const char *name = session_name ?: "";
+    u_int16_t len = strlen(name) + 1;
 
     keylen = len + sizeof(js_skey_t);
     key = alloca(keylen);
@@ -1436,8 +1479,8 @@ js_session_find (const char *host_name, session_type_t stype)
 /*
  * Kill the child process associated with this session.
  */
-void
-js_session_terminate (js_session_t *jsp)
+static void
+js_session_kill (js_session_t *jsp)
 {
     pid_t pid = jsp->js_pid;
     int count = 0, rc, sig, status;
@@ -1449,7 +1492,9 @@ js_session_terminate (js_session_t *jsp)
 
 	do {
 
-	    kill(pid, sig);
+	    /* If it aign't working, bail; the process is likely dead */
+	    if (kill(pid, sig) < 0)
+		break;
 
 	    /* Give some time for process to exit. */
 	    usleep(1000);
@@ -1483,11 +1528,21 @@ js_session_terminate (js_session_t *jsp)
 		  "successfully" : "with failure");
 	}
     }
+}
+
+static void
+js_session_free (js_session_t *jsp)
+{
+    if (jsp == NULL)
+	return;
 
     if (jsp->js_askpassfd > 0)
 	close(jsp->js_askpassfd);
 
     fbuf_close(jsp->js_fbuf);
+
+    if (jsp->js_passphrase)
+	free(jsp->js_passphrase);
 
     close(jsp->js_stdin);
     close(jsp->js_stdout);
@@ -1500,6 +1555,37 @@ js_session_terminate (js_session_t *jsp)
     free(jsp->js_target);
     free(jsp->js_creds);
     free(jsp);
+}
+
+/*
+ * Release a session that has not been added to the name tree, principally
+ * because the pat_add call failed (so we can't call js_session_terminate).
+ */
+static void
+js_session_release (js_session_t *jsp)
+{
+    js_session_kill(jsp);
+    js_session_free(jsp);
+}
+
+/*
+ * Terminate a session with extreme prejudice.  Release any and resources.
+ */
+void
+js_session_terminate (js_session_t *jsp)
+{
+    js_session_delete(jsp);	/* Remove from patricia tree */
+    js_session_kill(jsp);
+    js_session_free(jsp);
+}
+
+/*
+ * Close a specific session
+ */
+void
+js_session_close1 (js_session_t *jsp)
+{
+    js_session_terminate(jsp);
 }
 
 /*
@@ -1838,6 +1924,35 @@ jsio_set_default_server (const char *server)
     js_default_server = server ? strdup(server) : NULL;
 }
 
+/*
+ * Get the name, either from the argument or from the global
+ */
+static const char *
+js_session_get_name (const char *name)
+{
+    if (name != NULL && *name != '\0')
+	return name;
+
+    name = js_default_server;
+    if (name != NULL && *name != '\0')
+	return name;
+
+    return NULL;
+}
+
+static const char *
+js_session_get_user (const char *name)
+{
+    if (name != NULL && *name != '\0')
+	return name;
+
+    name = js_default_user;
+    if (name != NULL && *name != '\0')
+	return name;
+
+    return NULL;
+}
+
 void
 jsio_set_default_user (const char *user)
 {
@@ -1879,16 +1994,10 @@ js_session_open_localhost (js_session_opts_t *jsop, int flags,
                            const char *auth_socket)
 {
     js_session_t *jsp;
-    js_session_opts_t jso; 
     int conn_addr_len, conn_sock;
     char auth_rpc[BUFSIZ];
     char *auth_resp;
     struct sockaddr_un conn_addr;
-
-    if (jsop == NULL) {
-        bzero(&jso, sizeof(jso));
-        jsop = &jso;
-    }    
 
     if (auth_socket == NULL) {
 	jsio_trace("Missing mandatory auth socket");
@@ -1900,17 +2009,19 @@ js_session_open_localhost (js_session_opts_t *jsop, int flags,
     if (jsop->jso_stype == ST_DEFAULT)
         jsop->jso_stype = js_default_stype;
 
-    if (jsop->jso_server == NULL || *jsop->jso_server == '\0') {
-        jsop->jso_server = js_default_server;
-        if (jsop->jso_server == NULL || *jsop->jso_server == '\0')
-            return NULL;
-    }
+    const char *name = js_session_get_name(jsop->jso_server);
+    if (name == NULL)
+	return NULL;
+
+    const char *user = js_session_get_user(jsop->jso_username);
+    if (user == NULL)
+	return NULL;
 
     /*
      * Check whether the junoscript session already exists for the given 
      * hostname, if so then return that.
      */
-    jsp = js_session_find(jsop->jso_server, jsop->jso_stype);
+    jsp = js_session_find(name, jsop->jso_stype);
     if (jsp)
         return jsp;
 
@@ -1944,69 +2055,70 @@ js_session_open_localhost (js_session_opts_t *jsop, int flags,
     if (connect(conn_sock, (struct sockaddr *)&conn_addr, conn_addr_len) < 0) {
         jsio_trace("Failed to connect for authentication");
         return NULL;
-    } else {
-	jsp = js_session_create_internal(jsop->jso_server, -1, conn_sock, 
-					 conn_sock, -1, jsop->jso_stype, 
-					 flags);
+    }
 
-	if (jsp == NULL)
+    jsp = js_session_create_internal(name, -1, conn_sock, 
+				     conn_sock, -1, jsop->jso_stype, flags);
+    if (jsp == NULL)
+	return NULL;
+
+    /*
+     * We need to be able to close this infant session if we
+     * have a SIGINT, so we add it to the patricia tree even
+     * though we may need to remove it if it fails here.
+     */
+    if (!js_session_add(jsp)) {
+	js_session_release(jsp);
+	return NULL;
+    }
+
+    if (js_session_init(jsp)) {
+	js_session_terminate(jsp);
+	return NULL;
+    }
+
+    jsio_trace("Session initialized");
+    snprintf_safe(auth_rpc, sizeof(auth_rpc),
+		  "<rpc><request-login><username>%s</username>"
+		  "<challenge-response>%s</challenge-respone>"
+		  "</request-login></rpc>\n", user,
+		  jsop->jso_passphrase);
+
+    /*
+     * Write authetication RPC into the socket
+     */
+    if (write(conn_sock, auth_rpc, strlen(auth_rpc)) < 0) {
+	jsio_trace("Failed to send authentication rpc");
+	bzero(auth_rpc, strlen(auth_rpc));
+	bzero(jsop->jso_passphrase, strlen(jsop->jso_passphrase));
+	return NULL;
+    }
+
+    bzero(auth_rpc, strlen(auth_rpc));
+    bzero(jsop->jso_passphrase, strlen(jsop->jso_passphrase));
+
+    if (!fbuf_has_buffered(jsp->js_fbuf)) {
+	if (js_initial_read(jsp, JS_READ_TIMEOUT, 0)) {
 	    return NULL;
+	}
+    }
 
-        if (js_session_init(jsp)) {
-            js_session_terminate(jsp);
-            return NULL;
-        }
+    /*
+     * Read the response and look for status in authentication reply
+     */
+    for (;;) {
+	auth_resp = js_gets_timed(jsp, 0, JS_READ_QUICK);
+	if (auth_resp == NULL)
+	    break;
 
-        jsio_trace("Session initialized");
-        snprintf_safe(auth_rpc, sizeof(auth_rpc),
-                     "<rpc><request-login><username>%s</username>"
-                     "<challenge-response>%s</challenge-respone>"
-                     "</request-login></rpc>\n", jsop->jso_username,
-                     jsop->jso_passphrase);
+	if (strstr(auth_resp, "<status>fail</status>")) {
+	    jsio_trace("Authentication failed");
+	    break;
+	}
 
-        /*
-         * Write authetication RPC into the socket
-         */
-        if (write(conn_sock, auth_rpc, strlen(auth_rpc)) < 0) {
-            jsio_trace("Failed to send authentication rpc");
-            bzero(auth_rpc, strlen(auth_rpc));
-            bzero(jsop->jso_passphrase, strlen(jsop->jso_passphrase));
-            return NULL;
-        }
-
-        bzero(auth_rpc, strlen(auth_rpc));
-        bzero(jsop->jso_passphrase, strlen(jsop->jso_passphrase));
-
-        if (!fbuf_has_buffered(jsp->js_fbuf)) {
-            if (js_initial_read(jsp, JS_READ_TIMEOUT, 0)) {
-                return NULL;
-            }
-        }
-
-        /*
-         * Read the response and look for status in authentication reply
-         */
-	for (;;) {
-	    auth_resp = js_gets_timed(jsp, 0, JS_READ_QUICK);
-
-	    if (auth_resp == NULL)
-		break;
-
-            if (strstr(auth_resp, "<status>fail</status>")) {
-                jsio_trace("Authentication failed");
-                js_session_terminate(jsp);
-                return NULL;
-            } else if (strstr(auth_resp, "<status>success</status>")) {
-                jsio_trace("Authentication successful");
-                /*
-                 * Add the session details to patricia tree
-                 */
-                if (!js_session_add(jsp)) {
-                    js_session_terminate(jsp);
-                    return NULL;
-                }
-                return jsp;
-            }
+	if (strstr(auth_resp, "<status>success</status>")) {
+	    jsio_trace("Authentication successful");
+	    return jsp;
 	}
     }
 
@@ -2015,7 +2127,8 @@ js_session_open_localhost (js_session_opts_t *jsop, int flags,
 }
 
 /*
- * Opens a JUNOScript session for the give host_name, username, passphrase
+ * Opens a JUNOScript session for the given options (hostname, username,
+ * passphrase, etc).
  */
 js_session_t *
 js_session_open (js_session_opts_t *jsop, int flags)
@@ -2046,20 +2159,17 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	jsop->jso_stype = ST_MIXER;
     }
 
-    if (jsop->jso_server == NULL || *jsop->jso_server == '\0') {
-	jsop->jso_server = js_default_server;
-	if (jsop->jso_server == NULL || *jsop->jso_server == '\0')
-	    return NULL;
-    }
+    const char *name = js_session_get_name(jsop->jso_server);
+    if (name == NULL)
+	return NULL;
 
-    if (jsop->jso_username == NULL || *jsop->jso_username == '\0')
-	jsop->jso_username = js_default_user;
+    const char *user = js_session_get_user(jsop->jso_username);
 
     /*
      * Check whether the junoscript session already exists for the given 
      * hostname, if so then return that.
      */
-    jsp = js_session_find(jsop->jso_server, jsop->jso_stype);
+    jsp = js_session_find(name, jsop->jso_stype);
     if (jsp)
 	return jsp;
 
@@ -2135,11 +2245,11 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	}
 
 	/*
-	 * If username is passed use that username
+	 * If username is passed in, use that user name
 	 */
-	if (jsop->jso_username) {
+	if (user != NULL) {
 	    argv[argc++] = ALLOCADUP("-l");
-	    argv[argc++] = ALLOCADUP(jsop->jso_username);
+	    argv[argc++] = ALLOCADUP(user);
 	} else {
 	    /*
 	     * When username is not passed, ssh takes it from
@@ -2156,7 +2266,7 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	    }
 	}
 
-	argv[argc++] = ALLOCADUP(jsop->jso_server);
+	argv[argc++] = ALLOCADUP(name);
 
 	if (jsop->jso_stype == ST_NETCONF) {
 	    argv[argc++] = ALLOCADUP("-s");
@@ -2177,10 +2287,19 @@ js_session_open (js_session_opts_t *jsop, int flags)
 
     INSIST(argc < max_argc);
 
-    jsp = js_session_create(jsop->jso_server, argv, flags, jsop->jso_stype);
-
+    jsp = js_session_create(name, argv, flags, jsop->jso_stype);
     if (jsp == NULL)
 	return NULL;
+
+    /*
+     * We need to be able to close this infant session if we
+     * have a SIGINT, so we add it to the patricia tree even
+     * though we may need to remove it if it fails here.
+     */
+    if (!js_session_add(jsp)) {
+	js_session_release(jsp);
+	return NULL;
+    }
 
     if (jsop->jso_passphrase)
 	jsp->js_passphrase = strdup(jsop->jso_passphrase);
@@ -2215,65 +2334,51 @@ js_session_open (js_session_opts_t *jsop, int flags)
     if (conn_timeout_str)
 	free(conn_timeout_str);
 
-    /*
-     * Add the session details to patricia tree
-     */
-    if (!js_session_add(jsp)) {
-	js_session_terminate(jsp);
-	return NULL;
-    }
-
     return jsp;
 }
 /*
- * Send the given string in the given host_name's JUNOScript session.
+ * Send the given string to the given JUNOScript session.
  */
 void
-js_session_send (const char *host_name, const xmlChar *text)
+js_session_send (const char *session_name, const xmlChar *text)
 {
     js_session_t *jsp;
     int rc;
 
-    if (host_name == NULL || *host_name == '\0') {
-	host_name = js_default_server;
-	if (host_name == NULL || *host_name == '\0')
-	    return;
-    }
+    session_name = js_session_get_name(session_name);
+    if (session_name == NULL)
+	return;
 
-    jsp = js_session_find(host_name, ST_SHELL);
+    jsp = js_session_find(session_name, ST_SHELL);
     if (!jsp) { 
 	LX_ERR("Session for server \"%s\" does not exist\n",
-	   host_name ?: "local");
+	   session_name ?: "local");
 	return;
     }
 
     rc = js_rpc_send_simple(jsp, (const char *) text);
     if (rc) {
 	jsio_trace("could not send request");
-       	patricia_delete(&js_session_root, &jsp->js_node);
-	js_session_terminate(jsp);
-	return;
+       	js_session_terminate(jsp);
     }
 }
 
 /*
- * Receive a string in the given host_name's JUNOScript session.
+ * Receive a string from the given JUNOScript session.
  */
 char *
-js_session_receive (const char *host_name, time_t secs)
+js_session_receive (const char *session_name, time_t secs)
 {
     js_session_t *jsp;
 
-    if (host_name == NULL || *host_name == '\0') {
-	host_name = js_default_server;
-	if (host_name == NULL || *host_name == '\0')
-	    return NULL;
-    }
+    session_name = js_session_get_name(session_name);
+    if (session_name == NULL)
+	return NULL;
 
-    jsp = js_session_find(host_name, ST_SHELL);
+    jsp = js_session_find(session_name, ST_SHELL);
     if (!jsp) { 
 	LX_ERR("Session for server \"%s\" does not exist\n",
-	   host_name ?: "local");
+	   session_name ?: "local");
 	return NULL;
     }
 
@@ -2283,29 +2388,27 @@ js_session_receive (const char *host_name, time_t secs)
 }
 
 /*
- * Execute the given RPC in the given host_name's JUNOScript session.
+ * Execute the given RPC over the given JUNOScript session.
  */
 lx_nodeset_t *
-js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
+js_session_execute (xmlXPathParserContext *ctxt, const char *session_name,
 		    lx_node_t *rpc_node, const xmlChar *rpc_name, 
 		    session_type_t stype)
 {
     js_session_t *jsp;
     int rc;
 
-    if (host_name == NULL || *host_name == '\0') {
-	host_name = js_default_server;
-	if (host_name == NULL || *host_name == '\0')
-	    return NULL;
-    }
+    session_name = js_session_get_name(session_name);
+    if (session_name == NULL)
+	return NULL;
 
     if (stype == ST_DEFAULT)
 	stype = js_default_stype;
 
-    jsp = js_session_find(host_name, stype);
-    if (!jsp) { 
+    jsp = js_session_find(session_name, stype);
+    if (jsp == NULL) {
 	LX_ERR("Session for server \"%s\" does not exist\n",
-	       host_name ?: "local");
+	       session_name ?: "local");
 	return NULL;
     }
 
@@ -2317,8 +2420,7 @@ js_session_execute (xmlXPathParserContext *ctxt, const char *host_name,
 
     if (rc) {
 	jsio_trace("could not send request");
-       	patricia_delete(&js_session_root, &jsp->js_node);
-	js_session_terminate(jsp);
+       	js_session_terminate(jsp);
 	return NULL;
     }
 
@@ -2337,35 +2439,27 @@ js_rpc_free (lx_document_t *rpc)
     lx_document_free(rpc);
 }
 
-void
-js_session_close1 (js_session_t *jsp)
-{
-    patricia_delete(&js_session_root, &jsp->js_node);
-    js_session_terminate(jsp);
-}
-
 /*
  * Close the given host's given session
  */
 void
-js_session_close (const char *host_name, session_type_t stype)
+js_session_close (const char *session_name, session_type_t stype)
 {
     js_session_t *jsp;
 
-    if (host_name == NULL || *host_name == '\0')
-	host_name = js_default_server;
+    session_name = js_session_get_name(session_name);
 
     if (stype == ST_DEFAULT)
 	stype = js_default_stype;
 
-    jsp = js_session_find(host_name, stype);
+    jsp = js_session_find(session_name, stype);
     if (!jsp) { 
 	LX_ERR("Session for server \"%s\" does not exist\n",
-	       host_name ?: "local");
+	       session_name ?: "local");
 	return;
     }
 
-    js_session_close1(jsp);
+    js_session_terminate(jsp);
 }
 
 /*
@@ -2524,6 +2618,11 @@ js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
     patricia_node_init_length(&jsp->js_node,
 			      sizeof(js_skey_t) + sizeof(server_name));
 
+    if (!js_session_add(jsp)) {
+	js_session_release(jsp);
+	return NULL;
+    }
+
     jsp->js_fbuf = fbuf_fdopen(fdin, 0);
 
     if (flags & JSF_FBUF_TRACE)
@@ -2550,7 +2649,7 @@ js_session_open_server (int fdin, int fdout, session_type_t stype, int flags)
  * Return the hello packet of the given session
  */
 lx_node_t *
-js_gethello (const char *host_name, session_type_t stype)
+js_gethello (const char *session_name, session_type_t stype)
 {
     js_session_t *jsp;
 
@@ -2563,13 +2662,13 @@ js_gethello (const char *host_name, session_type_t stype)
     if (stype == ST_JUNOSCRIPT)
 	return NULL;
 
-    if (host_name == NULL || *host_name == '\0')
-	host_name = js_default_server;
-
-    jsp = js_session_find(host_name, stype);
-    if (!jsp) { 
+    session_name = js_session_get_name(session_name);
+    if (session_name == NULL)
 	return NULL;
-    }
+
+    jsp = js_session_find(session_name, stype);
+    if (jsp == NULL)
+	return NULL;
 
     return jsp->js_hello;
 
@@ -2591,8 +2690,8 @@ jsio_restart (void)
 	if (pnp == NULL)
 	    break;
 	
-       	patricia_delete(&js_session_root, pnp);
-	js_session_terminate((js_session_t *) pnp);
+	js_session_t *jsp = (void *) pnp;
+	js_session_terminate(jsp);
     }
 }
 
