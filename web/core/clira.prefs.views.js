@@ -76,7 +76,7 @@ Clira.PreferencesDialog = Ember.View.extend({
                 of: '#' + elementId 
             },
             resizable: false,
-            width: 350,
+            width: 225,
         });
     }
 });
@@ -474,6 +474,10 @@ Clira.DevicesPrefView = Ember.View.extend({
             },
             beforeShowForm: function(form) {
                 var colNames = this.p.colNames;
+                /* 
+                 * Unhide a previously hidden 'connect' field
+                 */
+                $("#tr_connect").show();
                 $.each(this.p.colModel, function (i, item) {
                     if (item["qTip"]) {
                         $("#tr_" + item["name"] + " td.CaptionTD").qtip({
@@ -492,6 +496,8 @@ Clira.DevicesPrefView = Ember.View.extend({
                 });
             },
             afterSubmit: function(response, formdata) {
+                var def = $.Deferred();
+                var error = "";
                 if (formdata["connect"] == "yes") {
                     view.set('isVisible', false);
                     var cv = Ember.View.extend({
@@ -518,7 +524,7 @@ Clira.DevicesPrefView = Ember.View.extend({
                                 buttons: {
                                     'Close': function() {
                                         view.set('isVisible', true);
-                                        $(this).dialog("close");
+                                        that.destroy();
                                     }
                                 },
                                 close: function() {
@@ -542,22 +548,29 @@ Clira.DevicesPrefView = Ember.View.extend({
                                     var $out = $('div#' 
                                                     + that.elementId 
                                                     + ' div.output-replace');
-                                    $.clira.runCommand(that, formdata["name"], 
+                                    $.clira.runCommand(null, formdata["name"], 
                                                         ".noop-command", 
                                                         'html',
-                                                        function (success, $output) {
+                                                        function (view, status, output) {
                                             var msg = "<div style="
                                                     + "\"font-weight: bold\">";
-                                            if (success) {
+                                            if (status) {
                                                 msg += "Connection successful"
                                                     + ".  You can now use this"
                                                     + "device in CLIRA.";
+                                                def.resolve();
                                             } else {
-                                                msg += "Connection NOT "
-                                                    + "successful.  Please "
-                                                    + "check your device "
-                                                    + "connection settings " 
-                                                    + "and try again.";
+                                                if (output) {
+                                                    msg += "Connection error : " +
+                                                                output;
+                                                } else {
+                                                    msg += "Connection NOT "
+                                                        + "successful.  Please "
+                                                        + "check your device "
+                                                        + "connection settings " 
+                                                        + "and try again.";
+                                                }
+                                                def.reject();
                                             }
                                             msg += "</div>";
                                             $out.append(msg);
@@ -569,7 +582,13 @@ Clira.DevicesPrefView = Ember.View.extend({
                     });
                     view.get('parentView').pushObject(cv.create());
                 }
-                return [ true, "" ];
+                var result = true;
+                def.promise().always(function () {
+                    if (def.state() == "rejected") {
+                        result = false;
+                    }
+                });
+                return [ result, error ];
             }
         });
     }
@@ -584,7 +603,7 @@ Clira.GeneralPrefView = Clira.DynFormView.extend({
     buttons: [{
         caption: "Cancel",
         onclick: function() {
-            this.get('parentView').destroy();
+            this.get('parentView').get('parentView').destroy();
         }
     },{
         caption: "Save",
@@ -601,7 +620,7 @@ Clira.GeneralPrefView = Clira.DynFormView.extend({
                     clira_prefs[k] = v;
                 }
             });
-            this.get('parentView').destroy();
+            this.get('parentView').get('parentView').destroy();
         }
     }]
 });

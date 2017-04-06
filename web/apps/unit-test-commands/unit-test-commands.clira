@@ -1,0 +1,11 @@
+{
+    "files": [
+        "unit-test-commands.js", 
+        "unit-test-commands.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/unit-test-commands/unit-test-commands.clira", 
+    "name": "unit-test-commands", 
+    "author": "Ajay Kumar Chintala", 
+    "version": "1.0.0", 
+    "author-email": "ajaykc@juniper.net"
+}

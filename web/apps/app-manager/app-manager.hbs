@@ -1,0 +1,375 @@
+<script type="text/x-handlebars" data-template-name="app-manager">
+<link rel="stylesheet" href="external/selectric/selectric.css"/>
+<style type="text/css">
+    .selectWrapper {
+        width : 150px;
+    }
+    .control-wrapper .ui-autocomplete-loading {
+        background: white url("/apps/app-manager/images/ajaxLoader.gif") right center no-repeat;
+    }
+    .app-loading {
+        background: url("/apps/app-manager/images/ajaxLoader.gif") no-repeat;
+        height : 24px;
+        width : 24px;
+        vertical-align : middle;
+        display : inline-block;
+        margin-left : 10px;
+    }
+    .applist-loading-container {
+        padding : 50px;
+    }
+    .applist-loading {
+        margin : 0 auto;
+        display : block;
+    }
+    .list-apps-container {
+        overflow-y : auto;
+        height : 400px;
+    }
+    .btn-margin {
+        margin-top : 5px;
+        margin-right : 5px;
+    }
+    .control-wrapper .control-label {
+        margin-bottom : 5px;
+        margin-top : 10px;
+    }
+    .control-wrapper .form-control {
+        margin-bottom : 10px;
+    }
+    #btn-browse {
+        margin-bottom : 10px;
+    }
+    #file-input {
+        position : absolute;
+        left : -99999px;
+    }
+    #refreshAppList {
+        position : absolute;
+    }
+    #ghAppPath {
+        width : 500px;
+    }
+    .info-label {
+        font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 14px;
+    }
+    .heading-label {
+        margin-bottom : 30px;
+    }
+    table.app-list {
+        table-layout:fixed; 
+        width:98%; 
+        margin : 10px;
+    }
+    .theader {
+        width : 20%;
+    }
+    .app-status label {
+        font-size : 10px;
+        font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+        display : block;
+    }
+    table div.alert {
+        margin : 2px;
+        width : 200px;
+        padding : 5px;
+    }
+    .edit-meta-array {
+        border : 1px solid #ccc;
+        border-radius : 4px;
+        padding: 6px 12px;
+        font-size: 14px;
+        color : #555;
+        background-color: #eee;
+        opacity: 1;
+        margin-bottom : 5px;
+    }
+    .edit-meta-array-entry {
+        display : block;
+    }
+    .glyphicon {
+        margin-right : 5px;
+    }
+    #appManagerTabs li.ui-tabs-active {
+        background-color : #2779aa;
+        border-color : black;
+        border : 1px solid #2694e8;
+    }
+    #appManagerTabs li.ui-state-default {
+        border : 1px solid #ddd;
+    }
+    #appManagerTabs li.ui-tabs-active a {
+        color : #ffffff;
+    }
+
+</style>
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h5><b>CLIRA Application Management</b></h5>
+    </div>
+    <div id="appManagerPanel" class="panel-body">
+        {{#if mode.showApps}}
+            {{partial 'show-apps'}}
+        {{/if}}
+        {{#if mode.installApps}}
+            {{partial 'install-apps'}}
+        {{/if}}
+        {{#if mode.appUpdateCmdl}}
+            {{partial 'app-update-cmdl'}}
+        {{/if}}
+        {{#if mode.editMeta}}
+            {{partial 'edit-meta'}}
+        {{/if}}
+    </div>    
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="show-apps">
+{{#view views.showApps}}
+<div id="appManagerTabs">
+    <ul>
+        <li><a href="#listApps">Installed apps</a></li>
+        <li><a href="#installApps">Install new apps</a></li>
+    </ul>
+    {{partial "list-apps"}}
+    {{partial "install-apps"}}
+</div>
+{{/view}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="app-update-cmdl">
+<div id='appInstall'>
+    {{partial 'show-error'}}
+    {{partial 'show-success'}}
+    {{partial 'show-loading'}}
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="edit-meta">
+<div id='edit-app-meta' class='control-wrapper'>
+    {{partial 'show-error'}}
+    {{#if metaList}}
+    {{#view views.editMeta contentBinding="this"}}
+        {{#if metaCreate}}
+            <h5>Generate a new metafile for '{{appName}}' app</h5>
+        {{else}}
+            <h5>Modify existing metafile for '{{appName}}' app</h5>
+        {{/if}}
+        <form class="edit-meta-form">
+        {{#each metaList}}
+            <label class="control-label">{{this.label}} :</label>
+        {{#if this.string}}
+            {{#if this.error}}
+            <div class='has-error'>
+            <input 
+                {{bind-attr name=this.name}} 
+                class="form-control input-medium">
+                <span style="color:red;">{{this.error}}</span>
+            </div> 
+            {{else}}
+                <input 
+                {{bind-attr name=this.name}} 
+                {{bind-attr value=this.value}}
+                {{bind-attr disabled=this.disabled}}
+                class="form-control input-medium">
+            {{/if}}
+        {{/if}}
+        {{#if this.array}}
+        <div class='edit-meta-array'>
+            {{#each this.value}}
+                <span class='edit-meta-array-entry'>{{this}}</span>
+            {{/each}}
+            <button id="refreshFileList" class="btn btn-info btn-xs btn-margin">Refresh</button>
+        </div>
+        {{/if}}
+        {{/each}}
+    {{#if state.success.msg}}
+     <div class="alert alert-success info-label" role="alert">
+        <span class="glyphicon glyphicon-ok-circle"></span>
+        {{state.success.msg}}
+     </div>
+    {{/if}}
+    <button id="saveMeta" class="btn btn-primary btn-margin">Save</button>
+    <button id="resetMeta" class="btn btn-primary btn-margin">Reset</button>
+    </form>
+    {{/view}}
+    {{else}}
+        {{#unless state.error}}
+            {{partial 'show-loading-spinner'}}
+        {{/unless}}
+    {{/if}}
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="list-apps">
+{{#if appList}}
+<div id="listApps" class="list-apps-container">
+    <table class="table table-hover app-list">
+        <thead>
+            <tr>
+                <th class="theader">Name</th>
+                <th>Version</th>
+                <th>Author</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{#each appList}} 
+            <tr>
+                <td>{{this.name}}</td>
+                {{#if this.meta}}
+                    <td>{{this.meta.version}}</td>
+                    <td>{{this.meta.author}}</td>
+                    {{#if this.meta-error}}
+                    <td>
+                        <div class="alert alert-warning">
+                            <span class="glyphicon glyphicon-exclamation-sign"></span>
+                            {{this.meta-error}}
+                        </div>
+                    </td>
+                    {{else}}
+                    <td>
+                        <div {{bind-attr id=this.name}}class="app-loading app-status">
+                        </div>
+                    </td>
+                    {{/if}}
+                {{else}}
+                    <td>-</td>
+                    <td>-</td>
+                    <td>
+                        <div class="alert alert-danger">
+                            <span class="glyphicon glyphicon-exclamation-sign"></span>
+                            Missing meta file.
+                        </div>
+                    </td>
+                {{/if}}
+            </tr>
+            {{/each}}
+            </tbody>
+        </table>
+    {{#view views.refreshApps contentBinding="this"}}
+    <button id="refreshAppList" class="btn btn-info btn-xs btn-margin">Refresh App List</button>
+    {{/view}}
+{{else}}
+<div id="listApps">
+    {{partial 'show-loading-spinner'}}
+{{/if}}
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="install-apps">
+<div id="installApps" class="control-wrapper">
+    <label class="control-label">
+        Pick an app source : 
+    </label>
+    <div class='selectWrapper'>
+    <select id='selectAppSrc'>
+        {{view views.selectAppSrc contentBinding="this"}}
+    </select>
+    </div>
+        {{#if src.localDisk}}
+            {{partial 'src-local-disk'}}
+        {{/if}}
+        {{#if src.github}}
+            {{partial 'src-github'}}
+        {{/if}}
+        {{#if src.webServer}}
+            {{partial 'src-web-server'}}
+        {{/if}}
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="src-local-disk">
+{{#view views.formInput contentBinding="this"}}
+<form id="app-form">
+    <label for="path" class="control-label">Path to the app meta file :</label>
+    <div class="input-group">
+    <input id="metaPath" name="path" class="form-control input-medium" placeholder="Type the app info file path...">
+    <span class="input-group-btn">
+        <button id="btn-browse" class="btn btn-primary" type="button">Browse</button>
+    </span>
+    </div>
+    <input type="file" id="file-input" name="file-input">
+    {{partial 'show-error'}}
+    {{partial 'show-success'}}
+    {{partial 'show-loading'}}
+    <button id="installApp" class="btn btn-primary btn-margin">Install</button>
+</form>
+{{/view}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="src-github">
+ {{#view views.formInput contentBinding="this"}}
+<form id='app-form'>
+    <label class="control-label">
+        Enter the Github URL pointing to the app meta file : 
+    </label>
+    <input id="githubURL" name="url" class="form-control" 
+        placeholder="Eg : https://github.com/owner/repo/tree/master/web/apps/foo.meta">
+    {{partial 'show-error'}}
+    {{partial 'show-success'}}
+    {{partial 'show-loading'}}
+    <button id="installApp" class="btn btn-primary btn-margin">Install</button>
+</form>
+{{/view}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="src-web-server">
+{{#view views.formInput contentBinding="this"}}
+<form id='app-form'>
+    <label for="url" class="control-label">URL for the app meta file :</label>
+    <input id="url" name="url" class="form-control input-medium" 
+    placeholder="Eg : http://myserver.com/clira/apps/foo/foo.meta">
+    {{partial 'show-error'}}
+    {{partial 'show-success'}}
+    {{partial 'show-loading'}}
+    <button id="installApp" class="btn btn-primary install-btn">Install</button> 
+</form>
+{{/view}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="show-error">
+{{#if state.error}}
+<div class="alert alert-danger info-label" role="alert">
+     <span class="glyphicon glyphicon-exclamation-sign"></span>
+     {{state.error}}
+ </div>
+ {{/if}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="show-success">
+{{#if state.success}}
+     <div class="alert alert-success info-label" role="alert">
+         <span class="glyphicon glyphicon-ok-circle"></span>
+         {{#if state.success.uptodate}}
+         <b>'{{state.success.name}}'</b> app already at the latest version.
+         {{else}}
+         Success! <b>'{{state.success.name}}'</b> app {{state.success.result}} 
+         {{#if state.success.version}}to version <b>{{state.success.version}}</b>{{/if}}
+         {{/if}}
+     </div> 
+{{/if}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="already-running">
+<div class="alert alert-warning info-label" role="alert">
+     <span class="glyphicon glyphicon-exclamation-sign"></span>
+     Another instance of this app is already running.
+</div>
+</script>
+
+<script type="text/x-handlebars" data-template-name="show-loading">
+{{#if state.loading}}
+     <div class="alert alert-info info-label" role="alert">
+         <span class="glyphicon glyphicon-download-alt"></span>
+         {{state.loading}}<label class="app-loading"></label>
+     </div> 
+ {{/if}}
+</script>
+
+<script type="text/x-handlebars" data-template-name="show-loading-spinner">
+<div class='applist-loading-container'>
+    <div class="app-loading applist-loading"></div>
+</div>
+</script>

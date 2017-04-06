@@ -1,0 +1,11 @@
+{
+    "files": [
+        "fancy.js", 
+        "fancy.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/fancy/fancy.clira", 
+    "name": "fancy", 
+    "author": "Phil Shafer", 
+    "version": "1.0.0", 
+    "author-email": "phil@juniper.net"
+}

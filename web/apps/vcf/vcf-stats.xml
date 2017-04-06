@@ -1,0 +1,253 @@
+<rpc-reply xmlns:junos="http://xml.juniper.net/junos/14.1I0/junos">
+    <multi-routing-engine-results>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc0</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/0</port-name>
+                        <input-bytes>1261300664</input-bytes>
+                        <input-packets>103078</input-packets>
+                        <output-bytes>3308900060</output-bytes>
+                        <output-packets>56267</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/1</port-name>
+                        <input-bytes>1724020062</input-bytes>
+                        <input-packets>75271</input-packets>
+                        <output-bytes>188770199</output-bytes>
+                        <output-packets>63093</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc1</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/0</port-name>
+                        <input-bytes>2309348002</input-bytes>
+                        <input-packets>56281</input-packets>
+                        <output-bytes>3262770019</output-bytes>
+                        <output-packets>103166</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/2/0</port-name>
+                        <input-bytes>3755300087</input-bytes>
+                        <input-packets>75404</input-packets>
+                        <output-bytes>2404000023</output-bytes>
+                        <output-packets>38354</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc2</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/0</port-name>
+                        <input-bytes>24001000753</input-bytes>
+                        <input-packets>38204</input-packets>
+                        <output-bytes>2746480041</output-bytes>
+                        <output-packets>75111</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/2</port-name>
+                        <input-bytes>3315370028</input-bytes>
+                        <input-packets>55496</input-packets>
+                        <output-bytes>2011150049</output-bytes>
+                        <output-packets>26137</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc3</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/1</port-name>
+                        <input-bytes>3195500081</input-bytes>
+                        <input-packets>37052</input-packets>
+                        <output-bytes>9492308005</output-bytes>
+                        <output-packets>14803</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/2</port-name>
+                        <input-bytes>1122000927</input-bytes>
+                        <input-packets>26138</input-packets>
+                        <output-bytes>23175000051</output-bytes>
+                        <output-packets>55616</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/2/3</port-name>
+                        <input-bytes>890000002</input-bytes>
+                        <input-packets>1</input-packets>
+                        <output-bytes>361190030</output-bytes>
+                        <output-packets>2187</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc4</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/0</port-name>
+                        <input-bytes>530000071</input-bytes>
+                        <input-packets>19749</input-packets>
+                        <output-bytes>2555200006</output-bytes>
+                        <output-packets>2993</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/1</port-name>
+                        <input-bytes>6499900069</input-bytes>
+                        <input-packets>14815</input-packets>
+                        <output-bytes>9226000933</output-bytes>
+                        <output-packets>37207</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc5</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/0</port-name>
+                        <input-bytes>5919300033</input-bytes>
+                        <input-packets>6370</input-packets>
+                        <output-bytes>6184000878</output-bytes>
+                        <output-packets>21940</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/1</port-name>
+                        <input-bytes>8132480003</input-bytes>
+                        <input-packets>17723</input-packets>
+                        <output-bytes>3049100099</output-bytes>
+                        <output-packets>4000</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc6</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/0</port-name>
+                        <input-bytes>8234100020</input-bytes>
+                        <input-packets>26319</input-packets>
+                        <output-bytes>5681000652</output-bytes>
+                        <output-packets>20630</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/1</port-name>
+                        <input-bytes>2307220004</input-bytes>
+                        <input-packets>3084</input-packets>
+                        <output-bytes>4842000805</output-bytes>
+                        <output-packets>14311</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc7</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/1</port-name>
+                        <input-bytes>5000691360</input-bytes>
+                        <input-packets>20624</input-packets>
+                        <output-bytes>8238300054</output-bytes>
+                        <output-packets>26332</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/3</port-name>
+                        <input-bytes>11915000021</input-bytes>
+                        <input-packets>38711</input-packets>
+                        <output-bytes>9000622137</output-bytes>
+                        <output-packets>39282</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc8</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/1</port-name>
+                        <input-bytes>15562760001</input-bytes>
+                        <input-packets>50000886</input-packets>
+                        <output-bytes>13499860006</output-bytes>
+                        <output-packets>57463</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/3</port-name>
+                        <input-bytes>9607100089</input-bytes>
+                        <input-packets>39187</input-packets>
+                        <output-bytes>11900009011</output-bytes>
+                        <output-packets>38708</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+        <multi-routing-engine-item>
+
+            <re-name>fpc9</re-name>
+
+            <virtual-chassis-port-statistics-information>
+                <statistics-port-list>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/0</port-name>
+                        <input-bytes>18959000086</input-bytes>
+                        <input-packets>63544</input-packets>
+                        <output-bytes>17360300052</output-bytes>
+                        <output-packets>75860</output-packets>
+                    </statistics>
+                    <statistics junos:style="brief">
+                        <port-name>vcp-255/1/1</port-name>
+                        <input-bytes>13513880008</input-bytes>
+                        <input-packets>57464</input-packets>
+                        <output-bytes>15565780007</output-bytes>
+                        <output-packets>50951</output-packets>
+                    </statistics>
+                </statistics-port-list>
+            </virtual-chassis-port-statistics-information>
+        </multi-routing-engine-item>
+
+    </multi-routing-engine-results>
+</rpc-reply>
+

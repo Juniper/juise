@@ -17,7 +17,7 @@
 #define ELT_ARGUMENT		"argument"
 #define ELT_ARGUMENTS		"arguments"
 #define ELT_CHANGE		"change"
-#define ELT_CHANGE_TRANSIENT	"change-transient"
+#define ELT_TRANSIENT_CHANGE	"transient-change"
 #define ELT_CGI			"cgi"
 #define ELT_CLASS_NAME		"class-name"
 #define ELT_COMMIT_SCRIPT_INPUT "commit-script-input"

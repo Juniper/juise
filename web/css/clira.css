@@ -115,7 +115,7 @@ div.header-line {
     border-top-right-radius: 4px;
 }
 
-div.header-line-empty {
+div.header-line-empty:not(:first-child) {
     color: #ffffff;
     background: none repeat scroll 0 0 #0D5995;
     padding-top: 4px;
@@ -522,6 +522,7 @@ input.text-entry {
     border: 0;
     outline: 0;
     height: 20px;
+    padding-left: 5px;
     width: 100%;
 }
 
@@ -844,8 +845,6 @@ div.dyn-form-boolean {
 }
 
 div.dyn-form-item .dyn-radio-button {
-    margin-left: -30px;
-    margin-right: -40px;
 }
 
 div.dyn-radiogroup {
@@ -855,6 +854,7 @@ div.dyn-radiogroup {
 }
 
 .dyn-dropdown-item {
+    box-sizing: content-box;
     max-height: 200px;
     overflow-y: auto;
 }
@@ -895,10 +895,11 @@ some.day {
 }
 
 .ui-autocomplete {
+    box-sizing: content-box;
     max-height: 400px;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-right: 20px;
+    padding: 0px;
     width: 650px;
 }
 
@@ -955,6 +956,21 @@ div.xpath {
 
 .ui-state-warning .ui-icon {
     background-image:url(/themes/clira/images/ui-icons_ffcf29_256x240.png);
+}
+
+.ui-state-focus {
+    outline: none;
+}
+
+.sticky {
+    bottom: 0px;
+    position: fixed;
+    width: 100%;
+}
+
+.sticky .ember-view .output-content {
+    max-height: 500px;
+    overflow: auto;
 }
 
 .stop_button {

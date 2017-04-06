@@ -1,0 +1,12 @@
+{
+    "files": [
+        "show-interfaces-demo.hbs", 
+        "show-interfaces-demo.js", 
+        "show-interfaces-demo.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/show-interfaces-demo/show-interfaces-demo.clira", 
+    "name": "show-interfaces-demo", 
+    "author-name": "Marvin Dsouza", 
+    "version": "1.0.0", 
+    "author-email": "mdsouza@juniper.net"
+}

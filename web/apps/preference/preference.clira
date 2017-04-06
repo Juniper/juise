@@ -1,0 +1,11 @@
+{
+    "files": [
+        "preference.js", 
+        "preference.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/preference/preference.clira", 
+    "name": "preference", 
+    "author": "Ajay Kumar Chintala", 
+    "version": "1.0.0", 
+    "author-email": "ajaykc@juniper.net"
+}

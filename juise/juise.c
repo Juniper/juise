@@ -22,6 +22,7 @@
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <pwd.h>
+#include <signal.h>
 #include <sys/socket.h>
 
 #include <libxml/tree.h>
@@ -143,6 +144,31 @@ juise_add_node (lx_document_t *docp, lx_node_t *parent,
     xmlAddChild(parent, nodep);
 
     return nodep;
+}
+
+static void
+setsignalhandler (int sig, void (*fn)(int), int flags)
+{
+    struct sigaction sa;
+
+    bzero(&sa, sizeof(sa));
+    sa.sa_handler = fn;
+    sa.sa_flags = flags;
+
+    sigaction(sig, &sa, NULL);
+}
+
+static void
+terminate (int sig UNUSED)
+{
+    jsio_cleanup();
+    exit(15);
+}
+
+static void
+init_signals (void)
+{
+    setsignalhandler(SIGINT, terminate, 0);
 }
 
 static lx_document_t *
@@ -819,7 +845,7 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
 		seen_change += 1;
 
 	    } else if (streq((const char *) childp->name,
-			     ELT_CHANGE_TRANSIENT)) {
+			     ELT_TRANSIENT_CHANGE)) {
 		/* Wait for second pass */
 		seen_transient += 1;
 
@@ -849,7 +875,7 @@ do_test_commit_script (const char *scriptname, const char *input UNUSED,
 		    rc = load_change(jsp, pctxt, childp, FALSE);
 
 		else if (streq((const char *) childp->name,
-			       ELT_CHANGE_TRANSIENT))
+			       ELT_TRANSIENT_CHANGE))
 		    rc = load_change(jsp, pctxt, childp, TRUE);
 
 		if (rc)
@@ -2028,6 +2054,7 @@ main (int argc UNUSED, char **argv, char **envp)
     ext_jcs_register_all();
 
     jsio_init(jsio_flags);
+    init_signals();
 
     /* The target argument defines the default target */
     if (opt_target)

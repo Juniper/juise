@@ -6,6 +6,8 @@ ns xutil extension = "http://xml.libslax.org/xutil";
 ns set extension = "http://exslt.org/sets";
 ns math extension = "http://exslt.org/math";
 
+param $vcfinput = "vcf.xml";
+param $vcfconfiginput = "vcf-config.xml";
 param $target;
 
 var $json-opts = {
@@ -14,7 +16,15 @@ var $json-opts = {
 
 match / {
     <cgi Content-Type="application/json"> {
-        if ($target) {
+        if ($target == "canned") {
+	    var $vcfp = document($vcfinput);
+	    var $vcfc = document($vcfconfiginput);
+
+	    var $data := {
+		call first-pass($vcfp, $vcfc);
+	    }
+	    copy-of xutil:xml-to-json($data, $json-opts);
+	} else if ($target) {
             var $conn = jcs:open($target);
 
             var $rpc1 = <get-virtual-chassis-port-information>;

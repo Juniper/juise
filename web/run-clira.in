@@ -21,7 +21,7 @@ NAME=run-clira
 
 usage ()
 {
-    echo "$NAME usage: $NAME [ setup | start | stop | status ]"
+    echo "$NAME usage: $NAME [ setup | start | stop | status | restart ]"
     echo ""
     exit 1
 }
@@ -74,8 +74,6 @@ do_setup ()
 
 do_start ()
 {
-    do_setup
-
     # Fire 'er up
     $PREFIX/sbin/lighttpd-for-juise -m $MODULES_DIR \
 		-f $CLIRA_CONF >& $JUISE_HOME/lighttpd.log
@@ -199,10 +197,16 @@ shift
 
 case "$action" in
     start|up)
+        do_setup
 	do_start
 	;;
     stop|down)
     	do_stop
+	;;
+    restart)
+    	do_stop
+	sleep 1
+	do_start
 	;;
     setup|init)
 	do_setup "$@"

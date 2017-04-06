@@ -1,0 +1,13 @@
+{
+    "files": [
+        "ospf.xml", 
+        "topology.js", 
+        "topology.clira", 
+        "topology.slax"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/topology/topology.clira", 
+    "name": "topology", 
+    "author": "Phil Shafer", 
+    "version": "1.0.0", 
+    "author-email": "phil@juniper.net"
+}

@@ -1,0 +1,12 @@
+{
+    "files": [
+        "version.js", 
+        "version.slax", 
+        "version.clira"
+    ], 
+    "app-meta-url": "https://github.com/Juniper/juise/blob/develop/web/apps/version/version.clira", 
+    "name": "version", 
+    "author": "Ajay Kumar Chintala", 
+    "version": "1.0.0", 
+    "author-email": "ajaykc@juniper.net"
+}
