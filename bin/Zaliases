@@ -1,6 +1,6 @@
 set top_src=`pwd`
 setenv LIBJUISE $top_src
-alias Zautoreconf "(cd $top_src ; autoreconf)"
+alias Zautoreconf "(cd $top_src ; autoreconf --install)"
 
 set opts=' \
 --enable-clira \
@@ -8,15 +8,15 @@ set opts=' \
 --enable-warnings \
 --enable-readline \
 --enable-printflike \
---prefix /Users/phil/work/root \
---with-libxml-prefix=/Users/phil/work/root \
---with-libxslt-prefix=/Users/phil/work/root \
---with-libslax-prefix=/Users/phil/work/root \
---with-lighttpd-obj=/Users/phil/work/slax/lighttpd-for-juise/build \
---with-lighttpd-src=/Users/phil/work/slax/lighttpd-for-juise \
---with-ssh2=/Users/phil/work/root \
+--prefix $HOME/work/root \
+--with-libxml-prefix=$HOME/work/root \
+--with-libxslt-prefix=$HOME/work/root \
+--with-libslax-prefix=$HOME/work/root \
+--with-lighttpd-obj=$HOME/work/slax/lighttpd-for-juise/build \
+--with-lighttpd-src=$HOME/work/slax/lighttpd-for-juise \
+--with-ssh2=$HOME/work/root \
 --with-sqlite3=/opt/local \
---with-lighttpd-lib=/Users/phil/work/root/lib \
+--with-lighttpd-lib=$HOME/work/root/lib \
 '
 set opts=`echo $opts`
 
