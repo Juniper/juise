@@ -1,0 +1,8 @@
+{  
+  "name":"monitor-interface",
+  "author":"Marvin",
+  "author-email":"mdsouza@juniper.net",
+  "version":"1.0.0",
+  "app-meta-url":"https://github.com/mdlogic/juise/tree/develop/web/apps/monitor-interface/monitor-interface.meta",
+  "files":["css/monitor-interface.css","images/infoLoading.gif","monitor-interface.hbs","monitor-interface.js","monitor-interface.meta"]
+}
