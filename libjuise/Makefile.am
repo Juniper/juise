@@ -71,8 +71,6 @@ libjuise_la_SOURCES = \
     data/patricia.c \
     data/parse_ipaddr.c \
     string/snprintf_safe.c \
-    string/strndup.c \
-    string/strdupf.c \
     time/timestr.c \
     io/fbuf.c \
     io/jtrace.c \
