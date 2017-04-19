@@ -37,6 +37,7 @@
 
 #include "juiseconfig.h"
 #include <libslax/slax.h>
+#include <libpsu/psustring.h>
 #include <libslax/slaxdata.h>
 
 #include <libjuise/string/strextra.h>
