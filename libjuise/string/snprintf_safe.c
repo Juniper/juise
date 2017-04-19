@@ -9,8 +9,11 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "juiseconfig.h"
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
 #include <libjuise/string/strextra.h>
 
 /*
