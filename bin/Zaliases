@@ -33,4 +33,4 @@ cd build
 alias mixer-local ./mixer/mixer --no-fork -K --verbose --local-console --server
 
 alias mm 'make CFLAGS="-O0 -g"'
-alias mmi 'mm && mmi'
+alias mmi 'mm && make install'
