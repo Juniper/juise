@@ -18,6 +18,8 @@
 #include <sys/queue.h>
 
 #include "juiseconfig.h"
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
 #include <libjuise/io/fbuf.h>
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
