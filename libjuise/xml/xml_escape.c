@@ -10,6 +10,8 @@
 #include <string.h>
 
 #include "juiseconfig.h"
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/xml/xmlutil.h>
 #include <libjuise/io/logging.h>
