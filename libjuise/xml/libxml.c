@@ -30,6 +30,8 @@
 #include <libslax/xmlsoft.h>
 
 #include "juiseconfig.h"
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
 #include <libjuise/env/env_paths.h>
 #include <libjuise/common/allocadup.h>
 #include <libjuise/common/aux_types.h>
