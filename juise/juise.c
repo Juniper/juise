@@ -42,6 +42,9 @@
 #include <libslax/xmlsoft.h>
 
 #include "juiseconfig.h"
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
+#include <libpsu/psulog.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/time/timestr.h>
 #include <libjuise/xml/libxml.h>
