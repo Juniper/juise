@@ -23,6 +23,8 @@
 #include <sys/queue.h>
 
 #include "juiseconfig.h"
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
 #include <libjuise/io/fbuf.h>
 #include <libjuise/time/timestr.h>
 #include <libjuise/common/aux_types.h>
