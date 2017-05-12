@@ -423,8 +423,8 @@ back to the client.
 
 The JUISE_SCRIPT_DIR environment variable and the "-D" option are used
 to provide a set of search directories.  The default path is the
-directory $prefix/share/juise/scripts/, or the value given for
---with-script-dir=DIR to the "configure" script at build time.
+directory $prefix/share/juise/scripts/, or the value given
+for --with-script-dir=DIR to the "configure" script at build time.
 
 For each directory in the search path, juise looks for a file with the
 name of the RPC method and a suitable extension.  The list of
