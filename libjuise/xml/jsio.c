@@ -290,9 +290,7 @@ js_mixer_send_simple (js_session_t *jsp, const char *opname, const char *attrs,
     buf[hlen + alen] = '\n';
     memcpy(buf + hlen + alen + 1, data, dlen + 1);
 
-    write(jsp->js_stdout, buf, len);
-
-    return TRUE;
+    return write(jsp->js_stdout, buf, len) > 0;
 }
 
 static void
