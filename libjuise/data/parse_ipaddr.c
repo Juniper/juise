@@ -21,12 +21,15 @@
 #include <arpa/inet.h>
 #include <limits.h>
 
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
+
 #include "juiseconfig.h"
 #include <libjuise/io/logging.h>
 #include <libjuise/data/parse_ip.h>
 #include <libjuise/string/strextra.h>
 
-#define SNPRINTF(fmt...) do { if (msg) snprintf(msg, msgsize, fmt); } while (0)
+#define MSGPRINTF(fmt...) do { if (msg) snprintf(msg, msgsize, fmt); } while (0)
 
 static boolean is_ip_addr;
 
@@ -84,7 +87,7 @@ parse_nbytes (const char *str, unsigned ipflags, unsigned char *bytes,
     INSIST_ERR(bytes != NULL);
 
     if (*str == 0) {
-	SNPRINTF("%s is not specified", spec);
+	MSGPRINTF("%s is not specified", spec);
 	errno = EINVAL;
 	return PARSE_ERR;
     }
@@ -93,7 +96,7 @@ parse_nbytes (const char *str, unsigned ipflags, unsigned char *bytes,
     if (cp[ 0 ] == '0' && cp[ 1 ] == 'x') {
 	num = strtoul(cp, &ep, 16);
 	if (cp == ep || (num == ULONG_MAX && strcasecmp(cp, "0xFFFFFFFF"))) {
-	    SNPRINTF("invalid hexadecimal %s: '%s'", spec, str);
+	    MSGPRINTF("invalid hexadecimal %s: '%s'", spec, str);
 	    errno = EINVAL;
 	    return PARSE_ERR;
 	}
@@ -108,7 +111,7 @@ parse_nbytes (const char *str, unsigned ipflags, unsigned char *bytes,
 	    else
 		num = strtoul(cp, &ep, 10);
 	    if (cp == ep || (num == ULONG_MAX && strcmp(cp, "4294967295"))) {
-		SNPRINTF("invalid input at '%s' in %s: '%s'", cp, spec, str);
+		MSGPRINTF("invalid input at '%s' in %s: '%s'", cp, spec, str);
 		errno = EINVAL;
 		return PARSE_ERR;
 	    }
@@ -121,7 +124,7 @@ parse_nbytes (const char *str, unsigned ipflags, unsigned char *bytes,
 	    }
 
 	    if (num > IP_ADDR_BYTE_MAX) {
-		SNPRINTF("invalid value '%lu' in %s: '%s'", num, spec, str);
+		MSGPRINTF("invalid value '%lu' in %s: '%s'", num, spec, str);
 		errno = EINVAL;
 		return PARSE_IPV4_RETURN_CODE(ep);
 	    }
@@ -142,7 +145,7 @@ parse_nbytes (const char *str, unsigned ipflags, unsigned char *bytes,
 	}
     }
     if (*ep) {
-	SNPRINTF("invalid input at '%s' in %s '%s'", ep, spec, str);
+	MSGPRINTF("invalid input at '%s' in %s '%s'", ep, spec, str);
 	errno = EINVAL;
         if (*ep == IP_DELIMITER_PREFIX) 
             return PARSE_ERR_RESTRICT;
@@ -150,7 +153,7 @@ parse_nbytes (const char *str, unsigned ipflags, unsigned char *bytes,
             return PARSE_ERR;
     }
     if ((ipflags & PIF_FULL) && i != nbytes) {
-	SNPRINTF("missing information in %s: '%s'", spec, str);
+	MSGPRINTF("missing information in %s: '%s'", spec, str);
 	errno = EINVAL;
 	return PARSE_ERR_RESTRICT;
     }
@@ -231,7 +234,7 @@ parse_ipv4addr (const char *str, unsigned long ipflags,
 	cp = strchr(str, IP_DELIMITER_PREFIX);
 	if (cp) {
 	    if (strlcpy(local, str, sizeof(local)) >= sizeof(local)) {
-		SNPRINTF("too long to be a valid ip address: '%s'", str);
+		MSGPRINTF("too long to be a valid ip address: '%s'", str);
 		errno = EINVAL;
 		return PARSE_ERR;
 	    }
@@ -266,18 +269,18 @@ parse_ipv4addr (const char *str, unsigned long ipflags,
 	    else
 		*pfxlen = strtoul(cp, &ep, 0);
 	    if (cp == ep) {
-		SNPRINTF("missing or invalid prefix length %s%s%sin address "
+		MSGPRINTF("missing or invalid prefix length %s%s%sin address "
 			 "'%s'", *ep ? "'" : "", ep, *ep ? "' " : "", str);
 		errno = EINVAL;
 		return PARSE_ERR_RESTRICT;
 	    }
 	    if (*ep != 0) {
-		SNPRINTF("invalid input at '%s' in address '%s'", ep, str);
+		MSGPRINTF("invalid input at '%s' in address '%s'", ep, str);
 		errno = EINVAL;
 		return PARSE_ERR_RESTRICT;
 	    }
 	    if (*pfxlen > IN_HOST_PLEN) {
-		SNPRINTF("prefix length '%lu' is larger than %u in address "
+		MSGPRINTF("prefix length '%lu' is larger than %u in address "
 			 "'%s'", (u_long) *pfxlen, IN_HOST_PLEN, str);
 		errno = EINVAL;
 		return PARSE_ERR_RESTRICT;
@@ -294,7 +297,7 @@ parse_ipv4addr (const char *str, unsigned long ipflags,
              * User supplied an addr in mask format, but the token
              * didn't specify a mask.
              */
-	    SNPRINTF("invalid input at '%c%s' in address '%s'",
+	    MSGPRINTF("invalid input at '%c%s' in address '%s'",
 		     IP_DELIMITER_PREFIX, cp, str);
 	    errno = EINVAL;
 	    return PARSE_ERR_RESTRICT;
@@ -305,7 +308,7 @@ parse_ipv4addr (const char *str, unsigned long ipflags,
      * Report failure to meet the prefix/mask requirement.
      */
     if ((ipflags & PIF_LENREQ) && !*pfxseen && !*maskseen) {
-	SNPRINTF("missing required prefix length %sin address '%s'",
+	MSGPRINTF("missing required prefix length %sin address '%s'",
 		 (ipflags & PIF_MASK) ? "or mask " : "", str);
 	errno = EINVAL;
 	return PARSE_ERR_RESTRICT;
@@ -325,7 +328,7 @@ parse_ipv4addr (const char *str, unsigned long ipflags,
 	    if (addr & ~msk) {
 		addr = addr & msk;
 		inet_ntop(AF_INET, &addr, local, sizeof(local));
-		SNPRINTF("host portion is not zero (%s%c%lu)",
+		MSGPRINTF("host portion is not zero (%s%c%lu)",
 			 local, IP_DELIMITER_PREFIX, (u_long) *pfxlen);
 		errno = EINVAL;
 		return PARSE_ERR_RESTRICT;
@@ -337,7 +340,7 @@ parse_ipv4addr (const char *str, unsigned long ipflags,
 		addr = addr & msk;
 		inet_ntop(AF_INET, &addr, local, sizeof(local));
 		inet_ntop(AF_INET, &msk, localm, sizeof(localm));
-		SNPRINTF("masked bits are not zero (%s%c%s)",
+		MSGPRINTF("masked bits are not zero (%s%c%s)",
 			 local, IP_DELIMITER_PREFIX, localm);
 		errno = EINVAL;
 		return PARSE_ERR_RESTRICT;
@@ -371,7 +374,7 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
     *pfxlen = IN6_HOST_PLEN; /* always provide default (must on success) */
 
     if (*str == 0) {
-	SNPRINTF("ip address is not specified");
+	MSGPRINTF("ip address is not specified");
 	errno = EINVAL;
 	return PARSE_ERR;
     }
@@ -401,7 +404,7 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
 	cp = strchr(str, IP_DELIMITER_PREFIX);
 	if (cp) {
 	    if (strlcpy(local, str, sizeof(local)) >= sizeof(local)) {
-		SNPRINTF("too long to be a valid ipv6 address: '%s'", str);
+		MSGPRINTF("too long to be a valid ipv6 address: '%s'", str);
 		errno = EINVAL;
 		return PARSE_ERR;
 	    }
@@ -418,7 +421,7 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
      */
     status = inet_pton(AF_INET6, input, address);
     if (status != 1) {
-	SNPRINTF("'%s' is not a valid ipv6 address%s%s", input,
+	MSGPRINTF("'%s' is not a valid ipv6 address%s%s", input,
 		 status < 0 ? ": " : "", status < 0 ? strerror(errno) : "");
 	return PARSE_ERR;
     }
@@ -433,18 +436,18 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
 	    else
 		*pfxlen = strtoul(cp, &ep, 10);
 	    if (cp == ep) {
-		SNPRINTF("missing or invalid prefix length %s%s%sin address "
+		MSGPRINTF("missing or invalid prefix length %s%s%sin address "
 			 "'%s'", *ep ? "'" : "", ep, *ep ? "' " : "", str);
 		errno = EINVAL;
 		return PARSE_ERR_RESTRICT;
 	    }
 	    if (*ep != 0) {
-		SNPRINTF("invalid input at '%s' in address '%s'", ep, str);
+		MSGPRINTF("invalid input at '%s' in address '%s'", ep, str);
 		errno = EINVAL;
 		return PARSE_ERR_RESTRICT;
 	    }
 	    if (*pfxlen > IN6_HOST_PLEN) {
-		SNPRINTF("prefix length '%lu' is larger than %u in address "
+		MSGPRINTF("prefix length '%lu' is larger than %u in address "
 			 "'%s'", (u_long) *pfxlen, IN6_HOST_PLEN, str);
 		errno = EINVAL;
 		return PARSE_ERR_RESTRICT;
@@ -453,14 +456,14 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
 	} else if (ipflags & PIF_MASK) {
 	    status = inet_pton(AF_INET6, cp, mask);
 	    if (status != 1) {
-		SNPRINTF("'%s' is not a valid ipv6 mask%s%s", cp,
+		MSGPRINTF("'%s' is not a valid ipv6 mask%s%s", cp,
 			 status < 0 ? ": " : "",
 			 status < 0 ? strerror(errno) : "");
 		return PARSE_ERR_RESTRICT;
 	    }
 	    *maskseen = TRUE;
 	} else {
-	    SNPRINTF("invalid input at '%c%s' in address '%s'",
+	    MSGPRINTF("invalid input at '%c%s' in address '%s'",
 		     IP_DELIMITER_PREFIX, cp, str);
 	    errno = EINVAL;
 	    return PARSE_ERR_RESTRICT;
@@ -471,7 +474,7 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
      * Report failure to meet the prefix/mask requirement.
      */
     if ((ipflags & PIF_LENREQ) && !*pfxseen && !*maskseen) {
-	SNPRINTF("missing required prefix length %sin address '%s'",
+	MSGPRINTF("missing required prefix length %sin address '%s'",
 		 (ipflags & PIF_MASK) ? "or mask " : "", str);
 	errno = EINVAL;
 	return PARSE_ERR_RESTRICT;
@@ -504,7 +507,7 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
 	    if (*pfxlen % NBBY) { /* byte will by > 0 here */
 		last_bits = 0xff >> (*pfxlen % NBBY);
 		if ((addr->s6_addr[byte] & last_bits) != 0) {
-		    SNPRINTF("host portion of '%s' must be zero", str);
+		    MSGPRINTF("host portion of '%s' must be zero", str);
 		    errno = EINVAL;
 		    return PARSE_ERR_RESTRICT;
 		}
@@ -515,7 +518,7 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
 	     */
 	    for (byte = byte + 1; byte < sizeof(*addr); byte++) {
 		if (addr->s6_addr[byte] != 0) {
-		    SNPRINTF("host portion of '%s' must be zero", str);
+		    MSGPRINTF("host portion of '%s' must be zero", str);
 		    errno = EINVAL;
 		    return PARSE_ERR_RESTRICT;
 		}
@@ -524,7 +527,7 @@ parse_ipv6addr (const char *str, unsigned long ipflags,
 	    struct in6_addr *msk = mask;
 	    for (byte = 0; byte < sizeof(*msk); byte++) {
 		if (addr->s6_addr[byte] & ~msk->s6_addr[byte]) {
-		    SNPRINTF("masked bits of '%s' must be zero", str);
+		    MSGPRINTF("masked bits of '%s' must be zero", str);
 		    errno = EINVAL;
 		    return PARSE_ERR_RESTRICT;
 		}
@@ -716,14 +719,14 @@ parse_ipaddr (int *af, const char *str, unsigned long ipflags,
 	if (!address) {
 	    address = &addr_l;
 	} else if (address_size < sizeof(struct in_addr)) {
-	    SNPRINTF("'address' not large enough to hold result");
+	    MSGPRINTF("'address' not large enough to hold result");
 	    errno = ENOSPC;
 	    return PARSE_ERR_RESTRICT;
 	}
 	if (!mask) {
 	    mask = &mask_l;
 	} else if (mask_size < sizeof(struct in_addr)) {
-	    SNPRINTF("'mask' not large enough to hold result");
+	    MSGPRINTF("'mask' not large enough to hold result");
 	    errno = ENOSPC;
 	    return PARSE_ERR_RESTRICT;
 	}
@@ -735,19 +738,19 @@ parse_ipaddr (int *af, const char *str, unsigned long ipflags,
         if ((ipflags & PIF_MULTICAST_ONLY) &&
             !IN_MULTICAST(ntohl(*((u_int32_t *)address)))) {
             
-            SNPRINTF("invalid multicast address - '%s'",  str);
+            MSGPRINTF("invalid multicast address - '%s'",  str);
             return PARSE_ERR_RESTRICT;
         }
 
         if ((ipflags & PIF_MARTIAN) &&
             parse_ipaddr_is_martian(*af, address)) {
-            SNPRINTF("martian address not allowed - '%s'", str);
+            MSGPRINTF("martian address not allowed - '%s'", str);
             return PARSE_ERR_RESTRICT;
         }
 
 	if ((ipflags & PIF_UNICASTONLY) &&
 	    !parse_ipaddr_is_unicast(*af, address)) {
-            SNPRINTF("invalid unicast address - '%s'", str);
+            MSGPRINTF("invalid unicast address - '%s'", str);
             return PARSE_ERR_RESTRICT;
 	}
 
@@ -757,14 +760,14 @@ parse_ipaddr (int *af, const char *str, unsigned long ipflags,
 	if (!address) {
 	    address = &addr6_l;
 	} else if (address_size < sizeof(struct in6_addr)) {
-	    SNPRINTF("'address' not large enough to hold result");
+	    MSGPRINTF("'address' not large enough to hold result");
 	    errno = ENOSPC;
 	    return PARSE_ERR_RESTRICT;
 	}
 	if (!mask) {
 	    mask = &mask6_l;
 	} else if (mask_size < sizeof(struct in6_addr)) {
-	    SNPRINTF("'mask' not large enough to hold result");
+	    MSGPRINTF("'mask' not large enough to hold result");
 	    errno = ENOSPC;
 	    return PARSE_ERR_RESTRICT;
 	}
@@ -776,26 +779,26 @@ parse_ipaddr (int *af, const char *str, unsigned long ipflags,
         if ((ipflags & PIF_MULTICAST_ONLY) &&
             !IN6_IS_ADDR_MULTICAST((struct in6_addr *) address)) {
 
-            SNPRINTF("invalid multicast address - '%s'",  str);
+            MSGPRINTF("invalid multicast address - '%s'",  str);
             return PARSE_ERR_RESTRICT;
         } 
 
         if ((ipflags & PIF_MARTIAN) &&
             parse_ipaddr_is_martian(*af, address)) {
-            SNPRINTF("martian address not allowed - '%s'", str);
+            MSGPRINTF("martian address not allowed - '%s'", str);
             return PARSE_ERR_RESTRICT;
         }
 
 	if ((ipflags & PIF_UNICASTONLY) &&
 	    !parse_ipaddr_is_unicast(*af, address)) {
-            SNPRINTF("invalid unicast address - '%s'", str);
+            MSGPRINTF("invalid unicast address - '%s'", str);
             return PARSE_ERR_RESTRICT;
 	}
 
         return PARSE_OK;
 	break;
     }
-    SNPRINTF("unsupported address family");
+    MSGPRINTF("unsupported address family");
     errno = EAFNOSUPPORT;
     return PARSE_ERR;
 }

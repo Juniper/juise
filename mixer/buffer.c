@@ -9,6 +9,9 @@
  * LICENSE.
  */
 
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
+
 #include "local.h"
 #include "buffer.h"
 

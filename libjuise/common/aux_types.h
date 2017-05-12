@@ -77,33 +77,6 @@ typedef enum status_e {
 
 #define	ROUNDUP(a, size) (((a) & ((size)-1)) ? (1 + ((a) | ((size)-1))) : (a))
 
-/*
- * See const_* method below
- */
-typedef union {
-    void        *cg_vp;
-    const void  *cg_cvp;
-} const_remove_glue_t;
-
-/*
- * NOTE:
- *     This is EVIL.  The ONLY time you cast from a const is when calling some
- *     legacy function that does not require const:
- *          - you KNOW does not modify the data
- *          - you can't change
- *     That is why this is provided.  In that situation, the legacy API should
- *     have been written to accept const argument.  If you can change the 
- *     function you are calling to accept const, do THAT and DO NOT use this
- *     HACK.
- */
-static inline void *
-const_drop (const void *ptr)
-{
-    const_remove_glue_t cg;
-    cg.cg_cvp = ptr;
-    return cg.cg_vp;
-}
-
 /* Macros for min/max. */
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b))

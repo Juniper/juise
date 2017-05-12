@@ -33,6 +33,9 @@
 #include <libxslt/extensions.h>
 
 #include "juiseconfig.h"
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
+#include <libpsu/psulog.h>
 #include <libjuise/common/aux_types.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/common/allocadup.h>
@@ -287,9 +290,7 @@ js_mixer_send_simple (js_session_t *jsp, const char *opname, const char *attrs,
     buf[hlen + alen] = '\n';
     memcpy(buf + hlen + alen + 1, data, dlen + 1);
 
-    write(jsp->js_stdout, buf, len);
-
-    return TRUE;
+    return write(jsp->js_stdout, buf, len) > 0;
 }
 
 static void
@@ -391,7 +392,7 @@ js_buffer_read_data (js_session_t *jsp, char *bp, int blen)
     } else {
 	rc = read(jsp->js_stdin, bp, blen);
 	if ((jsio_flags & JSIO_MEMDUMP) && rc > 0)
-	    slaxMemDump("jsio: read", bp, rc, ">", 0);
+	    psu_mem_dump("jsio: read", bp, rc, ">", 0);
     }
 
     return rc;

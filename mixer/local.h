@@ -30,6 +30,8 @@
 #include <libxml/tree.h>
 
 #include <libslax/slax.h>
+#include <libpsu/psustring.h>
+#include <libpsu/psulog.h>
 
 #include <libssh2.h>
 

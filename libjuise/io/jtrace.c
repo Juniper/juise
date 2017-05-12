@@ -37,6 +37,8 @@
 
 #include "juiseconfig.h"
 #include <libslax/slax.h>
+#include <libpsu/psustring.h>
+#include <libpsu/psulog.h>
 #include <libslax/slaxdata.h>
 #include <libslax/xmlsoft.h>
 

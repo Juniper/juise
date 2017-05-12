@@ -25,6 +25,11 @@
 #undef PACKAGE_VERSION
 #undef VERSION
 
+#include <libslax/slax.h>
+#include <libpsu/psubase64.h>
+
+#undef UNUSED /* lighttpd has it's own definition */
+
 /* These include files are from lighttpd */
 #include "server.h"
 #include "stat_cache.h"
@@ -65,11 +70,14 @@
 # include <sys/filio.h>
 #endif
 
-#include "version.h"
-
-#include <libslax/slax.h>
 #include <pwd.h>
 #include "mod_juise.h"
+
+#include "version.h"
+
+#ifndef PACKAGE_DESC
+#define PACKAGE_DESC "juise/clira server"
+#endif
 
 #define LOGERR(_fmt...) \
     log_error_write(srv, __FILE__, __LINE__, _fmt)
@@ -967,8 +975,8 @@ mod_juise_create_env (server *srv, connection *con,
 		&& auth_realm + 1) {
 		size_t hash_len = strlen(auth_realm + 1);
 
-		auth_realm_decoded = (char *) slaxBase64Decode(auth_realm + 1, 
-							      hash_len, &dlen);
+		auth_realm_decoded = psu_base64_decode(auth_realm + 1, 
+						       hash_len, &dlen);
 		if (!auth_realm_decoded) {
 		    LOGERR("s", "Failed to decode auth header");
 		    con->http_status = 400;

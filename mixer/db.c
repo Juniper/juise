@@ -13,6 +13,7 @@
 #include <uuid/uuid.h>
 
 #include "local.h"
+#include <libpsu/psubase64.h>
 #include "debug.h"
 #include "db.h"
 #include "sqlite3.h"
@@ -124,7 +125,7 @@ mx_db_check_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp)
 	fingerprint += 8;
 	len -= 8;
 
-	enckey = slaxBase64Encode(fingerprint, len, &olen);
+	enckey = psu_base64_encode(fingerprint, len, &olen);
 	if (!enckey) {
 	    mx_log("Could not allocate memory for base64-encoded key");
 	    goto cleanup;
@@ -198,7 +199,7 @@ mx_db_save_hostkey (mx_sock_session_t *mssp, mx_request_t *mrp)
     fingerprint += 8;
     len -= 8;
 
-    enckey = slaxBase64Encode(fingerprint, len, &olen);
+    enckey = psu_base64_encode(fingerprint, len, &olen);
     if (!enckey) {
 	mx_log("Could not allocate memory for base64-encoded key");
 	goto cleanup;

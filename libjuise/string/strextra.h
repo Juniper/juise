@@ -34,22 +34,6 @@ extern "C" {
 
 /**
  * @brief
- * Produces output into a dynamically-allocated character string buffer
- * according to a format specification string and an appropriate number
- * of arguments.
- *
- * @param[in] fmt
- *     Format string (see sprintf(3) for a description of the format)
- * @param[in] ...
- *     Arguments sufficient to satisfy the format string
- *
- * @return 
- *     A pointer to the resultant string.
- */
-char *strdupf (const char *fmt, ...) PRINTFLIKE(1, 2);
-
-/**
- * @brief
  * Appends a string to a base string, freeing the appended string,
  * if requested.
  *
@@ -265,24 +249,6 @@ stroffset (char *big, const char *little)
     return t ? t + strlen(little) : 0;
 }
 
-/**
- * @brief
- * Given two strings, return true if they are the same.
- * 
- * Tests the first characters for equality before calling strcmp.
- *
- * @param[in] red, blue
- *     The strings to be compared
- *
- * @return
- *     Nonzero (true) if the strings are the same. 
- */
-static inline int
-streq (const char *red, const char *blue)
-{
-    return *red == *blue && (*red == '\0' || strcmp(red + 1, blue + 1) == 0);
-}
-
 char *strdup2 (char *str1, char *str2);
 char *strredup2 (char *str1, char *str2);
 char *strip_trail (char *s);
@@ -354,20 +320,6 @@ strlcmp (const char *leading, const char *compare, int allow_null)
     if (leading == NULL || *leading == 0) return allow_null;
     return *leading == *compare
 		&& strncmp(leading, compare, strlen(leading)) == 0;
-}
-
-
-/*
- * memdup(): allocates sufficient memory for a copy of the
- * buffer buf, does the copy, and returns a pointer to it.  The pointer may
- * subsequently be used as an argument to the function free(3).
- */
-static inline void *
-memdup (const void *buf, size_t size)
-{
-    void *vp = malloc(size);
-    if (vp) memcpy(vp, buf, size);
-    return vp;
 }
 
 /*
@@ -476,57 +428,6 @@ string_encode32 (u_int8_t *src, size_t src_size, char *dst, size_t dst_size);
 size_t
 string_decode32 (u_int8_t *src, size_t src_size, u_int8_t *dst,
 		 size_t dst_size);
-
-#ifndef HAVE_STRNSTR
-static inline char *
-strnstr (char *s1,  const char *s2, size_t n)
-{
-    char first = *s2++;
-    size_t s2len;
-    char *cp, *np;
-
-    if (first == '\0')	      /* Empty string means immediate match */
-	return s1;
-
-    s2len = strlen(s2); /* Does not count first */
-    for (cp = s1; *cp; cp = np + 1) {
-	np = strchr(cp, first);
-	if (np == NULL)
-	    return NULL;
-	if (s2len == 0)		/* s2 is only one character long */
-	    return np;
-	if (n - (np - s1) < s2len)
-	    return NULL;
-	if (strncmp(np + 1, s2, s2len) == 0)
-	    return np;
-    }
-
-    return NULL;
-}
-#endif /* HAVE_STRNSTR */
-
-#ifndef HAVE_STRLCPY
-static inline size_t
-strlcpy (char *dst, const char *src, size_t left)
-{
-    const char *save = src;
-
-    if (left == 0)
-	return strlen(src);
-
-    while (--left != 0)
-	if ((*dst++ = *src++) == '\0')
-	    break;
-
-    if (left == 0) {
-	*dst = '\0';
-	while (*src++)
-	    continue;
-    }
-
-    return src - save - 1;
-}
-#endif /* HAVE_STRLCPY */
 
 #ifdef __cplusplus
     }

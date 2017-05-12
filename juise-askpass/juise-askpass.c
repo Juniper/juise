@@ -22,6 +22,8 @@
 #include <sys/uio.h>
 
 #include "juiseconfig.h"
+#include <libpsu/psucommon.h>
+#include <libpsu/psustring.h>
 #include <libjuise/string/strextra.h>
 #include <libjuise/io/trace.h>
 

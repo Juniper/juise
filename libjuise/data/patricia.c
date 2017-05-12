@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libpsu/psucommon.h>
+
 #include <libjuise/common/aux_types.h>
 #include <libjuise/common/bits.h>
 #include <libjuise/data/patricia.h>
