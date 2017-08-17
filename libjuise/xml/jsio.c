@@ -280,6 +280,10 @@ js_mixer_send_simple (js_session_t *jsp, const char *opname, const char *attrs,
     jsio_trace("send mixer op '%s' with attrs: '%s', data: '%s'", 
 	    opname ?: "<null>", attrs ?: "<null>", data ?: "<null>");
 
+    /* Sanity check our arguments */
+    if (opname == NULL || attrs == NULL || data == NULL)
+        return -1;
+
     mx_header_t *mhp = (mx_header_t *) buf;
     js_mixer_header_build(mhp, len, opname, js_auth_muxer_id);
 
