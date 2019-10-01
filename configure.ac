@@ -55,8 +55,13 @@ AC_PATH_PROG(SED, sed, /bin/sed)
 
 AC_PATH_PROG(PATH_SSH, ssh, /usr/bin/ssh)
 AC_PATH_PROG(PATH_GZIP, gzip, /usr/bin/gzip)
-AC_DEFINE_UNQUOTED(PATH_SSH, ["$PATH_SSH"], [Path to SSH binary])
-AC_DEFINE_UNQUOTED(PATH_GZIP, ["$PATH_GZIP"], [Path to GZIP binary])
+AC_DEFINE_UNQUOTED(PATH_SSH, ["$PATH_SSH"], [Path to binary])
+AC_DEFINE_UNQUOTED(PATH_GZIP, ["$PATH_GZIP"], [Path to binary])
+
+AC_PATH_PROG(PATH_PERL, perl, /usr/local/bin/perl)
+AC_PATH_PROG(PATH_PYTHON, python, /usr/local/bin/python)
+AC_DEFINE_UNQUOTED(JUISE_PATH_PERL, ["$PATH_PERL"], [Path to binary])
+AC_DEFINE_UNQUOTED(JUISE_PATH_PYTHON, ["$PATH_PYTHON"], [Path to binary])
 
 AC_PROG_LN_S
 
