@@ -57,6 +57,7 @@ xml_escape (char *buf, size_t size, const char *str, boolean attribute,
 		elen = sizeof(XML_ESCAPE_QUOT) - 1;
 		break;
 	    }
+	    goto common;
 
 	case '\'':
 	    if (attribute) {
@@ -64,8 +65,10 @@ xml_escape (char *buf, size_t size, const char *str, boolean attribute,
 		elen = sizeof(XML_ESCAPE_APOS) - 1;
 		break;
 	    }
+	    goto common;
 
 	default:
+	common:
 	    if (XML_IS_BINARY(*cp)) {
 
 		/*
