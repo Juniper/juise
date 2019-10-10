@@ -110,9 +110,13 @@ vlogging_event (int severity, const char *tag, const char *lsname,
     case LOG_DEBUG:
 	if (logging_level < LOG_DEBUG) 
 	    return;
+	break;
+
     case LOG_INFO:
 	if (logging_level < LOG_INFO) 
 	    return;
+	break;
+
     default:
 	break;
     }

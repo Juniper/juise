@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <string.h>
+#include <signal.h>
 
 #include <libxml/tree.h>
 #include <libxml/dict.h>
@@ -47,6 +48,7 @@
 #include <libjuise/xml/jsio.h>
 #include <libjuise/xml/extensions.h>
 #include <libjuise/xml/juisenames.h>
+#include <libjuise/common/allocadup.h>
 
 #include "juise.h"
 
@@ -111,52 +113,29 @@ srv_build_input_doc (lx_document_t *input)
     return input;
 }
 
-static FILE *
-open_script (const char *scriptname, char *full_name, int full_size)
-{
-    char const *extentions[] = { "slax", "xsl", "xslt", "sh", "pl", "", NULL };
-    char const **cpp;
-    FILE *fp;
-    slax_data_node_t *dnp;
+typedef struct script_info_s script_info_t;
 
-    SLAXDATALIST_FOREACH(dnp, &srv_includes) {
-	char *dir = dnp->dn_data;
+#define SCRIPT_INFO_ARGS						\
+        js_session_t *jsp UNUSED, script_info_t *sip UNUSED,	\
+	FILE *scriptfile UNUSED,					\
+	const char *scriptname UNUSED, const char *full_name UNUSED,	\
+	lx_document_t *input UNUSED
 
-	for (cpp = extentions; *cpp; cpp++) {
-	    snprintf(full_name, full_size, "%s/%s%s%s",
-		     dir, scriptname, **cpp ? "." : "", *cpp);
-	    fp = fopen(full_name, "r+");
-	    if (fp)
-		return fp;
-	}
-    }
+typedef int (*script_info_func_t)(SCRIPT_INFO_ARGS);
 
-    return NULL;
-}
+struct script_info_s {
+    const char *si_extension;	/* file name extension */
+    const char *si_exec;	/* Path to run the script */
+    script_info_func_t si_func;	/* Function to run the script */
+};
 
 static int
-srv_run_script (js_session_t *jsp, const char *scriptname,
-		lx_document_t *input)
+run_slax_script (SCRIPT_INFO_ARGS)
 {
     lx_document_t *scriptdoc;
-    FILE *scriptfile;
     lx_document_t *indoc;
     lx_stylesheet_t *script;
     lx_document_t *res = NULL;
-    char full_name[MAXPATHLEN];
-
-    script_count += 1;
-
-    if (scriptname == NULL)
-	errx(1, "missing script name");
-
-    scriptfile = open_script(scriptname, full_name, sizeof(full_name));
-    if (scriptfile == NULL) {
-	trace(trace_file, TRACE_ALL,
-	      "file open failed for script '%s' (%s)",
-	      scriptname, juise_dir ?: JUISE_SCRIPT_DIR);
-	return TRUE;
-    }
 
     scriptdoc = slaxLoadFile(scriptname, scriptfile, NULL, 0);
     if (scriptdoc == NULL)
@@ -196,6 +175,139 @@ srv_run_script (js_session_t *jsp, const char *scriptname,
     xsltFreeStylesheet(script);
 
     return FALSE;
+}
+
+static int
+run_exec_script (SCRIPT_INFO_ARGS)
+{
+    int sv[2];
+    char *argv[3] = { ALLOCADUP(sip->si_exec), ALLOCADUP(full_name), NULL };
+    sigset_t sigblocked, sigblocked_old;
+    pid_t pid;
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
+	trace(trace_file, TRACE_ALL, "socketpair failed: %m");
+        return TRUE;
+    }
+
+    sigemptyset(&sigblocked);
+    sigaddset(&sigblocked, SIGCHLD);
+    sigprocmask(SIG_BLOCK, &sigblocked, &sigblocked_old);
+
+    if ((pid = fork()) == 0) {	/* Child process */
+        sigprocmask(SIG_SETMASK, &sigblocked_old, NULL);
+
+        close(sv[1]);
+	dup2(sv[0], 0);
+	dup2(sv[0], 1);
+
+	int i;
+        for (i = 3; i < 64; ++i) {
+	    close(i);
+	}
+
+        execv(argv[0], argv);
+        _exit(1);
+    }
+
+    close(sv[0]);		/* Close our side of the other side's socket */
+
+    /* Write our output to the child process */
+    slaxDumpToFd(sv[1], input, FALSE);
+
+    /* Close the "write" side of the socket so they see EOF */
+    shutdown(sv[1], SHUT_WR);
+
+    /* Read the results */
+    xmlDocPtr res = xmlReadFd(sv[1], "script.output",
+			      "UTF-8", XSLT_PARSE_OPTIONS);
+    if (res) {
+	trace(trace_file, TRACE_ALL, "no script output");
+	slaxDumpToFd(fileno(jsp->js_fpout), res, FALSE);
+	xmlFreeDoc(res);
+    }
+
+    close(sv[1]);
+    close(sv[0]);
+
+    return FALSE;
+}
+
+static script_info_t script_info[] = {
+    { "slax", NULL, run_slax_script },
+    { "xsl", NULL, run_slax_script },
+    { "xslt", NULL, run_slax_script },
+    { "sh", "/bin/sh", run_exec_script },
+#ifdef JUISE_PATH_PERL
+    { "perl", JUISE_PATH_PERL, run_exec_script },
+    { "pl", JUISE_PATH_PERL, run_exec_script },
+#endif /* JUISE_PATH_PERL */
+#ifdef JUISE_PATH_PYTHON
+    { "python", JUISE_PATH_PYTHON, run_exec_script },
+    { "py", JUISE_PATH_PYTHON, run_exec_script },
+    { "pyc", JUISE_PATH_PYTHON, run_exec_script },
+#endif /* JUISE_PATH_PYTHON */
+    { NULL, NULL, NULL }
+};
+
+static FILE *
+open_script (const char *scriptname, char *full_name, int full_size,
+	     script_info_t **sipp)
+{
+    script_info_t *sip;
+    FILE *fp;
+    slax_data_node_t *dnp;
+
+    SLAXDATALIST_FOREACH(dnp, &srv_includes) {
+	char *dir = dnp->dn_data;
+
+	for (sip = script_info; sip->si_extension; sip++) {
+	    snprintf(full_name, full_size, "%s/%s%s%s",
+		     dir, scriptname, sip->si_extension[0] ? "." : "",
+		     sip->si_extension);
+	    fp = fopen(full_name, "r+");
+	    if (fp) {
+		trace(trace_file, TRACE_ALL,
+		      "server: found script file '%s'", full_name);
+		*sipp = sip;
+		return fp;
+	    }
+	}
+    }
+
+    *sipp = NULL;
+    return NULL;
+}
+
+static int
+srv_run_script (js_session_t *jsp, const char *scriptname,
+		lx_document_t *input)
+{
+    int rc;
+    FILE *scriptfile;
+    char full_name[MAXPATHLEN];
+    script_info_t *sip = NULL;
+
+    script_count += 1;
+
+    if (scriptname == NULL)
+	errx(1, "missing script name");
+
+    trace(trace_file, TRACE_ALL, "server: running script '%s'", scriptname);
+
+    scriptfile = open_script(scriptname, full_name, sizeof(full_name), &sip);
+    if (scriptfile == NULL) {
+	trace(trace_file, TRACE_ALL,
+	      "file open failed for script '%s' (%s)",
+	      scriptname, juise_dir ?: JUISE_SCRIPT_DIR);
+	return TRUE;
+    }
+
+    rc = sip->si_func(jsp, sip, scriptfile, scriptname, full_name, input);
+
+    fclose(scriptfile);
+
+    return rc;
 }
 
 void
