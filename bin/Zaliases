@@ -8,6 +8,7 @@ set opts=' \
 --enable-warnings \
 --enable-readline \
 --enable-printflike \
+--disable-mixer \
 --prefix $HOME/work/root \
 --with-libxml-prefix=$HOME/work/root \
 --with-libxslt-prefix=$HOME/work/root \
