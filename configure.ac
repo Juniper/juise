@@ -8,8 +8,8 @@
 # using the SOFTWARE, you agree to be bound by the terms of that
 # LICENSE.
 
-AC_PREREQ(2.2)
-AC_INIT([juise], [0.9.0], [phil@juniper.net])
+AC_PREREQ([2.71])
+AC_INIT([juise],[0.9.0],[phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 
 case $prefix in
@@ -65,7 +65,9 @@ AC_DEFINE_UNQUOTED(JUISE_PATH_PYTHON, ["$PATH_PYTHON"], [Path to binary])
 
 AC_PROG_LN_S
 
-AC_STDC_HEADERS
+#AC_CHECK_INCLUDES_DEFAULT
+#AC_PROG_EGREP
+
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -432,7 +434,7 @@ AC_SUBST(SLAX_OXTRADOCDIR)
 #
 
 AC_ARG_WITH(ssh2,
-  AC_HELP_STRING([--with-ssh2=PATH],[Use libssh2 installed under PATH]),
+  AS_HELP_STRING([--with-ssh2=PATH],[Use libssh2 installed under PATH]),
   [
     case $with_ssh2 in
       *)
@@ -454,7 +456,7 @@ fi
 #
 
 AC_ARG_WITH(sqlite3,
-  AC_HELP_STRING([--with-sqlite3=PATH],[Use sqlite3 installed under PATH]),
+  AS_HELP_STRING([--with-sqlite3=PATH],[Use sqlite3 installed under PATH]),
   [
     case $with_sqlite3 in
       *)
@@ -477,7 +479,7 @@ fi
 #
 
 AC_MSG_CHECKING(for perl regular expressions support)
-AC_ARG_WITH(pcre, AC_HELP_STRING([--with-pcre],[Enable pcre support (default yes)]),
+AC_ARG_WITH(pcre, AS_HELP_STRING([--with-pcre],[Enable pcre support (default yes)]),
     [WITH_PCRE=$withval],[WITH_PCRE=yes])
 AC_MSG_RESULT([$WITH_PCRE])
 
@@ -696,4 +698,5 @@ AC_MSG_NOTICE([summary of build options:
   printf-like:      ${HAVE_PRINTFLIKE:-no}
   build clira:      ${NEED_CLIRA:-no}
   build mixer:      ${NEED_MIXER:-no}
+  build lighttpd:   ${HAVE_LIGHTTPD:-no}
 ])
