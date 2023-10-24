@@ -106,9 +106,9 @@ rotate_log (const char *log_file, unsigned max_files, unsigned flags)
 	     * what arrangments the main process has for dealing with
 	     * SIGCHLD.
 	     */
-	    if ((pid = vfork()) == 0) {
+	    if ((pid = fork()) == 0) {
 		signal(SIGCHLD, SIG_IGN);
-		if (vfork() == 0) {
+		if (fork() == 0) {
 #ifdef UNIT_TEST
 		    sleep(15);
 		    fprintf(stderr, "rotate_log[%d]: %s %s -f %s\n",
