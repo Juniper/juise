@@ -100,6 +100,12 @@ svnignore:
 
 UGLY_NAME = jcs.prefix:http%3A%2F%2Fxml.juniper.net%2Fjunos%2Fcommit-scripts%2F1.0.ext
 
+#
+# No .ext extension so the libslax dynamic loaded knows this isn't an
+# "extension" namespace (ala extension-element-prefixes)
+#
+UGLY_XNM = http%3A%2F%2Fxml.juniper.net%2Fxnm%2F1.1%2Fxnm
+
 install-exec-hook:
 	@DLNAME=`sh -c '. ./libjuise.la ; echo $$dlname'`; \
 		if [ x"$$DLNAME" = x ]; \
@@ -113,5 +119,21 @@ install-exec-hook:
 		&& prefix=`echo ${UGLY_NAME} | awk -F: '{ print $$1 }'` \
 		&& url=`echo ${UGLY_NAME} | awk -F: '{ print $$2 }'` \
 		&& rm -f $$prefix $$url \
-		&& ${LN_S} ${JUISE_LIBDIR}/$$DLNAME $$url \
-		&& ${LN_S} $$url $$prefix
+		&& ${LN_S} -f ${JUISE_LIBDIR}/$$DLNAME $$url \
+		&& ${LN_S} -f $$url $$prefix \
+		&& ${LN_S} -f ${UGLY_XNM} xnm.prefix
+
+uninstall-hook:
+	@DLNAME=`sh -c '. ./libjuise.la ; echo $$dlname'`; \
+		if [ x"$$DLNAME" = x ]; \
+                    then DLNAME=${LIBNAME}.${SLAX_LIBEXT}; fi ; \
+		if [ "$(build_os)" = "cygwin" ]; \
+		    then DLNAME="../bin/$$DLNAME"; fi ; \
+		echo Install link $$DLNAME "->" ${UGLY_NAME} "..." ; \
+		mkdir -p ${DESTDIR}${SLAX_EXTDIR} ; \
+		cd ${DESTDIR}${SLAX_EXTDIR} \
+		&& chmod +w . \
+		&& prefix=`echo ${UGLY_NAME} | awk -F: '{ print $$1 }'` \
+		&& url=`echo ${UGLY_NAME} | awk -F: '{ print $$2 }'` \
+		&& rm -f $$prefix $$url \
+		&& rm -f xnm.prefix
