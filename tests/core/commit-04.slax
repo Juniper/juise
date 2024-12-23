@@ -13,7 +13,7 @@ match configuration {
 	    <domain-name> "working.com";
 	}
     }
-    <change-transient> {
+    <transient-change> {
 	<system> {
 	    <domain-search> "working.org";
 	}
