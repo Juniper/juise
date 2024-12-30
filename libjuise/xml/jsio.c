@@ -2241,8 +2241,13 @@ js_session_open (js_session_opts_t *jsop, int flags)
 	    argv[argc++] = conn_timeout_str;
 	}
 
+	/* Add the global options */
 	for (i = 0; i < jsio_ssh_options_count; i++)
 	    argv[argc++] = jsio_ssh_options[i];
+
+	/* Add the options from the <ssh-option> element */
+	for (i = 0; i < jsop->jso_argc; i++)
+	    argv[argc++] = jsop->jso_argv[i];
 
 	if (jsop->jso_port) {
 	    port_str = strdupf("-p%u", jsop->jso_port);
