@@ -107,6 +107,8 @@ typedef struct js_session_opts_s {
     uint jso_port;		/* Port number */
     uint jso_timeout;		/* Session timeout */
     uint jso_connect_timeout;	/* Connect timeout */
+    int jso_argc;		/* Count of generic arguments */
+    char **jso_argv;		/* Generic arguments */
 } js_session_opts_t;
 
 /*
