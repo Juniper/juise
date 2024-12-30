@@ -1,0 +1,17 @@
+version 1.3;
+
+import "../import/junos.xsl";
+
+var $connection = jcs:open();
+
+match configuration {
+   <change> {
+        <system> {
+             <domain-name> "new.example.com";
+        }
+   }
+
+   var $result = jcs:execute($connection, "get-interface-information");
+
+   copy-of $result;
+}
