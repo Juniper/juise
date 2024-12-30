@@ -47,7 +47,9 @@ EXTRA_DIST = \
     ${OUTPUT}.html \
     ${OUTPUT}.txt
 
-doc docs: ${OUTPUT}.txt ${OUTPUT}.html html
+doc docs: html
+
+old: ${OUTPUT}.txt ${OUTPUT}.html
 
 ${OUTPUT}.txt: ${INPUT} ${OXTRADOC}
 	${OXTRADOC_CMD} -m text -o $@ $<
