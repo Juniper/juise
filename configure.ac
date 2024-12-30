@@ -43,6 +43,8 @@ AC_CONFIG_MACRO_DIR([m4])
 # Must be after AM_PROG_AR
 LT_INIT([dlopen])
 
+PKG_CHECK_MODULES([libssh2], [libssh2])
+
 AC_PATH_PROG(BASENAME, basename, /usr/bin/basename)
 AC_PATH_PROG(CAT, cat, /bin/cat)
 AC_PATH_PROG(CHMOD, chmod, /bin/chmod)
@@ -426,28 +428,6 @@ AC_SUBST(SLAX_LIBDIR)
 AC_SUBST(SLAX_OXTRADOCDIR)
 
 #
-# ---- handle libssh2 (which does not have a libssh2-config)
-#
-
-AC_ARG_WITH(ssh2,
-  AS_HELP_STRING([--with-ssh2=PATH],[Use libssh2 installed under PATH]),
-  [
-    case $with_ssh2 in
-      *)
-        LDFLAGS="$LDFLAGS -L$with_ssh2/lib"
-        CPPFLAGS="$CPPFLAGS -I$with_ssh2/include"
-        ;;
-    esac
-  ])
-
-HAVE_LIBSSH2=no
-AC_CHECK_LIB(ssh2, libssh2_channel_open_ex, HAVE_LIBSSH2=yes, HAVE_LIBSSH2=no)
-if test "$HAVE_LIBSSH2" == "no" -a "$NEED_MIXER" == "yes"
-then
-        AC_MSG_ERROR(--enable-mixer specified but libssh2 libraries not installed)
-fi
-
-#
 # ---- handle sqlite3
 #
 
@@ -694,4 +674,6 @@ AC_MSG_NOTICE([summary of build options:
   printf-like:      ${HAVE_PRINTFLIKE:-no}
   build clira:      ${NEED_CLIRA:-no}
   build mixer:      ${NEED_MIXER:-no}
+  libssh2_CFLAGS:   ${libssh2_CFLAGS}
+  libssh2_LIBS:     ${libssh2_LIBS}
 ])
