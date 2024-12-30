@@ -366,6 +366,17 @@ ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, js_session_opts_t *jsop)
 	    } else if (streq(key, "port")) {
 		jsop->jso_port = atoi(value);
 
+	    } else if (streq(key, "ssh-option")) {
+		/* Record the option for later use by ssh (see jsio.c) */
+		int argc = jsop->jso_argc + 1;
+		char **argv = realloc(jsop->jso_argv,
+				      sizeof(jsop->jso_argv[0]) * argc);
+		if (argv) {
+		    jsop->jso_argv[jsop->jso_argc] = xmlStrdup2(value);
+		    jsop->jso_argv = argv;
+		    jsop->jso_argc = argc;
+		}
+
 	    } else if (streq(key, "target")) {
 		jsop->jso_server = xmlStrdup2(value);
 
