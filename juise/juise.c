@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -280,7 +281,9 @@ juise_build_input (const char *root_name, lx_node_t *nodep,
 	xmlAddChild(input, nodep);
 
 	/* Hostname */
-	if (gethostname(hostname, sizeof(hostname)) == 0)
+	if (opt_target)
+	    juise_add_node(docp, nodep, ELT_HOST_NAME, opt_target);
+	else if (gethostname(hostname, sizeof(hostname)) == 0)
 	    juise_add_node(docp, nodep, ELT_HOST_NAME, hostname);
 
 	juise_add_node(docp, nodep, ELT_PRODUCT, "juise");
@@ -295,15 +298,14 @@ juise_build_input (const char *root_name, lx_node_t *nodep,
 	juise_add_node(docp, nodep, ELT_LOCALTIME_ISO, time_isostr(&now));
 
 	juise_add_node(docp, nodep, ELT_SCRIPT_TYPE, "op");
+	juise_add_node(docp, nodep, ELT_PID, "12345");
+	juise_add_node(docp, nodep, ELT_RE_MASTER, "");
 
 	childp = xmlNewDocNode(docp, NULL,
 			       (const xmlChar *) ELT_USER_CONTEXT, NULL);
 	if (childp == NULL)
 	    goto fail;
 	xmlAddChild(nodep, childp);
-
-	if (opt_target)
-	    juise_add_node(docp, childp, ELT_HOST_NAME, opt_target);
 
 	if (opt_username)
 	    juise_add_node(docp, childp, ELT_USER, opt_username);
