@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <netinet/in.h>
