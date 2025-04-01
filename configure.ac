@@ -9,7 +9,7 @@
 # LICENSE.
 
 AC_PREREQ([2.72])
-AC_INIT([juise],[0.9.0],[phil@juniper.net])
+AC_INIT([juise],[3.0.0],[phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 
 case $prefix in
@@ -66,8 +66,6 @@ AC_DEFINE_UNQUOTED(JUISE_PATH_PERL, ["$PATH_PERL"], [Path to binary])
 AC_DEFINE_UNQUOTED(JUISE_PATH_PYTHON, ["$PATH_PYTHON"], [Path to binary])
 
 AC_PROG_LN_S
-
-AC_STDC_HEADERS
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
