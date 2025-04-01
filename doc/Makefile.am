@@ -47,7 +47,9 @@ EXTRA_DIST = \
     ${OUTPUT}.html \
     ${OUTPUT}.txt
 
-doc docs: ${OUTPUT}.txt ${OUTPUT}.html
+doc docs: html
+
+old: ${OUTPUT}.txt ${OUTPUT}.html
 
 ${OUTPUT}.txt: ${INPUT} ${OXTRADOC}
 	${OXTRADOC_CMD} -m text -o $@ $<
@@ -60,3 +62,14 @@ ${OUTPUT}.xml \
 ${OUTPUT}.txt \
 ${OUTPUT}.fxml \
 ${OUTPUT}.html
+
+SPHINX = python3 -msphinx
+
+html sphinx sphinx-html:
+	${GREP} '.. admonition: ' ${srcdir}/*rst; true
+	${SPHINX} -M html ${srcdir} sphinx
+
+clean-local: sphinx-clean
+
+sphinx-clean:
+	${SPHINX} -M clean ${srcdir} sphinx

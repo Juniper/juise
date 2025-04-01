@@ -8,7 +8,7 @@
 # using the SOFTWARE, you agree to be bound by the terms of that
 # LICENSE.
 
-AC_PREREQ([2.71])
+AC_PREREQ([2.72])
 AC_INIT([juise],[0.9.0],[phil@juniper.net])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 
@@ -43,6 +43,8 @@ AC_CONFIG_MACRO_DIR([m4])
 # Must be after AM_PROG_AR
 LT_INIT([dlopen])
 
+PKG_CHECK_MODULES([libssh2], [libssh2])
+
 AC_PATH_PROG(BASENAME, basename, /usr/bin/basename)
 AC_PATH_PROG(CAT, cat, /bin/cat)
 AC_PATH_PROG(CHMOD, chmod, /bin/chmod)
@@ -65,9 +67,7 @@ AC_DEFINE_UNQUOTED(JUISE_PATH_PYTHON, ["$PATH_PYTHON"], [Path to binary])
 
 AC_PROG_LN_S
 
-#AC_CHECK_INCLUDES_DEFAULT
-#AC_PROG_EGREP
-
+AC_STDC_HEADERS
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -699,4 +699,6 @@ AC_MSG_NOTICE([summary of build options:
   build clira:      ${NEED_CLIRA:-no}
   build mixer:      ${NEED_MIXER:-no}
   build lighttpd:   ${HAVE_LIGHTTPD:-no}
+  libssh2_CFLAGS:   ${libssh2_CFLAGS}
+  libssh2_LIBS:     ${libssh2_LIBS}
 ])

@@ -9,12 +9,11 @@ set opts=' \
 --enable-readline \
 --enable-printflike \
 --disable-mixer \
+--without-lighttd \
 --prefix $HOME/work/root \
 --with-libxml-prefix=$HOME/work/root \
 --with-libxslt-prefix=$HOME/work/root \
 --with-libslax-prefix=$HOME/work/root \
---with-lighttpd-obj=$HOME/work/slax/lighttpd-for-juise/build \
---with-lighttpd-src=$HOME/work/slax/lighttpd-for-juise \
 --with-ssh2=$HOME/work/root \
 --with-sqlite3=/opt/local \
 --with-lighttpd-lib=$HOME/work/root/lib \

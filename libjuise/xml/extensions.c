@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <netinet/in.h>
@@ -365,6 +366,17 @@ ext_jcs_extract_second_arg (xmlNodeSetPtr nodeset, js_session_opts_t *jsop)
 
 	    } else if (streq(key, "port")) {
 		jsop->jso_port = atoi(value);
+
+	    } else if (streq(key, "ssh-option")) {
+		/* Record the option for later use by ssh (see jsio.c) */
+		int argc = jsop->jso_argc + 1;
+		char **argv = realloc(jsop->jso_argv,
+				      sizeof(jsop->jso_argv[0]) * argc);
+		if (argv) {
+		    jsop->jso_argv[jsop->jso_argc] = xmlStrdup2(value);
+		    jsop->jso_argv = argv;
+		    jsop->jso_argc = argc;
+		}
 
 	    } else if (streq(key, "target")) {
 		jsop->jso_server = xmlStrdup2(value);
@@ -1384,170 +1396,6 @@ ext_jcs_parse_ip (xmlXPathParserContext *ctxt, int nargs)
 }
 
 /*
- * This function calculates the diffrence between times 'new' and 'old'
- * by subtracting 'old' from 'new' and put the result in 'diff'.
- */
-static void
-time_diff (const struct timeval *new, const struct timeval *old,
-	   struct timeval *diff)
-{
-    long sec, usec;
-
-    if (!diff)
-	return;
-
-    if (new->tv_usec < old->tv_usec) {
-	usec = new->tv_usec + 1000000;
-	sec = new->tv_sec - 1;
-    } else {
-	usec = new->tv_usec;
-	sec = new->tv_sec;
-    }
-
-    diff->tv_sec = sec - old->tv_sec;
-    diff->tv_usec = usec - old->tv_usec;
-}
-
-/*
- * Usage: 
- *     var $rc = jcs:dampen($tag, max, frequency);
- *
- * dampen function returns true/false based on number of times the
- * function call made by a script. If dampen function is called less
- * than the 'max' times in last 'frequency' of minutes then it will
- * return 'true' which means a success otherwise it will return
- * 'false' which means the call is failed. The values for 'max' and
- * 'frequency' should be passed as greater than zero.
- */
-static void
-ext_jcs_dampen (xmlXPathParserContext *ctxt, int nargs)
-{
-    char filename[MAXPATHLEN + 1];
-    char new_filename[MAXPATHLEN + 1];
-    char buf[BUFSIZ], *cp, *tag;
-    FILE *old_fp = NULL, *new_fp = NULL;
-    struct stat sb;
-    struct timeval tv, rec_tv, diff;
-    int fd, rc, max, freq, no_of_recs = 0;
-
-    /* Get the time of invocation of this function */
-    gettimeofday(&tv, NULL);
-    
-    if (nargs != 3) {
-	xmlXPathSetArityError(ctxt);
-	return;
-    } else {
-	xmlChar *max_str, *freq_str, *tag_str;
-
-	freq_str = xmlXPathPopString(ctxt);
-	freq = xmlAtoi(freq_str);
-	max_str = xmlXPathPopString(ctxt);
-	max = xmlAtoi(max_str);
-	tag_str = xmlXPathPopString(ctxt);
-	tag = (char *) tag_str;
-	xmlFree(freq_str);
-	xmlFree(max_str);
-    }
-
-    if (max <= 0 || freq <= 0) {
-	LX_ERR("Values less than or equal to zero are not valid\n");
-	return;
-    }
-
-    /*
-     * Creating the absolute filename by appending '_PATH_VARRUN' and
-     * the tag, and check whether this file is already present.
-     */
-    snprintf(filename, sizeof(filename), "%s%s", _PATH_VARRUN, tag);
-
-    xmlFree(tag);
-
-    rc = stat(filename, &sb);
-
-    /* If the file is already present then open it in the read mode */
-    if (rc != -1) {
-	old_fp = fopen(filename, "r");
-	if (!old_fp) {
-	    LX_ERR("File open failed for file: %s\n", filename);
-	    return;
-	}
-    }
-
-    /*
-     * Create the file to write the new records with the name of
-     * <filename+> and associating a stream with this to write on
-     * it
-     */
-    snprintf(new_filename, sizeof(new_filename), "%s+", filename);
-    fd = open(new_filename, OPEN_FLAGS, OPEN_PERMS);
-    if (fd == -1) {
-	LX_ERR("File open failed for file: %s\n", new_filename);
-	return;
-    } else
-	new_fp = fdopen(fd, "w+");
-
-    /* If the old records are present corresponding to this tag */
-    if (old_fp) {
-	while (fgets(buf, sizeof(buf), old_fp)) {
-	    cp = strchr(buf, '-');
-	    if (cp == NULL)
-		continue;
-
-	    *cp = '\0';
-	    rec_tv.tv_sec = strtol(buf, NULL, 10);
-	    cp++;
-	    rec_tv.tv_usec = strtol(cp, NULL, 10);
-	    time_diff(&tv, &rec_tv, &diff);
-
-	    /*
-	     * If the time difference between this record and current
-	     * time stamp then write it into the new file
-	     */
-	    if (diff.tv_sec < (freq * 60) ||
-		(diff.tv_sec == (freq * 60) && diff.tv_usec == 0)) {
-		memset(buf, '\0', sizeof(buf));
-		snprintf(buf, sizeof(buf), "%lu-%lu\n",
-			 (unsigned long) rec_tv.tv_sec,
-			 (unsigned long) rec_tv.tv_usec);
-		if (fputs(buf, new_fp)) {
-		    LX_ERR("Write operation is failed\n");
-		    return;
-		}
-		no_of_recs++;
-	    }
-	}
-	fclose(old_fp);
-    }
-
-    if (no_of_recs < max) {
-	memset(buf, '\0', sizeof(buf));
-	snprintf(buf, sizeof(buf), "%lu-%lu\n",
-		 (unsigned long) tv.tv_sec, (unsigned long) tv.tv_usec);
-	if (fputs(buf, new_fp)) {
-	    LX_ERR("Write operation is failed\n");
-	    return;
-	}
-	no_of_recs++;
-	rc = TRUE;
-    } else
-	rc = FALSE;
-
-    /*
-     * Closing the <filename+>, delete the <filename> and move <filename+>
-     * to <filename>
-     */
-    fclose(new_fp);
-    unlink(filename);
-    rename(new_filename, filename);
-
-
-    if (rc == TRUE)
-	xmlXPathReturnTrue(ctxt);
-    else
-	xmlXPathReturnFalse(ctxt);
-}
-
-/*
  * Register our extension functions.  We try to hide all the
  * details of the libxslt interactions here.
  */
@@ -1557,7 +1405,6 @@ ext_jcs_register_all (void)
     slaxExtRegisterOther(JCS_FULL_NS);
 
     slaxRegisterFunction(JCS_FULL_NS, "close", ext_jcs_close);
-    slaxRegisterFunction(JCS_FULL_NS, "dampen", ext_jcs_dampen);
     slaxRegisterFunction(JCS_FULL_NS, "execute", ext_jcs_execute);
     slaxRegisterFunction(JCS_FULL_NS, "get-hello", ext_jcs_gethello);
     slaxRegisterFunction(JCS_FULL_NS, "get-protocol", ext_jcs_getprotocol);
@@ -1578,11 +1425,6 @@ slax_function_table_t slaxJcsTable[] = {
 	"close", ext_jcs_close,
 	"Close a NETCONF (or other) connection",
 	"(connection)", XPATH_UNDEFINED,
-    },
-    {
-	"dampen", ext_jcs_dampen,
-	"Dampen an event by rate and time limiting it",
-	"(name, max-count, period-in-minutes)", XPATH_BOOLEAN,
     },
     {
 	"execute", ext_jcs_execute,

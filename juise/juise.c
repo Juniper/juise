@@ -18,12 +18,14 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <pwd.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <getopt.h>
 
 #include <libxml/tree.h>
 #include <libxml/dict.h>
@@ -66,6 +68,7 @@ static int nbparams;
 
 int dump_all;
 
+static int opt_number = -1; 	/* Index into our long options array */
 static char **opt_args;
 int opt_debugger;		/* Invoke the debugger */
 int opt_indent;			/* Pretty-print XML output */
@@ -77,6 +80,71 @@ const char *opt_output_format = "compare";
 char *opt_username;
 char *opt_target;
 char *opt_auth_socket;
+
+static struct opts {
+    int o_auth_div_id;
+    int o_auth_muxer_id;
+    int o_auth_websocket_id;
+    int o_auth_socket;
+    int o_cgi;
+    int o_debug_io;
+    int o_fastcgi;
+    int o_ignore_arguments;
+    int o_local;
+    int o_no_randomize;
+    int o_no_tty;
+    int o_output_format;
+    int o_rpc;
+    int o_rpc_on_box;
+    int o_version_only;
+    int o_wait;
+    int o_xml;
+} opts;
+
+static struct option long_opts[] = {
+    { "agent", no_argument, NULL, 'A' },
+    { "auth-div-id", required_argument, &opts.o_auth_div_id, 1 },
+    { "auth-muxer-id", required_argument, &opts.o_auth_muxer_id, 1 },
+    { "auth-websocket-id", required_argument, &opts.o_auth_websocket_id, 1 },
+    { "auth-socket", required_argument, &opts.o_auth_socket, 1 },
+    { "cgi", no_argument, &opts.o_cgi, 1 },
+    { "commit-script", no_argument, NULL, 'c' },
+    { "debug", no_argument, NULL, 'd' },
+    { "debug-io", no_argument, &opts.o_debug_io, 1 },
+    { "directory", required_argument, NULL, 'D' },
+    { "fastcgi", no_argument, &opts.o_fastcgi, 1 },
+    { "help", no_argument, NULL, 'H' },
+    { "ignore-arguments", no_argument, &opts.o_ignore_arguments, 1 },
+    { "include", required_argument, NULL, 'I' },
+    { "input", required_argument, NULL, 'i' },
+    { "indent", no_argument, NULL, 'g' },
+    { "lib", required_argument, NULL, 'L' },
+    { "load", no_argument, NULL, 'l' },
+    { "local", no_argument, &opts.o_local, 1 },
+    { "junoscript", no_argument, NULL, 'J' },
+    { "mixer", required_argument, NULL, 'M' },
+    { "no-randomize", no_argument, &opts.o_no_randomize, 1 },
+    { "no-tty", no_argument, &opts.o_no_tty, 1 },
+    { "op", no_argument, NULL, 'O' },
+    { "output-format", required_argument, &opts.o_output_format, 1 },
+    { "param", required_argument, NULL, 'a' },
+    { "protocol", required_argument, NULL, 'P' },
+    { "rpc", no_argument, &opts.o_rpc, 1 },
+    { "rpc-on-box", no_argument, &opts.o_rpc_on_box, 1 },
+    { "run-server", no_argument, NULL, 'R' },
+    { "ssh-options", required_argument, NULL, 'S' },
+    { "script", required_argument, NULL, 's' },
+    { "target", required_argument, NULL, 'T' },
+    { "trace", required_argument, NULL, 't' },
+    { "user", required_argument, NULL, 'u' },
+    { "username", required_argument, NULL, 'u' },
+    { "verbose", no_argument, NULL, 'v' },
+    { "version", no_argument, NULL, 'V' },
+    { "version-only", no_argument, &opts.o_version_only, 1 },
+    { "wait", required_argument, &opts.o_wait, 1 },
+    { "xml", no_argument, &opts.o_xml, 1 },
+    { NULL, 0, NULL, 0 }
+};
 
 static rpc_media_type_map_t mtypemap[] = {
     { MEDIA_TYPE_TEXT_HTML, RPC_FORMAT_HTML },
@@ -195,7 +263,7 @@ juise_build_input (const char *root_name, lx_node_t *nodep,
 
     input = xmlNewDocNode(docp, NULL, (const xmlChar *) root_name, NULL);
 
-    while (input) {		/* Not _really_ a loop, but.... */
+    if (input) {
 	xmlDocSetRootElement(docp, input);
 
 	/* Add the junos namespace */
@@ -208,11 +276,14 @@ juise_build_input (const char *root_name, lx_node_t *nodep,
 	nodep = xmlNewDocNode(docp, NULL,
 			      (const xmlChar *) ELT_JUNOS_CONTEXT, NULL);
 	if (nodep == NULL)
-	    break;
+	    goto fail;
+
 	xmlAddChild(input, nodep);
 
 	/* Hostname */
-	if (gethostname(hostname, sizeof(hostname)) == 0)
+	if (opt_target)
+	    juise_add_node(docp, nodep, ELT_HOST_NAME, opt_target);
+	else if (gethostname(hostname, sizeof(hostname)) == 0)
 	    juise_add_node(docp, nodep, ELT_HOST_NAME, hostname);
 
 	juise_add_node(docp, nodep, ELT_PRODUCT, "juise");
@@ -227,15 +298,14 @@ juise_build_input (const char *root_name, lx_node_t *nodep,
 	juise_add_node(docp, nodep, ELT_LOCALTIME_ISO, time_isostr(&now));
 
 	juise_add_node(docp, nodep, ELT_SCRIPT_TYPE, "op");
+	juise_add_node(docp, nodep, ELT_PID, "12345");
+	juise_add_node(docp, nodep, ELT_RE_MASTER, "");
 
 	childp = xmlNewDocNode(docp, NULL,
 			       (const xmlChar *) ELT_USER_CONTEXT, NULL);
 	if (childp == NULL)
-	    break;
+	    goto fail;
 	xmlAddChild(nodep, childp);
-
-	if (opt_target)
-	    juise_add_node(docp, childp, ELT_HOST_NAME, opt_target);
 
 	if (opt_username)
 	    juise_add_node(docp, childp, ELT_USER, opt_username);
@@ -280,8 +350,6 @@ juise_build_input (const char *root_name, lx_node_t *nodep,
 		    xmlAddChild(rootp, newp);
 	    }
 	}
-
-	break;			/* Not really a loop */
     }
 
  fail:
@@ -521,24 +589,10 @@ static lx_document_t *
 juise_build_input_commit (lx_nodeset_t *config_data)
 {
     lx_document_t *docp;
-    lx_node_t *rootp, *nodep;
-    int i;
 
     docp = juise_build_input(ELT_COMMIT_SCRIPT_INPUT, NULL, config_data);
     if (docp == NULL)
 	return NULL;
-
-    rootp = xmlDocGetRootElement(docp);
-
-    for (i = 0; i < config_data->nodeNr; i++) {
-	nodep = config_data->nodeTab[i];
-	if (nodep == NULL)
-	    continue;
-
-	xmlNodePtr newp = xmlDocCopyNode(nodep, docp, 1);
-	if (newp)
-	    xmlAddChild(rootp, newp);
-    }
 
     return docp;
 }
@@ -1695,8 +1749,12 @@ build_argv (const char *argstring)
 }
 
 static void
-print_version (void)
+print_version (int full)
 {
+    printf("version " SLAX_VERSION ";\n");
+    if (!full)
+	return;
+
     printf("libjuice version %s\n", LIBJUISE_VERSION);
     printf("libslax version %s\n",  LIBSLAX_VERSION);
     printf("Using libxml %s, libxslt %s and libexslt %s\n",
@@ -1715,15 +1773,24 @@ print_help (void)
 {
     fprintf(stderr,
 "Usage: juise [@target] [options] [script] [param value]*\n"
+"   Modes:\n"
+"\t--cgi: run a CGI script\n"
+"\t--commit-script OR -c: test a commit script\n"
+"\t--fastcgi: run a fast CGI script\n"
+"\t--op OR -O: test an op script\n"
+"\t--rpc: Executes an RPC\n"
+"\t--rpc-on-box: Executes RPC on localhost\n"
+"\t--run-server OR -R: run in juise server mode\n"
+"\t--xml: emit XML\n"
+"\n   Options:\n"
 "\t--agent OR -A: enable ssh-agent forwarding\n"
 "\t--auth-socket <socket-path>: for authentication when run on localhost\n"
-"\t--commit-script OR -c: test a commit script\n"
 "\t--debug OR -d: use the libslax debugger\n"
 "\t--directory <dir> OR -D <dir>: set the directory for server scripts\n"
 "\t--include <dir> OR -I <dir>: search directory for includes/imports\n"
 "\t--input <file> OR -i <file>: use given file for input\n"
 "\t--indent OR -g: indent output ala output-method/indent\n"
-"\t--junoscript OR -J: use junoscript API protocol\n"
+"\t--junoscript OR -J: use junoscript API protocol (native JUNOS)\n"
 "\t--load OR -l: load commit script changes in test mode\n"
 "\t--lib <dir> OR -L <dir>: search directory for extension libraries\n"
 "\t--mixer OR -M: use mixer connection (if available)\n"
@@ -1731,8 +1798,8 @@ print_help (void)
 "\t--param <name> <value> OR -a <name> <value>: pass parameters\n"
 "\t--protocol <name> OR -P <name>: use the given API protocol\n"
 "\t--rpc-on-box: Executes RPC on localhost\n"
-"\t--run-server OR -R: run in juise server mode\n"
-"\t--script <name> OR -S <name>: run the given script\n"
+"\t--ssh-options <value> OR -S <value>: provide options to ssh(1)\n"
+"\t--script <name> OR -s <name>: run the given script\n"
 "\t--target <name> OR -T <name>: specify the default target device\n"
 "\t--trace <file> OR -t <file>: write trace data to a file\n"
 "\t--user <name> OR -u <name>: specify the user name for API connections\n"
@@ -1742,6 +1809,23 @@ print_help (void)
 
 "\nProject juise home page: https://github.com/Juniper/juise\n"
 "\n");
+}
+
+static char *
+check_arg (const char *name)
+{
+    char *arg = optarg;
+
+    if (arg)
+	return arg;
+
+    if (opt_number > 0) {
+	struct option *op = long_opts + opt_number;
+	const char *opt = op ? op->name : "valid";
+	errx(1, "missing %s argument for '--%s' option", name, opt);
+    }
+
+    errx(1, "invalid argument for '%s'", name);
 }
 
 int
@@ -1783,169 +1867,231 @@ main (int argc UNUSED, char **argv, char **envp)
     }
 
     if (!skip_args) {
-	argv += 1;		/* Skip argv[0] */
     parse_args:
-	for ( ; *argv; argv++) {
-	    cp = *argv;
 
-	    if (*cp != '-') {
+	for (;;) {
+	    bzero(&opts, sizeof(opts));
+	    opt_number = -1;
+
+
+	    int rc = getopt_long(argc, argv,
+				 "Aa:cdD:HI:i:gL:lJM:OP:RS:s:T:t:u:Vv",
+				 long_opts, &opt_number);
+	    if (rc < 0)
 		break;
 
-	    } else if (streq(cp, "--agent") || streq(cp, "-A")) {
+	    switch (rc) {
+	    case '?':
+	    case ':':
+		errx(1, "Use '--help' for complete help");
+
+	    case 'A':
 		ssh_agent_forwarding = TRUE;
+		break;
 
-	    } else if (streq(cp, "--auth-socket")) {
-		opt_auth_socket = *++argv;
+	    case 'a':
+		{
+		    char *pname = check_arg("parameter name");
+		    char *eq = strchr(pname, '=');
+		    char *pvalue;
+		    size_t pnamelen;
 
-	    } else if (streq(cp, "--commit-script") || streq(cp, "-c")) {
+		    if (eq) {
+			pnamelen = eq - pname;
+			pvalue = eq + 1;
+
+		    } else {
+			pnamelen = strlen(pname);
+			optarg = argv[optind++];
+			pvalue = check_arg("parameter value");
+		    }
+
+		    /* Make local nul-terminated copy of the name */
+		    char *tname = alloca(pnamelen + 1);
+		    memcpy(tname, pname, pnamelen);
+		    tname[pnamelen] = '\0';
+
+		    juise_make_param(tname, pvalue, TRUE);
+
+		    break;
+		}
+
+	    case 'c':
+		if (func)
+		    errx(1, "open one mode allowed");
 		opt_commit_script = TRUE;
 		func = do_test_commit_script;
+		break;
 
-	    } else if (streq(cp, "--cgi")) {
-		func = do_run_as_cgi;
-
-	    } else if (streq(cp, "--debug") || streq(cp, "-d")) {
+	    case 'd':
 		opt_debugger = TRUE;
+		break;
 
-	    } else if (streq(cp, "--debug-io")) {
-		jsio_flags |= JSIO_MEMDUMP;
+	    case 'D':
+		srv_add_path(check_arg("path directory"));
+		break;
 
-	    } else if (streq(cp, "--directory") || streq(cp, "-D")) {
-		srv_add_path(*++argv);
-
-	    } else if (streq(cp, "--fastcgi")) {
-		func = do_run_as_fastcgi;
-
-	    } else if (streq(cp, "--help")) {
+	    case 'H':
 		print_help();
 		return -1;
 
-	    } else if (streq(cp, "--ignore-arguments")) {
-		opt_ignore_arguments = TRUE;
+	    case 'I':
+		slaxIncludeAdd(check_arg("include directory"));
 		break;
 
-	    } else if (streq(cp, "--include") || streq(cp, "-I")) {
-		slaxIncludeAdd(*++argv);
+	    case 'i':
+		input = check_arg("input document");
+		break;
 
-	    } else if (streq(cp, "--input") || streq(cp, "-i")) {
-		input = *++argv;
-
-	    } else if (streq(cp, "--indent") || streq(cp, "-g")) {
+	    case 'g':
 		opt_indent = TRUE;
+		break;
 
-	    } else if (streq(cp, "--junoscript") || streq(cp, "-J")) {
+	    case 'J':
 		stype = ST_JUNOSCRIPT;
+		break;
 
-	    } else if (streq(cp, "--load") || streq(cp, "-l")) {
+	    case 'L':
+		slaxDynAdd(check_arg("library directory"));
+		break;
+
+	    case 'l':
 		opt_load = TRUE;
+		break;
 
-	    } else if (streq(cp, "--local")) {
-		opt_local = TRUE;
+	    case 'M':
+		jsio_set_mixer(check_arg("mixer"));
+		break;
 
-	    } else if (streq(cp, "--lib") || streq(cp, "-L")) {
-		slaxDynAdd(*++argv);
-
-	    } else if (streq(cp, "--mixer") || streq(cp, "-M")) {
-		jsio_set_mixer(*++argv);
-
-	    } else if (streq(cp, "--no-randomize")) {
-		randomize = 0;
-
-	    } else if (streq(cp, "--no-tty")) {
-		ioflags |= SIF_NO_TTY;
-
-	    } else if (streq(cp, "--op") || streq(cp, "-O")) {
+	    case 'O':
 		if (func)
-		    errx(1, "open one action allowed");
+		    errx(1, "open one mode allowed");
 		func = do_run_op;
+		break;
 
-	    } else if (streq(cp, "--output-format")) {
-		opt_output_format = *++argv;
-		if (!streq(opt_output_format, "xml")
-			    && !streq(opt_output_format, "none")
-			    && !streq(opt_output_format, "text")
-			    && !streq(opt_output_format, "compare"))
-		    errx(1, "invalid output format: %s", opt_output_format);
-	    
-	    } else if (streq(cp, "--param") || streq(cp, "-a")) {
-		char *pname = *++argv;
-		char *pvalue = *++argv;
-
-		juise_make_param(pname, pvalue, TRUE);
-
-	    } else if (streq(cp, "--protocol") || streq(cp, "-P")) {
-		cp = *++argv;
+	    case 'P':
+		cp = check_arg("protocol name");
 		stype = jsio_session_type(cp);
-		if (stype == ST_MAX) {
-		    fprintf(stderr, "invalid protocol: %s\n", cp);
-		    return -1;
-		}
+		if (stype == ST_MAX)
+		    errx(1, "invalid protocol: %s", cp);
+
 		jsio_set_default_session_type(stype);
+		break;
 
-	    } else if (streq(cp, "--rpc")) {
-		func = do_run_rpc;
-
-	    } else if (streq(cp, "--rpc-on-box")) {
-		func = do_run_rpc_on_box;
-		opt_user_info_on_stdin = TRUE;
-
-	    } else if (streq(cp, "--run-server") || streq(cp, "-R")) {
+	    case 'R':
+		if (func)
+		    errx(1, "open one mode allowed");
 		func = do_run_server_on_stdin;
+		break;
 
-	    } else if (streq(cp, "--script") || streq(cp, "-s")) {
-		script = *++argv;
+	    case 'S':
+		jsio_add_ssh_options(check_arg("ssh option"));
+		break;
 
-	    } else if (streq(cp, "--ssh-options") || streq(cp, "-S")) {
-		jsio_add_ssh_options(*++argv);
+	    case 's':
+		script = check_arg("script name");
+		break;
 
-	    } else if (streq(cp, "--target") || streq(cp, "-T")) {
-		opt_target = *++argv;
+	    case 'T':
+		opt_target = check_arg("target device");
+		break;
 
-	    } else if (streq(cp, "--trace") || streq(cp, "-t")) {
-		opt_trace_file_name = *++argv;
+	    case 't':
+		opt_trace_file_name = check_arg("trace file");
+		break;
 
-	    } else if (streq(cp, "--user") || streq(cp, "--username")
-		       || streq(cp, "-u")) {
-		opt_username = *++argv;
+	    case 'u':
+		opt_username = check_arg("username");
+		break;
 
-	    } else if (streq(cp, "--verbose") || streq(cp, "-v")) {
+	    case 'V':
+		print_version(TRUE);
+		return 0;
+
+	    case 'v':
 		logger = TRUE;
+		break;
 
-	    } else if (streq(cp, "--version") || streq(cp, "-V")) {
-		print_version();
-		exit(0);
+	    case 0:
+		if (opts.o_auth_socket) {
+		    opt_auth_socket = check_arg("auth socket");
 
-	    } else if (streq(cp, "--wait")) {
-		opt_waiting = atoi(*++argv);
+		} else if (opts.o_auth_websocket_id) {
+		    jsio_set_auth_websocket_id(check_arg("auth websocket id"));
 
-	    } else if (streq(cp, "--xml")) {
-		func = do_emit_xml;
+		} else if (opts.o_auth_muxer_id) {
+		    jsio_set_auth_muxer_id(check_arg("auth muxer id"));
 
-	    } else if (streq(cp, "--auth-muxer-id")) {
-		jsio_set_auth_muxer_id(cp);
+		} else if (opts.o_auth_div_id) {
+		    jsio_set_auth_div_id(check_arg("auth div id"));
 
-	    } else if (streq(cp, "--auth-websocket-id")) {
-		jsio_set_auth_websocket_id(cp);
-	    
-	    } else if (streq(cp, "--auth-div-id")) {
-		jsio_set_auth_div_id(cp);
+		} else if (opts.o_cgi) {
+		    if (func)
+			errx(1, "open one mode allowed");
+		    func = do_run_as_cgi;
 
-	    } else {
-		fprintf(stderr, "invalid option: %s\n", cp);
-		print_help();
-		return 1;
-	    }
+		} else if (opts.o_debug_io) {
+		    jsio_flags |= JSIO_MEMDUMP;
 
-	    if (*argv == NULL) {
-		/*
-		 * The only way we could have a null argv is if we said
-		 * "xxx = *++argv" off the end of argv.  Bail.
-		 */
-		fprintf(stderr, "missing option value: %s\n", cp);
-		print_help();
+		} else if (opts.o_fastcgi) {
+		    if (func)
+			errx(1, "open one mode allowed");
+		    func = do_run_as_fastcgi;
+
+		} else if (opts.o_ignore_arguments) {
+		    opt_ignore_arguments = TRUE;
+
+		} else if (opts.o_local) {
+		    opt_local = TRUE;
+
+		} else if (opts.o_no_randomize) {
+		    randomize = 0;
+
+		} else if (opts.o_no_tty) {
+		    ioflags |= SIF_NO_TTY;
+
+		} else if (opts.o_output_format) {
+		    opt_output_format = check_arg("output format");
+		    if (!streq(opt_output_format, "xml")
+			&& !streq(opt_output_format, "none")
+			&& !streq(opt_output_format, "text")
+			&& !streq(opt_output_format, "compare"))
+			errx(1, "invalid output format: %s", opt_output_format);
+
+		} else if (opts.o_rpc) {
+		    if (func)
+			errx(1, "open one mode allowed");
+		    func = do_run_rpc;
+
+		} else if (opts.o_rpc_on_box) {
+		    if (func)
+			errx(1, "open one mode allowed");
+		    func = do_run_rpc_on_box;
+		    opt_user_info_on_stdin = TRUE;
+
+		} else if (opts.o_version_only) {
+		    print_version(FALSE);
+		    return 0;
+
+		} else if (opts.o_wait) {
+		    opt_waiting = atoi(check_arg("wait period"));
+
+		} else if (opts.o_xml) {
+		    if (func)
+			errx(1, "open one mode allowed");
+		    func = do_emit_xml;
+
+		}
+		break;
+
+	    default:
+		fprintf(stderr, "Use '--help' for complete help\n");
 		return 1;
 	    }
 	}
+
+	argc -= optind;
+	argv += optind;
 
 	/*
 	 * Handle the rest of argv:
@@ -1984,7 +2130,7 @@ main (int argc UNUSED, char **argv, char **envp)
     }
 
     if (func == NULL)
-	func = do_run_op; /* the default action */
+	func = do_run_op; /* the default mode */
 
     cp = getenv("JUISEPATH");
     if (cp)
