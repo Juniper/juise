@@ -1,3 +1,4 @@
+/* JUNOS begin */
 /*
  * Copyright (c) 2014, Juniper Networks, Inc.
  * All rights reserved.
@@ -9,11 +10,12 @@
 #ifndef MOD_JUISE_H
 #define MOD_JUISE_H
 
-int response_header_insert (server *srv, connection *con, const char *key, 
+int response_header_insert (request_st *r, const char *key,
 			    size_t key_len, const char *value, size_t vallen);
 
-int response_header_overwrite (server *srv, connection *con, const char *key, 
-			       size_t key_len, const char *value, 
+int response_header_overwrite (server *srv, connection *con, const char *key,
+			       size_t key_len, const char *value,
 			       size_t vallen);
 
 #endif /* MOD_JUISE_H */
+/* JUNOS end */

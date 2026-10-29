@@ -27,18 +27,24 @@
 
 #include <libslax/slax.h>
 #include <libpsu/psubase64.h>
+#include <libxml/uri.h>
 
 #undef UNUSED /* lighttpd has it's own definition */
 
 /* These include files are from lighttpd */
-#include "server.h"
+#include "base_decls.h"
+#include "fdevent_impl.h"
+#include "fdlog.h"
+#include "first.h"
+#include "network_write.h"
+#include "base.h"
 #include "stat_cache.h"
 #include "keyvalue.h"
 #include "log.h"
 #include "connections.h"
-#include "joblist.h"
 #include "http_chunk.h"
-
+#include "http_header.h"
+#include "response.h"
 #include "plugin.h"
 
 #include <sys/types.h>
@@ -62,6 +68,7 @@
 #include <signal.h>
 #include <ctype.h>
 #include <assert.h>
+#include "burl.h"
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -73,14 +80,10 @@
 #include <pwd.h>
 #include "mod_juise.h"
 
-#include "version.h"
-
 #ifndef PACKAGE_DESC
 #define PACKAGE_DESC "juise/clira server"
 #endif
 
-#define LOGERR(_fmt...) \
-    log_error_write(srv, __FILE__, __LINE__, _fmt)
 
 enum { EOL_UNSET, EOL_N, EOL_RN };
 
@@ -97,10 +100,10 @@ typedef struct {
 } buffer_pid_t;
 
 typedef struct {
-    array *cgi;
+    const array *cgi;
     unsigned short execute_x_only;
     unsigned short require_auth;
-    buffer *mixer;
+    const buffer *mixer;
 } mod_juise_plugin_config;
 
 typedef struct {
@@ -108,19 +111,208 @@ typedef struct {
     buffer_pid_t cgi_pid;
     buffer *tmp_buf;
     buffer *parse_response;
-    mod_juise_plugin_config **config_storage;
+    mod_juise_plugin_config defaults;
     mod_juise_plugin_config conf;
 } mod_juise_plugin_data;
 
 typedef struct {
     pid_t pid;
     int fd;
-    int fde_ndx; /* index into the fd-event buffer */
+    fdnode *fdn; /* fdnode for fd-event */
     connection *remote_conn;  /* dumb pointer */
     mod_juise_plugin_data *plugin_data; /* dumb pointer */
     buffer *response;
     buffer *response_header;
 } mod_juise_handler_context;
+
+static int
+mod_juise_create_env (request_st *r,
+		  mod_juise_plugin_data *p, buffer *cgi_handler);
+
+static int
+mod_juise_env_add (char_array *env, const char *key,
+	     size_t key_len, const char *val, size_t val_len);
+
+static int
+juise_network_write_file_chunk_mmap(const int fd, chunkqueue * const cq,
+	   log_error_st * const errh);
+
+static handler_t
+mod_juise_connection_close (request_st *r, mod_juise_handler_context *hctx);
+
+static int
+mod_juise_demux_response (server *srv, mod_juise_handler_context *hctx);
+
+static ssize_t network_write_data_len(int fd, const char *data, off_t len);
+
+/* JUNOS Begin */
+/**
+ *
+ * increase the internal buffer (if neccessary) to append another 'size' byte
+ * ->used isn't changed
+ *
+ */
+#if 0
+static int http_response_append_mem(request_st * const r, const char * const mem, uint32_t len) {
+    if (r->resp_decode_chunked)
+	 return http_chunk_decode_append_mem(r, mem, len);
+
+    if (r->resp_body_scratchpad > 0) {
+	 r->resp_body_scratchpad -= (off_t)len;
+	 if (r->resp_body_scratchpad <= 0) {
+		 r->resp_body_finished = 1;
+		 if (__builtin_expect( (r->resp_body_scratchpad < 0), 0)) {
+		 /*(silently truncate if data exceeds Content-Length)*/
+			 len = (size_t)(r->resp_body_scratchpad + (off_t)len);
+			 r->resp_body_scratchpad = 0;
+		 }
+	 }
+    }
+    else if (0 == r->resp_body_scratchpad) {
+	 /*(silently truncate if data exceeds Content-Length)*/
+	 return 0;
+    }
+    return http_chunk_append_mem(r, mem, len);
+}
+#endif /* 0 */
+#define BUFFER_PIECE_SIZE 64
+static int buffer_prepare_append(buffer *b, size_t size) {
+	if (!b) return -1;
+
+	if (0 == b->size) {
+		b->size = size;
+
+		/* always allocate a multiply of BUFFER_PIECE_SIZE */
+		b->size += BUFFER_PIECE_SIZE - (b->size % BUFFER_PIECE_SIZE);
+
+		b->ptr = malloc(b->size);
+		b->used = 0;
+		force_assert(b->ptr);
+	} else if (b->used + size > b->size) {
+		b->size += size;
+
+		/* always allocate a multiply of BUFFER_PIECE_SIZE */
+		b->size += BUFFER_PIECE_SIZE - (b->size % BUFFER_PIECE_SIZE);
+
+		b->ptr = realloc(b->ptr, b->size);
+		force_assert(b->ptr);
+	}
+	return 0;
+}
+/* JUNOS End */
+
+static off_t
+network_write_setjmp_write_cb (void *fd, const void *data, off_t len)
+{
+    return network_write_data_len((int)(uintptr_t)fd, data, len);
+}
+
+inline
+static ssize_t network_write_data_len(int fd, const char *data, off_t len) {
+  #ifdef _WIN32
+    return send(fd, data, len, 0);
+  #else
+    return write(fd, data, len);
+  #endif
+}
+
+__attribute_cold__
+static int network_remove_finished_chunks(chunkqueue * const cq, const off_t len) {
+    force_assert(len >= 0);
+    chunkqueue_remove_finished_chunks(cq);
+    return 0;
+}
+
+__attribute_cold__
+static int network_write_error(int fd, log_error_st *errh) {
+  #ifdef _WIN32
+    switch (WSAGetLastError()) {
+      case WSAEINTR:
+      case WSAEWOULDBLOCK:
+        return -3;
+      case WSAECONNRESET:
+      case WSAETIMEDOUT:
+      case WSAECONNABORTED:
+        return -2;
+      default:
+        log_serror(errh, __FILE__, __LINE__, "send() %d", fd);
+        return -1;
+    }
+  #else
+    switch (errno) {
+      case EAGAIN:
+     #ifdef EWOULDBLOCK
+     #if EWOULDBLOCK != EAGAIN
+      case EWOULDBLOCK:
+     #endif
+     #endif
+      case EINTR:
+        return -3;
+      case EPIPE:
+      case ECONNRESET:
+        return -2;
+      default:
+        log_perror(errh, __FILE__, __LINE__, "write() %d", fd);
+        return -1;
+    }
+  #endif
+}
+#if 0
+static data_unset *array_get_unused_element(array * const a, const data_type_t t) {
+    /* After initial startup and config, most array usage is of homogeneous types
+     * and arrays are cleared once per request, so check only the first unused
+     * element to see if it can be reused */
+  #if 1
+    data_unset * const du = (a->used < a->size) ? a->data[a->used] : NULL;
+    if (NULL != du && du->type == t) {
+        a->data[a->used] = NULL;/* make empty slot at a->used for next insert */
+        return du;
+    }
+    return NULL;
+  #else
+     data_unset ** const data = a->data;
+     for (uint32_t i = a->used, sz = a->size; i < sz; ++i) {
+          if (data[i] && data[i]->type == t) {
+               data_unset * const ds = data[i];
+
+               /* make empty slot at a->used for next insert */
+               data[i] = data[a->used];
+               data[a->used] = NULL;
+
+               return ds;
+          }
+     }
+
+     return NULL;
+  #endif
+}
+#endif /* 0 */
+
+static void mod_juise_merge_config_cpv(mod_juise_plugin_config * const pconf, const config_plugin_value_t * const cpv) {
+    switch (cpv->k_id) { /* index into static config_plugin_keys_t cpk[] */
+      case 0: /* juise.assign */
+        pconf->cgi = cpv->v.a;
+        break;
+      case 1: /* juise.execute-x-only */
+        pconf->execute_x_only = (unsigned short)cpv->v.u;
+        break;
+      case 2: /* juise.require-auth */
+        pconf->require_auth = (unsigned short)cpv->v.u;
+        break;
+      case 3: /* juise.mixer */
+        pconf->mixer = cpv->v.b;
+        break;
+      default:/* should not happen */
+        return;
+    }
+}
+
+
+static void mod_juise_merge_config(mod_juise_plugin_config * const pconf, const config_plugin_value_t *cpv) {
+    do {
+        mod_juise_merge_config_cpv(pconf, cpv);
+    } while ((++cpv)->k_id != -1);
+}
 
 static mod_juise_handler_context *
 mod_juise_handler_ctx_init (void)
@@ -153,6 +345,9 @@ enum {
 
 INIT_FUNC(mod_juise_init)
 {
+#if 0
+    log_error_st *errh = NULL;
+#endif /* 0 */
     mod_juise_plugin_data *p;
 
     p = calloc(1, sizeof(*p));
@@ -170,20 +365,6 @@ FREE_FUNC(mod_juise_cleanup)
     mod_juise_plugin_data *p = p_d;
     buffer_pid_t *r = &p->cgi_pid;
 
-    UNUSED(srv);
-
-    if (p->config_storage) {
-	size_t i;
-	for (i = 0; i < srv->config_context->used; i++) {
-	    mod_juise_plugin_config *s = p->config_storage[i];
-
-	    array_free(s->cgi);
-
-	    free(s);
-	}
-	free(p->config_storage);
-    }
-
     if (r->ptr)
 	free(r->ptr);
 
@@ -191,86 +372,19 @@ FREE_FUNC(mod_juise_cleanup)
     buffer_free(p->parse_response);
 
     free(p);
-
-    return HANDLER_GO_ON;
 }
 
-SETDEFAULTS_FUNC(mod_juise_set_defaults)
-{
-    mod_juise_plugin_data *p = p_d;
-    size_t i = 0;
-
-    config_values_t cv[] = {
-	{ "juise.assign", NULL,
-	  T_CONFIG_ARRAY, T_CONFIG_SCOPE_CONNECTION },       /* 0 */
-	{ "juise.execute-x-only", NULL,
-	  T_CONFIG_BOOLEAN, T_CONFIG_SCOPE_CONNECTION },     /* 1 */
-	{ "juise.require-auth", NULL,
-	  T_CONFIG_BOOLEAN, T_CONFIG_SCOPE_CONNECTION },     /* 2 */
-	{ "juise.mixer", NULL,
-	 T_CONFIG_STRING, T_CONFIG_SCOPE_CONNECTION },       /* 3 */
-	{ NULL, NULL,
-	  T_CONFIG_UNSET, T_CONFIG_SCOPE_UNSET}
-    };
-
-    if (!p)
-	return HANDLER_ERROR;
-
-    p->config_storage = calloc(srv->config_context->used,
-			       sizeof(*p->config_storage));
-
-    for (i = 0; i < srv->config_context->used; i++) {
-	mod_juise_plugin_config *s;
-
-	s = calloc(1, sizeof(*s));
-	assert(s);
-
-	s->cgi = array_init();
-	s->execute_x_only = 0;
-	s->require_auth = 0;
-	s->mixer = buffer_init();
-
-	cv[0].destination = s->cgi;
-	cv[1].destination = &s->execute_x_only;
-	cv[2].destination = &s->require_auth;
-	cv[3].destination = s->mixer;
-
-	p->config_storage[i] = s;
-
-	if (config_insert_values_global(srv,
-		((data_config *) srv->config_context->data[i])->value, cv)) {
-	    return HANDLER_ERROR;
-	}
+static void
+mod_juise_patch_config (request_st * const r, mod_juise_plugin_data * const p) {
+#if 0
+    server *srv = r->con->srv;
+#endif /* 0 */
+    p->conf = p->defaults; /* copy small struct instead of memcpy() */
+    /*memcpy(&p->conf, &p->defaults, sizeof(plugin_config));*/
+    for (int i = 1, used = p->nconfig; i < used; ++i) {
+	 if (config_check_cond(r, (uint32_t)p->cvlist[i].k_id))
+		 mod_juise_merge_config(&p->conf, p->cvlist + p->cvlist[i].v.u2[0]);
     }
-
-    return HANDLER_GO_ON;
-}
-
-static int
-mod_juise_pid_add (server *srv, mod_juise_plugin_data *p, pid_t pid)
-{
-    int m = -1;
-    size_t i;
-    buffer_pid_t *r = &p->cgi_pid;
-
-    UNUSED(srv);
-
-    for (i = 0; i < r->used; i++) {
-	if (r->ptr[i] > m)
-	    m = r->ptr[i];
-    }
-
-    if (r->size == 0) {
-	r->size = 16;
-	r->ptr = malloc(sizeof(*r->ptr) * r->size);
-    } else if (r->used == r->size) {
-	r->size += 16;
-	r->ptr = realloc(r->ptr, sizeof(*r->ptr) * r->size);
-    }
-
-    r->ptr[r->used++] = pid;
-
-    return m;
 }
 
 static int
@@ -298,446 +412,151 @@ mod_juise_pid_del (server *srv, mod_juise_plugin_data *p, pid_t pid)
     return 0;
 }
 
+/* JUNOS Begin */
+/* Defence-in-depth (PR 1979054): validate that an Authorization header carries
+ * a well-formed credential, not merely that the header is present.  The gate in
+ * mod_juise_handle_subrequest_start() previously accepted ANY value (e.g. the
+ * placeholder "Basic AAAA"), letting the request proceed to body processing --
+ * which spools bodies >64KB to tempfile chunks.  Rejecting a malformed credential
+ * here, before any body handling, closes that bypass.  Validation mirrors the
+ * Basic-auth parsing already performed in mod_juise_create_env(): recognized
+ * scheme (Basic), base64-decodable credential, and a 'user:pass' separator. */
 static int
-mod_juise_response_parse (server *srv, connection *con, mod_juise_plugin_data *p, buffer *in)
+mod_juise_auth_header_valid (const buffer * const auth)
 {
-    char *ns;
-    const char *s;
-    int line = 0;
+    if (NULL == auth || NULL == auth->ptr)
+	return 0;
 
-    UNUSED(srv);
+    const char * const http_auth = auth->ptr;
+    const char * const sp = strchr(http_auth, ' ');
+    if (NULL == sp)
+	return 0;
 
-    buffer_copy_string_buffer(p->parse_response, in);
+    const int scheme_len = (int)(sp - http_auth);
+    if (scheme_len != 5 || 0 != strncasecmp(http_auth, "Basic", scheme_len))
+	return 0;
 
-    for (s = p->parse_response->ptr; (ns = strchr(s, '\n'));
-	 	s = ns + 1, line++) {
-	const char *key, *value;
-	int key_len;
-	data_string *ds;
+    const char * const b64 = sp + 1;
+    const size_t b64_len = strlen(b64);
+    if (0 == b64_len)
+	return 0;
 
-	/* strip the \n */
-	ns[0] = '\0';
+    size_t dlen = 0;
+    char * const decoded = psu_base64_decode(b64, b64_len, &dlen);
+    if (NULL == decoded)
+	return 0;
 
-	if (ns > s && ns[-1] == '\r')
-	    ns[-1] = '\0';
-
-	if (line == 0 && strncmp(s, "HTTP/1.", 7) == 0) {
-	    /* non-parsed header ... we parse them anyway */
-
-	    if ((s[7] == '1' || s[7] == '0') && s[8] == ' ') {
-		int status;
-		/* after the space should be a status code for us */
-
-		status = strtol(s+9, NULL, 10);
-
-		if (status >= 100 && status < 1000) {
-		    /* we expected 3 digits and didn't got them */
-		    con->parsed_response |= HTTP_STATUS;
-		    con->http_status = status;
-		}
-	    }
-	} else {
-	    /* parse the headers */
-	    key = s;
-	    if (NULL == (value = strchr(s, ':'))) {
-		/* we expect: "<key>: <value>\r\n" */
-		continue;
-	    }
-
-	    key_len = value - key;
-	    value += 1;
-
-	    /* skip LWS */
-	    while (*value == ' ' || *value == '\t') value++;
-
-	    ds = (data_string *)
-		array_get_unused_element(con->response.headers, TYPE_STRING);
-	    if (ds == NULL)
-		ds = data_response_init();
-
-	    buffer_copy_string_len(ds->key, key, key_len);
-	    buffer_copy_string(ds->value, value);
-
-	    array_insert_unique(con->response.headers, (data_unset *) ds);
-
-	    switch (key_len) {
-	    case 4:
-		if (strncasecmp(key, "Date", key_len) == 0) {
-		    con->parsed_response |= HTTP_DATE;
-		}
-		break;
-
-	    case 6:
-		if (strncasecmp(key, "Status", key_len) == 0) {
-		    con->http_status = strtol(value, NULL, 10);
-		    con->parsed_response |= HTTP_STATUS;
-		}
-		break;
-
-	    case 8:
-		if (strncasecmp(key, "Location", key_len) == 0) {
-		    con->parsed_response |= HTTP_LOCATION;
-		}
-		break;
-
-	    case 10:
-		if (strncasecmp(key, "Connection", key_len) == 0) {
-		    con->response.keep_alive
-			= (strcasecmp(value, "Keep-Alive") == 0) ? 1 : 0;
-		    con->parsed_response |= HTTP_CONNECTION;
-		}
-		break;
-
-	    case 12:
-		if (strncasecmp(key, "Content-Type", key_len) == 0) {
-		    response_header_overwrite(srv, con, 
-					      CONST_STR_LEN("Content-Type"), 
-					      CONST_BUF_LEN(ds->value));
-		}
-		break;
-
-	    case 14:
-		if (strncasecmp(key, "Content-Length", key_len) == 0) {
-		    con->response.content_length = strtol(value, NULL, 10);
-		    con->parsed_response |= HTTP_CONTENT_LENGTH;
-		}
-		break;
-
-	    default:
-		break;
-	    }
-	}
-    }
-
-    /* CGI/1.1 rev 03 - 7.2.1.2 */
-    if ((con->parsed_response & HTTP_LOCATION)
-	&& !(con->parsed_response & HTTP_STATUS)) {
-	con->http_status = 302;
-    }
-
-    return 0;
+    /* require a decoded credential containing a ':' separator (user:pass).
+     * memchr (not strchr) so embedded NULs -- e.g. "Basic AAAA" decoding to
+     * 0x00 0x00 0x00 -- do not short-circuit the scan. */
+    const int ok = (dlen > 0 && NULL != memchr(decoded, ':', dlen));
+    free(decoded);
+    return ok;
 }
+/* JUNOS End */
 
-static int
-mod_juise_demux_response (server *srv, mod_juise_handler_context *hctx)
+URIHANDLER_FUNC(mod_juise_handle_subrequest_start)
 {
-    mod_juise_plugin_data *p = hctx->plugin_data;
-    connection *con = hctx->remote_conn;
+    size_t k, s_len;
+    mod_juise_plugin_data *p = p_d;
+    connection *con = r->con;
+    server *srv = con->srv;
+    buffer *fn = &r->physical.path;
+    buffer *uri = &r->uri.path;
+    stat_cache_entry *sce = NULL;
 
-    for (;;) {
-	int n;
+    log_error(srv->errh, __FILE__, __LINE__, "mod_juise: start: looking at %s", fn->ptr);
 
-	buffer_prepare_copy(hctx->response, 1024);
-	n = read(hctx->fd, hctx->response->ptr, hctx->response->size - 1);
-	if (n == -1) {
-	    if (errno == EAGAIN || errno == EINTR) {
-		/* would block, wait for signal */
-		return FDEVENT_HANDLED_NOT_FINISHED;
-	    }
-	    /* error */
-	    LOGERR("sdd", strerror(errno), con->fd, hctx->fd);
-	    return FDEVENT_HANDLED_ERROR;
-	}
-
-	if (n == 0) {
-	    /* read finished */
-
-	    con->file_finished = 1;
-
-	    /* send final chunk */
-	    http_chunk_append_mem(srv, con, NULL, 0);
-	    joblist_append(srv, con);
-
-	    return FDEVENT_HANDLED_FINISHED;
-	}
-
-	hctx->response->ptr[n] = '\0';
-	hctx->response->used = n+1;
-
-	/* split header from body */
-
-	if (con->file_started == 0) {
-	    int is_header = 0;
-	    int is_header_end = 0;
-	    size_t last_eol = 0;
-	    size_t i;
-
-	    buffer_append_string_buffer(hctx->response_header, hctx->response);
-
-	    /**
-	     * we have to handle a few cases:
-	     *
-	     * nph:
-	     * 
-	     *   HTTP/1.0 200 Ok\n
-	     *   Header: Value\n
-	     *   \n
-	     *
-	     * CGI:
-	     *   Header: Value\n
-	     *   Status: 200\n
-	     *   \n
-	     *
-	     * and different mixes of \n and \r\n combinations
-	     * 
-	     * Some users also forget about CGI and just send a
-	     * response and hope we handle it. No headers, no
-	     * header-content seperator
-	     * 
-	     */
-			
-	    /* nph (non-parsed headers) */
-	    if (strncmp(hctx->response_header->ptr, "HTTP/1.", 7) == 0)
-		is_header = 1;
-				
-	    for (i = 0; !is_header_end && i < hctx->response_header->used - 1;
-		 i++) {
-		char c = hctx->response_header->ptr[i];
-
-		switch (c) {
-		case '<':
-		    is_header_end = 1;
-		    break;
-
-		case ':':
-		    /*
-		     * We found a colon
-		     * looks like we have a normal header 
-		     */
-		    is_header = 1;
-		    break;
-
-		case '\n':
-		    /* EOL */
-		    if (is_header == 0) {
-			/*
-			 * We got a EOL but we don't seem to got a
-			 * HTTP header
-			 */
-			is_header_end = 1;
-
-			break;
-		    }
-
-		    /*
-		     * check if we saw a \n(\r)?\n sequence 
-		     */
-		    if (last_eol > 0 && 
-			((i - last_eol == 1) || 
-			 (i - last_eol == 2
-			  && hctx->response_header->ptr[i - 1] == '\r'))) {
-			is_header_end = 1;
-			break;
-		    }
-
-		    last_eol = i;
-
-		    break;
-		}
-	    }
-
-	    if (is_header_end) {
-		if (!is_header) {
-		    /* no header, but a body */
-
-		    if (con->request.http_version == HTTP_VERSION_1_1) {
-			con->response.transfer_encoding
-			    = HTTP_TRANSFER_ENCODING_CHUNKED;
-		    }
-
-		    http_chunk_append_mem(srv, con, hctx->response_header->ptr,
-					  hctx->response_header->used);
-		    joblist_append(srv, con);
-		} else {
-		    const char *bstart;
-		    size_t blen;
-					
-		    /*
-		     * i still points to the char after the terminating EOL.
-		     * put it on the last \n again
-		     */
-		    i--;
-					
-		    /* the body starts after the EOL */
-		    bstart = hctx->response_header->ptr + (i + 1);
-		    blen = (hctx->response_header->used - 1) - (i + 1);
-					
-		    /* string the last \r?\n */
-		    if (i > 0 && hctx->response_header->ptr[i - 1] == '\r')
-			i -= 1;
-
-		    hctx->response_header->ptr[i] = '\0';
-		    hctx->response_header->used = i + 1; /* the string + \0 */
-					
-		    /* parse the response header */
-		    mod_juise_response_parse(srv, con, p, hctx->response_header);
-
-		    /* enable chunked-transfer-encoding */
-		    if (con->request.http_version == HTTP_VERSION_1_1
-			    && !(con->parsed_response & HTTP_CONTENT_LENGTH)) {
-			con->response.transfer_encoding
-			    = HTTP_TRANSFER_ENCODING_CHUNKED;
-		    }
-
-		    if (blen > 0) {
-			http_chunk_append_mem(srv, con, bstart, blen + 1);
-			joblist_append(srv, con);
-		    }
-		}
-
-		con->file_started = 1;
-	    }
-	} else {
-	    http_chunk_append_mem(srv, con, hctx->response->ptr,
-				  hctx->response->used);
-	    joblist_append(srv, con);
-	}
-
-#if 0
-	LOGERR("ddss", con->fd, hctx->fd,
-			connection_get_state(con->state), b->ptr);
-#endif
-    }
-
-    return FDEVENT_HANDLED_NOT_FINISHED;
-}
-
-static handler_t
-mod_juise_connection_close (server *srv, mod_juise_handler_context *hctx)
-{
-    int status;
-    pid_t pid;
-    mod_juise_plugin_data *p;
-    connection  *con;
-
-    if (hctx == NULL)
+    if (NULL != r->handler_module)
 	return HANDLER_GO_ON;
 
-    p = hctx->plugin_data;
-    con = hctx->remote_conn;
-
-    if (con->mode != p->id)
+    if (fn->used == 0)
 	return HANDLER_GO_ON;
 
-#ifndef __WIN32
+    mod_juise_patch_config(r, p);
 
-    /* the connection to the browser went away, but we still have a connection
-     * to the CGI script
-     *
-     * close cgi-connection
-     */
+    sce = stat_cache_get_entry(&r->physical.path);
+    if (NULL == sce) return HANDLER_GO_ON;
 
-    if (hctx->fd != -1) {
-	/* close connection to the cgi-script */
-	fdevent_event_del(srv->ev, &(hctx->fde_ndx), hctx->fd);
-	fdevent_unregister(srv->ev, hctx->fd);
+    if (!S_ISREG(sce->st.st_mode))
+	return HANDLER_GO_ON;
 
-	if (close(hctx->fd)) {
-	    LOGERR("sds", "juise close failed ",
-			    hctx->fd, strerror(errno));
+    if (p->conf.execute_x_only == 1
+		&& (sce->st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0)
+	return HANDLER_GO_ON;
+
+    s_len = fn->used - 1;
+
+    for (k = 0; k < p->conf.cgi->used; k++) {
+	data_string *ds = (data_string *) p->conf.cgi->data[k];
+	size_t ct_len = ds->key.used - 1;
+
+	if (ds->key.used == 0)
+	    continue;
+	if (s_len < ct_len)
+	    continue;
+
+	if (uri->ptr == strstr(uri->ptr, ds->key.ptr)) {
+	    /* Prompt for authorization information if required by config */
+	    if (p->conf.require_auth == 1
+		&& !mod_juise_auth_header_valid(http_header_request_get(r, HTTP_HEADER_AUTHORIZATION, CONST_STR_LEN("Authorization")))) {
+		r->http_status = 401;
+		r->handler_module = NULL;
+		buffer_reset(p->tmp_buf);
+		buffer_append_string_len(p->tmp_buf,
+					 CONST_STR_LEN("Basic realm=\"Need "
+						       "basic auth header\""));
+          if(NULL != p->tmp_buf)
+          http_header_response_set(r, HTTP_HEADER_WWW_AUTHENTICATE,
+                                 CONST_STR_LEN("WWW-Authenticate"),
+                                 BUF_PTR_LEN(p->tmp_buf));
+		log_error(srv->errh, __FILE__, __LINE__, "Redirecting as mandatory authentication header "
+		       "missing or malformed");
+		return HANDLER_FINISHED;
+	    }
 	}
+	if (ds->key.ptr[0] == '/') {
+	    if (strncmp(uri->ptr, ds->key.ptr, ct_len) == 0) {
+		if (mod_juise_create_env(r, p, &ds->value)) {
+		    r->handler_module = NULL;
+		    r->http_status = 500;
 
-	hctx->fd = -1;
-	hctx->fde_ndx = -1;
-    }
-
-    pid = hctx->pid;
-
-    con->plugin_ctx[p->id] = NULL;
-
-    /* is this a good idea ? */
-    mod_juise_handler_ctx_free(hctx);
-
-    /* if waitpid hasn't been called by response.c yet, do it here */
-    if (pid) {
-	/* check if the CGI-script is already gone */
-	switch (waitpid(pid, &status, WNOHANG)) {
-	case 0:
-	    /* not finished yet */
-#if 0
-	    LOGERR("sd", "(debug) child isn't done yet, pid:", pid);
-#endif
-	    break;
-
-	case -1:
-	    /* */
-	    if (errno == EINTR)
+		    buffer_reset(&r->physical.path);
+		    return HANDLER_FINISHED;
+		}
+		/* one handler is enough for the request */
 		break;
-
-	    /*
-	     * errno == ECHILD happens if _subrequest catches the
-	     * process-status before we have read the response of the
-	     * cgi process
-	     *
-	     * -> catch status
-	     * -> WAIT_FOR_EVENT
-	     * -> read response
-	     * -> we get here with waitpid == ECHILD
-	     *
-	     */
-	    if (errno == ECHILD)
-		return HANDLER_GO_ON;
-
-	    LOGERR("ss", "waitpid failed: ", strerror(errno));
-	    return HANDLER_ERROR;
-
-	default:
-	    /* Send an error if we haven't sent any data yet */
-	    if (con->file_started == 0) {
-		connection_set_state(srv, con, CON_STATE_HANDLE_REQUEST);
-		con->http_status = 500;
-		con->mode = DIRECT;
-	    } else {
-		con->file_finished = 1;
 	    }
+	} else {
+	    if (strncmp(fn->ptr + s_len - ct_len, ds->key.ptr, ct_len) == 0) {
+		if (mod_juise_create_env(r, p, &ds->value)) {
+		    r->handler_module = NULL;
+		    r->http_status = 500;
 
-	    if (WIFEXITED(status)) {
-#if 0
-		LOGERR("sd", "(debug) cgi exited fine, pid:", pid);
-#endif
-		return HANDLER_GO_ON;
-	    } else {
-		LOGERR("sdd", "juise died, pid:", pid, status);
-		return HANDLER_GO_ON;
+		    buffer_reset(&r->physical.path);
+		    return HANDLER_FINISHED;
+		}
+		/* one handler is enough for the request */
+		break;
 	    }
 	}
-
-	kill(pid, SIGTERM);
-
-	/* cgi-script is still alive, queue the PID for removal */
-	mod_juise_pid_add(srv, p, pid);
     }
-#endif
+
     return HANDLER_GO_ON;
 }
 
 static handler_t
-mod_juise_connection_reset (server *srv, connection *con, void *p_d)
-{
-    handler_t rc;
-    mod_juise_plugin_data *p = p_d;
-
-    LOGERR("ss", "mod_juise: connection_reset: ", con->physical.path->ptr);
-
-    rc = mod_juise_connection_close(srv, con->plugin_ctx[p->id]);
-    LOGERR("s", "mod_juise: connection_reset: done");
-
-    return rc;
-}
-
-static handler_t
-mod_juise_handle_fdevent (server *srv, void *ctx, int revents)
+mod_juise_handle_fdevent (void *ctx, int revents)
 {
     mod_juise_handler_context *hctx = ctx;
     connection  *con  = hctx->remote_conn;
-
-    joblist_append(srv, con);
+    request_st *r = &con->request;
+    server *srv = con->srv;
+    joblist_append(con);
 
     if (hctx->fd == -1) {
-	LOGERR("ddss", con->fd, hctx->fd,
-	       connection_get_state(con->state), "invalid cgi-fd");
-
-	return HANDLER_ERROR;
+        log_error(srv->errh, __FILE__, __LINE__,"%d %d", con->fd, hctx->fd);
+	   return HANDLER_ERROR;
     }
 
     if (revents & FDEVENT_IN) {
@@ -749,10 +568,9 @@ mod_juise_handle_fdevent (server *srv, void *ctx, int revents)
 	    /* we are done */
 
 #if 0
-	    LOGERR("ddss", con->fd, hctx->fd,
-		   connection_get_state(con->state), "finished");
+         log_error(srv->errh, __FILE__, __LINE__,"dd", con->fd, hctx->fd);
 #endif
-	    mod_juise_connection_close(srv, hctx);
+	    mod_juise_connection_close(r, hctx);
 
 	    /*
 	     * If we get a IN|HUP and have read everything don't exec
@@ -762,15 +580,15 @@ mod_juise_handle_fdevent (server *srv, void *ctx, int revents)
 
 	case FDEVENT_HANDLED_ERROR:
 	    /* Send an error if we haven't sent any data yet */
-	    if (con->file_started == 0) {
-		connection_set_state(srv, con, CON_STATE_HANDLE_REQUEST);
-		con->http_status = 500;
-		con->mode = DIRECT;
+	    if (r->resp_body_started == 0) {
+		request_set_state(r, CON_STATE_HANDLE_REQUEST);
+		r->http_status = 500;
+		r->handler_module = NULL;
 	    } else {
-		con->file_finished = 1;
+		r->resp_body_started = 1;
 	    }
 
-	    LOGERR("s", "demuxer failed: ");
+	    log_error(srv->errh, __FILE__, __LINE__, "demuxer failed: ");
 	    break;
 	}
     }
@@ -785,42 +603,31 @@ mod_juise_handle_fdevent (server *srv, void *ctx, int revents)
 	 * check if we still have a unfinished header package which is
 	 * a body in reality
 	 */
-	if (con->file_started == 0 && hctx->response_header->used) {
-	    con->file_started = 1;
-	    http_chunk_append_mem(srv, con, hctx->response_header->ptr,
-				  hctx->response_header->used);
-	    joblist_append(srv, con);
+	if (r->resp_body_started == 0 && !buffer_string_is_empty(hctx->response_header)) {
+	    r->resp_body_started = 1;
+	    http_chunk_append_buffer(r, hctx->response_header);
 	}
 
-	if (con->file_finished == 0) {
-	    http_chunk_append_mem(srv, con, NULL, 0);
-	    joblist_append(srv, con);
+	if (r->resp_body_finished == 0) {
+	    http_chunk_close(r);
 	}
 
-	con->file_finished = 1;
-
-	if (chunkqueue_is_empty(con->write_queue)) {
-	    /* there is nothing left to write */
-	    connection_set_state(srv, con, CON_STATE_RESPONSE_END);
-	} else {
-	    /* used the write-handler to finish the request on demand */
-
-	}
-
+	r->resp_body_finished = 1;
+	joblist_append(con);
 #if 0
 	LOGERR("sddd", "got HUP from cgi", con->fd, hctx->fd, revents);
 #endif
 
 	/* rtsigs didn't liked the close */
-	mod_juise_connection_close(srv, hctx);
+	mod_juise_connection_close(r, hctx);
 
     } else if (revents & FDEVENT_ERR) {
-	con->file_finished = 1;
+	r->resp_body_finished = 1;
 
 	/* kill all connections to the cgi process */
-	mod_juise_connection_close(srv, hctx);
+	mod_juise_connection_close(r, hctx);
 #if 1
-	LOGERR("s", "juise-FDEVENT_ERR");
+	log_error(srv->errh, __FILE__, __LINE__, "juise-FDEVENT_ERR");
 #endif
 	return HANDLER_ERROR;
     }
@@ -829,35 +636,7 @@ mod_juise_handle_fdevent (server *srv, void *ctx, int revents)
 }
 
 static int
-mod_juise_env_add (char_array *env, const char *key,
-	     size_t key_len, const char *val, size_t val_len)
-{
-    char *dst;
-
-    if (!key || !val)
-	return -1;
-
-    dst = malloc(key_len + val_len + 2);
-    memcpy(dst, key, key_len);
-    dst[key_len] = '=';
-    memcpy(dst + key_len + 1, val, val_len);
-    dst[key_len + 1 + val_len] = '\0';
-
-    if (env->size == 0) {
-	env->size = 16;
-	env->ptr = malloc(env->size * sizeof(*env->ptr));
-    } else if (env->size == env->used) {
-	env->size += 16;
-	env->ptr = realloc(env->ptr, env->size * sizeof(*env->ptr));
-    }
-
-    env->ptr[env->used++] = dst;
-
-    return 0;
-}
-
-static int
-mod_juise_create_env (server *srv, connection *con,
+mod_juise_create_env (request_st *r,
 		  mod_juise_plugin_data *p, buffer *cgi_handler)
 {
     pid_t pid;
@@ -866,6 +645,8 @@ mod_juise_create_env (server *srv, connection *con,
     char b2[INET6_ADDRSTRLEN + 1];
 #endif
 
+    server *srv = r->con->srv;
+    connection *con = r->con;
     int to_cgi_fds[2];
     int from_cgi_fds[2];
     struct stat st;
@@ -874,8 +655,10 @@ mod_juise_create_env (server *srv, connection *con,
     int i = 0;
     char *sdup = NULL, *cp;
     char *http_auth = NULL, *user = NULL, *pass = NULL;
-    data_string *ds;
+    const buffer * ds1;
+    const data_string *ds;
     char cbuf[256];
+    handler_t hr;
 
 #ifndef __WIN32
     /* set up args */
@@ -902,7 +685,7 @@ mod_juise_create_env (server *srv, connection *con,
 	}
     }
 
-    if (!buffer_is_empty(p->conf.mixer)) {
+    if (!buffer_string_is_empty(p->conf.mixer)) {
 	struct passwd *pwd = getpwuid(getuid());
 	char userbuf[BUFSIZ];
 
@@ -912,56 +695,61 @@ mod_juise_create_env (server *srv, connection *con,
 	}
 
 	argv[i++] = strdup("--mixer");
-	snprintf(cbuf, sizeof(cbuf), "%s%s", p->conf.mixer->ptr, 
+	snprintf(cbuf, sizeof(cbuf), "%s%s", p->conf.mixer->ptr,
 		userbuf[0] ? userbuf : "");
 	argv[i++] = cbuf;
     }
 
-    if (con->physical.path->used > 1)
-	argv[i++] = con->physical.path->ptr;
+    if (r->physical.path.used > 1)
+	argv[i++] = r->physical.path.ptr;
 
     argv[i] = NULL;
     argc = i;
 
     for (i = 0; i < argc; i++) {
-	LOGERR("ss", "juise: argv: ", argv[i]);
+	log_error(srv->errh, __FILE__, __LINE__, "juise: argv: %s", argv[i]);
     }
 
     if (cgi_handler->used > 1) {
 	/* stat the exec file */
 	if (stat(argv[0], &st) < 0) {
-	    LOGERR("sbss", "stat for cgi-handler", argv[0],
-		   "failed:", strerror(errno));
+	    log_error(srv->errh, __FILE__, __LINE__, "stat for cgi-handler %s", argv[0],
+		   "failed: %d", strerror(errno));
 	    if (argv)
 		free(argv);
+            if (sdup)
+                free(sdup);
 	    return -1;
 	}
     }
 
     if (pipe(to_cgi_fds)) {
-	LOGERR("ss", "pipe failed:", strerror(errno));
+	log_error(srv->errh, __FILE__, __LINE__, "pipe failed:%d", strerror(errno));
 	if (argv)
 	    free(argv);
+        if (sdup)
+            free(sdup);
 	return -1;
     }
 
     if (pipe(from_cgi_fds)) {
 	close(to_cgi_fds[0]);
 	close(to_cgi_fds[1]);
-	LOGERR("ss", "pipe failed:", strerror(errno));
+	log_error(srv->errh, __FILE__, __LINE__, "pipe failed:%d", strerror(errno));
 	if (argv)
 	    free(argv);
+        if (sdup)
+            free(sdup);
 	return -1;
     }
 
     /* Get Authorization header */
-    ds = (data_string *) array_get_element(con->request.headers, 
-					   "Authorization");
-    if (ds) {
-	char *auth_realm_decoded, *auth_realm = NULL; 
+    ds1 = http_header_request_get(r, HTTP_HEADER_AUTHORIZATION, CONST_STR_LEN("Authorization"));
+    if (ds1) {
+	char *auth_realm_decoded, *auth_realm = NULL;
 	size_t dlen;
 
-	http_auth = ds->value->ptr;
+	http_auth = ds1->ptr;
 
 	if (http_auth) {
 	    auth_realm = strchr(http_auth, ' ');
@@ -975,23 +763,35 @@ mod_juise_create_env (server *srv, connection *con,
 		&& auth_realm + 1) {
 		size_t hash_len = strlen(auth_realm + 1);
 
-		auth_realm_decoded = psu_base64_decode(auth_realm + 1, 
+		auth_realm_decoded = psu_base64_decode(auth_realm + 1,
 						       hash_len, &dlen);
 		if (!auth_realm_decoded) {
-		    LOGERR("s", "Failed to decode auth header");
-		    con->http_status = 400;
+		    log_error(srv->errh, __FILE__, __LINE__, "Failed to decode auth header");
+		    r->http_status = 400;
 		    if (argv)
 			free(argv);
+                    if (sdup)
+                        free(sdup);
+                    close(from_cgi_fds[0]);
+                    close(from_cgi_fds[1]);
+                    close(to_cgi_fds[0]);
+                    close(to_cgi_fds[1]);
 		    return 0;
 		}
 
 		pass = strchr(auth_realm_decoded, ':');
 		if (!pass) {
-		    LOGERR("s", "Invalid authorization format");
-		    con->http_status = 400;
+		    log_error(srv->errh, __FILE__, __LINE__, "Invalid authorization format");
+		    r->http_status = 400;
 		    free(auth_realm_decoded);
 		    if (argv)
 			free(argv);
+                    if (sdup)
+                        free(sdup);
+                    close(from_cgi_fds[0]);
+                    close(from_cgi_fds[1]);
+                    close(to_cgi_fds[0]);
+                    close(to_cgi_fds[1]);
 		    return 0;
 		}
 
@@ -999,8 +799,16 @@ mod_juise_create_env (server *srv, connection *con,
 		*pass = '\0';
 		pass++;
 	    } else {
-		LOGERR("s", "Unrecognized authorization format");
-		con->http_status = 400;
+		log_error(srv->errh, __FILE__, __LINE__, "Unrecognized authorization format");
+		r->http_status = 400;
+		if (argv)
+		    free(argv);
+                if (sdup)
+                    free(sdup);
+                close(from_cgi_fds[0]);
+                close(from_cgi_fds[1]);
+                close(to_cgi_fds[0]);
+                close(to_cgi_fds[1]);
 		return 0;
 	    }
 	}
@@ -1011,12 +819,15 @@ mod_juise_create_env (server *srv, connection *con,
     case 0:
 	{
 	    /* child */
-	    char buf[32];
+	    char buf[LI_ITOSTRING_LENGTH] = {0};
 	    size_t n;
 	    char_array env;
 	    char *c;
 	    const char *s;
 	    server_socket *srv_sock = con->srv_socket;
+#if 0
+         const size_t tlen = buffer_clen(srv_sock->srv_token);
+#endif /* 0 */
 
 	    /* move stdout to from_cgi_fd[1] */
 	    close(STDOUT_FILENO);
@@ -1037,22 +848,22 @@ mod_juise_create_env (server *srv, connection *con,
 	    env.size = 0;
 	    env.used = 0;
 
-	    if (buffer_is_empty(con->conf.server_tag)) {
+	    if (buffer_string_is_empty(r->conf.server_tag)) {
 		mod_juise_env_add(&env, CONST_STR_LEN("SERVER_SOFTWARE"),
 			      CONST_STR_LEN(PACKAGE_DESC));
 	    } else {
 		mod_juise_env_add(&env, CONST_STR_LEN("SERVER_SOFTWARE"),
-			      CONST_BUF_LEN(con->conf.server_tag));
+			      CONST_BUF_LEN(r->conf.server_tag));
 	    }
 
-	    if (!buffer_is_empty(con->server_name)) {
-		size_t len = con->server_name->used - 1;
-		char *colon = strchr(con->server_name->ptr, ':');
+	    if (!buffer_string_is_empty(r->conf.server_name)) {
+		size_t len = r->conf.server_name->used - 1;
+		char *colon = strchr(r->conf.server_name->ptr, ':');
 		if (colon)
-		    len = colon - con->server_name->ptr;
+		    len = colon - r->conf.server_name->ptr;
 
 		mod_juise_env_add(&env, CONST_STR_LEN("SERVER_NAME"),
-			      con->server_name->ptr, len);
+			      r->conf.server_name->ptr, len);
 	    } else {
 #ifdef HAVE_IPV6
 		s = inet_ntop(srv_sock->addr.plain.sa_family,
@@ -1068,11 +879,12 @@ mod_juise_create_env (server *srv, connection *con,
 	    mod_juise_env_add(&env, CONST_STR_LEN("GATEWAY_INTERFACE"),
 			  CONST_STR_LEN("CGI/1.1"));
 
-	    s = get_http_version_name(con->request.http_version);
+	    //s = http_version_buf(r->http_version);
+         const buffer * const v = http_version_buf(r->http_version);
 
-	    mod_juise_env_add(&env, CONST_STR_LEN("SERVER_PROTOCOL"), s, strlen(s));
+	    mod_juise_env_add(&env, CONST_STR_LEN("SERVER_PROTOCOL"),BUF_PTR_LEN(v));
 
-	    LI_ltostr(buf,
+	    size_t len = li_utostrn(buf,sizeof(buf),
 #ifdef HAVE_IPV6
 		      ntohs(srv_sock->addr.plain.sa_family == AF_INET6
 			    ? srv_sock->addr.ipv6.sin6_port
@@ -1081,7 +893,7 @@ mod_juise_create_env (server *srv, connection *con,
 		      ntohs(srv_sock->addr.ipv4.sin_port)
 #endif
 		      );
-	    mod_juise_env_add(&env, CONST_STR_LEN("SERVER_PORT"), buf, strlen(buf));
+	    mod_juise_env_add(&env, CONST_STR_LEN("SERVER_PORT"), buf, len);
 
 	    switch (srv_sock->addr.plain.sa_family) {
 #ifdef HAVE_IPV6
@@ -1107,22 +919,24 @@ mod_juise_create_env (server *srv, connection *con,
 	    }
 	    mod_juise_env_add(&env, CONST_STR_LEN("SERVER_ADDR"), s, strlen(s));
 
-	    s = get_http_method_name(con->request.http_method);
-	    mod_juise_env_add(&env, CONST_STR_LEN("REQUEST_METHOD"), s, strlen(s));
+	    //s = get_http_method_name(con->request.http_method);
+         const buffer * const m = http_method_buf(r->http_method);
+         //s = http_method_buf(r->http_method);
+	    mod_juise_env_add(&env, CONST_STR_LEN("REQUEST_METHOD"), BUF_PTR_LEN(m));
 
-	    if (!buffer_is_empty(con->request.pathinfo)) {
+	    if (!buffer_is_empty(&r->pathinfo)) {
 		mod_juise_env_add(&env, CONST_STR_LEN("PATH_INFO"),
-			      CONST_BUF_LEN(con->request.pathinfo));
+			      CONST_BUF_LEN(&r->pathinfo));
 	    }
 	    mod_juise_env_add(&env, CONST_STR_LEN("REDIRECT_STATUS"),
 			  CONST_STR_LEN("200"));
-	    if (!buffer_is_empty(con->uri.query)) {
+	    if (!buffer_string_is_empty(&r->uri.query)) {
 		mod_juise_env_add(&env, CONST_STR_LEN("QUERY_STRING"),
-			      CONST_BUF_LEN(con->uri.query));
+			      CONST_BUF_LEN(&r->uri.query));
 	    }
-	    if (!buffer_is_empty(con->request.orig_uri)) {
+	    if (!buffer_string_is_empty(&r->target_orig)) {
 		mod_juise_env_add(&env, CONST_STR_LEN("REQUEST_URI"),
-			      CONST_BUF_LEN(con->request.orig_uri));
+			      CONST_BUF_LEN(&r->target_orig));
 	    }
 
 
@@ -1150,7 +964,7 @@ mod_juise_create_env (server *srv, connection *con,
 
 	    mod_juise_env_add(&env, CONST_STR_LEN("REMOTE_ADDR"), s, strlen(s));
 
-	    LI_ltostr(buf,
+	    li_utostrn(buf,sizeof(buf),
 #ifdef HAVE_IPV6
 		      ntohs(con->dst_addr.plain.sa_family == AF_INET6
 			    ? con->dst_addr.ipv6.sin6_port
@@ -1162,11 +976,10 @@ mod_juise_create_env (server *srv, connection *con,
 	    mod_juise_env_add(&env, CONST_STR_LEN("REMOTE_PORT"), buf, strlen(buf));
 
 	    data_string *dsp;
-	    dsp = (data_string *) array_get_element(con->environment,
-						    "REMOTE_USER");
-	    if (dsp != NULL && dsp->value->used > 1) {
+         dsp = http_header_env_get(r, CONST_STR_LEN("REMOTE_USER"));
+	    if (dsp != NULL && dsp->value.used > 1) {
 		mod_juise_env_add(&env, CONST_STR_LEN("REMOTE_USER"),
-				  CONST_BUF_LEN(dsp->value));
+				  CONST_BUF_LEN(&dsp->value));
 	    }
 
 #ifdef USE_OPENSSL
@@ -1176,14 +989,14 @@ mod_juise_create_env (server *srv, connection *con,
 #endif
 
 	    /* request.content_length < SSIZE_MAX, see request.c */
-	    LI_ltostr(buf, con->request.content_length);
+	    li_utostrn(buf, sizeof(buf), r->reqbody_length);
 	    mod_juise_env_add(&env, CONST_STR_LEN("CONTENT_LENGTH"), buf, strlen(buf));
 	    mod_juise_env_add(&env, CONST_STR_LEN("SCRIPT_FILENAME"),
-			  CONST_BUF_LEN(con->physical.path));
+			  CONST_BUF_LEN(&r->physical.path));
 	    mod_juise_env_add(&env, CONST_STR_LEN("SCRIPT_NAME"),
-			  CONST_BUF_LEN(con->uri.path));
+			  CONST_BUF_LEN(&r->uri.path));
 	    mod_juise_env_add(&env, CONST_STR_LEN("DOCUMENT_ROOT"),
-			  CONST_BUF_LEN(con->physical.doc_root));
+			  CONST_BUF_LEN(&r->physical.doc_root));
 
 	    /* for valgrind */
 	    if ((s = getenv("LD_PRELOAD")) != NULL) {
@@ -1228,74 +1041,74 @@ mod_juise_create_env (server *srv, connection *con,
 		    cp = getenv(*sp);
 		    if (cp) {
 			mod_juise_env_add(&env, *sp, strlen(*sp), cp, strlen(cp));
-			LOGERR("sss", "juise: making env:", *sp, cp);
+			log_error(srv->errh, __FILE__, __LINE__, "juise: making env:%s %s", *sp, cp);
 		    }
 		}
 	    }
 
-	    for (n = 0; n < con->request.headers->used; n++) {
-		ds = (data_string *)con->request.headers->data[n];
+	    for (n = 0; n < r->rqst_headers.used ; n++) {
+		ds = (data_string *)r->rqst_headers.data[n];
 
-		if (ds->value->used && ds->key->used) {
+		if (ds->value.used && ds->key.used) {
 		    size_t j;
 
 		    /* Don't set authorization header in env */
-		    if (strcasecmp(ds->key->ptr, "AUTHORIZATION") == 0) {
+		    if (strcasecmp(ds->key.ptr, "AUTHORIZATION") == 0) {
 			continue;
 		    }
 
 		    buffer_reset(p->tmp_buf);
 
-		    if (strcasecmp(ds->key->ptr, "CONTENT-TYPE") != 0) {
+		    if (strcasecmp(ds->key.ptr, "CONTENT-TYPE") != 0) {
 			buffer_copy_string_len(p->tmp_buf, CONST_STR_LEN("HTTP_"));
 			p->tmp_buf->used--; /* strip \0 after HTTP_ */
 		    }
 
-		    buffer_prepare_append(p->tmp_buf, ds->key->used + 2);
+		    buffer_prepare_append(p->tmp_buf, ds->key.used + 2);
 
-		    for (j = 0; j < ds->key->used - 1; j++) {
+		    for (j = 0; j < ds->key.used - 1; j++) {
 			char cr = '_';
-			if (light_isalpha(ds->key->ptr[j])) {
+			if (light_isalpha(ds->key.ptr[j])) {
 			    /* upper-case */
-			    cr = ds->key->ptr[j] & ~32;
-			} else if (light_isdigit(ds->key->ptr[j])) {
+			    cr = ds->key.ptr[j] & ~32;
+			} else if (light_isdigit(ds->key.ptr[j])) {
 			    /* copy */
-			    cr = ds->key->ptr[j];
+			    cr = ds->key.ptr[j];
 			}
 			p->tmp_buf->ptr[p->tmp_buf->used++] = cr;
 		    }
 		    p->tmp_buf->ptr[p->tmp_buf->used++] = '\0';
 
 		    mod_juise_env_add(&env, CONST_BUF_LEN(p->tmp_buf),
-				  CONST_BUF_LEN(ds->value));
+				  CONST_BUF_LEN(&ds->value));
 		}
 	    }
 
-	    for (n = 0; n < con->environment->used; n++) {
-		ds = (data_string *)con->environment->data[n];
+	    for (n = 0; n < r->env.used; n++) {
+		ds = (data_string *)r->env.data[n];
 
-		if (ds->value->used && ds->key->used) {
+		if (ds->value.used && ds->key.used) {
 		    size_t j;
 
 		    buffer_reset(p->tmp_buf);
 
-		    buffer_prepare_append(p->tmp_buf, ds->key->used + 2);
+		    buffer_prepare_append(p->tmp_buf, ds->key.used + 2);
 
-		    for (j = 0; j < ds->key->used - 1; j++) {
+		    for (j = 0; j < ds->key.used - 1; j++) {
 			char cr = '_';
-			if (light_isalpha(ds->key->ptr[j])) {
+			if (light_isalpha(ds->key.ptr[j])) {
 			    /* upper-case */
-			    cr = ds->key->ptr[j] & ~32;
-			} else if (light_isdigit(ds->key->ptr[j])) {
+			    cr = ds->key.ptr[j] & ~32;
+			} else if (light_isdigit(ds->key.ptr[j])) {
 			    /* copy */
-			    cr = ds->key->ptr[j];
+			    cr = ds->key.ptr[j];
 			}
 			p->tmp_buf->ptr[p->tmp_buf->used++] = cr;
 		    }
 		    p->tmp_buf->ptr[p->tmp_buf->used++] = '\0';
 
 		    mod_juise_env_add(&env, CONST_BUF_LEN(p->tmp_buf),
-				  CONST_BUF_LEN(ds->value));
+				  CONST_BUF_LEN(&ds->value));
 		}
 	    }
 
@@ -1307,27 +1120,27 @@ mod_juise_create_env (server *srv, connection *con,
 	    env.ptr[env.used] = NULL;
 
 	    /* search for the last / */
-	    if ((c = strrchr(con->physical.path->ptr, '/')) != NULL) {
+	    if ((c = strrchr(r->physical.path.ptr, '/')) != NULL) {
 		*c = '\0';
 
 		/* change to the physical directory */
-		if (chdir(con->physical.path->ptr) == -1) {
-		    LOGERR("ssb", "chdir failed:",
-			   strerror(errno), con->physical.path);
+		if (chdir(&r->physical.path.ptr) == -1) {
+		    log_error(srv->errh, __FILE__, __LINE__, "chdir failed: %s %s",
+			   strerror(errno), &r->physical.path);
 		}
 		*c = '/';
 	    }
 
 	    /* we don't need the client socket */
 	    for (i = 3; i < 256; i++) {
-		if (i != srv->errorlog_fd)
+		if (i != srv->errh->fd)
 		    close(i);
 	    }
 
 	    /* exec the cgi */
 	    execve(argv[0], argv, env.ptr);
 
-	    /* LOGERR("sss", "CGI failed:", strerror(errno), argv[0]); */
+	    log_error(srv->errh, __FILE__, __LINE__, "CGI failed:%s %s", strerror(errno), argv[0]); 
 
 	    /* */
 	    SEGFAULT();
@@ -1336,7 +1149,7 @@ mod_juise_create_env (server *srv, connection *con,
 
     case -1:
 	/* error */
-	LOGERR("ss", "fork failed:", strerror(errno));
+	log_error(srv->errh, __FILE__, __LINE__, "fork failed: %s", strerror(errno));
 	close(from_cgi_fds[0]);
 	close(from_cgi_fds[1]);
 	close(to_cgi_fds[0]);
@@ -1354,26 +1167,32 @@ mod_juise_create_env (server *srv, connection *con,
 
 	    close(from_cgi_fds[1]);
 	    close(to_cgi_fds[0]);
-		    
-	    int r = 0;
+	    int ret1 = 0;
+         xmlChar *ret;
 
 	    if (p->conf.require_auth == 1 && http_auth) {
 		buffer *auth = buffer_init();
 		buffer_append_string_len(auth, CONST_STR_LEN("user="));
-		buffer_append_string(auth, user);
+		ret = xmlURIEscapeStr((const xmlChar *)user, NULL);
+		if (ret != NULL) {
+		    buffer_append_string(auth, (char*)ret);
+		}
 		buffer_append_string_len(auth, CONST_STR_LEN("\npassword="));
-		buffer_append_string(auth, pass);
+		ret = xmlURIEscapeStr((const xmlChar *)pass, NULL);
+		if (ret != NULL) {
+		    buffer_append_string(auth, (char*)ret);
+		}
 		buffer_append_string_len(auth, CONST_STR_LEN("\n"));
-		r = write(to_cgi_fds[1], auth->ptr, 
+		ret1 = write(to_cgi_fds[1], auth->ptr,
 			  auth->used ? auth->used - 1 : 0);
-		if (r < 0) {
+		if (ret1 < 0) {
 		    switch (errno) {
 			case ENOSPC:
-			    con->http_status = 507;
+			    r->http_status = 507;
 			    break;
 
 			default:
-			    con->http_status = 403;
+			    r->http_status = 403;
 			    break;
 		    }
 		}
@@ -1384,112 +1203,116 @@ mod_juise_create_env (server *srv, connection *con,
 		}
 	    }
 
-	    if (con->request.content_length) {
-		chunkqueue *cq = con->request_content_queue;
+	    if (r->reqbody_length) {
+		chunkqueue *cq = &r->reqbody_queue;
 		chunk *c;
+                /* JUNOS Begin */
+                /*
+                 * r->conf.max_request_size is in kBytes
+                 */
+	        log_error(srv->errh, __FILE__, __LINE__, "r->conf.max_request_size %d", r->conf.max_request_size);
+                if (r->conf.max_request_size != 0 &&
+                    (((off_t)r->reqbody_length >> 10 ) > r->conf.max_request_size)) {
+		     log_error(r->conf.errh, __FILE__, __LINE__,
+                                        "request-size too long: %d", (off_t) r->reqbody_length, "-> 413");
+                     r->http_status = 413;
+		     break;
+                }
+	        log_error(srv->errh, __FILE__, __LINE__, "chunkqueue_length(cq) %d", chunkqueue_length(cq));
 
-		assert(chunkqueue_length(cq)
-		       == (off_t)con->request.content_length);
+                while (r->reqbody_queue.bytes_in
+                       != (off_t) r->reqbody_length) {
+                    con->is_readable = 1;
+                    hr = r->con->reqbody_read(r);
+                    /* JUNOS Begin */
+                    /*
+                     * CWE-835 fix (SIR-2026-3032 / PR 1979055): a truncated or
+                     * aborted request body makes reqbody_read() return
+                     * HANDLER_ERROR (e.g. the client sends fewer bytes than the
+                     * declared Content-Length and then RSTs the connection).
+                     * Previously this arm only logged and the loop re-spun, so
+                     * bytes_in could never reach reqbody_length -- the single
+                     * event loop wedged at 100% CPU forever and stopped
+                     * servicing SIGTERM, so "restart rest-api" could not
+                     * recover it. Escape the loop on error: fail the request,
+                     * tear down the CGI pipes, reap the forked child, and
+                     * return an error to the caller -- mirroring the sibling
+                     * loop in usr.sbin/saegw-upad/li/mod_upad.c.
+                     *
+                     * NOTE: the EAGAIN / trickle busy-wait (a slow client that
+                     * keeps reqbody_read() returning without HANDLER_ERROR)
+                     * still spins here; fully removing it requires the
+                     * event-driven rewrite that returns HANDLER_WAIT_FOR_EVENT
+                     * to the event loop (as upstream lighttpd mod_cgi does).
+                     */
+                    if (hr == HANDLER_ERROR) {
+                        log_error(srv->errh, __FILE__, __LINE__,
+                                  "mod_juise: request body read failed (client abort/truncation); aborting request");
+                        r->http_status = 400;
+                        close(to_cgi_fds[1]);
+                        close(from_cgi_fds[0]);
+                        kill(pid, SIGKILL);
+                        waitpid(pid, NULL, 0);
+                        if (sdup)
+                            free(sdup);
+                        if (argv)
+                            free(argv);
+                        return -1;
+                    }
+                    /* JUNOS End */
+                }
 
+                /*
+                 * Will add conditions to handle cases if chunkqueue length
+                 * is returned empty or con->request.content_length is empty
+                 * or -1 and other possible corner cases
+                 */
+
+	       log_error(srv->errh, __FILE__, __LINE__, "chunkqueue_length(cq) %d", chunkqueue_length(cq));
+	        log_error(srv->errh, __FILE__, __LINE__, "(off_t)r->reqbody_length %d", (off_t)r->reqbody_length);
+                /* JUNOS End */
 		/* there is content to send */
 		for (c = cq->first; c; c = cq->first) {
 
 		    /* copy all chunks */
 		    switch (c->type) {
 		    case FILE_CHUNK:
-
-			if (c->file.mmap.start == MAP_FAILED) {
-			    /* Open the file if not already open */
-			    if (c->file.fd == -1
-				&& (c->file.fd
-				    = open(c->file.name->ptr, O_RDONLY)) == -1) {
-				LOGERR("ss", "open failed: ",
-				       strerror(errno));
-
-				close(from_cgi_fds[0]);
-				close(to_cgi_fds[1]);
-				if (sdup)
-				    free(sdup);
-				if (argv)
-				    free(argv);
-				return -1;
-			    }
-
-			    c->file.mmap.length = c->file.length;
-
-			    c->file.mmap.start = mmap(0,  c->file.mmap.length,
-						      PROT_READ, MAP_SHARED,
-						      c->file.fd, 0);
-			    if (c->file.mmap.start == MAP_FAILED) {
-				LOGERR("ssbd", "mmap failed: ",
-				       strerror(errno), c->file.name,
-				       c->file.fd);
-
-				close(from_cgi_fds[0]);
-				close(to_cgi_fds[1]);
-				if (sdup)
-				    free(sdup);
-				return -1;
-			    }
-
-			    close(c->file.fd);
-			    c->file.fd = -1;
-
-			    /*
-			     * chunk_reset() or chunk_free() will
-			     * cleanup for us
-			     */
-			}
-
-			r = write(to_cgi_fds[1],
-				  c->file.mmap.start + c->offset,
-				  c->file.length - c->offset);
-			if (r < 0) {
-			    switch (errno) {
-			    case ENOSPC:
-				con->http_status = 507;
-				break;
-
-			    case EINTR:
-				continue;
-
-			    default:
-				con->http_status = 403;
-				break;
-			    }
-			}
+			/* JUNOS Begin */
+			/*
+                         * Created a separate function to handle
+			 * FILE_CHUNK as per new mod_cgi.c
+			 */
+			ret1 = juise_network_write_file_chunk_mmap( to_cgi_fds[1], cq,NULL);
+			/* JUNOS End */
 			break;
 
 		    case MEM_CHUNK:
-			r = write(to_cgi_fds[1], c->mem->ptr + c->offset,
+			ret1 = write(to_cgi_fds[1], c->mem->ptr + c->offset,
 				  c->mem->used - c->offset - 1);
-			if (r < 0) {
+			if (ret1 < 0) {
 			    switch (errno) {
 			    case ENOSPC:
-				con->http_status = 507;
+				r->http_status = 507;
 				break;
 
 			    case EINTR:
 				continue;
 
 			    default:
-				con->http_status = 403;
+				r->http_status = 403;
 				break;
 			    }
 			}
 			break;
+              }
 
-		    case UNUSED_CHUNK:
-			break;
-		    }
-
-		    if (r > 0) {
-			c->offset += r;
-			cq->bytes_out += r;
+		    if (ret1 > 0) {
+			c->offset += ret1;
+			cq->bytes_out += ret1;
 		    } else {
-			LOGERR("ss", "write() failed due to: ",
-			       strerror(errno)); 
-			con->http_status = 500;
+			log_error(srv->errh, __FILE__, __LINE__, "write() failed due to: %s",
+			       strerror(errno));
+			r->http_status = 500;
 			break;
 		    }
 		    chunkqueue_remove_finished_chunks(cq);
@@ -1499,8 +1322,8 @@ mod_juise_create_env (server *srv, connection *con,
 	    close(to_cgi_fds[1]);
 
 	    /* register PID and wait for them asyncronously */
-	    con->mode = p->id;
-	    buffer_reset(con->physical.path);
+	    r->handler_module = (plugin_data_base *)p;
+	    buffer_reset(&r->physical.path);
 
 	    hctx = mod_juise_handler_ctx_init();
 
@@ -1508,26 +1331,26 @@ mod_juise_create_env (server *srv, connection *con,
 	    hctx->plugin_data = p;
 	    hctx->pid = pid;
 	    hctx->fd = from_cgi_fds[0];
-	    hctx->fde_ndx = -1;
+         hctx->fdn = NULL;
 
-	    con->plugin_ctx[p->id] = hctx;
+	    r->plugin_ctx[p->id] = hctx;
 
-	    fdevent_register(srv->ev, hctx->fd, mod_juise_handle_fdevent, hctx);
-	    fdevent_event_set(srv->ev, &(hctx->fde_ndx), hctx->fd, FDEVENT_IN);
+	    hctx->fdn = fdevent_register(srv->ev, hctx->fd, mod_juise_handle_fdevent, hctx);
+	    fdevent_fdnode_event_set(srv->ev, hctx->fdn, FDEVENT_IN);
 
-	    if (fdevent_fcntl_set(srv->ev, hctx->fd) == -1) {
-		LOGERR("ss", "fcntl failed: ", strerror(errno));
+	    if (fdevent_fcntl_set_nb(hctx->fd) == -1) {
+		log_error(srv->errh, __FILE__, __LINE__, "fcntl failed: %s", strerror(errno));
 
-		fdevent_event_del(srv->ev, &(hctx->fde_ndx), hctx->fd);
-		fdevent_unregister(srv->ev, hctx->fd);
+		fdevent_fdnode_event_del(srv->ev, hctx->fdn);
+		fdevent_unregister(srv->ev, hctx->fdn);
 
-		LOGERR("sd", "juise close:", hctx->fd);
+		log_error(srv->errh, __FILE__, __LINE__,"juise close: %d", hctx->fd);
 
 		close(hctx->fd);
 
 		mod_juise_handler_ctx_free(hctx);
 
-		con->plugin_ctx[p->id] = NULL;
+		r->plugin_ctx[p->id] = NULL;
 
 		if (sdup)
 		    free(sdup);
@@ -1552,161 +1375,34 @@ mod_juise_create_env (server *srv, connection *con,
 #endif
 }
 
-#define PATCH(x) p->conf.x = s->x
-
-static int
-mod_juise_patch_connection (server *srv, connection *con, mod_juise_plugin_data *p)
-{
-    size_t i, j;
-    mod_juise_plugin_config *s = p->config_storage[0];
-
-    PATCH(cgi);
-    PATCH(execute_x_only);
-    PATCH(require_auth);
-    PATCH(mixer);
-
-    /* skip the first, the global context */
-    for (i = 1; i < srv->config_context->used; i++) {
-	data_config *dc = (data_config *) srv->config_context->data[i];
-	s = p->config_storage[i];
-
-	/* condition didn't match */
-	if (!config_check_cond(srv, con, dc))
-	    continue;
-
-	/* merge config */
-	for (j = 0; j < dc->value->used; j++) {
-	    data_unset *du = dc->value->data[j];
-
-	    if (buffer_is_equal_string(du->key, 
-				       CONST_STR_LEN("juise.assign"))) {
-		PATCH(cgi);
-	    } else if (buffer_is_equal_string(du->key,
-				      CONST_STR_LEN("juise.execute-x-only"))) {
-		PATCH(execute_x_only);
-	    } else if (buffer_is_equal_string(du->key, 
-				CONST_STR_LEN("juise.require-auth"))) {
-		PATCH(require_auth);
-	    } else if (buffer_is_equal_string(du->key,
-					      CONST_STR_LEN("juise.mixer"))) {
-		PATCH(mixer);
-	    }
-	}
-    }
-
-    return 0;
-}
-#undef PATCH
-
-URIHANDLER_FUNC(mod_juise_handle_subrequest_start)
-{
-    size_t k, s_len;
-    mod_juise_plugin_data *p = p_d;
-    buffer *fn = con->physical.path;
-    buffer *uri = con->uri.path;
-    stat_cache_entry *sce = NULL;
-
-    LOGERR("ss", "mod_juise: start: looking at ", fn->ptr);
-
-    if (con->mode != DIRECT)
-	return HANDLER_GO_ON;
-
-    if (fn->used == 0)
-	return HANDLER_GO_ON;
-
-    mod_juise_patch_connection(srv, con, p);
-
-    if (stat_cache_get_entry(srv, con, con->physical.path, &sce)
-		== HANDLER_ERROR)
-	return HANDLER_GO_ON;
-
-    if (!S_ISREG(sce->st.st_mode))
-	return HANDLER_GO_ON;
-
-    if (p->conf.execute_x_only == 1
-		&& (sce->st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0)
-	return HANDLER_GO_ON;
-
-    /* Prompt for authorization information if required by config */
-    if (p->conf.require_auth == 1 
-	&& array_get_element(con->request.headers, "Authorization") == NULL) {
-	con->http_status = 401;
-	con->mode = DIRECT;
-	buffer_reset(p->tmp_buf);
-	buffer_append_string_len(p->tmp_buf, 
-			CONST_STR_LEN("Basic realm=\"Need basic auth header\""));
-	response_header_insert(srv, con, CONST_STR_LEN("WWW-Authenticate"), 
-			       CONST_BUF_LEN(p->tmp_buf));
-	LOGERR("s", "Redirecting as mandatory authentication header missing");
-	return HANDLER_FINISHED;
-    }
-
-    s_len = fn->used - 1;
-
-    for (k = 0; k < p->conf.cgi->used; k++) {
-	data_string *ds = (data_string *) p->conf.cgi->data[k];
-	size_t ct_len = ds->key->used - 1;
-
-	if (ds->key->used == 0)
-	    continue;
-	if (s_len < ct_len)
-	    continue;
-
-	if (ds->key->ptr[0] == '/') {
-	    if (strncmp(uri->ptr, ds->key->ptr, ct_len) == 0) {
-		if (mod_juise_create_env(srv, con, p, ds->value)) {
-		    con->mode = DIRECT;
-		    con->http_status = 500;
-
-		    buffer_reset(con->physical.path);
-		    return HANDLER_FINISHED;
-		}
-		/* one handler is enough for the request */
-		break;
-	    }
-	} else {
-	    if (strncmp(fn->ptr + s_len - ct_len, ds->key->ptr, ct_len) == 0) {
-		if (mod_juise_create_env(srv, con, p, ds->value)) {
-		    con->mode = DIRECT;
-		    con->http_status = 500;
-
-		    buffer_reset(con->physical.path);
-		    return HANDLER_FINISHED;
-		}
-		/* one handler is enough for the request */
-		break;
-	    }
-	}
-    }
-
-    return HANDLER_GO_ON;
-}
 
 URIHANDLER_FUNC(mod_juise_handle_physical)
 {
     size_t k, s_len;
     mod_juise_plugin_data *p = p_d;
-    buffer *fn = con->physical.path;
-    buffer *uri = con->uri.path;
+    connection *con = r->con;
+    server *srv = con->srv;
+    buffer *fn = &r->physical.path;
+    buffer *uri = &r->uri.path;
 
-    LOGERR("ss", "mod_juise: physical: fn ", fn->ptr);
-    LOGERR("ss", "mod_juise: physical: uri ", uri->ptr);
+    log_error(srv->errh, __FILE__, __LINE__, "mod_juise: physical: fn %s", fn->ptr);
+    log_error(srv->errh, __FILE__, __LINE__, "mod_juise: physical: uri %s", uri->ptr);
 
-    s_len = uri->used - 1;
+    s_len = buffer_clen(uri);
 
-    mod_juise_patch_connection(srv, con, p);
+    mod_juise_patch_config(r, p);
 
     for (k = 0; k < p->conf.cgi->used; k++) {
 	data_string *ds = (data_string *) p->conf.cgi->data[k];
-	size_t ct_len = ds->key->used - 1;
+	size_t ct_len = ds->key.used - 1;
 
-	if (ds->key->used == 0)
+	if (ds->key.used == 0)
 	    continue;
 	if (s_len < ct_len)
 	    continue;
 
-	if (ds->key->ptr[0] == '/') {
-	    if (strncmp(uri->ptr, ds->key->ptr, ct_len) == 0) {
+	if (ds->key.ptr[0] == '/') {
+	    if (strncmp(uri->ptr, ds->key.ptr, ct_len) == 0) {
 		buffer_copy_string(fn, PATH_JUISE);
 		break;
 	    }
@@ -1736,7 +1432,16 @@ TRIGGER_FUNC(mod_juise_handle_trigger)
 	    break;
 
 	case -1:
-	    LOGERR("ss", "waitpid failed: ", strerror(errno));
+
+   if (errno == ECHILD) {
+	    log_error(srv->errh, __FILE__, __LINE__, "cgi child vanished");
+
+	    mod_juise_pid_del(srv, p, p->cgi_pid.ptr[ndx]);
+	    ndx--;
+	    continue;
+    }
+
+	    log_error(srv->errh, __FILE__, __LINE__,"waitpid failed: ", strerror(errno));
 
 	    return HANDLER_ERROR;
 
@@ -1752,11 +1457,11 @@ TRIGGER_FUNC(mod_juise_handle_trigger)
 		 * kill(..., SIGTERM) ?
 		 */
 		if (WTERMSIG(status) != SIGTERM) {
-		    LOGERR("sd", "cleaning up CGI: process died with signal",
+		    log_error(srv->errh, __FILE__, __LINE__, "cleaning up CGI: process died with signal %d",
 			   WTERMSIG(status));
 		}
 	    } else {
-		LOGERR("s", "cleaning up CGI: ended unexpectedly");
+		log_error(srv->errh, __FILE__, __LINE__, "cleaning up CGI: ended unexpectedly");
 	    }
 
 	    mod_juise_pid_del(srv, p, p->cgi_pid.ptr[ndx]);
@@ -1773,135 +1478,606 @@ TRIGGER_FUNC(mod_juise_handle_trigger)
     return HANDLER_GO_ON;
 }
 
-/*
- * - HANDLER_GO_ON : not our job
- * - HANDLER_FINISHED: got response header
- * - HANDLER_WAIT_FOR_EVENT: waiting for response header
- */
 SUBREQUEST_FUNC(mod_juise_handle_subrequest)
 {
-    int status;
     mod_juise_plugin_data *p = p_d;
-    mod_juise_handler_context *hctx = con->plugin_ctx[p->id];
+    mod_juise_handler_context *hctx = r->plugin_ctx[p->id];
+    server *srv = r->con->srv;
 
-    LOGERR("ss", "mod_juise: handle: ", con->physical.path->ptr);
+    if (r->handler_module != (plugin_data_base *)p) return HANDLER_GO_ON;
+    if (NULL == hctx) return HANDLER_GO_ON;
 
-    if (con->mode != p->id)
-	return HANDLER_GO_ON;
+    log_error(srv->errh, __FILE__, __LINE__,
+              "mod_juise: handle: %s", r->physical.path.ptr);
 
-    if (NULL == hctx)
-	return HANDLER_GO_ON;
+#define JUISE_CLEANUP() \
+    do { \
+        if (hctx->fdn) { \
+            fdevent_fdnode_event_del(srv->ev, hctx->fdn); \
+            fdevent_unregister(srv->ev, hctx->fdn); \
+            hctx->fdn = NULL; \
+        } \
+        if (hctx->fd != -1) { \
+            if (close(hctx->fd)) \
+                log_error(srv->errh,__FILE__,__LINE__, \
+                          "juise close failed %d %s", hctx->fd, strerror(errno)); \
+            hctx->fd = -1; \
+        } \
+        mod_juise_handler_ctx_free(hctx); \
+        r->plugin_ctx[p->id] = NULL; \
+        r->handler_module = NULL; \
+    } while (0)
 
-#if 0
-    LOGERR("sdd", "subrequest, pid =", hctx, hctx->pid);
-#endif
-
+    /* If child already marked dead */
     if (hctx->pid == 0) {
-	/* cgi already dead */
-	if (!con->file_started)
-	    return HANDLER_WAIT_FOR_EVENT;
-	return HANDLER_FINISHED;
+	 if (!r->resp_body_started) {
+		 if (r->http_status == 0) r->http_status = 500;
+		 JUISE_CLEANUP();
+		 return HANDLER_FINISHED;
+	 }
+	 if (r->resp_body_finished) {
+		 JUISE_CLEANUP();
+		 return HANDLER_FINISHED;
+	 }
+	 return HANDLER_WAIT_FOR_EVENT;
     }
 
 #ifndef __WIN32
-    switch (waitpid(hctx->pid, &status, WNOHANG)) {
-    case 0:
-	/* we only have for events here if we don't have the header yet,
-	 * otherwise the event-handler will send us the incoming data */
-	if (con->file_started)
-	    return HANDLER_FINISHED;
+    for (;;) {
+        int status;
+        pid_t pr = waitpid(hctx->pid, &status, WNOHANG);
+        if (pr == 0) {
+            /* Child running */
+            if (r->resp_body_finished) {
+                hctx->pid = 0;
+                JUISE_CLEANUP();
+                return HANDLER_FINISHED;
+            }
+            return HANDLER_WAIT_FOR_EVENT;
+        }
+        if (pr == -1) {
+            if (errno == EINTR) continue;
+            if (errno == ECHILD || errno == ESRCH) {
+                /* Already reaped elsewhere */
+                hctx->pid = 0;
+                if (!r->resp_body_started) {
+                    if (r->http_status == 0) r->http_status = 500;
+                    JUISE_CLEANUP();
+                    return HANDLER_FINISHED;
+                }
+                if (r->resp_body_finished) {
+                    JUISE_CLEANUP();
+                    return HANDLER_FINISHED;
+                }
+                return HANDLER_WAIT_FOR_EVENT;
+            }
+            log_error(srv->errh,__FILE__,__LINE__,
+                      "waitpid failed: %s (pid=%d)",
+                      strerror(errno),(int)hctx->pid);
+            hctx->pid = 0;
+            if (!r->resp_body_started && r->http_status == 0)
+                r->http_status = 500;
+            if (!r->resp_body_started || r->resp_body_finished) {
+                JUISE_CLEANUP();
+                return HANDLER_FINISHED;
+            }
+            return HANDLER_WAIT_FOR_EVENT;
+        }
 
-	return HANDLER_WAIT_FOR_EVENT;
+        /* pr == pid: child exited */
+        hctx->pid = 0;
 
-    case -1:
-	if (errno == EINTR)
-	    return HANDLER_WAIT_FOR_EVENT;
+        if (!r->resp_body_started) {
+            if (r->http_status == 0) r->http_status = 500;
+            JUISE_CLEANUP();
+            return HANDLER_FINISHED;
+        }
 
-	if (errno == ECHILD && con->file_started == 0) {
-	    /*
-	     * second round but still not response
-	     */
-	    return HANDLER_WAIT_FOR_EVENT;
-	}
+        if (r->resp_body_finished) {
+            JUISE_CLEANUP();
+            return HANDLER_FINISHED;
+        }
 
-	LOGERR("ss", "waitpid failed: ", strerror(errno));
-	con->mode = DIRECT;
-	con->http_status = 500;
-
-	hctx->pid = 0;
-
-	fdevent_event_del(srv->ev, &(hctx->fde_ndx), hctx->fd);
-	fdevent_unregister(srv->ev, hctx->fd);
-
-	if (close(hctx->fd)) {
-	    LOGERR("sds", "juise close failed ", hctx->fd, strerror(errno));
-	}
-
-	mod_juise_handler_ctx_free(hctx);
-
-	con->plugin_ctx[p->id] = NULL;
-
-	return HANDLER_FINISHED;
-
-    default:
-	/* cgi process exited */
-	hctx->pid = 0;
-
-	/* we already have response headers? just continue */
-	if (con->file_started)
-	    return HANDLER_FINISHED;
-
-	if (WIFEXITED(status)) {
-	    /* clean exit - just continue */
-	    return HANDLER_WAIT_FOR_EVENT;
-	}
-
-	/*
-	 * cgi proc died, and we didn't get any data yet - send error
-	 * message and close cgi con
-	 */
-	LOGERR("s", "juise died ?");
-
-	con->http_status = 500;
-	con->mode = DIRECT;
-
-	fdevent_event_del(srv->ev, &(hctx->fde_ndx), hctx->fd);
-	fdevent_unregister(srv->ev, hctx->fd);
-
-	if (close(hctx->fd)) {
-	    LOGERR("sds", "juise close failed ", hctx->fd, strerror(errno));
-	}
-
-	mod_juise_handler_ctx_free(hctx);
-
-	con->plugin_ctx[p->id] = NULL;
-	return HANDLER_FINISHED;
+        /* Headers started; wait for EOF from demux */
+        return HANDLER_WAIT_FOR_EVENT;
     }
 #else
     return HANDLER_ERROR;
 #endif
 }
 
+SETDEFAULTS_FUNC(mod_juise_set_defaults)
+{
+    static const config_plugin_keys_t cpk[] = {
+      { CONST_STR_LEN("juise.assign"),
+        T_CONFIG_ARRAY_KVSTRING,
+        T_CONFIG_SCOPE_CONNECTION }
+     ,{ CONST_STR_LEN("juise.execute-x-only"),
+        T_CONFIG_BOOL,
+        T_CONFIG_SCOPE_CONNECTION }
+     ,{ CONST_STR_LEN("juise.require-auth"),
+        T_CONFIG_BOOL,
+        T_CONFIG_SCOPE_CONNECTION }
+     ,{ CONST_STR_LEN("juise.mixer"),
+        T_CONFIG_STRING,
+        T_CONFIG_SCOPE_CONNECTION }
+     ,{ NULL, 0,
+        T_CONFIG_UNSET,
+        T_CONFIG_SCOPE_UNSET }
+    };
+
+    mod_juise_plugin_data * const p = p_d;
+    if (!config_plugin_values_init(srv, p, cpk, "mod_juise"))
+	 return HANDLER_ERROR;
+
+    /* process and validate config directives
+     * (init i to 0 if global context; to 1 to skip empty global context) */
+    for (int i = !p->cvlist[0].v.u2[1]; i < p->nconfig; ++i) {
+	 config_plugin_value_t *cpv = p->cvlist + p->cvlist[i].v.u2[0];
+	 for (; -1 != cpv->k_id; ++cpv) {
+		 /* (nothing to do here for simple config) */
+	 }
+    }
+
+    /* initialize p->defaults from global config context */
+    if (p->nconfig > 0 && p->cvlist->v.u2[1]) {
+	 const config_plugin_value_t *cpv = p->cvlist + p->cvlist->v.u2[0];
+	 if (-1 != cpv->k_id)
+		 mod_juise_merge_config(&p->defaults, cpv);
+    }
+
+    return HANDLER_GO_ON;
+}
+
+static int
+mod_juise_pid_add (server *srv, mod_juise_plugin_data *p, pid_t pid)
+{
+    int m = -1;
+    size_t i;
+    buffer_pid_t *r = &p->cgi_pid;
+
+    UNUSED(srv);
+
+    for (i = 0; i < r->used; i++) {
+	if (r->ptr[i] > m)
+	    m = r->ptr[i];
+    }
+
+    if (r->size == 0) {
+	r->size = 16;
+	r->ptr = malloc(sizeof(*r->ptr) * r->size);
+    } else if (r->used == r->size) {
+	r->size += 16;
+	r->ptr = realloc(r->ptr, sizeof(*r->ptr) * r->size);
+    }
+
+    r->ptr[r->used++] = pid;
+
+    return m;
+}
+
+static int
+mod_juise_response_parse (request_st *r, mod_juise_plugin_data *p, buffer *in)
+{
+    char *ns;
+    const char *s;
+    int line = 0;
+
+    buffer_copy_buffer(p->parse_response, in);
+
+    for (s = p->parse_response->ptr; (ns = strchr(s, '\n')); s = ns + 1, line++) {
+	   const char *key = NULL, *value = NULL;
+	   int key_len;
+
+	   ns[0] = '\0';
+	   if (ns > s && ns[-1] == '\r') ns[-1] = '\0';
+
+	   if (line == 0 && strncmp(s, "HTTP/1.", 7) == 0) {
+		   if ((s[7] == '1' || s[7] == '0') && s[8] == ' ') {
+		   int status = strtol(s+9, NULL, 10);
+		   if (status >= 100 && status < 1000)
+			 r->http_status = status;
+		   }
+	   } else {
+		  key = s;
+		  value = strchr(s, ':');
+		  if (!value) continue;
+		  key_len = (int)(value - key);
+		  value++;
+		  while (*value == ' ' || *value == '\t') value++;
+
+		  const enum http_header_e id = http_header_hkey_get(key, key_len);
+		  size_t vlen = strlen(value);
+		  switch (id) {
+		  case HTTP_HEADER_STATUS:
+			 r->http_status = strtol(value, NULL, 10);
+			 break;
+		  case HTTP_HEADER_CONNECTION:
+			 r->keep_alive = (0 == strcasecmp(value, "keep-alive"));
+			 break;
+		  case HTTP_HEADER_CONTENT_LENGTH:
+			 if (!r->resp_decode_chunked) {
+				const char *e = value + vlen;
+				while (e > value && (e[-1] == ' ' || e[-1] == '\t')) --e;
+				if (e > value)
+				    r->resp_body_scratchpad =
+					   (off_t)li_restricted_strtoint64(value,(uint32_t)(e-value), &e);
+			 }
+			 break;
+		  case HTTP_HEADER_TRANSFER_ENCODING:
+			 if (buffer_eq_icase_ss(value, vlen, CONST_STR_LEN("chunked"))) {
+				r->resp_decode_chunked = 1;
+				r->gw_dechunk = ck_calloc(1, sizeof(response_dechunk));
+			 } else {
+				r->http_status = 502;
+				return 0;
+			 }
+			 break;
+		  default:
+			 break;
+		  }
+		  if (vlen)
+			 http_header_response_insert(r, id, key, (uint32_t)key_len, value, vlen);
+	   }
+    }
+
+    /* If Location present without Status, set 302 */
+    if (http_header_response_get(r, HTTP_HEADER_LOCATION,
+			   CONST_STR_LEN("Location"))
+&& r->http_status == 0)
+	   r->http_status = 302;
+
+    return 0;
+}
+
+static int
+mod_juise_demux_response (server *srv, mod_juise_handler_context *hctx)
+{
+    mod_juise_plugin_data *p = hctx->plugin_data;
+    connection *con = hctx->remote_conn;          /* ensure remote_conn is set */
+    if (con == NULL) return FDEVENT_HANDLED_ERROR; /* defensive */
+    request_st *r = &con->request;                /* lighttpd >=1.4 request */
+
+    for (;;) {
+	   int n;
+	   buffer_string_prepare_copy(hctx->response, 2048);
+	   n = read(hctx->fd, hctx->response->ptr, hctx->response->size - 1);
+	   if (n == -1) {
+		  if (errno == EAGAIN || errno == EINTR)
+			 return FDEVENT_HANDLED_NOT_FINISHED;
+		  log_error(srv->errh, __FILE__, __LINE__, "read error: %s", strerror(errno));
+		  return FDEVENT_HANDLED_ERROR;
+	   }
+	   if (n == 0) {
+		  r->resp_body_finished = 1;
+		  http_chunk_close(r);
+		  joblist_append(r->con);
+		  return FDEVENT_HANDLED_FINISHED;
+	   }
+
+	   buffer_commit(hctx->response, n);
+
+	   if (!r->resp_body_started) {
+		  buffer_append_string_buffer(hctx->response_header, hctx->response);
+		  size_t header_len = buffer_string_length(hctx->response_header);
+		  int is_header = 0, is_header_end = 0;
+		  size_t last_eol = 0;
+		  size_t i;
+
+		  if (strncmp(hctx->response_header->ptr, "HTTP/1.", 7) == 0)
+			 is_header = 1;
+
+		  for (i = 0; !is_header_end && i < header_len; i++) {
+			 char c = hctx->response_header->ptr[i];
+			 switch (c) {
+			 case '<':
+				is_header_end = 1;
+				break;
+			 case ':':
+				is_header = 1;
+				break;
+			 case '\n':
+				if (!is_header) { is_header_end = 1; break; }
+				if (last_eol > 0 &&
+				    ((i - last_eol == 1) ||
+					(i - last_eol == 2 &&
+					 hctx->response_header->ptr[i - 1] == '\r'))) {
+				    is_header_end = 1;
+				    break;
+				}
+				last_eol = i;
+				break;
+			 }
+		  }
+
+		  if (is_header_end) {
+			 if (!is_header) {
+				http_chunk_append_buffer(r, hctx->response_header);
+			    joblist_append(r->con);
+			 } else {
+				size_t body_start = i ? i - 1 : i;
+				if (body_start > 0 && hctx->response_header->ptr[body_start] == '\r')
+				    --body_start;
+				size_t body_off = i;
+				const char *bstart = hctx->response_header->ptr + body_off;
+				size_t blen = header_len - body_off;
+
+				buffer_string_set_length(hctx->response_header, body_start);
+				mod_juise_response_parse(r, p, hctx->response_header);
+				if (blen > 0) {
+				    http_chunk_append_mem(r, bstart, blen);
+				   joblist_append(r->con);
+				}
+			 }
+			 r->resp_body_started = 1;
+		  }
+	   } else {
+		  http_chunk_append_buffer(r, hctx->response);
+		  joblist_append(r->con);
+	   }
+
+	   if (n < (int)(hctx->response->size - 1))
+		  break; /* drained current readiness */
+    }
+
+    return FDEVENT_HANDLED_NOT_FINISHED;
+}
+
+static handler_t
+mod_juise_connection_close (request_st *r, mod_juise_handler_context *hctx)
+{
+    int status;
+    pid_t pid;
+    mod_juise_plugin_data *p;
+    connection  *con;
+    server *srv;
+
+    if (hctx == NULL)
+	return HANDLER_GO_ON;
+
+    p = hctx->plugin_data;
+    con = hctx->remote_conn;
+    srv = con->srv;
+
+    log_error(srv->errh, __FILE__, __LINE__, __FUNCTION__);
+
+    if (r->handler_module != (plugin_data_base *)p)
+	return HANDLER_GO_ON;
+
+#ifndef __WIN32
+
+    /* the connection to the browser went away, but we still have a connection
+     * to the CGI script
+     *
+     * close cgi-connection
+     */
+
+    if (hctx->fd != -1) {
+	/* close connection to the cgi-script */
+	if (hctx->fdn) {
+	    fdevent_fdnode_event_del(srv->ev, hctx->fdn);
+	    fdevent_unregister(srv->ev, hctx->fdn);
+	}
+
+	if (close(hctx->fd)) {
+	    log_error(srv->errh, __FILE__, __LINE__, "juise close failed %d %s",
+			    hctx->fd, strerror(errno));
+	}
+
+	hctx->fd = -1;
+     hctx->fdn = NULL;
+    }
+
+    pid = hctx->pid;
+    r->plugin_ctx[p->id] = NULL;
+
+    /* is this a good idea ? */
+    mod_juise_handler_ctx_free(hctx);
+
+    /* if waitpid hasn't been called by response.c yet, do it here */
+    if (pid) {
+	/* check if the CGI-script is already gone */
+	switch (waitpid(pid, &status, WNOHANG)) {
+	case 0:
+	    /* not finished yet */
+#if 0
+	    LOGERR("sd", "(debug) child isn't done yet, pid:", pid);
+#endif
+	    break;
+
+	case -1:
+	    /* */
+	    if (errno == EINTR)
+		break;
+
+	    /*
+	     * errno == ECHILD happens if _subrequest catches the
+	     * process-status before we have read the response of the
+	     * cgi process
+	     *
+	     * -> catch status
+	     * -> WAIT_FOR_EVENT
+	     * -> read response
+	     * -> we get here with waitpid == ECHILD
+	     *
+	     */
+	    if (errno == ECHILD)
+		return HANDLER_GO_ON;
+
+	    log_error(srv->errh, __FILE__, __LINE__, "waitpid failed: %s", strerror(errno));
+	    return HANDLER_ERROR;
+
+	default:
+	    /* Send an error if we haven't sent any data yet */
+	    if (r->resp_body_started == 0) {
+		request_set_state(r, CON_STATE_HANDLE_REQUEST);
+		r->http_status = 500;
+		r->handler_module = NULL;
+	    } else {
+		r->resp_body_started = 1;
+	    }
+
+	    if (WIFEXITED(status)) {
+#if 0
+		LOGERR("sd", "(debug) cgi exited fine, pid:", pid);
+#endif
+		return HANDLER_GO_ON;
+	    } else {
+		log_error(srv->errh, __FILE__, __LINE__, "juise died, pid:%d %d", pid, status);
+		return HANDLER_GO_ON;
+	    }
+	}
+
+	kill(pid, SIGTERM);
+
+	/* cgi-script is still alive, queue the PID for removal */
+	mod_juise_pid_add(srv, p, pid);
+    }
+#endif
+    return HANDLER_GO_ON;
+}
+
+static handler_t
+mod_juise_request_reset(request_st *r, void *p_d)
+{
+    handler_t rc;
+    mod_juise_plugin_data *p = p_d;
+    connection *con = r->con;
+    server *srv = con->srv;
+
+    log_error(srv->errh, __FILE__, __LINE__, "mod_juise: request_reset: %s", r->physical.path.ptr);
+
+    rc = mod_juise_connection_close(r, r->plugin_ctx[p->id]);
+    log_error(srv->errh, __FILE__, __LINE__, "mod_juise: request_reset: done");
+
+    return rc;
+}
+
+static int
+mod_juise_env_add (char_array *env, const char *key,
+	     size_t key_len, const char *val, size_t val_len)
+{
+    char *dst;
+
+    if (!key || !val)
+	return -1;
+
+    dst = malloc(key_len + val_len + 2);
+    memcpy(dst, key, key_len);
+    dst[key_len] = '=';
+    memcpy(dst + key_len + 1, val, val_len);
+    dst[key_len + 1 + val_len] = '\0';
+
+    if (env->size == 0) {
+	env->size = 16;
+	env->ptr = malloc(env->size * sizeof(*env->ptr));
+    } else if (env->size == env->used) {
+	env->size += 16;
+	env->ptr = realloc(env->ptr, env->size * sizeof(*env->ptr));
+    }
+
+    env->ptr[env->used++] = dst;
+
+    return 0;
+}
+
+/* JUNOS_Begin */
+/*(improved from network_write_mmap.c)*/
+static off_t
+mmap_align_offset (off_t start)
+{
+    static off_t pagemask = 0;
+
+    if (pagemask == 0) {
+	   long pagesize = sysconf(_SC_PAGESIZE);
+
+	   if (pagesize == -1) {
+		  pagesize = 4096;
+	   }
+
+	   /* pagesize always power-of-2 */
+	   pagemask = ~((off_t)pagesize - 1);
+    }
+
+    return (start & pagemask);
+}
+
+static int juise_network_write_accounting(const int fd, chunkqueue * const cq,log_error_st * const errh, const ssize_t wr, const off_t toSend) { 
+    if (wr >= 0) {
+	   const int rc = (wr == toSend) ? 0 : -3;
+	   chunkqueue_mark_written(cq, wr);
+	   return rc;
+    }
+    else
+	   return network_write_error(fd, errh);
+}
+//static off_t network_write_setjmp_write_cb (void *fd, const void *data, off_t len);
+/* next chunk must be FILE_CHUNK. read file into a stack buffer and send with
+ * write().  Used as the fallback when a memory-mapped chunk_file_view is not
+ * available (e.g. tempfile-spooled request bodies where cfv is NULL). */
+__attribute_noinline__
+static int juise_network_write_file_chunk_no_mmap(const int fd, chunkqueue * const cq, log_error_st * const errh) {
+    chunk * const c = cq->first;
+    off_t toSend = c->file.length - c->offset;
+    char buf[16384]; /* max read 16kb in one step */
+
+    if (toSend <= 0) return network_remove_finished_chunks(cq, toSend);
+    if (toSend > (off_t)sizeof(buf)) toSend = (off_t)sizeof(buf);
+
+    if (c->file.fd < 0 && 0 != chunk_open_file_chunk(c, errh)) return -1;
+
+    toSend = chunk_file_pread_chunk(c, buf, toSend);
+    if (toSend <= 0) {
+        if (c->file.busy)
+            return -3; /* read I/O would block or signal interrupt; yield */
+        /* -1 error; 0 EOF (unexpected) */
+        log_perror(errh, __FILE__, __LINE__, "read(\"%s\")", c->mem->ptr);
+        return -1;
+    }
+
+    ssize_t wr = network_write_data_len(fd, buf, toSend);
+    return juise_network_write_accounting(fd, cq, errh, wr, toSend);
+}
+/* next chunk must be FILE_CHUNK. send mmap()ed file with write() */
+static int juise_network_write_file_chunk_mmap(const int fd, chunkqueue * const cq, log_error_st * const errh) {
+    chunk * const restrict c = cq->first;
+    const chunk_file_view * const restrict cfv = (!c->file.is_temp)
+      ? chunkqueue_chunk_file_view(cq->first, 0, errh)/*use default 512k block*/
+      : NULL;
+    if (NULL == cfv)
+        return juise_network_write_file_chunk_no_mmap(fd, cq, errh);
+
+    off_t toSend = c->file.length - c->offset;
+    if (toSend <= 0) return network_remove_finished_chunks(cq, toSend);
+
+    const off_t mmap_avail = chunk_file_view_dlen(cfv, c->offset);
+    const char * const data = chunk_file_view_dptr(cfv, c->offset);
+    if (toSend > mmap_avail) toSend = mmap_avail;
+    off_t wr = sys_setjmp_eval3(network_write_setjmp_write_cb,
+                                (void *)(uintptr_t)fd, data, toSend);
+    return juise_network_write_accounting(fd,cq,NULL,(ssize_t)wr,toSend);
+}
+/* JUNOS End */
 int mod_juise_plugin_init(plugin *p);
 int
 mod_juise_plugin_init (plugin *p)
 {
     p->version = LIGHTTPD_VERSION_ID;
-    p->name = buffer_init_string("juise");
+    p->name = "juise";
 
-    p->connection_reset = mod_juise_connection_reset;
+    p->handle_request_reset = mod_juise_request_reset;
     p->handle_subrequest_start = mod_juise_handle_subrequest_start;
     p->handle_subrequest = mod_juise_handle_subrequest;
 #if 0
     p->handle_fdevent = mod_juise_handle_fdevent;
 #endif
+    /* JUNOS Begin */
     p->handle_trigger = mod_juise_handle_trigger;
+    /* JUNOS End */
     p->init = mod_juise_init;
     p->cleanup = mod_juise_cleanup;
     p->set_defaults = mod_juise_set_defaults;
     p->handle_physical = mod_juise_handle_physical;
-
-    p->data = NULL;
 
     return 0;
 }
